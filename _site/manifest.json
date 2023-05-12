@@ -1,0 +1,791 @@
+{
+  "homepages": [],
+  "source_base_path": "D:/a/Werkr.App/Werkr.App/docs",
+  "xrefmap": "xrefmap.yml",
+  "files": [
+    {
+      "type": "Conceptual",
+      "source_relative_path": "CODE_OF_CONDUCT.md",
+      "output": {
+        ".html": {
+          "relative_path": "CODE_OF_CONDUCT.html",
+          "hash": "wSEg9bxGrfz5HRBZkURuEhthTVkDXVEwGGhi1VtjY08="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "FeatureList.md",
+      "output": {
+        ".html": {
+          "relative_path": "FeatureList.html",
+          "hash": "DuJMb8ALMBSZew791mZLcjjrga3dHYqI8DtyqNogfi8="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "OpenSource.md",
+      "output": {
+        ".html": {
+          "relative_path": "OpenSource.html",
+          "hash": "JwR8pBIj05tZ4DwxlKxnlEmGkqubNqLNz8asnkF2yfQ="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "Pre-Edit-High-Level-Design-Flow.md",
+      "output": {
+        ".html": {
+          "relative_path": "Pre-Edit-High-Level-Design-Flow.html",
+          "hash": "pUQMpfeKliFvEZX1XeT4sQ4IQEpiP3Mr1LLsad4bqQY="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "SECURITY.md",
+      "output": {
+        ".html": {
+          "relative_path": "SECURITY.html",
+          "hash": "590GqiaWMGMy2xtWDak4qBtKT/jBYTWlHNO1RbCGA4c="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Interfaces.IShellOperator.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Interfaces.IShellOperator.html",
+          "hash": "MOp+Ev5KhHWFky1hln6qSXgkgx3iVkjbM6Gsc3Vg0Ag="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Interfaces.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Interfaces.html",
+          "hash": "IN3etceT/vqjvuWGistlckNbwx1UbnoXXDoxygvb0R8="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Operators.Domain.PwshHost.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Operators.Domain.PwshHost.html",
+          "hash": "GO2sT5I1UCpI6RDMvRxvqNlxTeICdSpikIRtb25GjRQ="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Operators.Domain.SystemShellHost.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Operators.Domain.SystemShellHost.html",
+          "hash": "kXj2mG7mU1LyPPvHufFl62sa12FXdTuTAECNp07fKho="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Operators.Domain.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Operators.Domain.html",
+          "hash": "4LyeyJPIbyUJx0LC+oOf9wEqzXcKJ9g7s9SbWDCqNLM="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Operators.Pwsh.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Operators.Pwsh.html",
+          "hash": "wVuz68yO3zaTgpfGkh5gWzL8V01jRSB9uKa+384tldE="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Operators.SystemShell.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Operators.SystemShell.html",
+          "hash": "xv7PUzYWc/DvFg5YEJyUSmsTt8R3KgHjDi3age+kozM="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Operators.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Operators.html",
+          "hash": "VCpUrXzw/HjWHwpEZHjnEjqgKfTC11csUOmOaCBQCcw="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Program.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Program.html",
+          "hash": "abEHJagHm+WWGsLEQaoKHqCT9e/3uq9zMd9rPrOrJt0="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Services.PwshService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Services.PwshService.html",
+          "hash": "u9jUMhXmZJL233A8BbFmUddU0A0fklAhKrclqB8GEE4="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Services.SystemShellService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Services.SystemShellService.html",
+          "hash": "3fDaUrq+w1wnvcBgsJ6gbKwF/UCGvwSccFyhrubJtFs="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.Services.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.Services.html",
+          "hash": "atz8sL08DTMHT58NN4y+V1pqzCyM3vjvie88jjaa0Ys="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Agent.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Agent.html",
+          "hash": "QmJLdEc87XHEHmPPicFwPjwWKR05Bw15HD2jwCvAFMI="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.AppSettings.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.AppSettings.html",
+          "hash": "g7UYL4jWuzzg04iplhIrJOuRy0s/UXOxpuPtQdrCNQ8="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Globals.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Globals.html",
+          "hash": "jsBlkSb2YdBEmF+0yEcVFJSS5Kt8YiuH176fMs+4cV4="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.CertificateFile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.CertificateFile.html",
+          "hash": "YIAvpHn6o4ViEoJbA3TdDf6Ag8pPqp1f+tKyPVWqQg8="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.CertificateStore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.CertificateStore.html",
+          "hash": "Qii3ZOpNrnu4NNHRvFjpC5EZrPiV9W44hqduUmLl2MQ="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.Endpoints.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.Endpoints.html",
+          "hash": "nzn44C6p00O3pTUsEaUYYW1p3K0C835/IaLEQNn49gg="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.Http.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.Http.html",
+          "hash": "PJtW4x2XpSFbwHbl2lJR4U1x0ijSNTr0ZEqqKaqf6s8="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.HttpsDefaultCert.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.HttpsDefaultCert.html",
+          "hash": "WmraMQzHHFjLDKpI0I2ki6Ugsw3Mn+Q/piMbJn6QIz4="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.HttpsInlineCertAndKeyFile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.HttpsInlineCertAndKeyFile.html",
+          "hash": "0N2rWPiYh9Z068E/d6meD96C2pW30SH9P/pghDQhclM="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.HttpsInlineCertFile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.HttpsInlineCertFile.html",
+          "hash": "Er2ZkzKw8LM4e63aurVpaA/Vb8ZAoZD+3LimJQqERjI="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.HttpsInlineCertStore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.HttpsInlineCertStore.html",
+          "hash": "x7EwplQyMqF//7VZ+vgeXYHtOww2ZwGTHKXi+Xn5iS8="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.ICertificate.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.ICertificate.html",
+          "hash": "MfKc+FQrK9AugXEWEuPjqfN2Ed+RZPzIspnUK7HVQ5M="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.InlineCertEndpoint.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.InlineCertEndpoint.html",
+          "hash": "XUTmwxmR8CXgkADttwuhDKWmKg4gndC8o019U91yPOI="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.KestrelConfig.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.KestrelConfig.html",
+          "hash": "UD3R3Kc3Iz0C8Fl5QUN8RBCuWruwT0af4b0jHHAAAs0="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Kestrel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Kestrel.html",
+          "hash": "w/OALH56YYk8EyxBo7OThGsa0eumqwFDlP48K/oupvc="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.LogLevel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.LogLevel.html",
+          "hash": "9HVrhAc81Glx0G5bgesitiwsaKhp8sfh631f72ghA9Y="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Logging.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Logging.html",
+          "hash": "XzeR9gUaLYPuGfxmLdcJ5XUJe6GqrcVQfWA416KpJwU="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.OTLP.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.OTLP.html",
+          "hash": "5ojYbW4ADPNExieKQsqdXlSDf2HhpIZ4aYLi3W3WBWQ="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.Operators.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.Operators.html",
+          "hash": "k1K+sgbzJO1wOQBoR6G9mi4lC9vKyY7Hmd3QcAZzj1o="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Configuration.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Configuration.html",
+          "hash": "mkQtSbI/ZrUkf1JAsbHRpTnFgHQju2VtSfrYwsaGbFA="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Logging.Log4NetProvider.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Logging.Log4NetProvider.html",
+          "hash": "eT4eSOXkzF1ticjuZMWpJTid52LbipKCOa4RaDIhehA="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Logging.WerkrILogger.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Logging.WerkrILogger.html",
+          "hash": "7ezLCMHupu5HzOrNOaGfEB7dHT2HcYlYyr6V+ujaRGo="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Logging.WerkrLoggingExtensions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Logging.WerkrLoggingExtensions.html",
+          "hash": "dvOHj0f7DQzF8V62Vig9hV6giMDp+f8CUAQUSqn1BkA="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Logging.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Logging.html",
+          "hash": "SwOjF9cbrZQp2EkoZSfykeDlJGOToIbmf7EamOdjhGM="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Settings.EncryptionResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Settings.EncryptionResult.html",
+          "hash": "ncCaYp/6uqunnqEKaoyHsTj+93Hq67GDPUOuGydWwjA="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Settings.SettingsIntegrity.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Settings.SettingsIntegrity.html",
+          "hash": "nK5dQDoTd/mQfvBtRYyITUF2grKk0MukftywwJloT4Q="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Common.Settings.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Common.Settings.html",
+          "hash": "TTdhI/qEkvbKl3edyDYbldN7liewAh03QLQtUlPtkQ4="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Installers.Wix.CustomActions.CertDetails.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Installers.Wix.CustomActions.CertDetails.html",
+          "hash": "h8NM5ZLHMGNjhrRQkOk4oMSKeO4f2fzchBFPtI2OeTs="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Installers.Wix.CustomActions.StoreDetails.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Installers.Wix.CustomActions.StoreDetails.html",
+          "hash": "5F4ICB256RAjbiydEJnWwe72oo6qN/wpgvIxSqMZ2I0="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Installers.Wix.CustomActions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Installers.Wix.CustomActions.html",
+          "hash": "ZZyQCzE42JnXpPyq5yP7kb567yp1q8Wd7AGLIW51w70="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Installers.Wix.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Installers.Wix.html",
+          "hash": "lfDOPJ0R9K72hXVxdIs1J+NoyJ13/82YA/7yBHty6Lk="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.Hubs.ChatHub.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.Hubs.ChatHub.html",
+          "hash": "4MhoSCm1m/ziq2C3Ic8tD7+uKTtyb6Xob7asRY7pVlU="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.Hubs.PwshHub.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.Hubs.PwshHub.html",
+          "hash": "J9782kzntMwyWBC/brOwtZGQKWMl/rvoMP0VxsCtAJ0="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.Hubs.ShellHub.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.Hubs.ShellHub.html",
+          "hash": "OhTX78HbZjheJoQQNmWIzJ3Drn1cn6BJZe+5Q+1hzQM="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.Hubs.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.Hubs.html",
+          "hash": "NoGzKUCfZHv1y/lkBykxH6AuHynqjAQ/ElpWiMB1DZI="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.Pages.ErrorModel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.Pages.ErrorModel.html",
+          "hash": "W9ycI0FasP4fTu6uHRv8Okn4/O3+7QGSMzF6GcOoaOg="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.Pages.SettingsModel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.Pages.SettingsModel.html",
+          "hash": "ubYxIE+hNBN9jF6aqfTh+QLQtfju5NQIskaaxO9W0UI="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.Pages.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.Pages.html",
+          "hash": "XBZLnLXy7mrlppjKxZr+/fBLxx/2s13DYtSgUHhIVUw="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.Program.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.Program.html",
+          "hash": "0uC4f/ing/D0Nd2BRWovDzVpo/arAQosL8UzsxOjiA8="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/Werkr.Server.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Werkr.Server.html",
+          "hash": "UIPHP9qC610PZnZ+4gKyiUYSixVzpHznpoXV0gGILpw="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/index.html",
+          "hash": "UOCrNQg1spAy6PY4Vz7hhohpQqGDYLzjTgoniSge10c="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "api/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/toc.html",
+          "hash": "yv2+fO3dSck1pCtulfzX49wyhDSEeUQFuQKM0A6O7r0="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "log_codes": [
+        "InvalidFileLink"
+      ],
+      "type": "Conceptual",
+      "source_relative_path": "index.md",
+      "output": {
+        ".html": {
+          "relative_path": "index.html",
+          "hash": "3XPgcLZZ5zjj1Zn1+20aX4lquN7Q9/xHy2nFtjHgCY4="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "toc.html",
+          "hash": "YHY5SZsQBuqd/0t4IHO4lBRXjQaF/5Tvnm9bxBnENoM="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    }
+  ],
+  "incremental_info": [
+    {
+      "status": {
+        "can_incremental": false,
+        "details": "Cannot build incrementally because last build info is missing.",
+        "incrementalPhase": "build",
+        "total_file_count": 0,
+        "skipped_file_count": 0,
+        "full_build_reason_code": "NoAvailableBuildCache"
+      },
+      "processors": {
+        "ConceptualDocumentProcessor": {
+          "can_incremental": false,
+          "incrementalPhase": "build",
+          "total_file_count": 7,
+          "skipped_file_count": 0
+        },
+        "ManagedReferenceDocumentProcessor": {
+          "can_incremental": false,
+          "incrementalPhase": "build",
+          "total_file_count": 52,
+          "skipped_file_count": 0
+        },
+        "TocDocumentProcessor": {
+          "can_incremental": false,
+          "details": "Processor TocDocumentProcessor cannot support incremental build because the processor doesn't implement ISupportIncrementalDocumentProcessor interface.",
+          "incrementalPhase": "build",
+          "total_file_count": 0,
+          "skipped_file_count": 0
+        }
+      }
+    },
+    {
+      "status": {
+        "can_incremental": false,
+        "details": "Cannot support incremental post processing, the reason is: last post processor info is null.",
+        "incrementalPhase": "postProcessing",
+        "total_file_count": 0,
+        "skipped_file_count": 0
+      },
+      "processors": {}
+    }
+  ],
+  "version_info": {},
+  "groups": [
+    {
+      "xrefmap": "xrefmap.yml"
+    }
+  ]
+}
