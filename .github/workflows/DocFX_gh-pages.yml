@@ -81,7 +81,6 @@ jobs:
           }
           copy-item -Path '${{ github.workspace }}/docs/CNAME' @CopyToSiteParams
           copy-item -Path '${{ github.workspace }}/docs/_config.yml' @CopyToSiteParams
-          Get-ChildItem -Path '${{ github.workspace }}/docs/' -Recurse | Format-Table | Out-String | Write-Host
   publish:
     needs: document
     runs-on: ubuntu-latest
@@ -92,6 +91,10 @@ jobs:
       matrix:
         dotnet-version: [ '7.0.x' ]
     steps:
+      - name: Verify WorkSpace Contents
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path '${{ github.workspace }}' -Recurse | Format-Table | Out-String | Write-Host
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
         with:
