@@ -18,8 +18,10 @@ jobs:
       - name: Get DocFX
         shell: pwsh
         run: |
+          $Request = Invoke-RestMethod -Method Get -Uri 'https://github.com/dotnet/docfx/releases/latest'
+          $LatestVersion = $Request.Split('<title>')[1].Split('</title>')[0].Split('v')[1].Split(' ')[0]
           $IWRParams = @{
-            Uri     = 'https://github.com/dotnet/docfx/releases/latest/download/docfx.zip'
+            Uri     = "https://github.com/dotnet/docfx/releases/download/v$LatestVersion/docfx-linux-x64-v$LatestVersion.zip"
             OutFile = '${{ github.workspace }}/docfx.zip'
             Method  = 'Get'
           }
