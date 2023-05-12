@@ -108,7 +108,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "`Extracting Site."
-          Expand-Archive -Path '${{ github.workspace }}/download/_site.zip' -DestinationPath '${{ github.workspace }}/_site'
+          Expand-Archive -Path '${{ github.workspace }}/download/_site.zip' -DestinationPath '${{ github.workspace }}'
       - name: Publish Site Content
         uses: JamesIves/github-pages-deploy-action@v4
         with:
