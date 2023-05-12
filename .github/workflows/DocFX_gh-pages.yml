@@ -18,16 +18,13 @@ jobs:
       - name: Get DocFX
         shell: pwsh
         run: |
-          $Request = Invoke-RestMethod -Method Get -Uri 'https://github.com/dotnet/docfx/releases/latest'
-          $LatestVersion = $Request.Split('<title>')[1].Split('</title>')[0].Split('v')[1].Split(' ')[0]
           $IWRParams = @{
-            Uri     = "https://github.com/dotnet/docfx/releases/download/v$LatestVersion/docfx-linux-x64-v$LatestVersion.zip"
+            Uri     = "https://github.com/dotnet/docfx/releases/download/v2.59.4/docfx.zip"
             OutFile = '${{ github.workspace }}/docfx.zip'
             Method  = 'Get'
           }
           Invoke-WebRequest @IWRParams
           Expand-Archive -Path '${{ github.workspace }}/docfx.zip' -DestinationPath '${{ github.workspace }}/docfx'
-          chmod -R 777 '${{ github.workspace }}/docfx'
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -55,9 +52,9 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "`nGenerating API documentation:"
-          & ./docfx/docfx metadata '${{ github.workspace }}/docs/docfx.json'
+          & ./docfx/docfx.exe metadata '${{ github.workspace }}/docs/docfx.json'
           Write-Host "`nCreating docfx site:"
-          & ./docfx/docfx '${{ github.workspace }}/docs/docfx.json'
+          & ./docfx/docfx.exe '${{ github.workspace }}/docs/docfx.json'
           $CopyToSiteParams = @{
             Destination = '${{ github.workspace }}/docs/_site'
             Verbose     = $true
