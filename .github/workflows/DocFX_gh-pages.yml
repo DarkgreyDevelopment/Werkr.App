@@ -25,6 +25,7 @@ jobs:
           }
           Invoke-WebRequest @IWRParams
           Expand-Archive -Path '${{ github.workspace }}/docfx.zip' -DestinationPath '${{ github.workspace }}/docfx'
+          Get-ChildItem -Path '${{ github.workspace }}/docfx' | Format-Table | Out-String | Write-Host
       - name: Checkout
         uses: actions/checkout@v2
         with:
