@@ -62,6 +62,7 @@ jobs:
           copy-item -Path '${{ github.workspace }}/docs/CNAME' @CopyToSiteParams
           copy-item -Path '${{ github.workspace }}/docs/_config.yml' @CopyToSiteParams
   publish:
+    needs: document
     runs-on: ubuntu-latest
     env:
       DOTNET_NOLOGO: true
