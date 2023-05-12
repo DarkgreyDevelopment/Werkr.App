@@ -1,0 +1,69 @@
+name: DocFX - Documentation Process
+on:
+  push:
+    branches:
+      - main
+jobs:
+  document:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOCFX_SOURCE_BRANCH_NAME: ${{ github.ref }}
+    strategy:
+      matrix:
+        dotnet-version: [ '7.0.x' ]
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Get DocFX
+        shell: pwsh
+        run: |
+          $IWRParams = @{
+            Uri     = 'https://github.com/dotnet/docfx/releases/latest/download/docfx.zip'
+            OutFile = '${{ github.workspace }}/docfx.zip'
+            Method  = 'Get'
+          }
+          Invoke-WebRequest @IWRParams
+          Expand-Archive -Path '${{ github.workspace }}/docfx.zip' -DestinationPath '${{ github.workspace }}/docfx'
+          chmod -R 777 '${{ github.workspace }}/docfx'
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.CI_TOKEN }}
+          submodules: true
+      - name: Git Submodule Update
+        shell: pwsh
+        run: |
+          git pull --recurse-submodules
+          git submodule update --remote --recursive
+      - name: Custom File processing.
+        shell: pwsh
+        run: |
+          $DocsPath = '${{ github.workspace }}/docs'
+          $CopyParams = @{
+            Verbose     = $true
+            Force       = $true
+          }
+          copy-item -Path '${{ github.workspace }}/LICENSE' -Destination "$DocsPath/" @CopyParams
+          copy-item -Path '${{ github.workspace }}/README.md' -Destination "$DocsPath/index.md" @CopyParams
+          copy-item -Path '${{ github.workspace }}/WerkrLogoWithText.png' -Destination "$DocsPath/" @CopyParams
+          copy-item -Path '${{ github.workspace }}/Pre-Edit-High-Level-Design-Flow.md' -Destination "$DocsPath/" @CopyParams
+          copy-item -Path '${{ github.workspace }}/FeatureList.md' -Destination "$DocsPath/" @CopyParams
+      - name: Generate Documentation and build site.
+        shell: pwsh
+        run: |
+          Write-Host "`nGenerating API documentation:"
+          & ./docfx/docfx.exe metadata '${{ github.workspace }}/docs/docfx.json'
+          Write-Host "`nCreating docfx site:"
+          & ./docfx/docfx.exe '${{ github.workspace }}/docs/docfx.json'
+          $CopyToSiteParams = @{
+            Destination = '${{ github.workspace }}/docs/_site'
+            Verbose     = $true
+          }
+          copy-item -Path '${{ github.workspace }}/docs/CNAME' @CopyToSiteParams
+          copy-item -Path '${{ github.workspace }}/docs/_config.yml' @CopyToSiteParams
+      - name: Deploy Github Pages!
+        uses: JamesIves/github-pages-deploy-action@v4.2.5
+        with:
+          BRANCH: gh-pages
+          FOLDER: ${{ github.workspace }}/docs/_site
