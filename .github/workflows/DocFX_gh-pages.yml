@@ -15,6 +15,14 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.CI_TOKEN }}
+          submodules: true
+      - name: Git Submodule Update
+        shell: pwsh
+        run: |
+          git pull --recurse-submodules
+          git submodule update --remote --recursive
       - name: Get DocFX
         shell: pwsh
         run: |
@@ -26,16 +34,6 @@ jobs:
           Invoke-WebRequest @IWRParams
           Expand-Archive -Path '${{ github.workspace }}/docfx.zip' -DestinationPath '${{ github.workspace }}/docfx'
           Get-Item -Path '${{ github.workspace }}/docfx/docfx.exe' | Format-Table | Out-String | Write-Host
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          token: ${{ secrets.CI_TOKEN }}
-          submodules: true
-      - name: Git Submodule Update
-        shell: pwsh
-        run: |
-          git pull --recurse-submodules
-          git submodule update --remote --recursive
       - name: Custom File processing.
         shell: pwsh
         run: |
@@ -52,7 +50,6 @@ jobs:
       - name: Generate Documentation and build site.
         shell: pwsh
         run: |
-          Get-ChildItem -Path '${{ github.workspace }}/docfx/' | Format-Table | Out-String | Write-Host
           Get-Item -Path '${{ github.workspace }}/docfx/docfx.exe' | Format-Table | Out-String | Write-Host
           Write-Host "`nGenerating API documentation:"
           & '${{ github.workspace }}/docfx/docfx.exe' metadata '${{ github.workspace }}/docs/docfx.json'
