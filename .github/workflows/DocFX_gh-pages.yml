@@ -98,6 +98,8 @@ jobs:
       matrix:
         dotnet-version: [ '7.0.x' ]
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
       - name: Download Artifacts
         uses: actions/download-artifact@v1
         with:
@@ -108,7 +110,7 @@ jobs:
         run: |
           Write-Host "`Extracting Site."
           Expand-Archive -Path '${{ github.workspace }}/download/_site.zip' -DestinationPath '${{ github.workspace }}/_site'
-      - name: Deploy 🚀
+      - name: Publish Site Content
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           BRANCH: gh-pages
