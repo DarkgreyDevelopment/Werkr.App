@@ -55,9 +55,9 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "`nGenerating API documentation:"
-          & ./docfx/docfx.exe metadata '${{ github.workspace }}/docs/docfx.json'
+          & ./docfx/docfx metadata '${{ github.workspace }}/docs/docfx.json'
           Write-Host "`nCreating docfx site:"
-          & ./docfx/docfx.exe '${{ github.workspace }}/docs/docfx.json'
+          & ./docfx/docfx '${{ github.workspace }}/docs/docfx.json'
           $CopyToSiteParams = @{
             Destination = '${{ github.workspace }}/docs/_site'
             Verbose     = $true
