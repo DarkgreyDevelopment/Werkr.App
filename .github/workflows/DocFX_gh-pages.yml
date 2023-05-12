@@ -65,7 +65,6 @@ jobs:
           }
           copy-item -Path '${{ github.workspace }}/LICENSE' -Destination "$DocsPath/" @CopyParams
           copy-item -Path '${{ github.workspace }}/README.md' -Destination "$DocsPath/index.md" @CopyParams
-          copy-item -Path '${{ github.workspace }}/WerkrLogoWithText.png' -Destination "$DocsPath/" @CopyParams
           copy-item -Path '${{ github.workspace }}/Pre-Edit-High-Level-Design-Flow.md' -Destination "$DocsPath/" @CopyParams
           copy-item -Path '${{ github.workspace }}/FeatureList.md' -Destination "$DocsPath/" @CopyParams
       - name: Generate Documentation and build site.
