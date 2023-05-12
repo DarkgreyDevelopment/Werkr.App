@@ -25,6 +25,7 @@ jobs:
           }
           Invoke-WebRequest @IWRParams
           Expand-Archive -Path '${{ github.workspace }}/docfx.zip' -DestinationPath '${{ github.workspace }}/docfx'
+          Get-Item -Path '${{ github.workspace }}/docfx/docfx.exe' | Format-Table | Out-String | Write-Host
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -51,6 +52,8 @@ jobs:
       - name: Generate Documentation and build site.
         shell: pwsh
         run: |
+          Get-ChildItem -Path '${{ github.workspace }}/docfx/' | Format-Table | Out-String | Write-Host
+          Get-Item -Path '${{ github.workspace }}/docfx/docfx.exe' | Format-Table | Out-String | Write-Host
           Write-Host "`nGenerating API documentation:"
           & '${{ github.workspace }}/docfx/docfx.exe' metadata '${{ github.workspace }}/docs/docfx.json'
           Write-Host "`nCreating docfx site:"
