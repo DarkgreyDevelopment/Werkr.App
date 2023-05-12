@@ -81,6 +81,7 @@ jobs:
           }
           copy-item -Path '${{ github.workspace }}/docs/CNAME' @CopyToSiteParams
           copy-item -Path '${{ github.workspace }}/docs/_config.yml' @CopyToSiteParams
+          Write-Host "`nCompressing Site for Artifact Upload"
           Compress-Archive -Path '${{ github.workspace }}/docs/_site' -DestinationPath '${{ github.workspace }}/docs/_site.zip'
       - name: Upload Artifacts
         uses: actions/upload-artifact@v1
@@ -101,13 +102,12 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: site
-          path: ${{ github.workspace }}/site
+          path: ${{ github.workspace }}/download
       - name: Verify WorkSpace Contents
         shell: pwsh
         run: |
-          Get-ChildItem -Path '${{ github.workspace }}' -Recurse | Format-Table | Out-String | Write-Host
-          Expand-Archive -Path '${{ github.workspace }}/site.zip' -DestinationPath '${{ github.workspace }}/_site'
-          Get-ChildItem -Path '${{ github.workspace }}' -Recurse | Format-Table | Out-String | Write-Host
+        Write-Host "`Extracting Site."
+          Expand-Archive -Path '${{ github.workspace }}/download/_site.zip' -DestinationPath '${{ github.workspace }}/_site'
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
         with:
