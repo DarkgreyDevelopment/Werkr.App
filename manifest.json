@@ -29,6 +29,18 @@
     },
     {
       "type": "Conceptual",
+      "source_relative_path": "LICENSE.md",
+      "output": {
+        ".html": {
+          "relative_path": "LICENSE.html",
+          "hash": "NQ61dem37auaZIAF0Pa89auIvVI49fHc5j7N1AYKoGA="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
       "source_relative_path": "OpenSource.md",
       "output": {
         ".html": {
@@ -739,7 +751,7 @@
       "output": {
         ".html": {
           "relative_path": "index.html",
-          "hash": "9FutNAkE/NDHc9q9C4Y9mjZXBndqzgwnNquU31035vY="
+          "hash": "XOPJ9Khqhg3o2Mwym/3Bt4dCsKlv9yTdFdZTJZ8rm1I="
         }
       },
       "is_incremental": false,
@@ -772,7 +784,7 @@
         "ConceptualDocumentProcessor": {
           "can_incremental": false,
           "incrementalPhase": "build",
-          "total_file_count": 7,
+          "total_file_count": 8,
           "skipped_file_count": 0
         },
         "ManagedReferenceDocumentProcessor": {
