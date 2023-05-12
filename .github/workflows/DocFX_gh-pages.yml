@@ -61,8 +61,17 @@ jobs:
           }
           copy-item -Path '${{ github.workspace }}/docs/CNAME' @CopyToSiteParams
           copy-item -Path '${{ github.workspace }}/docs/_config.yml' @CopyToSiteParams
-      - name: Deploy Github Pages!
-        uses: JamesIves/github-pages-deploy-action@v4.2.5
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOCFX_SOURCE_BRANCH_NAME: ${{ github.ref }}
+    strategy:
+      matrix:
+        dotnet-version: [ '7.0.x' ]
+    steps:
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           BRANCH: gh-pages
           FOLDER: ${{ github.workspace }}/docs/_site
