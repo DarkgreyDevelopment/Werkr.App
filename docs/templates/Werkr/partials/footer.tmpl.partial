@@ -16,7 +16,7 @@
         <span> | </span>
         <span><a href="https://docs.werkr.app/CODE_OF_CONDUCT.html">Code Of Conduct</a></span>
         <span> | </span>
-        <span><a href="https://docs.werkr.app/LICENSE">LICENSE</a></span>
+        <span><a href="https://docs.werkr.app/LICENSE.html">LICENSE</a></span>
         {{/_appFooter}}
       </div>
       <div class="toggle-mode pull-right visible-sm visible-xs">

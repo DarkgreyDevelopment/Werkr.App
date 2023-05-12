@@ -6,11 +6,9 @@
           "src": "../src",
           "files": [
             "Werkr.Agent/src/Werkr.Agent.csproj",
-            "Werkr.Agent/msi/Agent.wixproj",
             "Werkr.Common/src/Werkr.Common.csproj",
             "Werkr.Common.Configuration/src/Werkr.Common.Configuration.csproj",
             "Werkr.Installers/src/Wix/CustomActions.csproj",
-            "Werkr.Server/msi/Server.wixproj",
             "Werkr.Server/src/Werkr.Server.csproj"
           ],
           "exclude": [
