@@ -2,7 +2,7 @@
 
 Introducing the Werkr Task Automation Project - your one-stop shop for task automation and workflow orchestration.
 
-<img src="https://github.com/DarkgreyDevelopment/Werkr.App/blob/main/docs/images/WerkrLogoWithText.png" alt= "Werkr Logo & Text" width="300" height="360">
+<a href="https://docs.werkr.app"><img src="https://docs.werkr.app/images/WerkrLogoWithText.png" alt="Werkr Logo & Text" width="300" height="360"></a>
 
 Whether you need a simple Task Scheduler/cron replacement or a comprehensive task orchestration platform, the Werkr project has got you covered. Revolutionize the way you automate tasks and orchestrate workflows with our user-friendly platform, designed to meet a wide range of automation needs.
 
