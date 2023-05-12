@@ -106,7 +106,7 @@ jobs:
       - name: Verify WorkSpace Contents
         shell: pwsh
         run: |
-        Write-Host "`Extracting Site."
+          Write-Host "`Extracting Site."
           Expand-Archive -Path '${{ github.workspace }}/download/_site.zip' -DestinationPath '${{ github.workspace }}/_site'
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
