@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Werkr Documentation
+  - name: Documentation
     url: https://docs.werkr.app
     about: Review How-To articles and api documentation.
-  - name: Werkr Community Discussions
+  - name: Community Discussions
     url: https://github.com/DarkgreyDevelopment/Werkr.App/discussions
     about: Please ask and answer questions here! Welcome to the community!

@@ -73,7 +73,7 @@ Choose from five primary task types to build your workflow(s):
 
 <br>
 
-### System-Defined Tasks
+### System-Defined Tasks:
 Perform common operations like file and directory manipulation with ease, thanks to Werkr's prebuilt system tasks.
 Enjoy consistent output parameters and error handling for the following operations:
   * File and directory creation.
@@ -84,22 +84,22 @@ Enjoy consistent output parameters and error handling for the following operatio
 
 <br/>
 
-### PowerShell Script Execution
+### PowerShell Script Execution:
 Run PowerShell scripts effortlessly and receive standard PowerShell outputs.
 
 <br/>
 
-### PowerShell Command Execution
+### PowerShell Command Execution:
 Execute PowerShell commands and access standard PowerShell outputs.
 
 <br/>
 
-### System Shell Command Execution
+### System Shell Command Execution:
 Run commands in your operating system's native shell and get the exit code from the command execution.
 
 <br/>
 
-### User-Defined Tasks
+### User-Defined Tasks:
 Customize your workflows by creating your own tasks. Combine system-defined tasks, PowerShell scripts or commands,
 and native command executions into your own free-form repeatable task.
 Branch, iterate, and handle exceptions with ease!
@@ -123,7 +123,8 @@ Start your tasks using various triggers, or combinations of triggers, including:
 <br/> <br/>
 
 
-# Example Use Cases (Placeholder):
+# Example Use Cases:
+* (Placeholder)
 
 
 <br/><br/>
@@ -151,10 +152,10 @@ mandatory steps that must be taken to set up the server and agent initially.
 
 # Licensing and Support:
 The Werkr Task Automation Project is offered free of charge, without any warranties, under an
-[MIT license](https://docs.werkr.app/LICENSE.html)!
-Unfortunately, it does not come with any form of guaranteed or implied support.
+[MIT license](https://docs.werkr.app/LICENSE.html)!  
+Unfortunately, it does not come with any form of guaranteed or implied support.  
 Best effort support and triage will be offered on a volunteer basis via a
-[GitHub issue](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new/choose) process.
+[GitHub issue](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new/choose) process.  
 
 
 <br/><br/>
@@ -169,7 +170,7 @@ Best effort support and triage will be offered on a volunteer basis via a
 <br/><br/>
 
 
-# Contributing
+# Contributing:
 The Werkr Task Automation Project is in its early stages and we're excited that you're interested in contributing!
 We believe that open collaboration is key to the project's success and growth.
 We welcome contributions from developers, users, and anyone interested in task automation and workflow orchestration.
@@ -194,23 +195,31 @@ so when looking for code please be aware of the following repositories.
   * A shared [Wix](https://wixtoolset.org/) CustomAction library used by both the Werkr Server and Agent.
   This library is used in the Msi install process.
 
-## Feedback, Suggestions, and Feature Requests
+## Feedback, Suggestions, and Feature Requests:
 Do you have an idea for a new feature or enhancement? We'd love to hear it!
 As the project is still in its early stages, your feedback and suggestions are invaluable.
 We encourage you to share your thoughts on features, improvements, and potential use cases.
-You can submit your ideas by creating a [new feature request](). Be sure to provide a clear description of your
-proposal and its potential benefits.
+You can submit your ideas by creating a
+[new feature request](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=feature_request.yaml).
+Be sure to provide a clear description of your proposal and its potential benefits.  
 
-## Bug Reports
+## Documentation Improvements:
+
+## Bug Reports:
 Please report any bugs, performance issues, or security vulnerabilities you encounter while using the Werkr Task
-Automation project by opening a [new bug report](). Be sure to include as much information as possible,
-such as steps to reproduce the issue, any error messages, your system's configuration, and any additional context
-you think we should be aware of.
+Automation project by opening a
+[new bug report](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?&template=bug_report.yaml).
+Be sure to include as much information as possible, such as steps to reproduce the issue, any error messages,
+your system's configuration, and any additional context you think we should be aware of.
 
-## Code Contributions
+## Code Contributions:
 If you'd like to contribute code directly to the project, please fork the repository, create a new branch, and submit
 a pull request with your changes. We encourage you to follow our existing coding style and conventions.
 Make sure to include a detailed description of your changes in the pull request.
 
+Additionally you will need to agree to the
+[Contribution License Agreement](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=cla_agreement.yml)
+before your PR will be merged.  
 
-We appreciate all contributions, big or small, and look forward to building a vibrant and collaborative community around the Werkr Task Automation Project. Thank you for your support!
+We appreciate all contributions, big or small, and look forward to building a vibrant and collaborative community
+around the Werkr Task Automation Project. Thank you for your support!  

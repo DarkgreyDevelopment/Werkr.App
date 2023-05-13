@@ -73,7 +73,6 @@ jobs:
           & '${{ github.workspace }}/docfx/docfx.exe' metadata '${{ github.workspace }}/docs/docfx.json'
           Write-Host "`nCreating docfx site:"
           & '${{ github.workspace }}/docfx/docfx.exe' '${{ github.workspace }}/docs/docfx.json'
-
       - name: Compress Site for upload as Artifact.
         shell: pwsh
         run: |

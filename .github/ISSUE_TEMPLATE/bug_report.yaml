@@ -23,7 +23,9 @@ body:
       label: Description
       description: Please provide a clear and concise description of the issue you're experiencing.
       placeholder: Tell us what you see! Also please tell us what you expected to happen.
-      value: A bug happened in [product] while I was doing [Y]! I expected it to do [XYZ]. Here's how you can reproduce this bug:\n1. ...
+      value: |
+        A bug happened in [product] while I was doing [Y]! I expected it to do [XYZ]. Here's how you can reproduce this bug:
+        1. ...
     validations:
       required: true
   - type: dropdown
@@ -80,7 +82,7 @@ body:
       label: LICENSE AGREEMENT & ISSUE SUBMISSION TERMS
       description: |
         By submitting this issue, I have read and agree to abide by the softwares [MIT LICENSE](https://docs.werkr.app/LICENSE.html) agreement.
-        I understand there is no warranty, express or implied, of any kind. I further understand that any and all support is offered on a volunteer and community basis.
+        I understand there is no warranty of any kind, express or implied. I further understand that any and all support is offered on a volunteer and community basis.
         Any advice or suggestion I chose to follow is an action I take at my own risk.
       options:
         - label: By submitting this issue, I agree to abide by the softwares license agreement and understand the issue submission terms.

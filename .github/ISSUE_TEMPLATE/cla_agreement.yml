@@ -1,5 +1,5 @@
 name: Contribution License Agreement
-description: Read and agree to the [Contribution License Agreement](https://docs.werkr.app/ContributionLicenseAgreement.html).
+description: Read and agree to the Contribution License Agreement (https://docs.werkr.app/ContributionLicenseAgreement.html).
 title: "[CLA]: {GITHUB USERNAME}"
 labels: ["cla"]
 assignees:
@@ -8,74 +8,66 @@ body:
   - type: markdown
     attributes:
       value: Thanks for contributing!
-  - type: input
-    id: individual
-    attributes:
-      label: Contact Details
-      description:
-      placeholder: ex. email@example.com or @username
-    validations:
-      required: true
   - type: checkboxes
     id: agreementstatement
     attributes:
       label: Terms
       description: |
         Please select one of the options below and sign as indicated.
-        By signing, You accept and agree to the terms of this Contribution License Agreement for Your present and future Submissions to Darkgrey Development.
+        By signing, You accept and agree to the terms of this Contribution License Agreement (https://docs.werkr.app/ContributionLicenseAgreement.html) for Your present and future Submissions to Darkgrey Development.
       options:
         - label: I have sole ownership of intellectual property rights to my Submissions and I am not making Submissions in the course of work for my employer.
         - label: I am making Submissions in the course of work for my employer (or my employer has intellectual property rights in my Submissions by contract or applicable law).  I have permission from my employer to make Submissions and enter into this Agreement on behalf of my employer.  By signing below, the defined term "You" includes me and my employer.
     validations:
       required: true
-  - type: textarea
+  - type: input
     id: name
     attributes:
       label: Name ("You")
       description: Please enter your legal name.
     validations:
       required: true
-  - type: textarea
+  - type: input
     id: signature
     attributes:
       label: Signature
       description: Sign your name.
     validations:
       required: true
-  - type: textarea
+  - type: input
     id: date
     attributes:
       label: Date
       description: Enter the date in "yyyy-MM-dd" format.
     validations:
       required: true
-  - type: textarea
+  - type: input
     id: username
     attributes:
       label: GitHub	Login
       description: Enter your github username.
     validations:
       required: true
-  - type: textarea
+  - type: input
     id: email
     attributes:
       label: Email
       description: Enter your email contact information.
     validations:
       required: true
-  - type: textarea
+  - type: input
     id: address
     attributes:
       label: Address
       description: Enter your legal address.
     validations:
       required: true
-  - type: textarea
+  - type: input
     id: companyname
     attributes:
       label: Company Name
       description: Employer agreement only - Enter your companys legal name (and dba if applicable).
-  - type: textarea
+  - type: input
     id: title
     attributes:
       label: Title
