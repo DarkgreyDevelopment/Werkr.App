@@ -19,7 +19,7 @@ arm64 cpu architectures. MacOS support is also planned for sometime after the .N
 With the Werkr project, you can predefine tasks to run on a schedule, create ad-hoc tasks to run immediately,
 set tasks to run within a specific time frame, along with so many more configurable options. The choice is yours!
 
-Visit [docs.werkr.app](https:/docs.werkr.app) to explore the Werkr Task Automation Project.
+Visit [docs.werkr.app](https://docs.werkr.app) to explore the Werkr Task Automation Project.
 
 Both server and agent are offered for download in portable and installer form.
 Once installed there is no difference between the two versions.
@@ -28,8 +28,8 @@ The installers simply make the initial setup process a breeze.
 <br/>
 
 ## Downloads:
-- [Server Downloads](https://github.com/DarkgreyDevelopment/Werkr.Server/releases)
-- [Agent Downloads](https://github.com/DarkgreyDevelopment/Werkr.Agent/releases)
+- [Server Downloads](https://server.werkr.app/releases/latest)
+- [Agent Downloads](https://agent.werkr.app/releases/latest)
 
 For users windows, download the latest msi installer for your cpu architecture (probably x64).
 For users with Debian linux based operating systems (that have systemd enabled), select the latest .deb file

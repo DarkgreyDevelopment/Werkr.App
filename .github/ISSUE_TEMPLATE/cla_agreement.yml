@@ -13,8 +13,8 @@ body:
     attributes:
       label: Terms
       description: |
-        Please select one of the options below and sign as indicated.
-        By signing, You accept and agree to the terms of this Contribution License Agreement (https://docs.werkr.app/ContributionLicenseAgreement.html) for Your present and future Submissions to Darkgrey Development.
+        Please select one of the two checkbox options below and fill out the rest of the form as indicated.
+        By signing, You accept and agree to the terms of this [Contribution License Agreement](https://docs.werkr.app/ContributionLicenseAgreement.html) for Your present and future Submissions to Darkgrey Development.
       options:
         - label: I have sole ownership of intellectual property rights to my Submissions and I am not making Submissions in the course of work for my employer.
         - label: I am making Submissions in the course of work for my employer (or my employer has intellectual property rights in my Submissions by contract or applicable law).  I have permission from my employer to make Submissions and enter into this Agreement on behalf of my employer.  By signing below, the defined term "You" includes me and my employer.
