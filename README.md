@@ -1,4 +1,4 @@
-# Werkr - Open source task automation and workflow orchestration:
+# Werkr - An open source task automation and workflow orchestration project.
 
 Introducing the Werkr Task Automation Project - your one-stop shop for task automation and workflow orchestration.
 
@@ -204,6 +204,8 @@ You can submit your ideas by creating a
 Be sure to provide a clear description of your proposal and its potential benefits.  
 
 ## Documentation Improvements:
+If you have suggestions for additional documentation, or corrections for existing documentation, then please submit a
+[documentation improvement request](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=improve_documentation.yaml)  
 
 ## Bug Reports:
 Please report any bugs, performance issues, or security vulnerabilities you encounter while using the Werkr Task

@@ -32,3 +32,22 @@ body:
     attributes:
       label: Additional context
       placeholder: Add any other context or screenshots about the feature request here.
+  - type: checkboxes
+    id: code-of-conduct
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://docs.werkr.app/CODE_OF_CONDUCT.html).
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
+  - type: checkboxes
+    id: license
+    attributes:
+      label: LICENSE AGREEMENT & ISSUE SUBMISSION TERMS
+      description: |
+        By submitting this issue, I have read and agree to abide by the softwares [MIT LICENSE](https://docs.werkr.app/LICENSE.html) agreement.
+        I understand there is no warranty of any kind, express or implied. I further understand that any and all support is offered on a volunteer and community basis.
+        Any advice or suggestion I chose to follow is an action I take at my own risk.
+      options:
+        - label: By submitting this issue, I agree to abide by the softwares license agreement and understand the issue submission terms.
+          required: true

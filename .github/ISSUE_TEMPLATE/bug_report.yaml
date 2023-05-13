@@ -72,13 +72,16 @@ body:
       label: Additional Context
       description: Please provide any additional context that you think will us help better understand the issue.
   - type: checkboxes
-    id: terms
+    id: code-of-conduct
     attributes:
       label: Code of Conduct
       description: By submitting this issue, you agree to follow our [Code of Conduct](https://docs.werkr.app/CODE_OF_CONDUCT.html).
       options:
         - label: I agree to follow this project's Code of Conduct
           required: true
+  - type: checkboxes
+    id: license
+    attributes:
       label: LICENSE AGREEMENT & ISSUE SUBMISSION TERMS
       description: |
         By submitting this issue, I have read and agree to abide by the softwares [MIT LICENSE](https://docs.werkr.app/LICENSE.html) agreement.
