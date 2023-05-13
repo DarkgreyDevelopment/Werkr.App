@@ -1,0 +1,27 @@
+name: Improve Documentation
+description: Submit documentation improvement suggestions
+title: "[Documentation]: {Short Summary}"
+labels: ["documentation"]
+assignees:
+  - tsmarvin
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to fill out this documentation improvement suggestion!
+  - type: textarea
+    id: site-link
+    attributes:
+      label: Existing Documentation Url
+      description: If you want to see the documentation on a specific site improve please specify the url.
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How can we improve the projects documentaion?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Please provide any additional context that you think will us help better understand your request.

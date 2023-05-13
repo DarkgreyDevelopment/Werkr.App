@@ -1,0 +1,87 @@
+name: Bug Report
+description: Report bugs, performance issues, or security vulnerability.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees:
+  - tsmarvin
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Details
+      description: How can we get in touch with you if we need more info?
+      placeholder: ex. email@example.com or @username
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Description
+      description: Please provide a clear and concise description of the issue you're experiencing.
+      placeholder: Tell us what you see! Also please tell us what you expected to happen.
+      value: A bug happened in [product] while I was doing [Y]! I expected it to do [XYZ]. Here's how you can reproduce this bug:\n1. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: app
+    attributes:
+      label: Application
+      description: What application are you reporting an issue with?
+      options:
+        - Server
+        - Agent
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system(s) are you seeing a problem on?
+      multiple: true
+      options:
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: dropdown
+    id: cpu-arch
+    attributes:
+      label:
+      description: What cpu architecture(s) are you seeing the problem on?
+      multiple: true
+      options:
+        - x64
+        - arm64
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional Context
+      description: Please provide any additional context that you think will us help better understand the issue.
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://docs.werkr.app/CODE_OF_CONDUCT.html).
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
+      label: LICENSE AGREEMENT & ISSUE SUBMISSION TERMS
+      description: |
+        By submitting this issue, I have read and agree to abide by the softwares [MIT LICENSE](https://docs.werkr.app/LICENSE.html) agreement.
+        I understand there is no warranty, express or implied, of any kind. I further understand that any and all support is offered on a volunteer and community basis.
+        Any advice or suggestion I chose to follow is an action I take at my own risk.
+      options:
+        - label: By submitting this issue, I agree to abide by the softwares license agreement and understand the issue submission terms.
+          required: true
