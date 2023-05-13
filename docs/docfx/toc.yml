@@ -1,0 +1,8 @@
+- name: Github
+  homepage: https://werkr.app
+- name: How-To Articles
+  href: articles/HowTo/
+  homepage: articles/HowTo/index.md
+- name: Api Documentation
+  href: api/
+  homepage: api/index.md

@@ -15,12 +15,6 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
-      - name: Check out Werkr.Agent
-        uses: actions/checkout@v2
-        with:
-          repository: DarkgreyDevelopment/Werkr.Agent
-          path: src/Werkr.Agent
-          token: ${{ secrets.CI_TOKEN }}
       - name: Check out Werkr.Common
         uses: actions/checkout@v2
         with:
@@ -45,6 +39,12 @@ jobs:
           repository: DarkgreyDevelopment/Werkr.Server
           path: src/Werkr.Server
           token: ${{ secrets.CI_TOKEN }}
+      - name: Check out Werkr.Agent
+        uses: actions/checkout@v2
+        with:
+          repository: DarkgreyDevelopment/Werkr.Agent
+          path: src/Werkr.Agent
+          token: ${{ secrets.CI_TOKEN }}
       - name: Get DocFX
         shell: pwsh
         run: |
@@ -65,8 +65,7 @@ jobs:
           }
           copy-item -Path '${{ github.workspace }}/LICENSE' -Destination "$DocsPath/LICENSE.md" @CopyParams
           copy-item -Path '${{ github.workspace }}/README.md' -Destination "$DocsPath/index.md" @CopyParams
-          copy-item -Path '${{ github.workspace }}/Pre-Edit-High-Level-Design-Flow.md' -Destination "$DocsPath/" @CopyParams
-          copy-item -Path '${{ github.workspace }}/FeatureList.md' -Destination "$DocsPath/" @CopyParams
+          copy-Item -Path docs/docfx/* -Destination 'docs/'' -Verbose -WhatIf -Recurse
       - name: Generate Documentation and build site.
         shell: pwsh
         run: |
@@ -74,6 +73,10 @@ jobs:
           & '${{ github.workspace }}/docfx/docfx.exe' metadata '${{ github.workspace }}/docs/docfx.json'
           Write-Host "`nCreating docfx site:"
           & '${{ github.workspace }}/docfx/docfx.exe' '${{ github.workspace }}/docs/docfx.json'
+
+      - name: Compress Site for upload as Artifact.
+        shell: pwsh
+        run: |
           $CopyToSiteParams = @{
             Destination = '${{ github.workspace }}/docs/_site'
             Verbose     = $true

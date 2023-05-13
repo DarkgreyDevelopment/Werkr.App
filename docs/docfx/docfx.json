@@ -33,6 +33,8 @@
       },
       {
         "files": [
+          "articles/**.md",
+          "articles/**/toc.yml",
           "toc.yml",
           "*.md"
         ]
@@ -52,7 +54,8 @@
         ],
         "exclude": [
           "obj/**",
-          "_site/**"
+          "_site/**",
+          "docfx/**"
         ]
       }
     ],
