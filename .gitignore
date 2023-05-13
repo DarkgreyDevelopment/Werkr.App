@@ -18,7 +18,7 @@ _site
 /src/Werkr.Installers/**
 /src/Werkr.Server/**
 
-# Github Actions (or manual docs testing) copied files.
+# Github Actions (or manual docs testing) copied files (these all also exist in the root of the repo or the docs/docfx dir).
 /docs/index.md
 /docs/LICENSE.md
 /docs/_config.yml
@@ -27,3 +27,5 @@ _site
 /docs/filterConfig.yml
 /docs/README.md
 /docs/toc.yml
+/docs/templates
+/docs/images
