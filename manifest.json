@@ -17,18 +17,6 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "FeatureList.md",
-      "output": {
-        ".html": {
-          "relative_path": "FeatureList.html",
-          "hash": "1HbNVa6kNxOeA9BHkKq+WcxsdYE+IMsbM579lQBzxpM="
-        }
-      },
-      "is_incremental": false,
-      "version": ""
-    },
-    {
-      "type": "Conceptual",
       "source_relative_path": "LICENSE.md",
       "output": {
         ".html": {
@@ -45,19 +33,22 @@
       "output": {
         ".html": {
           "relative_path": "OpenSource.html",
-          "hash": "NbKo19fwDrhS+qKxGgf8/159fhO08s0N9vn5nZ5JzLQ="
+          "hash": "RTt6iJu6xSBFe/50J02Fq+HKELycEuPugzY3elLAsNE="
         }
       },
       "is_incremental": false,
       "version": ""
     },
     {
+      "log_codes": [
+        "InvalidFileLink"
+      ],
       "type": "Conceptual",
-      "source_relative_path": "Pre-Edit-High-Level-Design-Flow.md",
+      "source_relative_path": "README.md",
       "output": {
         ".html": {
-          "relative_path": "Pre-Edit-High-Level-Design-Flow.html",
-          "hash": "O8EsEv5ls2DztLGnqci4nBTqZfqlGiHaFl3kuPfIuW4="
+          "relative_path": "README.html",
+          "hash": "rT7JzrGn/L8VJgQYbEAQ0et9mX4+Nf7DBD3EHn5NpHE="
         }
       },
       "is_incremental": false,
@@ -69,7 +60,7 @@
       "output": {
         ".html": {
           "relative_path": "SECURITY.html",
-          "hash": "J2X0OcqCWRSH+z6IB/sN5yZrB4ufNpiSPcawveRHuz4="
+          "hash": "jkXAYjViNd5qJ8JAglwxkaQ4AbhTKw8b6nXHcLACB70="
         }
       },
       "is_incremental": false,
@@ -705,7 +696,7 @@
       "output": {
         ".html": {
           "relative_path": "api/index.html",
-          "hash": "hj7Xk8g+whO4C4Zig+FcP9uY9tyCpuSmcXR39xB/YB8="
+          "hash": "Di6B5UeHiqaOmuori2exhNWjqm8A1vEqhi7LVmdi4VM="
         }
       },
       "is_incremental": false,
@@ -718,6 +709,138 @@
         ".html": {
           "relative_path": "api/toc.html",
           "hash": "yv2+fO3dSck1pCtulfzX49wyhDSEeUQFuQKM0A6O7r0="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/FeatureList.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/FeatureList.html",
+          "hash": "tBmPfmrFFymFKdjBeudQo8TiaVkITUGgYSiYSrtnT/w="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/HowTo/LinuxAgentSetup.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/HowTo/LinuxAgentSetup.html",
+          "hash": "PuKriJRfekEoV2PUlExvfA+ui6NrYk7oDTYEppnQNEk="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/HowTo/LinuxServerSetup.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/HowTo/LinuxServerSetup.html",
+          "hash": "2mS7pNM28upje2ZA7QF9UZzryqzu3gtKUEXYvLab4Io="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/HowTo/LocalDocDev.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/HowTo/LocalDocDev.html",
+          "hash": "yLpP3iGHrncsdR6tNmbEIm3YhOw6AxSg8AIvXGc/rIU="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/HowTo/WindowsAgentSetup.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/HowTo/WindowsAgentSetup.html",
+          "hash": "8FpqOj4x5C+8mffRyLe/x0mV8rkHMDXCFJsHOKSmibU="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/HowTo/WindowsServerSetup.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/HowTo/WindowsServerSetup.html",
+          "hash": "5pEe8w/NO/NAFhhlkuaKOy3IMjDuE/MVd7nBokWvxX0="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/HowTo/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/HowTo/index.html",
+          "hash": "79IGuPXQCIZzfmWF7mJGnJotrCH8fC4R6uftzh0QMY0="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "articles/HowTo/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "articles/HowTo/toc.html",
+          "hash": "cHBVNNjYvOmssBHROMPTgg2LwOoF8Bqf3nwcKSeNSNQ="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/Pre-Edit-High-Level-Design-Flow.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/Pre-Edit-High-Level-Design-Flow.html",
+          "hash": "wnNkdgGCrszDIlk+e1g7L17uwarfHDMJq3JzCW65rS4="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "articles/Testing.md",
+      "output": {
+        ".html": {
+          "relative_path": "articles/Testing.html",
+          "hash": "phbJSCmyGlB+vpSglNfCyYUOu0CCSqPe3CATkY+QRi8="
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "articles/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "articles/toc.html",
+          "hash": "tS9m1SfTmJJV457slFfa97l2X3t1ls5KV+yYhb3v3mQ="
         }
       },
       "is_incremental": false,
@@ -751,7 +874,7 @@
       "output": {
         ".html": {
           "relative_path": "index.html",
-          "hash": "XOPJ9Khqhg3o2Mwym/3Bt4dCsKlv9yTdFdZTJZ8rm1I="
+          "hash": "eIJ33TQw69EKvC0RWVglqXxVQIvmi8kQBa5eyWlRV9M="
         }
       },
       "is_incremental": false,
@@ -763,7 +886,7 @@
       "output": {
         ".html": {
           "relative_path": "toc.html",
-          "hash": "YHY5SZsQBuqd/0t4IHO4lBRXjQaF/5Tvnm9bxBnENoM="
+          "hash": "SbLlVjfWX4oBYtHJXv4S1ewTV67I/TNpfln0oyooPag="
         }
       },
       "is_incremental": false,
@@ -784,7 +907,7 @@
         "ConceptualDocumentProcessor": {
           "can_incremental": false,
           "incrementalPhase": "build",
-          "total_file_count": 8,
+          "total_file_count": 16,
           "skipped_file_count": 0
         },
         "ManagedReferenceDocumentProcessor": {

@@ -5,9 +5,9 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <title>Werkr Task Automation Project </title>
+    <title>Werkr - Open source task automation and workflow orchestration: </title>
     <meta name="viewport" content="width=device-width">
-    <meta name="title" content="Werkr Task Automation Project ">
+    <meta name="title" content="Werkr - Open source task automation and workflow orchestration: ">
     <meta name="generator" content="docfx 2.59.4.0">
     
     <link rel="shortcut icon" href="favicon.png">
@@ -59,53 +59,56 @@
         <div class="article row grid">
           <div class="col-md-10">
             <article class="content wrap" id="_content" data-uid="">
-<h1 id="werkr-task-automation-project">Werkr Task Automation Project</h1>
+<h1 id="werkr---open-source-task-automation-and-workflow-orchestration">Werkr - Open source task automation and workflow orchestration:</h1>
 
 <p>Introducing the Werkr Task Automation Project - your one-stop shop for task automation and workflow orchestration.</p>
 <p><a href="https://docs.werkr.app"><img src="https://docs.werkr.app/images/WerkrLogoWithText.png" alt="Werkr Logo & Text" width="300" height="360"></a></p>
-<p>Whether you need a simple Task Scheduler/cron replacement or a comprehensive task orchestration platform, the Werkr project has got you covered. Revolutionize the way you automate tasks and orchestrate workflows with our user-friendly platform, designed to meet a wide range of automation needs.</p>
-<p>The Werkr project has two primary components: a Server and an Agent. Both the Server and Agent are supported on a diverse set of operating systems and system architectures. Currently, both Windows 10+ and Debian Linux based platforms (with systemd) are supported on both x64 and arm64 cpu architectures. MacOS support will be arriving sometime after the .NET 8 release in November 2023.</p>
+<p>Whether you need a simple task scheduler/cron replacement or a comprehensive task orchestration platform, the Werkr
+project has got you covered. Revolutionize the way you automate tasks and orchestrate workflows with our user-friendly
+platform, designed to meet a wide range of automation needs.</p>
+<p>The Werkr project has two primary components: a Server and an Agent.
+Both the Server and Agent are supported on a diverse set of operating systems and system architectures.
+Currently, both Windows 10+ and Debian Linux based platforms (with systemd) are supported on both x64 and
+arm64 cpu architectures. MacOS support is also planned for sometime after the .NET 8 release in November 2023.</p>
 <br>
 <h1 id="streamlined-task-management">Streamlined Task Management:</h1>
-<p>With the Werkr project, you can predefine tasks to run on a schedule, create ad-hoc tasks to run immediately, set tasks to run within a specific time frame, along with so many more configurable options. The choice is yours!</p>
-<p>Visit <a href="https://werkr.app">Werkr.App</a> to explore the Werkr Task Automation Project.</p>
-<p>Both server and agent are offered for download in portable and installer form. Once installed there is no difference between the two versions. The installers simply make the initial setup process a breeze.</p>
+<p>With the Werkr project, you can predefine tasks to run on a schedule, create ad-hoc tasks to run immediately,
+set tasks to run within a specific time frame, along with so many more configurable options. The choice is yours!</p>
+<p>Visit <a href="https:/docs.werkr.app">docs.werkr.app</a> to explore the Werkr Task Automation Project.</p>
+<p>Both server and agent are offered for download in portable and installer form.<br>
+Once installed there is no difference between the two versions.
+The installers simply make the initial setup process a breeze.</p>
+<br>
+<h2 id="downloads">Downloads:</h2>
 <ul>
 <li><a href="https://github.com/DarkgreyDevelopment/Werkr.Server/releases">Server Downloads</a></li>
 <li><a href="https://github.com/DarkgreyDevelopment/Werkr.Agent/releases">Agent Downloads</a></li>
-<li>For windows, download the latest msi installer for your cpu architecture.</li>
-<li>Debian linux based operating systems (that have systemd enabled), select the latest .deb file for your cpu architecture.</li>
-<li>When in doubt select the x64 version.</li>
+</ul>
+<p>For users windows, download the latest msi installer for your cpu architecture (probably x64).<br>
+For users with Debian linux based operating systems (that have systemd enabled), select the latest .deb file
+for your cpu architecture.<br>
+When in doubt select the x64 version.</p>
+<p><br><br></p>
+<h1 id="documentation-and-support">Documentation and Support:</h1>
+<ul>
+<li><a href="#quick-start-guide">Quick Start Guide</a></li>
+<li><a href="https://docs.werkr.app/docs/articles/HowTo/index.html">How To Articles</a></li>
+<li><a href="https://docs.werkr.app/api/index.html">API Documentation</a></li>
+<li>Troubleshooting Guide (coming soon!)</li>
+<li><a href="#contributing">Contributors Guide</a></li>
+<li>FAQ (coming soon!)</li>
 </ul>
 <p><br><br></p>
-<h1 id="documentation-and-support-placeholder">Documentation and Support (Placeholder):</h1>
-<ul>
-<li>Quick Start Guide</li>
-<li>User Guide</li>
-<li>API Documentation
-<ul>
-<li><a href="FeatureList.html">Feature List</a></li>
-</ul>
-</li>
-<li>Troubleshooting Guide</li>
-<li>Contributors Guide
-<ul>
-<li><a href="Pre-Edit-High-Level-Design-Flow.html">Development Outline</a></li>
-</ul>
-</li>
-<li>FAQ</li>
-</ul>
-<p><br><br></p>
-<h1 id="the-werkr-serveragent-combo-features">The Werkr Server/Agent combo features</h1>
+<h1 id="werkr-serveragent-features">Werkr Server/Agent features:</h1>
 <h2 id="a-workflow-centric-design">A Workflow-Centric Design:</h2>
-<p>The Werkr project primarily operates on a workflow, or directed acyclic graph (DAG), model.
+<p>The Werkr project primarily operates on a workflow, or directed acyclic graph (DAG), model.<br>
 The workflow model and DAG visualizations allow you to easily create and manage series of interconnected tasks.</p>
 <br>
 <h2 id="schedulable-tasks">Schedulable Tasks:</h2>
-<p>Tasks are the fundamental building blocks of your automation workflows.
+<p>Tasks are the fundamental building blocks of your automation workflows.<br>
 Tasks can be scheduled to run inside or outside of a workflow.</p>
 <ul>
-<li>Tasks outside a workflow can be scheduled to run at specific times, on pre-defined intervals, and on cyclical schedules.</li>
+<li>Tasks outside a workflow can be scheduled to run at specific times, on pre-defined and cyclical schedules.</li>
 <li>Tasks ran inside a workflow have additional trigger mechanisms<a href="#flexible-task-triggers">*</a>.</li>
 </ul>
 <br>
@@ -113,7 +116,7 @@ Tasks can be scheduled to run inside or outside of a workflow.</p>
 <p>Choose from five primary task types to build your workflow(s):</p>
 <br>
 <h3 id="system-defined-tasks">System-Defined Tasks</h3>
-<p>Perform common operations like file and directory manipulation with ease, thanks to Werkr's prebuilt system tasks.
+<p>Perform common operations like file and directory manipulation with ease, thanks to Werkr's prebuilt system tasks.<br>
 Enjoy consistent output parameters and error handling for the following operations:</p>
 <ul>
 <li>File and directory creation.</li>
@@ -133,7 +136,8 @@ Enjoy consistent output parameters and error handling for the following operatio
 <p>Run commands in your operating system's native shell and get the exit code from the command execution.</p>
 <br>
 <h3 id="user-defined-tasks">User-Defined Tasks</h3>
-<p>Customize your workflows by creating your own tasks. Combine system-defined tasks, PowerShell scripts or commands, and native command executions into your own free-form repeatable task.
+<p>Customize your workflows by creating your own tasks. Combine system-defined tasks, PowerShell scripts or commands,
+and native command executions into your own free-form repeatable task.<br>
 Branch, iterate, and handle exceptions with ease!</p>
 <br>
 <h2 id="flexible-task-triggers">Flexible Task Triggers:</h2>
@@ -168,77 +172,101 @@ Branch, iterate, and handle exceptions with ease!</p>
 <p><br> <br></p>
 <h1 id="example-use-cases-placeholder">Example Use Cases (Placeholder):</h1>
 <p><br><br></p>
-<h1 id="getting-started-examples-placeholder">Getting Started Examples (Placeholder):</h1>
-<ul>
-<li>Example 1: ...</li>
-<li>Example 2: ...</li>
-</ul>
-<p><br><br></p>
 <h1 id="security">Security:</h1>
-<p>The Werkr project has a wide variety of very powerful tools. So, security is taken quite seriously and there are some mandatory steps that must be taken to set up the server and agent properly.</p>
+<p>The Werkr project has a wide variety of very powerful tools. So, security is taken quite seriously and there are some
+mandatory steps that must be taken to set up the server and agent initially.</p>
+<ul>
+<li>TLS certificates are mandatory for the webserver and agent.</li>
+<li>The server and agent undergo an API key registration process before tasks can be run on the system.
+<ul>
+<li>The agent generates an API key on first startup (and upon request thereafter). The generated API key must be
+registered with a server within 12 hours of its generation.</li>
+<li>The server and agent then perform a mutual registration process using the API key where they record the opposing
+parties' certificate information (ex HSTS information?).</li>
+</ul>
+</li>
+</ul>
+<h2 id="additional-security-considerations">Additional Security Considerations:</h2>
 <ul>
 <li>Access Control
 <ul>
 <li>The webserver has built-in user roles that make it easy to restrict access to key and sensitive parts of the system.</li>
 </ul>
 </li>
-<li>Native 2fa support (TOTP) built in.</li>
-<li>TLS certificates are mandatory for the webserver and agent.</li>
-<li>The server and agent undergo an API key registration process before tasks can be run on the system.
-<ul>
-<li>The agent generates an API key on first startup (and upon request thereafter). The generated API key must be registered with a server within 12 hours of its generation.</li>
-<li>The server and agent then perform a mutual registration process using the API key where they record the opposing parties' certificate information (ex HSTS information?).</li>
-</ul>
-</li>
+<li>Native 2fa support (TOTP) is built in to the webserver.</li>
 </ul>
 <p><br><br></p>
 <h1 id="licensing-and-support">Licensing and Support:</h1>
-<p>The Werkr Task Automation Project is offered free of charge under an MIT license!
-Unfortunately, it does not come with any form of guaranteed support. Best effort support and triage will be offered via a GitHub issue process.</p>
+<p>The Werkr Task Automation Project is offered free of charge, without any warranties, under an
+<a href="https://docs.werkr.app/LICENSE.html">MIT license</a>!<br>
+Unfortunately, it does not come with any form of guaranteed or implied support.<br>
+Best effort support and triage will be offered on a volunteer basis via a
+<a href="https://github.com/DarkgreyDevelopment/Werkr.App/issues/new/choose">GitHub issue</a> process.</p>
+<p><br><br></p>
+<h1 id="quick-start-guide">Quick Start Guide:</h1>
+<ul>
+<li>(Placeholder)</li>
+<li>Example 1: ...</li>
+<li>Example 2: ...</li>
+</ul>
 <p><br><br></p>
 <h1 id="contributing">Contributing</h1>
-<p>The Werkr Task Automation Project is in its early stages and we're excited to have you on board! We believe that open collaboration is key to the project's success and growth. We welcome contributions from developers, users, and anyone interested in task automation and workflow orchestration.</p>
-<p>All official project collaboration will occur via github issues. The project has been split into multiple different repositories to keep thing more specific and focused, so please try to post to the most relevent location!</p>
+<p>The Werkr Task Automation Project is in its early stages and we're excited that you're interested in contributing!<br>
+We believe that open collaboration is key to the project's success and growth.
+We welcome contributions from developers, users, and anyone interested in task automation and workflow orchestration.</p>
+<p>All official project collaboration will occur via
+<a href="https://github.com/DarkgreyDevelopment/Werkr.App/issues/new/choose">GitHub issues</a> or
+<a href="https://github.com/DarkgreyDevelopment/Werkr.App/discussions">discussions</a></p>
+<p>The project has been split into multiple different repositories to keep thing more specific and focused,
+so when looking for code please be aware of the following repositories.</p>
 <ul>
 <li><a href="https://github.com/DarkgreyDevelopment/Werkr.App">Werkr.App</a>
 <ul>
 <li>The primary documentation repository. Also hosts github pages.</li>
 </ul>
 </li>
-<li><a href="https://github.com/DarkgreyDevelopment/Werkr.Server">Werkr.Server</a>
+<li><a href="https://server.werkr.app">Werkr.Server</a>
 <ul>
 <li>The webserver and primary UI interface for the project.</li>
 </ul>
 </li>
-<li><a href="https://github.com/DarkgreyDevelopment/Werkr.Agent">Werkr.Agent</a>
+<li><a href="https://agent.werkr.app">Werkr.Agent</a>
 <ul>
 <li>The agent software that performs the requested tasks.</li>
 </ul>
 </li>
-<li><a href="https://github.com/DarkgreyDevelopment/Werkr.Common">Werkr.Common</a>
+<li><a href="https://common.werkr.app">Werkr.Common</a>
 <ul>
 <li>A shared library used by both the Werkr Server and Agent.</li>
 </ul>
 </li>
-<li><a href="https://github.com/DarkgreyDevelopment/Werkr.Common.Configuration">Werkr.Common.Configuration</a>
+<li><a href="https://commonconfiguration.werkr.app">Werkr.Common.Configuration</a>
 <ul>
 <li>A shared configuration library used by both the Werkr Server and Agent. This is also used by the windows installer.</li>
 </ul>
 </li>
-<li><a href="https://github.com/DarkgreyDevelopment/Werkr.Installers">Werkr.Installers</a>
+<li><a href="https://installers.werkr.app">Werkr.Installers</a>
 <ul>
-<li>A shared Wix CustomAction library used by both the Werkr Server and Agent. This library is used in the Msi install process.</li>
+<li>A shared <a href="https://wixtoolset.org/">Wix</a> CustomAction library used by both the Werkr Server and Agent.
+This library is used in the Msi install process.</li>
 </ul>
 </li>
 </ul>
-<h2 id="feedback-and-suggestions">Feedback and Suggestions</h2>
-<p>As the project is still in its early stages, your feedback and suggestions are invaluable. We encourage you to share your thoughts on features, improvements, and potential use cases. You can submit your ideas by creating a new issue on the appropriate GitHub repository site.</p>
+<h2 id="feedback-suggestions-and-feature-requests">Feedback, Suggestions, and Feature Requests</h2>
+<p>Do you have an idea for a new feature or enhancement? We'd love to hear it!<br>
+As the project is still in its early stages, your feedback and suggestions are invaluable.
+We encourage you to share your thoughts on features, improvements, and potential use cases.<br>
+You can submit your ideas by creating a <a href="">new feature request</a>. Be sure to provide a clear description of your
+proposal and its potential benefits.</p>
 <h2 id="bug-reports">Bug Reports</h2>
-<p>Please report any bugs or issues you encounter while using the Werkr Task Automation Project by opening a new issue in the appropriate GitHub repository. Be sure to include as much information as possible, such as steps to reproduce the issue, any error messages, and your system's configuration.</p>
-<h2 id="feature-requests">Feature Requests</h2>
-<p>Do you have an idea for a new feature or enhancement? We'd love to hear it! Please submit your feature request by opening a new issue on the GitHub repository, and be sure to provide a clear description of your proposal and its potential benefits.</p>
+<p>Please report any bugs, performance issues, or security vulnerabilities you encounter while using the Werkr Task
+Automation project by opening a <a href="">new bug report</a>. Be sure to include as much information as possible,
+such as steps to reproduce the issue, any error messages, your system's configuration, and any additional context
+you think we should be aware of.</p>
 <h2 id="code-contributions">Code Contributions</h2>
-<p>If you'd like to contribute code directly to the project, please fork the repository, create a new branch, and submit a pull request with your changes. We encourage you to follow our existing coding style and conventions. Also, make sure to include a detailed description of your changes in the pull request.</p>
+<p>If you'd like to contribute code directly to the project, please fork the repository, create a new branch, and submit
+a pull request with your changes. We encourage you to follow our existing coding style and conventions.<br>
+Make sure to include a detailed description of your changes in the pull request.</p>
 <p>We appreciate all contributions, big or small, and look forward to building a vibrant and collaborative community around the Werkr Task Automation Project. Thank you for your support!</p>
 </article>
           </div>
