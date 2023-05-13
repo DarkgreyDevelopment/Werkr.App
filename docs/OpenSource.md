@@ -1,4 +1,4 @@
-# Open Source Acknowledgements:
+# Open Source Acknowledgements & Thank Yous:
 
 ## Dotnet: 
 The Werkr project is primarily C# based and utilizes the open source [dotnet](https://dotnet.microsoft.com) 7 software framework.  
@@ -11,7 +11,7 @@ The dotnet runtime is licensed under the [MIT License](https://github.com/dotnet
 
 <br/>
 
-### Dotnet AspNetCore: & AspNetCore Extensions
+### Dotnet AspNetCore & AspNetCore Extensions:
 Werkr Server utilizes [dotnet aspnetcore](https://github.com/dotnet/aspnetcore) and its associated extensions.  
 AspNetCore is licensed under an [MIT License](https://github.com/dotnet/aspnetcore/blob/main/LICENSE.txt)  
 
@@ -31,9 +31,15 @@ GitVersion is licensed under an [MIT License](https://github.com/GitTools/GitVer
 
 <br/>
 
-### Wix ToolSet
+### Wix ToolSet:
 The Werkr Server and Agent msi installers are generated utilizing the [Wix Toolset](https://wixtoolset.org/) and the Werkr Installer implements a wix custom action to deploy files and retrieve install parameters during installation.  
 The Wix Toolset has been licensed under an [Microsoft Reciprocal License (MS-RL)](https://github.com/wixtoolset/wix/blob/develop/LICENSE.TXT)  
+
+<br/>
+
+### Dpkg-Deb:
+The Werkr Server and Agent debian installer packages are generated using the Debian package archive [dpkg-deb](https://manpages.ubuntu.com/manpages/trusty/man1/dpkg-deb.1.html) utility.
+Dpkg-Deb is part of the dpkg management system which is release under public-domain-md5, public-domain-s-s-d, BSD-2-clause, GPL-2, and GPL-2+ licenses.
 
 <br/><br/>
 
@@ -56,7 +62,7 @@ EFCore is licensed under an [MIT License](https://github.com/dotnet/efcore/blob/
 
 <br/><br/>
 
-## Logging and Telemetry:
+## Logging & Telemetry:
 
 ### OpenTelemetry:
 Werkr utilizes [OpenTelemetry](https://opentelemetry.io) ([dotnet](https://github.com/open-telemetry/opentelemetry-dotnet)) for telemetry/trace logging.  
@@ -68,45 +74,45 @@ Log4net is licensed under the [Apache License, version 2.0](https://www.apache.o
 
 <br/><br/>
 
-## Server and Agent packages:
+## Server & Agent packages:
 
-### Grpc
+### Grpc:
 The Werkr Server and Agent utilize [grpc](https://github.com/grpc/grpc), specifically the [Grpc.Core](https://www.nuget.org/packages/Grpc.Core) and [Grpc.Tools](https://www.nuget.org/packages/Grpc.Tools) packages, for communications.  
 Grpc is licensed under an [Apache License, version 2.0](https://github.com/grpc/grpc/blob/master/LICENSE).  
 
 <br/>
 
-### Grpc Dotnet
+### Grpc Dotnet:
 The Werkr Server and Agent utilize [grpc-dotnet](https://github.com/grpc/grpc-dotnet), in the form of the [Grpc.Net.Client](https://www.nuget.org/packages/Grpc.Net.Client), [Grpc.AspNetCore](https://www.nuget.org/packages/Grpc.AspNetCore), & [Grpc.Core.Api](https://www.nuget.org/packages/Grpc.Core.Api/) packages.  
 Grpc-Dotnet is licensed under an [Apache License, version 2.0](https://github.com/grpc/grpc-dotnet/blob/master/LICENSE)  
 
 <br/>
 
-### PowerShell Sdk
+### PowerShell Sdk:
 The Werkr Agent hosts PowerShell utilizing the [Microsoft.PowerShell.SDK](https://www.nuget.org/packages/Microsoft.PowerShell.SDK/).  
 PowerShell is licensed under an [MIT License](https://github.com/PowerShell/PowerShell/blob/master/LICENSE.txt)
 
 <br/><br/>
 
-## Documentation and Hosting
+## Documentation & Hosting
 
-### DocFX
+### DocFX:
 [docs.werkr.app](https://docs.werkr.app) utilizes [DocFX](https://dotnet.github.io/docfx) to generate public documentation.  
 DocFX is licensed under the [MIT license](https://github.com/dotnet/docfx/blob/main/LICENSE)  
 
 <br/>
 
-### DocFX Theme - DarkFX
+### DocFX Theme - DarkFX:
 [docs.werkr.app](https://docs.werkr.app) utilizes a modified version of the [darkfx](https://github.com/steffen-wilke/darkfx) DocFX theme/template.  
 DarkFX is licensed under the [MIT license](https://github.com/steffen-wilke/darkfx/blob/master/LICENSE)  
 
 <br/>
 
-### Cascadia Code Font
+### Cascadia Code Font:
 [docs.werkr.app](https://docs.werkr.app) utilizes the Cascadia Code font.  
 Cascadia Code is licensed under the [SIL OPEN FONT LICENSE](https://github.com/microsoft/cascadia-code/blob/main/LICENSE).  
 
 <br/>
 
-### GitHub Pages
+### GitHub Pages:
 [docs.werkr.app](https://docs.werkr.app) is hosted for free by [github pages](https://pages.github.com/). Thank you [github](https://github.com/)!.  

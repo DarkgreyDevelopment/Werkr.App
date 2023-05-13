@@ -114,7 +114,7 @@ Werkr Project 1.0 Intended Feature List. This document is aspirational at this t
 <br/>
 
 ## 10. Licensing and Support:
-- The applicatios are offered free of charge under an MIT license.
+- The applications are offered free of charge under an MIT license.
 - Best effort support and triage is provided via a GitHub issue process
 - Documentation, tutorials, and other resources are available to help users get started and troubleshoot issues
 

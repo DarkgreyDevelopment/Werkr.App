@@ -10,8 +10,20 @@
 /**/api/*.yml
 /**/api/.manifest
 _site
+
+# Cloned Project repos
 /src/Werkr.Agent/**
 /src/Werkr.Common/**
 /src/Werkr.Common.Configuration/**
 /src/Werkr.Installers/**
 /src/Werkr.Server/**
+
+# Github Actions (or manual docs testing) copied files.
+/docs/index.md
+/docs/LICENSE.md
+/docs/_config.yml
+/docs/CNAME
+/docs/docfx.json
+/docs/filterConfig.yml
+/docs/README.md
+/docs/toc.yml
