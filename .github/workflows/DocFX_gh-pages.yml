@@ -65,7 +65,7 @@ jobs:
           }
           copy-item -Path '${{ github.workspace }}/LICENSE' -Destination "$DocsPath/LICENSE.md" @CopyParams
           copy-item -Path '${{ github.workspace }}/README.md' -Destination "$DocsPath/index.md" @CopyParams
-          copy-Item -Path docs/docfx/* -Destination 'docs/' -Verbose -WhatIf -Recurse
+          copy-Item -Path '${{ github.workspace }}/docs/docfx/*' -Destination $DocsPath -Verbose -Recurse
       - name: Generate Documentation and build site.
         shell: pwsh
         run: |
