@@ -1,0 +1,14 @@
+- name: Articles
+  href: ../
+- name: How-To Root
+  href: index.md
+- name: Local Documentation Development
+  href: LocalDocDev.md
+- name: Agent Setup - Linux
+  href: LinuxAgentSetup.md
+- name: Agent Setup - Windows
+  href: WindowsAgentSetup.md
+- name: Server Setup - Linux
+  href: LinuxServerSetup.md
+- name: Server Setup - Windows
+  href: WindowsServerSetup.md
