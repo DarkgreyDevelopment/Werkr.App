@@ -155,7 +155,7 @@ The Werkr Task Automation Project is offered free of charge, without any warrant
 [MIT license](https://docs.werkr.app/LICENSE.html)!  
 Unfortunately, it does not come with any form of guaranteed or implied support.  
 Best effort support and triage will be offered on a volunteer basis via a
-[GitHub issue](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new/choose) process.  
+[GitHub issue](https://werkr.App/issues/new/choose) process.  
 
 
 <br/><br/>
@@ -176,12 +176,12 @@ We believe that open collaboration is key to the project's success and growth.
 We welcome contributions from developers, users, and anyone interested in task automation and workflow orchestration.
 
 All official project collaboration will occur via
-[GitHub issues](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new/choose) or
-[discussions](https://github.com/DarkgreyDevelopment/Werkr.App/discussions)
+[GitHub issues](https://werkr.App/issues/new/choose) or
+[discussions](https://werkr.App/discussions)
 
 The project has been split into multiple different repositories to keep thing more specific and focused,
 so when looking for code please be aware of the following repositories.
-* [Werkr.App](https://github.com/DarkgreyDevelopment/Werkr.App)
+* [Werkr.App](https://werkr.App)
   * The primary documentation repository. Also hosts github pages.
 * [Werkr.Server](https://server.werkr.app)
   * The webserver and primary UI interface for the project.
@@ -200,17 +200,17 @@ Do you have an idea for a new feature or enhancement? We'd love to hear it!
 As the project is still in its early stages, your feedback and suggestions are invaluable.
 We encourage you to share your thoughts on features, improvements, and potential use cases.
 You can submit your ideas by creating a
-[new feature request](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=feature_request.yaml).
+[new feature request](https://werkr.App/issues/new?template=feature_request.yaml).
 Be sure to provide a clear description of your proposal and its potential benefits.  
 
 ## Documentation Improvements:
 If you have suggestions for additional documentation, or corrections for existing documentation, then please submit a
-[documentation improvement request](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=improve_documentation.yaml).  
+[documentation improvement request](https://werkr.App/issues/new?template=improve_documentation.yaml).  
 
 ## Bug Reports:
 Please report any bugs, performance issues, or security vulnerabilities you encounter while using the Werkr Task
 Automation project by opening a
-[new bug report](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?&template=bug_report.yaml).
+[new bug report](https://werkr.App/issues/new?&template=bug_report.yaml).
 Be sure to include as much information as possible, such as steps to reproduce the issue, any error messages,
 your system's configuration, and any additional context you think we should be aware of.
 
@@ -220,7 +220,7 @@ a pull request with your changes. We encourage you to follow our existing coding
 Make sure to include a detailed description of your changes in the pull request.
 
 Additionally you will need to agree to the
-[Contribution License Agreement](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=cla_agreement.yml)
+[Contribution License Agreement](https://werkr.App/issues/new?template=cla_agreement.yml)
 before your PR will be merged.  
 
 We appreciate all contributions, big or small, and look forward to building a vibrant and collaborative community
