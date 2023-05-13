@@ -205,7 +205,7 @@ Be sure to provide a clear description of your proposal and its potential benefi
 
 ## Documentation Improvements:
 If you have suggestions for additional documentation, or corrections for existing documentation, then please submit a
-[documentation improvement request](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=improve_documentation.yaml)  
+[documentation improvement request](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=improve_documentation.yaml).  
 
 ## Bug Reports:
 Please report any bugs, performance issues, or security vulnerabilities you encounter while using the Werkr Task
