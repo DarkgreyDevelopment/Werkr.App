@@ -1,40 +1,40 @@
 This document is intended to show you the Werkr Server Windows MSI installer process and highlight key details.
 
-To get started download the CPU appropriate MSI file from the [github releases](https://github.com/DarkgreyDevelopment/Werkr.Server/releases/tag/latest) page. Note that if you're not sure which msi file to download then you probably want the x64 version.  
+To get started download the CPU appropriate MSI file from the [github releases](https://github.com/DarkgreyDevelopment/Werkr.Server/releases/tag/latest) page. Note that if you're not sure which msi file to download then you probably want the x64 version.
 
 <br/>
 
 # Msi Installation
 
-1. Double Click the Msi installer and select Next.  
+1. Double Click the Msi installer and select Next.
 ![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/0-WerkrServerIntro.png)
 
 <br/>
 
-2. Specfy Server settings.  
-![ServerOptions](../../images/articles/HowTo/WindowsServerInstall/1-ServerOptions.png)  
+2. Specfy Server settings.
+![ServerOptions](../../images/articles/HowTo/WindowsServerInstall/1-ServerOptions.png)
 
-* The `Allowed Hosts` settings determines which hosts are allowed to communicate with the Server.  
+* The `Allowed Hosts` settings determines which hosts are allowed to communicate with the Server.
   * Leave this as `*` to enable all outside clients and agents to communicate with this Server.
   * This list is semi-colon delimited. Ex: `example.com;localhost;192.168.1.16`
 
 <br/>
 
-3. Select Certificate Type from dropdown.  
-![SelectCertificateType](../../images/articles/HowTo/WindowsServerInstall/2-SelectCertificateType.png)  
-* Regardless of which certificate type you choose, you will need to enter the Url that you want the Server to listen on.  
-  * Once populated, You may need to click out of the Certificate Url field for the "Next" button to become enabled.  
+3. Select Certificate Type from dropdown.
+![SelectCertificateType](../../images/articles/HowTo/WindowsServerInstall/2-SelectCertificateType.png)
+* Regardless of which certificate type you choose, you will need to enter the Url that you want the Server to listen on.
+  * Once populated, You may need to click out of the Certificate Url field for the "Next" button to become enabled.
 
 
 <ul>
 
 <details>
-  <summary>CertStore (click me for more details)</summary>
+  <summary>CertStore (expand)</summary>
 
-  1. ![CertStore](../../images/articles/HowTo/WindowsServerInstall/3-CertStore.png)  
-    1. If you know your certificates store information then you can feel free to paste it into the fields.  
-    2. Otherwise select the browse button on the bottom left and you can select the appropriate certificate from the ones availabe in the store.  
-  2. ![CertStore_Selection](../../images/articles/HowTo/WindowsSharedInstall/CertStore_Selection.png)  
+  1. ![CertStore](../../images/articles/HowTo/WindowsServerInstall/3-CertStore.png)
+    1. If you know your certificates store information then you can feel free to paste it into the fields.
+    2. Otherwise select the browse button on the bottom left and you can select the appropriate certificate from the ones availabe in the store.
+  2. ![CertStore_Selection](../../images/articles/HowTo/WindowsSharedInstall/CertStore_Selection.png)
 
 </details>
 
@@ -43,10 +43,10 @@ To get started download the CPU appropriate MSI file from the [github releases](
 <ul>
 
 <details>
-  <summary>CertFile (click me for more details)</summary>
+  <summary>CertFile (expand)</summary>
 
-  1. ![CertFile](../../images/articles/HowTo/WindowsServerInstall/3-CertFile.png)  
-  2. ![FileBrowse](../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png)  
+  1. ![CertFile](../../images/articles/HowTo/WindowsServerInstall/3-CertFile.png)
+  2. ![FileBrowse](../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png)
 
 </details>
 
@@ -55,10 +55,10 @@ To get started download the CPU appropriate MSI file from the [github releases](
 <ul>
 
 <details>
-  <summary>CertAndKeyFile (click me for more details)</summary>
+  <summary>CertAndKeyFile (expand)</summary>
 
-  1. ![CertAndKeyFile](../../images/articles/HowTo/WindowsServerInstall/3-CertAndKeyFile.png)  
-  2. ![FileBrowse](../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png)  
+  1. ![CertAndKeyFile](../../images/articles/HowTo/WindowsServerInstall/3-CertAndKeyFile.png)
+  2. ![FileBrowse](../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png)
 
 </details>
 
@@ -66,19 +66,19 @@ To get started download the CPU appropriate MSI file from the [github releases](
 
 <br/>
 
-4. Specify logging levels. It is suggested that you leave these at their default values unless you have a specific reason to change them.  
-![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/4-Logging.png)  
+4. Specify logging levels. It is suggested that you leave these at their default values unless you have a specific reason to change them.
+![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/4-Logging.png)
 
 <br/>
 
-5. Select Install Path - You can choose any location you want the application to be installed at.  
-![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/5-DestinationPath.png)  
+5. Select Install Path - You can choose any location you want the application to be installed at.
+![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/5-DestinationPath.png)
 
 <br/>
 
-6. Select Install  
-![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/6-InstallButton.png)  
-The installer will now 
+6. Select Install
+![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/6-InstallButton.png)
+The installer will now
   * Extract the portable application files
   * Populate the appsettings file with the settings you selected
   * Register the application as a windows service
@@ -86,8 +86,8 @@ The installer will now
 
 <br/>
 
-7. Installation Complete, Select Finish!  
-![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/7-FinishButton.png)  
+7. Installation Complete, Select Finish!
+![WerkrServerIntro](../../images/articles/HowTo/WindowsServerInstall/7-FinishButton.png)
 
 <br/><br/>
 
@@ -95,16 +95,16 @@ The installer will now
 
 After installation you can find the application registered under the `Programs and Features` control panel menu, as well as under the `Installed Apps` menu.
 
-The application has also been registered as a windows service.  
+The application has also been registered as a windows service.
 
 <ul>
 
 <details>
-  <summary>Service Info (click me for more details)</summary>
+  <summary>Service Info (expand)</summary>
 
-  1. ![CertAndKeyFile](../../images/articles/HowTo/WindowsServerInstall/PostInstall-ServiceInfo.png)  
+  1. ![CertAndKeyFile](../../images/articles/HowTo/WindowsServerInstall/PostInstall-ServiceInfo.png)
 
-  Interact with the service (start/stop/disable) via the Windows Services mmc snapin.  
+  Interact with the service (start/stop/disable) via the Windows Services mmc snapin.
 
 </details>
 
@@ -114,14 +114,14 @@ The application has also been registered as a windows service.
 
 ## Msi Removal:
 
-The application can be removed by selecting the `Uninstall` button from either the `Programs and Features` or `Installed Apps` menus.  
+The application can be removed by selecting the `Uninstall` button from either the `Programs and Features` or `Installed Apps` menus.
 
 <ul>
 
 <details>
-  <summary>Programs and Features (click me for more details)</summary>
+  <summary>Programs and Features (expand)</summary>
 
-  1. ![CertStore](../../images/articles/HowTo/WindowsServerInstall/PostInstall-ProgramsAndFeatures.png)  
+  1. ![CertStore](../../images/articles/HowTo/WindowsServerInstall/PostInstall-ProgramsAndFeatures.png)
 
 </details>
 
@@ -130,10 +130,10 @@ The application can be removed by selecting the `Uninstall` button from either t
 <ul>
 
 <details>
-  <summary>Installed Apps (click me for more details)</summary>
+  <summary>Installed Apps (expand)</summary>
 
-  1. ![CertFile](../../images/articles/HowTo/WindowsServerInstall/PostInstall-InstalledApps.png)  
-  The `uninstall` button in this menu is hidden until you select the elipses menu on the right side of the screen.  
+  1. ![CertFile](../../images/articles/HowTo/WindowsServerInstall/PostInstall-InstalledApps.png)
+  The `uninstall` button in this menu is hidden until you select the elipses menu on the right side of the screen.
 
 </details>
 
@@ -141,16 +141,16 @@ The application can be removed by selecting the `Uninstall` button from either t
 
 <br/>
 
-Please note that after uninstalling the application you may still have a `Werkr Server` directory in the install location.  
-![CertStore](../../images/articles/HowTo/WindowsSharedUninstall/RemainingFiles.png)  
-This directory should only contain leftover log files that were generated by the application during its operation.  
-You can feel free to delete this directory and its contents after the uninstall wizard has completed successfully.  
+Please note that after uninstalling the application you may still have a `Werkr Server` directory in the install location.
+![CertStore](../../images/articles/HowTo/WindowsSharedUninstall/RemainingFiles.png)
+This directory should only contain leftover log files that were generated by the application during its operation.
+You can feel free to delete this directory and its contents after the uninstall wizard has completed successfully.
 
 
 <br/>
 
 
 ## Portable Removal
-If you downloaded the portable version of the application then it can be "uninstalled" simply by deleting the folder that has the application files.  
+If you downloaded the portable version of the application then it can be "uninstalled" simply by deleting the folder that has the application files.
 
 </br>
