@@ -3,7 +3,8 @@
 Docfx also generates the API documentation based on the XML documentation in the [code](https://main.cloud-sharesync.com/src) itself.
 
 You can test what documentation changes will look like locally prior to pushing any commits to github.
-To do so you must emulate the [github action](https://Werkr.App/blob/main/.github/workflows/DocFX_gh-pages.yml) sequence.
+To do so you must emulate the [github action](https://Werkr.App/blob/main/.github/workflows/DocFX_gh-pages.yml) sequence.  
+
 This process can be done on windows using powershell 7+ by issuing the following commands:
 ```powershell
 # 1. Download a copy of DocFX and extract it.
@@ -43,7 +44,7 @@ $CopyParams = @{
 }
 Copy-Item -Path './LICENSE' -Destination './docs/LICENSE.md' @CopyParams
 Copy-Item -Path './README.md' -Destination './docs/index.md' @CopyParams
-copy-Item -Path './docs/docfx/*' -Destination 'docs/' -Verbose -Recurse
+copy-Item -Path './docs/docfx/*' -Destination 'docs/' -Verbose -Exclude README.md -Recurse
 
 # 10 Generate API metadata.
 & '../docfx/docfx.exe' 'metadata' './docs/docfx.json'
