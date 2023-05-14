@@ -29,7 +29,7 @@ To get started download the CPU appropriate MSI file from the [github releases](
 <ul>
 
 <details>
-  <summary>CertStore</summary>
+  <summary>CertStore (click me for more details)</summary>
 
   1. ![CertStore](../../images/articles/HowTo/WindowsServerInstall/3-CertStore.png)  
     1. If you know your certificates store information then you can feel free to paste it into the fields.  
@@ -43,7 +43,7 @@ To get started download the CPU appropriate MSI file from the [github releases](
 <ul>
 
 <details>
-  <summary>CertFile</summary>
+  <summary>CertFile (click me for more details)</summary>
 
   1. ![CertFile](../../images/articles/HowTo/WindowsServerInstall/3-CertFile.png)  
   2. ![FileBrowse](../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png)  
@@ -55,7 +55,7 @@ To get started download the CPU appropriate MSI file from the [github releases](
 <ul>
 
 <details>
-  <summary>CertAndKeyFile</summary>
+  <summary>CertAndKeyFile (click me for more details)</summary>
 
   1. ![CertAndKeyFile](../../images/articles/HowTo/WindowsServerInstall/3-CertAndKeyFile.png)  
   2. ![FileBrowse](../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png)  
@@ -100,7 +100,7 @@ The application has also been registered as a windows service.
 <ul>
 
 <details>
-  <summary>Service Info</summary>
+  <summary>Service Info (click me for more details)</summary>
 
   1. ![CertAndKeyFile](../../images/articles/HowTo/WindowsServerInstall/PostInstall-ServiceInfo.png)  
 
@@ -119,7 +119,7 @@ The application can be removed by selecting the `Uninstall` button from either t
 <ul>
 
 <details>
-  <summary>Programs and Features</summary>
+  <summary>Programs and Features (click me for more details)</summary>
 
   1. ![CertStore](../../images/articles/HowTo/WindowsServerInstall/PostInstall-ProgramsAndFeatures.png)  
 
@@ -130,7 +130,7 @@ The application can be removed by selecting the `Uninstall` button from either t
 <ul>
 
 <details>
-  <summary>Installed Apps</summary>
+  <summary>Installed Apps (click me for more details)</summary>
 
   1. ![CertFile](../../images/articles/HowTo/WindowsServerInstall/PostInstall-InstalledApps.png)  
   The `uninstall` button in this menu is hidden until you select the elipses menu on the right side of the screen.  
