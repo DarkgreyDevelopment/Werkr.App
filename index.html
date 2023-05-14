@@ -75,15 +75,13 @@ arm64 cpu architectures. MacOS support is also planned for sometime after the .N
 <p>With the Werkr project, you can predefine tasks to run on a schedule, create ad-hoc tasks to run immediately,
 set tasks to run within a specific time frame, along with so many more configurable options. The choice is yours!</p>
 <p>Visit <a href="https://docs.werkr.app">docs.werkr.app</a> to explore the Werkr Task Automation Project.</p>
-<p>Both server and agent are offered for download in portable and installer form.<br>
-Once installed there is no difference between the two versions.
-The installers simply make the initial setup process a breeze.</p>
 <br>
-<h2 id="downloads">Downloads:</h2>
+<h1 id="downloads">Downloads:</h1>
 <ul>
 <li><a href="https://server.werkr.app/releases/latest">Server Downloads</a></li>
 <li><a href="https://agent.werkr.app/releases/latest">Agent Downloads</a></li>
 </ul>
+<p>Both server and agent are offered for download in portable and installer form. Once installed there is no difference between the two versions.</p>
 <p>For users windows, download the latest msi installer for your cpu architecture (probably x64).<br>
 For users with Debian linux based operating systems (that have systemd enabled), select the latest .deb file
 for your cpu architecture.<br>
@@ -114,7 +112,6 @@ Tasks can be scheduled to run inside or outside of a workflow.</p>
 <br>
 <h2 id="versatile-task-types">Versatile Task Types:</h2>
 <p>Choose from five primary task types to build your workflow(s):</p>
-<br>
 <h3 id="system-defined-tasks">System-Defined Tasks:</h3>
 <p>Perform common operations like file and directory manipulation with ease, thanks to Werkr's prebuilt system tasks.<br>
 Enjoy consistent output parameters and error handling for the following operations:</p>
@@ -125,16 +122,12 @@ Enjoy consistent output parameters and error handling for the following operatio
 <li>Determine whether files or directories exist.</li>
 <li>Write pre-defined and dynamic content to a file.</li>
 </ul>
-<br>
 <h3 id="powershell-script-execution">PowerShell Script Execution:</h3>
 <p>Run PowerShell scripts effortlessly and receive standard PowerShell outputs.</p>
-<br>
 <h3 id="powershell-command-execution">PowerShell Command Execution:</h3>
 <p>Execute PowerShell commands and access standard PowerShell outputs.</p>
-<br>
 <h3 id="system-shell-command-execution">System Shell Command Execution:</h3>
 <p>Run commands in your operating system's native shell and get the exit code from the command execution.</p>
-<br>
 <h3 id="user-defined-tasks">User-Defined Tasks:</h3>
 <p>Customize your workflows by creating your own tasks. Combine system-defined tasks, PowerShell scripts or commands,
 and native command executions into your own free-form repeatable task.<br>
@@ -179,7 +172,7 @@ Branch, iterate, and handle exceptions with ease!</p>
 <p>The Werkr project has a wide variety of very powerful tools. So, security is taken quite seriously and there are some
 mandatory steps that must be taken to set up the server and agent initially.</p>
 <ul>
-<li>TLS certificates are mandatory for the webserver and agent.</li>
+<li>TLS certificates are mandatory for the scheduler and agent.</li>
 <li>The server and agent undergo an API key registration process before tasks can be run on the system.
 <ul>
 <li>The agent generates an API key on first startup (and upon request thereafter). The generated API key must be
@@ -193,10 +186,15 @@ parties' certificate information (ex HSTS information?).</li>
 <ul>
 <li>Access Control
 <ul>
-<li>The webserver has built-in user roles that make it easy to restrict access to key and sensitive parts of the system.</li>
+<li>The scheduler has built-in user roles that make it easy to restrict access to key and sensitive parts of the system.</li>
 </ul>
 </li>
-<li>Native 2fa support (TOTP) is built in to the webserver.</li>
+<li>Allowed Hosts
+<ul>
+<li>Both the scheduler and agent can restrict access via an allowed hosts list.</li>
+</ul>
+</li>
+<li>Native 2fa support (TOTP) is built in to the scheduler.</li>
 </ul>
 <p><br><br></p>
 <h1 id="licensing-and-support">Licensing and Support:</h1>
@@ -229,7 +227,7 @@ so when looking for code please be aware of the following repositories.</p>
 </li>
 <li><a href="https://server.werkr.app">Werkr.Server</a>
 <ul>
-<li>The webserver and primary UI interface for the project.</li>
+<li>The scheduler and primary UI interface for the project.</li>
 </ul>
 </li>
 <li><a href="https://agent.werkr.app">Werkr.Agent</a>
