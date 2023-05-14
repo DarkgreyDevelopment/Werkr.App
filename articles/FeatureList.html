@@ -76,7 +76,7 @@
 <li>Enable users to create multiple tasks and link them together into a workflow with simple DAG visualizations for more comprehensive task scheduling.</li>
 </ul>
 </li>
-<li>Create ad-hoc tasks that run immediately or at a prescheduled time/time interval.
+<li>Create ad-hoc tasks that run immediately or at a prescheduled time or on a time interval.
 <ul>
 <li>Provides a user interface for creating and executing ad-hoc tasks</li>
 </ul>
@@ -93,13 +93,17 @@
 <li>There are .deb installers for the debian linux release of each app.</li>
 <li>There are portable editions of the application available as well.
 <ul>
-<li>There is no difference between the portable edition of the app and the installed version (after installation).</li>
+<li>There is no difference between the portable edition of the app and the installed version.</li>
 </ul>
 </li>
 </ul>
 </li>
-<li>Both applications support on x64 and arm64 CPU architectures</li>
-<li>MacOS support planned after the .NET 8 release in November 2023</li>
+<li>Both server and agent applications support x64 and arm64 CPU architectures</li>
+<li>MacOS support is planned after the .NET 8 release in November 2023
+<ul>
+<li>Dotnet 8 will provide ALPN support to macos based platforms!</li>
+</ul>
+</li>
 </ul>
 <br>
 <h2 id="3-workflow-centric-design">3. Workflow-Centric Design:</h2>
@@ -136,7 +140,11 @@
 <li>Run tasks inside or outside of a workflow
 <ul>
 <li>Implements a UI for creating and scheduling tasks.</li>
-<li>Tasks outside of a workflow can only be triggered &quot;immediately&quot;, based on a schedule, or on a time interval.</li>
+<li>Tasks outside of a workflow can only be triggered &quot;immediately&quot;, based on a schedule, or on a time interval.
+<ul>
+<li>Meaning that tasks outside a workflow cannot be triggered by filewatch, outside task completion, or workflow completion.</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

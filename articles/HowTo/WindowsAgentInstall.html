@@ -1,0 +1,279 @@
+﻿<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+  
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Msi Installation </title>
+    <meta name="viewport" content="width=device-width">
+    <meta name="title" content="Msi Installation ">
+    <meta name="generator" content="docfx 2.59.4.0">
+    
+    <link rel="shortcut icon" href="../../favicon.png">
+    <link rel="stylesheet" href="../../styles/docfx.vendor.css">
+    <link rel="stylesheet" href="../../styles/docfx.css">
+    <meta property="docfx:navrel" content="../../toc.html">
+    <meta property="docfx:tocrel" content="toc.html">
+    
+    
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+        
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+              
+              <a class="navbar-brand" href="../../index.html">
+                <img id="logo" class="png" src="../../logo.png" alt="">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+        
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div role="main" class="container body-content hide-when-search">
+        
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="">
+
+<p>This document is intended to show you the Werkr Agent Windows MSI installer process and highlight key details.</p>
+<p>To get started download the CPU appropriate MSI file from the <a href="https://github.com/DarkgreyDevelopment/Werkr.Agent/releases/tag/latest">github releases</a> page. Note that if you're not sure which msi file to download then you probably want the x64 version.</p>
+<br>
+<h1 id="msi-installation">Msi Installation</h1>
+<ol>
+<li>Double Click the Msi installer and select Next.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/0-WerkrAgentIntro.png" alt="WerkrAgentIntro"></li>
+</ol>
+<br>
+<ol start="2">
+<li>Specfy agent settings.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/1-AgentOptions.png" alt="AgentOptions"></li>
+</ol>
+<ul>
+<li>The <code>Agent Working Directory</code> setting determines the default path for scripts and commands to start from.</li>
+<li>The <code>Enable Agent to use PowerShell</code> setting determines whether the agent will enable the built in PowerShell host &amp; its associated grpc communications channel.</li>
+<li>The <code>Enable Agent to use System Shell  (cmd)</code> setting determines whether the agent will enable the built in command process host &amp; its associated grpc communications channel.</li>
+<li>Note that if you turn both PowerShell and the System Shell services off then the agent will only be able to perform System Defined actions.</li>
+<li>The <code>Allowed Hosts</code> settings determines which hosts are allowed to communicate with the agent.
+<ul>
+<li>Leave this as <code>*</code> to enable all outside servers to communicate with this agent.</li>
+<li>This list is semi-colon delimited. Ex: <code>example.com;localhost;192.168.1.16</code></li>
+</ul>
+</li>
+</ul>
+<br>
+<ol start="3">
+<li>Select Certificate Type from dropdown.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/2-SelectCertificateType.png" alt="SelectCertificateType"></li>
+</ol>
+<ul>
+<li>Regardless of which certificate type you choose, you will need to enter the Url that you want the agent to listen on.
+<ul>
+<li>Once populated, You may need to click out of the Certificate Url field for the &quot;Next&quot; button to become enabled.</li>
+</ul>
+</li>
+</ul>
+<ul>
+<details>
+  <summary>CertStore</summary>
+<ol>
+<li><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertStore.png" alt="CertStore"></li>
+<li>If you know your certificates store information then you can feel free to paste it into the fields.</li>
+<li>Otherwise select the browse button on the bottom left and you can select the appropriate certificate from the ones availabe in the store.</li>
+<li><img src="../../images/articles/HowTo/WindowsSharedInstall/CertStore_Selection.png" alt="CertStore_Selection"></li>
+</ol>
+</details>
+</ul>
+<ul>
+<details>
+  <summary>CertFile</summary>
+<ol>
+<li><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertFile.png" alt="CertFile"></li>
+<li><img src="../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png" alt="FileBrowse"></li>
+</ol>
+</details>
+</ul>
+<ul>
+<details>
+  <summary>CertAndKeyFile</summary>
+<ol>
+<li><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertAndKeyFile.png" alt="CertAndKeyFile"></li>
+<li><img src="../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png" alt="FileBrowse"></li>
+</ol>
+</details>
+</ul>
+<br>
+<ol start="4">
+<li>Specify logging levels. It is suggested that you leave these at their default values unless you have a specific reason to change them.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/4-Logging.png" alt="WerkrAgentIntro"></li>
+</ol>
+<br>
+<ol start="5">
+<li>Select Install Path - You can choose any location you want the application to be installed at.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/5-DestinationPath.png" alt="WerkrAgentIntro"></li>
+</ol>
+<br>
+<ol start="6">
+<li>Select Install<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/6-InstallButton.png" alt="WerkrAgentIntro"><br>
+The installer will now</li>
+</ol>
+<ul>
+<li>Extract the portable application files</li>
+<li>Populate the appsettings file with the settings you selected</li>
+<li>Register the application as a windows service</li>
+<li>Register installation details with windows to allow for a simple uninstall.</li>
+</ul>
+<br>
+<ol start="7">
+<li>Installation Complete, Select Finish!<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/7-FinishButton.png" alt="WerkrAgentIntro"></li>
+</ol>
+<p><br><br></p>
+<h1 id="post-install--removal">Post Install &amp; Removal</h1>
+<p>After installation you can find the application registered under the <code>Programs and Features</code> control panel menu, as well as under the <code>Installed Apps</code> menu.</p>
+<p>The application has also been registered as a windows service.</p>
+<ul>
+<details>
+  <summary>Service Info</summary>
+<ol>
+<li><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-ServiceInfo.png" alt="CertAndKeyFile"></li>
+</ol>
+<p>Interact with the service (start/stop/disable) via the Windows Services mmc snapin.</p>
+</details>
+</ul>
+<br>
+<h2 id="msi-removal">Msi Removal:</h2>
+<p>The application can be removed by selecting the <code>Uninstall</code> button from either the <code>Programs and Features</code> or <code>Installed Apps</code> menus.</p>
+<ul>
+<details>
+  <summary>Programs and Features</summary>
+<ol>
+<li><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-ProgramsAndFeatures.png" alt="CertStore"></li>
+</ol>
+</details>
+</ul>
+<ul>
+<details>
+  <summary>Installed Apps</summary>
+<ol>
+<li><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-InstalledApps.png" alt="CertFile"><br>
+The <code>uninstall</code> button in this menu is hidden until you select the elipses menu on the right side of the screen.</li>
+</ol>
+</details>
+</ul>
+<br>
+<p>Please note that after uninstalling the application you may still have a <code>Werkr Agent</code> directory in the install location.<br>
+<img src="../../images/articles/HowTo/WindowsSharedUninstall/RemainingFiles.png" alt="CertStore"><br>
+This directory should only contain leftover log files that were generated by the application during its operation.<br>
+You can feel free to delete this directory and its contents after the uninstall wizard has completed successfully.</p>
+<br>
+<h2 id="portable-removal">Portable Removal</h2>
+<p>If you downloaded the portable version of the application then it can be &quot;uninstalled&quot; simply by deleting the folder that has the application files.</p>
+</br>
+</article>
+          </div>
+          
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/DarkgreyDevelopment/Werkr.App/blob/refs/heads/main/docs/articles/HowTo/WindowsAgentInstall.md/#L1" class="contribution-link">Improve this Doc</a>
+                  </li>
+                </ul>
+              </div>
+              <div class="toggle-mode">
+                <div class="icon">
+                  <i aria-hidden="true">☀</i>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="switch-style">
+                  <span class="slider round"></span>
+                </label>
+                <div class="icon">
+                  <i aria-hidden="true">☾</i>
+                </div>
+              </div>
+          
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+              <h5>In This Article</h5>
+              <div></div>
+              <!-- <p><a class="back-to-top" href="#top">Back to top</a><p> -->
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+            <div class="pull-left">
+              
+              <span><a href="https://docs.werkr.app/OpenSource.html">Open Source Acknowledgements</a></span>
+              <span> | </span>
+              <span><a href="https://docs.werkr.app/SECURITY.html">Security</a></span>
+              <span> | </span>
+              <span><a href="https://docs.werkr.app/CODE_OF_CONDUCT.html">Code Of Conduct</a></span>
+              <span> | </span>
+              <span><a href="https://docs.werkr.app/LICENSE.html">LICENSE</a></span>
+            </div>
+            <div class="toggle-mode pull-right visible-sm visible-xs">
+              <div class="icon">
+                <i aria-hidden="true">☀</i>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="switch-style-m">
+                <span class="slider round"></span>
+              </label>
+              <div class="icon">
+                <i aria-hidden="true">☾</i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <script type="text/javascript" src="../../styles/toggle-theme.js"></script>
+      </footer>
+    </div>
+    
+    <script type="text/javascript" src="../../styles/docfx.vendor.js"></script>
+    <script type="text/javascript" src="../../styles/docfx.js"></script>
+    <script type="text/javascript" src="../../styles/main.js"></script>
+  </body>
+</html>

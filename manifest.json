@@ -52,21 +52,6 @@
       "version": ""
     },
     {
-      "log_codes": [
-        "InvalidFileLink"
-      ],
-      "type": "Conceptual",
-      "source_relative_path": "README.md",
-      "output": {
-        ".html": {
-          "relative_path": "README.html",
-          "hash": "rT7JzrGn/L8VJgQYbEAQ0et9mX4+Nf7DBD3EHn5NpHE="
-        }
-      },
-      "is_incremental": false,
-      "version": ""
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "SECURITY.md",
       "output": {
@@ -732,7 +717,7 @@
       "output": {
         ".html": {
           "relative_path": "articles/FeatureList.html",
-          "hash": "tBmPfmrFFymFKdjBeudQo8TiaVkITUGgYSiYSrtnT/w="
+          "hash": "4eYkhz++o48U1nxrX4kX3TtB4skuuBcfYkQrTLqr51Q="
         }
       },
       "is_incremental": false,
@@ -740,11 +725,11 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "articles/HowTo/LinuxAgentSetup.md",
+      "source_relative_path": "articles/HowTo/LinuxAgentInstall.md",
       "output": {
         ".html": {
-          "relative_path": "articles/HowTo/LinuxAgentSetup.html",
-          "hash": "PuKriJRfekEoV2PUlExvfA+ui6NrYk7oDTYEppnQNEk="
+          "relative_path": "articles/HowTo/LinuxAgentInstall.html",
+          "hash": "74qzrWT1kOMYpZLJSSDGUn8UT5FE4mUZFLxrmeu/wRw="
         }
       },
       "is_incremental": false,
@@ -752,11 +737,11 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "articles/HowTo/LinuxServerSetup.md",
+      "source_relative_path": "articles/HowTo/LinuxServerInstall.md",
       "output": {
         ".html": {
-          "relative_path": "articles/HowTo/LinuxServerSetup.html",
-          "hash": "2mS7pNM28upje2ZA7QF9UZzryqzu3gtKUEXYvLab4Io="
+          "relative_path": "articles/HowTo/LinuxServerInstall.html",
+          "hash": "8qi3OeHzIHhH69Db4jiMiaLxOoH0RNKIQjUOtLr3ZrM="
         }
       },
       "is_incremental": false,
@@ -768,7 +753,7 @@
       "output": {
         ".html": {
           "relative_path": "articles/HowTo/LocalDocDev.html",
-          "hash": "yLpP3iGHrncsdR6tNmbEIm3YhOw6AxSg8AIvXGc/rIU="
+          "hash": "XhpOnFevOZq5hOkoGk/U/0VVSjrPoKY5D+J68LxUAAE="
         }
       },
       "is_incremental": false,
@@ -776,11 +761,11 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "articles/HowTo/WindowsAgentSetup.md",
+      "source_relative_path": "articles/HowTo/WindowsAgentInstall.md",
       "output": {
         ".html": {
-          "relative_path": "articles/HowTo/WindowsAgentSetup.html",
-          "hash": "8FpqOj4x5C+8mffRyLe/x0mV8rkHMDXCFJsHOKSmibU="
+          "relative_path": "articles/HowTo/WindowsAgentInstall.html",
+          "hash": "4ajT8TMOuZukvZXvzE0XzubeGpVyaBkPOr71ZpirRH8="
         }
       },
       "is_incremental": false,
@@ -788,11 +773,11 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "articles/HowTo/WindowsServerSetup.md",
+      "source_relative_path": "articles/HowTo/WindowsServerInstall.md",
       "output": {
         ".html": {
-          "relative_path": "articles/HowTo/WindowsServerSetup.html",
-          "hash": "5pEe8w/NO/NAFhhlkuaKOy3IMjDuE/MVd7nBokWvxX0="
+          "relative_path": "articles/HowTo/WindowsServerInstall.html",
+          "hash": "k/tzDNe8HteZ4kN9/W8wWoq3ikeX4bjt1p91oR3MXaM="
         }
       },
       "is_incremental": false,
@@ -816,7 +801,7 @@
       "output": {
         ".html": {
           "relative_path": "articles/HowTo/toc.html",
-          "hash": "cHBVNNjYvOmssBHROMPTgg2LwOoF8Bqf3nwcKSeNSNQ="
+          "hash": "s3NU36DGyoDM/+bUhgFmuF9ghd+f2KGiTLqjDs6+f2Q="
         }
       },
       "is_incremental": false,
@@ -840,7 +825,7 @@
       "output": {
         ".html": {
           "relative_path": "articles/Testing.html",
-          "hash": "phbJSCmyGlB+vpSglNfCyYUOu0CCSqPe3CATkY+QRi8="
+          "hash": "Xa9rE1x4GSi4tkOgwYzGDfzkDU8bOS/WTbAJkJr/io8="
         }
       },
       "is_incremental": false,
@@ -875,6 +860,325 @@
       "output": {
         "resource": {
           "relative_path": "images/WerkrLogoWithText.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/0-WerkrAgentIntro.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/0-WerkrAgentIntro.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/1-AgentOptions.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/1-AgentOptions.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/2-SelectCertificateType.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/2-SelectCertificateType.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/3-CertAndKeyFile.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/3-CertAndKeyFile.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/3-CertFile.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/3-CertFile.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/3-CertStore.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/3-CertStore.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/4-Logging.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/4-Logging.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/5-DestinationPath.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/5-DestinationPath.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/6-InstallButton.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/6-InstallButton.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/7-FinishButton.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/7-FinishButton.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/PostInstall-InstalledApps.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/PostInstall-InstalledApps.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/PostInstall-ProgramsAndFeatures.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/PostInstall-ProgramsAndFeatures.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsAgentInstall/PostInstall-ServiceInfo.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsAgentInstall/PostInstall-ServiceInfo.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/0-WerkrServerIntro.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/0-WerkrServerIntro.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/1-ServerOptions.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/1-ServerOptions.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/2-SelectCertificateType.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/2-SelectCertificateType.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/3-CertAndKeyFile.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/3-CertAndKeyFile.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/3-CertFile.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/3-CertFile.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/3-CertStore.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/3-CertStore.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/4-Logging.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/4-Logging.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/5-DestinationPath.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/5-DestinationPath.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/6-InstallButton.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/6-InstallButton.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/7-FinishButton.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/7-FinishButton.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/PostInstall-InstalledApps.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/PostInstall-InstalledApps.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/PostInstall-ProgramsAndFeatures.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/PostInstall-ProgramsAndFeatures.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsServerInstall/PostInstall-ServiceInfo.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsServerInstall/PostInstall-ServiceInfo.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsSharedInstall/CertStore_Selection.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsSharedInstall/CertStore_Selection.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsSharedInstall/FileBrowse.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsSharedInstall/FileBrowse.png"
+        }
+      },
+      "is_incremental": false,
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/articles/HowTo/WindowsSharedUninstall/RemainingFiles.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/articles/HowTo/WindowsSharedUninstall/RemainingFiles.png"
         }
       },
       "is_incremental": false,
@@ -919,7 +1223,7 @@
         "ConceptualDocumentProcessor": {
           "can_incremental": false,
           "incrementalPhase": "build",
-          "total_file_count": 17,
+          "total_file_count": 16,
           "skipped_file_count": 0
         },
         "ManagedReferenceDocumentProcessor": {

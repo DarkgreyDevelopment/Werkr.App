@@ -71,8 +71,8 @@
 <p><a href="https://docs.werkr.app">docs.werkr.app</a> is hosted on github pages and is generated using <a href="https://dotnet.github.io/docfx/">docfx</a> from markdown pages housed in the <a href="https://Werkr.App/tree/main/docs">github repository</a>.
 Docfx also generates the API documentation based on the XML documentation in the <a href="https://main.cloud-sharesync.com/src">code</a> itself.</p>
 <p>You can test what documentation changes will look like locally prior to pushing any commits to github.
-To do so you must emulate the <a href="https://Werkr.App/blob/main/.github/workflows/DocFX_gh-pages.yml">github action</a> sequence.
-This process can be done on windows using powershell 7+ by issuing the following commands:</p>
+To do so you must emulate the <a href="https://Werkr.App/blob/main/.github/workflows/DocFX_gh-pages.yml">github action</a> sequence.</p>
+<p>This process can be done on windows using powershell 7+ by issuing the following commands:</p>
 <pre><code class="lang-powershell"># 1. Download a copy of DocFX and extract it.
 $IWRParams = @{
 	Uri     = 'https://github.com/dotnet/docfx/releases/download/v2.59.4/docfx.zip'
@@ -110,7 +110,7 @@ $CopyParams = @{
 }
 Copy-Item -Path './LICENSE' -Destination './docs/LICENSE.md' @CopyParams
 Copy-Item -Path './README.md' -Destination './docs/index.md' @CopyParams
-copy-Item -Path './docs/docfx/*' -Destination 'docs/' -Verbose -Recurse
+copy-Item -Path './docs/docfx/*' -Destination 'docs/' -Verbose -Exclude README.md -Recurse
 
 # 10 Generate API metadata.
 &amp; '../docfx/docfx.exe' 'metadata' './docs/docfx.json'
