@@ -1,7 +1,7 @@
 # Testing
-Testing is performed via github actions using [github-hosted-runners](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners).  
+Testing will be performed via github actions using [github-hosted-runners](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners).  
 
-Testing is done automatically during the pull request process. All tests must pass prior to pull request approval.  
+Testing should be done automatically during the pull request process. All tests must pass prior to pull request approval.  
 
 
 ## Operating Systems:

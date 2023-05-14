@@ -4,7 +4,7 @@ Werkr Project 1.0 Intended Feature List. This document is aspirational at this t
 - Predefine tasks or create one-off/ad-hoc tasks that run immediately or on a schedule.
   - Allow users to set start dates, maximum running time length, and end times, for non-workflow defined tasks
   - Enable users to create multiple tasks and link them together into a workflow with simple DAG visualizations for more comprehensive task scheduling.
-- Create ad-hoc tasks that run immediately or at a prescheduled time/time interval.
+- Create ad-hoc tasks that run immediately or at a prescheduled time or on a time interval.
   - Provides a user interface for creating and executing ad-hoc tasks
 - Create a "workflow" user interface that allows the user to create and link many different tasks together.
 - Limited webhook integration allows for task/workflow completion notification via popular project management or productivity tools (Slack, Discord, etc).
@@ -16,9 +16,10 @@ Werkr Project 1.0 Intended Feature List. This document is aspirational at this t
   - There are MSI installers for the windows releases of each app
   - There are .deb installers for the debian linux release of each app.
   - There are portable editions of the application available as well.
-    - There is no difference between the portable edition of the app and the installed version (after installation).
-- Both applications support on x64 and arm64 CPU architectures
-- MacOS support planned after the .NET 8 release in November 2023
+    - There is no difference between the portable edition of the app and the installed version.
+- Both server and agent applications support x64 and arm64 CPU architectures
+- MacOS support is planned after the .NET 8 release in November 2023
+  - Dotnet 8 will provide ALPN support to macos based platforms!
 
 <br/>
 
@@ -40,6 +41,7 @@ Werkr Project 1.0 Intended Feature List. This document is aspirational at this t
 - Run tasks inside or outside of a workflow
   - Implements a UI for creating and scheduling tasks.
   - Tasks outside of a workflow can only be triggered "immediately", based on a schedule, or on a time interval.
+    - Meaning that tasks outside a workflow cannot be triggered by filewatch, outside task completion, or workflow completion.
 
 <br/>
 
