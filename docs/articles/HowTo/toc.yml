@@ -4,11 +4,11 @@
   href: index.md
 - name: Local Documentation Development
   href: LocalDocDev.md
-- name: Agent Setup - Linux
-  href: LinuxAgentSetup.md
-- name: Agent Setup - Windows
-  href: WindowsAgentSetup.md
-- name: Server Setup - Linux
-  href: LinuxServerSetup.md
-- name: Server Setup - Windows
-  href: WindowsServerSetup.md
+- name: Werkr Agent Install - Linux
+  href: LinuxAgentInstall.md
+- name: Werkr Agent Install - Windows
+  href: WindowsAgentInstall.md
+- name: Werkr Server Install - Linux
+  href: LinuxServerInstall.md
+- name: Werkr Server Install - Windows
+  href: WindowsServerInstall.md
