@@ -21,15 +21,13 @@ set tasks to run within a specific time frame, along with so many more configura
 
 Visit [docs.werkr.app](https://docs.werkr.app) to explore the Werkr Task Automation Project.  
 
-Both server and agent are offered for download in portable and installer form.  
-Once installed there is no difference between the two versions.
-The installers simply make the initial setup process a breeze.  
-
 <br/>
 
-## Downloads:
+# Downloads:
 - [Server Downloads](https://server.werkr.app/releases/latest)
 - [Agent Downloads](https://agent.werkr.app/releases/latest)
+
+Both server and agent are offered for download in portable and installer form. Once installed there is no difference between the two versions. 
 
 For users windows, download the latest msi installer for your cpu architecture (probably x64).  
 For users with Debian linux based operating systems (that have systemd enabled), select the latest .deb file
@@ -71,7 +69,6 @@ Tasks can be scheduled to run inside or outside of a workflow.
 ## Versatile Task Types:
 Choose from five primary task types to build your workflow(s):  
 
-<br>
 
 ### System-Defined Tasks:
 Perform common operations like file and directory manipulation with ease, thanks to Werkr's prebuilt system tasks.  
@@ -82,22 +79,18 @@ Enjoy consistent output parameters and error handling for the following operatio
   * Determine whether files or directories exist.
   * Write pre-defined and dynamic content to a file.
 
-<br/>
 
 ### PowerShell Script Execution:
 Run PowerShell scripts effortlessly and receive standard PowerShell outputs.  
 
-<br/>
 
 ### PowerShell Command Execution:
 Execute PowerShell commands and access standard PowerShell outputs.  
 
-<br/>
 
 ### System Shell Command Execution:
 Run commands in your operating system's native shell and get the exit code from the command execution.  
 
-<br/>
 
 ### User-Defined Tasks:
 Customize your workflows by creating your own tasks. Combine system-defined tasks, PowerShell scripts or commands,
@@ -134,7 +127,7 @@ Start your tasks using various triggers, or combinations of triggers, including:
 The Werkr project has a wide variety of very powerful tools. So, security is taken quite seriously and there are some
 mandatory steps that must be taken to set up the server and agent initially.  
 
-* TLS certificates are mandatory for the webserver and agent.
+* TLS certificates are mandatory for the scheduler and agent.
 * The server and agent undergo an API key registration process before tasks can be run on the system.
   * The agent generates an API key on first startup (and upon request thereafter). The generated API key must be
   registered with a server within 12 hours of its generation.
@@ -143,8 +136,10 @@ mandatory steps that must be taken to set up the server and agent initially.
 
 ## Additional Security Considerations:
 * Access Control
-  * The webserver has built-in user roles that make it easy to restrict access to key and sensitive parts of the system.
-* Native 2fa support (TOTP) is built in to the webserver.
+  * The scheduler has built-in user roles that make it easy to restrict access to key and sensitive parts of the system.
+* Allowed Hosts
+  * Both the scheduler and agent can restrict access via an allowed hosts list.
+* Native 2fa support (TOTP) is built in to the scheduler.
 
 
 <br/><br/>
@@ -183,7 +178,7 @@ so when looking for code please be aware of the following repositories.
 * [Werkr.App](https://werkr.App)
   * The primary documentation repository. Also hosts github pages.
 * [Werkr.Server](https://server.werkr.app)
-  * The webserver and primary UI interface for the project.
+  * The scheduler and primary UI interface for the project.
 * [Werkr.Agent](https://agent.werkr.app)
   * The agent software that performs the requested tasks.
 * [Werkr.Common](https://common.werkr.app)
