@@ -765,7 +765,7 @@
       "output": {
         ".html": {
           "relative_path": "articles/HowTo/WindowsAgentInstall.html",
-          "hash": "4ajT8TMOuZukvZXvzE0XzubeGpVyaBkPOr71ZpirRH8="
+          "hash": "L4VREOHoMUExGFqQI1WocKYCtOT1co3tHMEI+2qjysQ="
         }
       },
       "is_incremental": false,
@@ -777,7 +777,7 @@
       "output": {
         ".html": {
           "relative_path": "articles/HowTo/WindowsServerInstall.html",
-          "hash": "k/tzDNe8HteZ4kN9/W8wWoq3ikeX4bjt1p91oR3MXaM="
+          "hash": "BGLehpy+ed1RyPCMxs++HRL2NICqWIFUzu9jayF0bH0="
         }
       },
       "is_incremental": false,
