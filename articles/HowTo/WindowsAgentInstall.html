@@ -68,17 +68,17 @@
             <article class="content wrap" id="_content" data-uid="">
 
 <p>This document is intended to show you the Werkr Agent Windows MSI installer process and highlight key details.</p>
-<p>To get started download the CPU appropriate MSI file from the <a href="https://github.com/DarkgreyDevelopment/Werkr.Agent/releases/tag/latest">github releases</a> page. Note that if you're not sure which msi file to download then you probably want the x64 version.</p>
+<p>To get started download the appropriate MSI file from the <a href="https://github.com/DarkgreyDevelopment/Werkr.Agent/releases/tag/latest">github releases</a> page. Note that if you're not sure which msi file to download then you probably want the x64 version.</p>
 <br>
 <h1 id="msi-installation">Msi Installation</h1>
 <ol>
-<li>Double Click the Msi installer and select Next.
-<img src="../../images/articles/HowTo/WindowsAgentInstall/0-WerkrAgentIntro.png" alt="WerkrAgentIntro"></li>
+<li>Double Click the Msi installer and select Next.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/0-WerkrAgentIntro.png" alt="WerkrAgentIntro" title="&quot;Werkr Agent Setup&quot; Msi &quot;Welcome&quot; Menu. Progress buttons are &quot;Back&quot;, &quot;Next&quot;, and &quot;Cancel&quot;. The &quot;Back&quot; button is disabled and cannot be clicked."></li>
 </ol>
 <br>
 <ol start="2">
-<li>Specfy agent settings.
-<img src="../../images/articles/HowTo/WindowsAgentInstall/1-AgentOptions.png" alt="AgentOptions"></li>
+<li>Specfy agent settings.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/1-AgentOptions.png" alt="AgentOptions" title="&quot;Werkr Agent Options&quot; Msi Menu. Options for selection are &quot;Agent Working Directory&quot;, which has a textbox with a prepopulated value of &quot;C:&quot; and a &quot;browse&quot; button next to it. Next is &quot;Enable Agent to use PowerShell&quot; with &quot;True&quot; or &quot;False&quot; options. After that is &quot;Enable Agent to use System Shell (cmd)&quot; with &quot;True&quot; or &quot;False&quot; options. The last option is the &quot;Allowed Hosts&quot; textbox, this has a pre-populated value of &quot;*&quot;.  Available progress buttons are &quot;Back&quot;, &quot;Next&quot;, and &quot;Cancel&quot;."></li>
 </ol>
 <ul>
 <li>The <code>Agent Working Directory</code> setting determines the default path for scripts and commands to start from.</li>
@@ -94,11 +94,11 @@
 </ul>
 <br>
 <ol start="3">
-<li>Select Certificate Type from dropdown.
-<img src="../../images/articles/HowTo/WindowsAgentInstall/2-SelectCertificateType.png" alt="SelectCertificateType"></li>
+<li>Select your &quot;Kestrel Certificate Config&quot; type from the dropdown.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/2-SelectCertificateType.png" alt="SelectCertificateType" title="&quot;Werkr Agent Certificate Options&quot; Msi Menu. There is a single dropdown visible at the top for the &quot;Kestrel Certificate Config&quot; option that has a default value of &quot;(Select)&quot;. Available progress buttons are &quot;Back&quot;, &quot;Next&quot;, and &quot;Cancel&quot;. The &quot;Next&quot; button is disabled and cannot be clicked."></li>
 </ol>
 <ul>
-<li>Regardless of which certificate type you choose, you will need to enter the Url that you want the agent to listen on.
+<li>Regardless of which certificate type you choose, you will need to enter the <code>Certificate Url</code> that you want the agent to listen on.
 <ul>
 <li>Once populated, You may need to click out of the Certificate Url field for the &quot;Next&quot; button to become enabled.</li>
 </ul>
@@ -107,48 +107,43 @@
 <ul>
 <details>
   <summary>CertStore (expand)</summary>
-<ol>
-<li><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertStore.png" alt="CertStore"></li>
-<li>If you know your certificates store information then you can feel free to paste it into the fields.</li>
-<li>Otherwise select the browse button on the bottom left and you can select the appropriate certificate from the ones availabe in the store.</li>
-<li><img src="../../images/articles/HowTo/WindowsSharedInstall/CertStore_Selection.png" alt="CertStore_Selection"></li>
-</ol>
+<p><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertStore.png" alt="CertStore" title="&quot;Werkr Agent Certificate Options&quot; Msi Menu. At the top the &quot;Kestrel Certificate Config&quot; dropdown has the &quot;CERTSTORE&quot; option selected. The second option is the &quot;Certificate Url&quot; textbox. The third option is the &quot;Certificate Subject&quot; textbox. The fourth option is the &quot;Certificate Store&quot; textbox. The last option is the &quot;Certificate Location&quot; textbox. Available progress buttons are &quot;Back&quot;, &quot;Next&quot;, and &quot;Cancel&quot;. The &quot;Next&quot; button is disabled and cannot be clicked. There is also a &quot;Browse&quot; button in the bottom left menu area."><br>
+If you know your certificates store information then you can feel free to paste it into the fields.<br>
+Otherwise select the browse button on the bottom left and you can select the appropriate certificate from the ones availabe in the store.</p>
+<p><img src="../../images/articles/HowTo/WindowsSharedInstall/CertStore_Selection.png" alt="CertStore_Selection" title="An example of the certstore selection menu that appears when you select the CertStore &quot;Browse&quot; button. This menu shows a list of certificate details from all of the accessible certificate stores. It shows the &quot;Store&quot;, &quot;Location&quot;, &quot;SimpleName&quot;, &quot;Subject&quot; and &quot;SignatureAlgorithm&quot; fields for each certificate. Available progress buttons are &quot;OK&quot; and &quot;Cancel&quot;. By default the first entry in the list is selected."></p>
 </details>
 </ul>
 <ul>
 <details>
   <summary>CertFile (expand)</summary>
-<ol>
-<li><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertFile.png" alt="CertFile"></li>
-<li><img src="../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png" alt="FileBrowse"></li>
-</ol>
+<p><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertFile.png" alt="CertFile" title="&quot;Werkr Agent Certificate Options&quot; Msi Menu. At the top the &quot;Kestrel Certificate Config&quot; dropdown has the &quot;CERTFILE&quot; option selected. The second option is the &quot;Certificate Url&quot; textbox. The third option is the &quot;Certificate Path&quot; textbox, which has a &quot;Browse&quot; button next to it. The last option is the &quot;Certificate Password&quot; textbox. Available progress buttons are &quot;Back&quot;, &quot;Next&quot;, and &quot;Cancel&quot;. The &quot;Next&quot; button is disabled and cannot be clicked."><br>
+<img src="../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png" alt="FileBrowse" title="An example of the &quot;Select a certificate file&quot; file selection menu that appears when you select the CertFile &quot;Browse&quot; button. It is a standard windows file selection dialog and is pre-populated to search for a &quot;Certificate File&quot; (.pfx) file."></p>
 </details>
 </ul>
 <ul>
 <details>
   <summary>CertAndKeyFile (expand)</summary>
-<ol>
-<li><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertAndKeyFile.png" alt="CertAndKeyFile"></li>
-<li><img src="../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png" alt="FileBrowse"></li>
-</ol>
+<p><img src="../../images/articles/HowTo/WindowsAgentInstall/3-CertAndKeyFile.png" alt="CertAndKeyFile" title="&quot;Werkr Agent Certificate Options&quot; Msi Menu. At the top the &quot;Kestrel Certificate Config&quot; dropdown has the &quot;CERTANDKEYFILE&quot; option selected. The second option is the &quot;Certificate Url&quot; textbox. The third option is the &quot;Certificate Path&quot; textbox, which has a &quot;Browse&quot; button next to it. The fourth option is the &quot;Certificate Password&quot; textbox. The last option is a &quot;KeyFile Path&quot; textbox, which has a browse button next to it. Available progress buttons are &quot;Back&quot;, &quot;Next&quot;, and &quot;Cancel&quot;. The &quot;Next&quot; button is disabled and cannot be clicked."></p>
+<p><img src="../../images/articles/HowTo/WindowsSharedInstall/FileBrowse.png" alt="FileBrowse" title="An example of the &quot;Select a certificate file&quot; file selection menu that appears when you select the Certificate Path &quot;Browse&quot; button. It is a standard windows file selection dialog and is pre-populated to search for a &quot;Certificate File&quot; (.pfx) file. This image is also used as an example for the &quot;Select a certificate key file&quot; menu that appears when you select the KeyFile Path &quot;Browse&quot; button. The only difference between those two menus is the title bar and the pre-populate search extension (.key instead of .pfx)."></p>
 </details>
 </ul>
 <br>
 <ol start="4">
-<li>Specify logging levels. It is suggested that you leave these at their default values unless you have a specific reason to change them.
-<img src="../../images/articles/HowTo/WindowsAgentInstall/4-Logging.png" alt="WerkrAgentIntro"></li>
+<li>Specify logging levels. It is suggested that you leave these at their default values unless you have a specific reason to change them.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/4-Logging.png" alt="Logging" title="&quot;Werkr Agent Logging Options&quot; Msi Menu. At the top there is a &quot;Default Application LogLevel&quot; dropdown has the &quot;Trace&quot; option selected. The second option is the &quot;Hosting Lifetime LogLevel&quot; drop which has the &quot;Error&quot; option selected. The last option is the &quot;AspNetCore LogLevel&quot; textbox which has the &quot;Error&quot; option selected. Available progress buttons are &quot;Back&quot;, &quot;Next&quot;, and &quot;Cancel&quot;."><br>
+The Werkr project utilizes the Microsoft.Extensions.Logging package and uses &quot;<a href="https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.logging.loglevel">LogLevel</a>&quot; to determine what to output to the log. See the microsoft article <a href="https://learn.microsoft.com/en-us/dotnet/core/extensions/logging">Logging in C# and .Net</a> for more details.</li>
 </ol>
 <br>
 <ol start="5">
-<li>Select Install Path - You can choose any location you want the application to be installed at.
-<img src="../../images/articles/HowTo/WindowsAgentInstall/5-DestinationPath.png" alt="WerkrAgentIntro"></li>
+<li>Select Install Path - You can choose any location you want the application to be installed at.<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/5-DestinationPath.png" alt="DestinationPath" title="&quot;Werkr Agent Setup&quot; Msi &quot;Destination Folder&quot; Menu. There is a textbox with a prepopulated path and a &quot;Change&quot; button below it. Progress buttons are &quot;Back&quot;, &quot;Next&quot;, and &quot;Cancel&quot;."></li>
 </ol>
 <br>
 <ol start="6">
-<li>Select Install
-<img src="../../images/articles/HowTo/WindowsAgentInstall/6-InstallButton.png" alt="WerkrAgentIntro">
-The installer will now</li>
+<li>Select Install<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/6-InstallButton.png" alt="InstallButton" title="&quot;Werkr Agent Setup&quot; Msi &quot;Ready to install&quot; Menu. Progress buttons are &quot;Back&quot;, &quot;Install&quot;, and &quot;Cancel&quot;."></li>
 </ol>
+<p>The installer will now:</p>
 <ul>
 <li>Extract the portable application files</li>
 <li>Populate the appsettings file with the settings you selected</li>
@@ -157,8 +152,8 @@ The installer will now</li>
 </ul>
 <br>
 <ol start="7">
-<li>Installation Complete, Select Finish!
-<img src="../../images/articles/HowTo/WindowsAgentInstall/7-FinishButton.png" alt="WerkrAgentIntro"></li>
+<li>Installation Complete, Select Finish!<br>
+<img src="../../images/articles/HowTo/WindowsAgentInstall/7-FinishButton.png" alt="FinishButton" title="&quot;Werkr Agent Setup&quot; Msi &quot;Completed&quot; Menu. Progress buttons are &quot;Back&quot;, &quot;Finish&quot;, and &quot;Cancel&quot;. The &quot;Back&quot; and &quot;Cancel&quot; buttons are disabled and cannot be clicked."></li>
 </ol>
 <p><br><br></p>
 <h1 id="post-install--removal">Post Install &amp; Removal</h1>
@@ -167,10 +162,8 @@ The installer will now</li>
 <ul>
 <details>
   <summary>Service Info (expand)</summary>
-<ol>
-<li><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-ServiceInfo.png" alt="CertAndKeyFile"></li>
-</ol>
-<p>Interact with the service (start/stop/disable) via the Windows Services mmc snapin.</p>
+<p><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-ServiceInfo.png" alt="ServiceInfo" title="An example of the Windows services.msc menu. It shows the &quot;Werkr.Agent&quot; service available and ready to start."><br>
+Interact with the service (start/stop/disable) via the Windows Services mmc snapin.</p>
 </details>
 </ul>
 <br>
@@ -179,24 +172,20 @@ The installer will now</li>
 <ul>
 <details>
   <summary>Programs and Features (expand)</summary>
-<ol>
-<li><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-ProgramsAndFeatures.png" alt="CertStore"></li>
-</ol>
+<p><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-ProgramsAndFeatures.png" alt="ProgramsAndFeatures" title="An example of the Windows Programs and Features menu showing the &quot;Werkr Agent&quot; application installed."></p>
 </details>
 </ul>
 <ul>
 <details>
   <summary>Installed Apps (expand)</summary>
-<ol>
-<li><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-InstalledApps.png" alt="CertFile">
-The <code>uninstall</code> button in this menu is hidden until you select the elipses menu on the right side of the screen.</li>
-</ol>
+<p><img src="../../images/articles/HowTo/WindowsAgentInstall/PostInstall-InstalledApps.png" alt="InstalledApps" title="An example of the Windows Installed Apps menu that shows the &quot;Werkr Agent&quot; application installed."><br>
+The <code>uninstall</code> button in this menu is hidden until you select the elipses menu on the right side of the screen.</p>
 </details>
 </ul>
 <br>
-<p>Please note that after uninstalling the application you may still have a <code>Werkr Agent</code> directory in the install location.
-<img src="../../images/articles/HowTo/WindowsSharedUninstall/RemainingFiles.png" alt="CertStore">
-This directory should only contain leftover log files that were generated by the application during its operation.
+<p>Please note that after uninstalling the application you may still have a <code>Werkr Agent</code> directory in the install location.<br>
+<img src="../../images/articles/HowTo/WindowsSharedUninstall/RemainingFiles.png" alt="RemainingFiles" title="A partial snippet of a windows explorer menu that shows the &quot;Werkr Agent&quot; and &quot;Werkr Server&quot; directories still existing post un-install."><br>
+This directory should only contain leftover log files that were generated by the application during its operation.<br>
 You can feel free to delete this directory and its contents after the uninstall wizard has completed successfully.</p>
 <br>
 <h2 id="portable-removal">Portable Removal</h2>
