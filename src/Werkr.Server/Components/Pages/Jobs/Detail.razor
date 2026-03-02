@@ -1,0 +1,133 @@
+﻿@page "/jobs/{Id:guid}"
+@rendermode InteractiveServer
+@using Werkr.Common.Rendering
+@attribute [Authorize]
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Werkr - Job Detail</PageTitle>
+
+<h1>Job Detail</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading job…" />
+} else if ( _job is not null ) {
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Summary</h5>
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Job ID</dt>
+                <dd class="col-sm-9"><code>@_job.Id</code></dd>
+
+                <dt class="col-sm-3">Task ID</dt>
+                <dd class="col-sm-9"><a href="/tasks/@_job.TaskId">@_job.TaskId</a></dd>
+
+                <dt class="col-sm-3">Result</dt>
+                <dd class="col-sm-9">
+                    <span class="badge @( _job.Success ? "bg-success" : "bg-danger" )">
+                        @( _job.Success ? "Success" : "Failed" )
+                    </span>
+                </dd>
+
+                <dt class="col-sm-3">Exit Code</dt>
+                <dd class="col-sm-9">@( _job.ExitCode?.ToString( ) ?? "—" )</dd>
+
+                <dt class="col-sm-3">Error Category</dt>
+                <dd class="col-sm-9">@_job.ErrorCategory</dd>
+
+                <dt class="col-sm-3">Runtime</dt>
+                <dd class="col-sm-9">@_job.RuntimeSeconds.ToString( "F2" ) seconds</dd>
+
+                <dt class="col-sm-3">Started</dt>
+                <dd class="col-sm-9">@_job.StartTime.ToString( "G" )</dd>
+
+                <dt class="col-sm-3">Ended</dt>
+                <dd class="col-sm-9">@( _job.EndTime?.ToString( "G" ) ?? "Still running" )</dd>
+
+                <dt class="col-sm-3">Agent</dt>
+                <dd class="col-sm-9">
+                    @if ( _job.AgentConnectionId is not null ) {
+                        <a href="/agents/@_job.AgentConnectionId">@_job.AgentConnectionId.Value.ToString()[..8]…</a>
+                    } else {
+                        <span class="text-muted">—</span>
+                    }
+                </dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Output</h5>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="LoadOutputAsync" disabled="@_isLoadingOutput">
+                @if ( _isLoadingOutput ) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                Load Full Output
+            </button>
+        </div>
+        <div class="card-body">
+            @if ( !string.IsNullOrWhiteSpace( _output ) ) {
+                <pre class="console-output mb-0">@((MarkupString)AnsiHtmlConverter.Convert( _output ))</pre>
+            } else if ( !string.IsNullOrWhiteSpace( _job.Output ) ) {
+                <pre class="console-output mb-0">@((MarkupString)AnsiHtmlConverter.Convert( _job.Output ))</pre>
+            } else {
+                <p class="text-muted mb-0">No output available.</p>
+            }
+        </div>
+    </div>
+
+    <a href="javascript:history.back()" class="btn btn-outline-secondary">Back</a>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private JobDto? _job;
+    private string? _output;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _isLoadingOutput;
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Jobs", "/jobs" ),
+        new( "Detail" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        _isLoading = true;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _job = await client.GetFromJsonAsync<JobDto>( $"/api/jobs/{Id}" );
+            if ( _job is null ) {
+                _errorMessage = "Job not found.";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load job: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadOutputAsync( ) {
+        _isLoadingOutput = true;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.GetAsync( $"/api/jobs/{Id}/output" );
+            if ( response.IsSuccessStatusCode ) {
+                _output = await response.Content.ReadAsStringAsync( );
+            } else {
+                _errorMessage = "No output file available.";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load output: {ex.Message}";
+        } finally {
+            _isLoadingOutput = false;
+        }
+    }
+}

@@ -1,0 +1,24 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+// Encrypted wrapper for all gRPC payloads.
+// The inner payload is a serialized protobuf message encrypted with AES-256-GCM
+// using the connection's SharedKey established during agent registration.
+// Registration.proto is the sole exception — it uses hybrid RSA+AES encryption
+// to establish the SharedKey and cannot use EncryptedEnvelope.
+message EncryptedEnvelope {
+  // AES-256-GCM encrypted payload (serialized protobuf message bytes).
+  bytes ciphertext = 1;
+
+  // 12-byte initialization vector (nonce) for AES-GCM.
+  bytes iv = 2;
+
+  // 16-byte GCM authentication tag.
+  bytes auth_tag = 3;
+
+  // Identifies which SharedKey was used for encryption.
+  // Supports key rotation grace period — the receiver uses this
+  // to determine whether to decrypt with the current or previous key.
+  string key_id = 4;
+}

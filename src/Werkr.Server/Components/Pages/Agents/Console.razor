@@ -1,0 +1,295 @@
+@page "/agents/{AgentId:guid}/console"
+@using System.Net.Http.Json
+@using System.Text.Json
+@using Werkr.Common.Models
+@using Werkr.Common.Rendering
+@using Werkr.Server.Components.Shared
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<Console> Logger
+@implements IDisposable
+
+<PageTitle>Console — Werkr</PageTitle>
+
+<Breadcrumb Items="_breadcrumbs" />
+
+<StatusBanner Visible="@_hasError"
+              Level="@_errorLevel"
+              Title="@_errorTitle"
+              Message="@_errorMessage"
+              OnDismissed="DismissError" />
+
+<div class="console-page">
+    @* Header row *@
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+            <h3 class="mb-0">
+                <span class="bi bi-terminal-fill" aria-hidden="true"></span> Operator Console
+            </h3>
+            <small class="text-muted">Agent: @AgentId</small>
+        </div>
+    </div>
+
+    @* Operator Type Selector + Status *@
+    <div class="d-flex align-items-center gap-3 mb-2">
+        <div class="btn-group" role="group" aria-label="Operator type">
+            <input type="radio" class="btn-check" name="operatorType" id="opPwsh"
+                   checked="@(_selectedOperator == "PowerShell")"
+                   @onchange="@( () => _selectedOperator = "PowerShell" )" />
+            <label class="btn btn-outline-primary" for="opPwsh">PowerShell</label>
+
+            <input type="radio" class="btn-check" name="operatorType" id="opShell"
+                   checked="@(_selectedOperator == "SystemShell")"
+                   @onchange="@( () => _selectedOperator = "SystemShell" )" />
+            <label class="btn btn-outline-primary" for="opShell">System Shell</label>
+        </div>
+
+        @if (_isExecuting) {
+            <span class="badge bg-warning text-dark">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Executing...
+            </span>
+        } else {
+            <span class="badge bg-success">Ready</span>
+        }
+    </div>
+
+    @* Output Area — fills remaining height *@
+    <div class="console-output mb-2" id="outputArea" @ref="_outputDiv">
+        @if (_outputLines.Count == 0) {
+            <span class="text-muted">Output will appear here...</span>
+        } else {
+            @foreach (OutputLine line in _outputLines) {
+                <div class="@GetLogLevelClass( line.LogLevel )">
+                    <span class="text-muted me-2">[@line.Timestamp]</span>
+                    <span>@((MarkupString)AnsiHtmlConverter.Convert( line.Message ))</span>
+                </div>
+            }
+        }
+    </div>
+
+    @* Command Input *@
+    <div class="input-group">
+        <input type="text" class="form-control console-input" placeholder="Enter command..."
+               @bind="_command" @bind:event="oninput"
+               @onkeydown="HandleKeyDown"
+               disabled="@_isExecuting" />
+
+        @if (_isExecuting) {
+            <button class="btn btn-danger" type="button" @onclick="CancelExecution">
+                <span class="bi bi-stop-fill" aria-hidden="true"></span> Cancel
+            </button>
+        } else {
+            <button class="btn btn-primary" type="button" @onclick="ExecuteCommand"
+                    disabled="@(string.IsNullOrWhiteSpace( _command ))">
+                <span class="bi bi-play-fill" aria-hidden="true"></span> Execute
+            </button>
+        }
+
+        <button class="btn btn-outline-secondary" type="button" @onclick="ClearOutput">
+            <span class="bi bi-trash" aria-hidden="true"></span> Clear
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid AgentId { get; set; }
+
+    private readonly List<OutputLine> _outputLines = new( );
+    private string _command = string.Empty;
+    private string _selectedOperator = "PowerShell";
+    private bool _isExecuting;
+    private CancellationTokenSource? _cts;
+    private ElementReference _outputDiv;
+
+    // StatusBanner state
+    private bool _hasError;
+    private string _errorLevel = "danger";
+    private string? _errorTitle;
+    private string? _errorMessage;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Agents", "/agents" ),
+        new( "Console" )
+    ];
+
+    private static readonly JsonSerializerOptions s_jsonOptions = new( ) {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+
+    private async Task ExecuteCommand( ) {
+        if (string.IsNullOrWhiteSpace( _command )) {
+            return;
+        }
+
+        // Clear any previous error banner
+        DismissError( );
+
+        if (!Enum.TryParse<OperatorType>( _selectedOperator, ignoreCase: true, out OperatorType parsedType )) {
+            _outputLines.Add( new OutputLine( "Error",
+                $"Unknown operator type: {_selectedOperator}",
+                DateTime.UtcNow.ToString( "O" ) ) );
+            return;
+        }
+
+        string commandText = _command;
+        _command = string.Empty;
+        _isExecuting = true;
+
+        _outputLines.Add( new OutputLine( "Debug",
+            $"> {commandText}",
+            DateTime.UtcNow.ToString( "O" ) ) );
+        _outputLines.Add( new OutputLine( "Debug",
+            $"--- Execution started ({_selectedOperator}) ---",
+            DateTime.UtcNow.ToString( "O" ) ) );
+
+        _cts = new CancellationTokenSource( );
+
+        try {
+            using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            ExecuteCommandRequest request = new( parsedType.ToString( ), commandText );
+
+            using HttpRequestMessage httpRequest = new( HttpMethod.Post,
+                $"/api/agents/{AgentId}/shell/stream" ) {
+                Content = JsonContent.Create( request )
+            };
+
+            using HttpResponseMessage response = await client.SendAsync(
+                httpRequest, HttpCompletionOption.ResponseHeadersRead, _cts.Token );
+
+            if (response.IsSuccessStatusCode) {
+                await using System.IO.Stream stream = await response.Content.ReadAsStreamAsync( _cts.Token );
+                using System.IO.StreamReader reader = new( stream );
+
+                string? line;
+                string currentEvent = "message";
+
+                while ((line = await reader.ReadLineAsync( _cts.Token )) is not null) {
+                    if (_cts.Token.IsCancellationRequested) break;
+
+                    if (line.StartsWith( "event: ", StringComparison.Ordinal )) {
+                        currentEvent = line[7..];
+                        continue;
+                    }
+
+                    if (line.StartsWith( "data: ", StringComparison.Ordinal )) {
+                        string json = line[6..];
+
+                        if (currentEvent == "done") {
+                            break;
+                        }
+
+                        if (currentEvent == "error") {
+                            try {
+                                using JsonDocument doc = JsonDocument.Parse( json );
+                                string msg = doc.RootElement.TryGetProperty( "message", out JsonElement msgEl )
+                                    ? msgEl.GetString( ) ?? "Unknown error"
+                                    : json;
+                                ShowError( "danger", "Command Failed", msg );
+                                _outputLines.Add( new OutputLine( "Error", msg, DateTime.UtcNow.ToString( "O" ) ) );
+                            } catch {
+                                ShowError( "danger", "Command Failed", json );
+                            }
+                            break;
+                        }
+
+                        // Default "message" event — parse as OperatorOutputLine
+                        try {
+                            OperatorOutputLine? outputLine = JsonSerializer.Deserialize<OperatorOutputLine>( json, s_jsonOptions );
+                            if (outputLine is not null) {
+                                _outputLines.Add( new OutputLine( outputLine.LogLevel, outputLine.Message, outputLine.Timestamp ) );
+                                await InvokeAsync( StateHasChanged );
+                            }
+                        } catch (JsonException ex) {
+                            Logger.LogWarning( ex, "Failed to parse SSE data: {Json}", json );
+                        }
+
+                        currentEvent = "message"; // reset for next event
+                        continue;
+                    }
+
+                    // empty line = end of event (already handled above)
+                }
+            } else {
+                string body = await response.Content.ReadAsStringAsync( _cts.Token );
+                string msg = string.IsNullOrWhiteSpace( body )
+                    ? $"API returned {(int)response.StatusCode} {response.ReasonPhrase}"
+                    : body;
+                Logger.LogError( "Execute command failed: {StatusCode} — {Body}",
+                    (int)response.StatusCode, body );
+                ShowError( "danger", "Command Failed", msg );
+                _outputLines.Add( new OutputLine( "Error", msg, DateTime.UtcNow.ToString( "O" ) ) );
+            }
+
+            _outputLines.Add( new OutputLine( "Debug",
+                "--- Execution completed ---",
+                DateTime.UtcNow.ToString( "O" ) ) );
+        } catch (OperationCanceledException) {
+            _outputLines.Add( new OutputLine( "Warning",
+                "Execution cancelled by user.",
+                DateTime.UtcNow.ToString( "O" ) ) );
+        } catch (HttpRequestException ex) {
+            Logger.LogError( ex, "HTTP request failed for Agent {AgentId}.", AgentId );
+            ShowError( "danger", "Request Failed",
+                "Failed to reach the API. Check that the API service is running." );
+            _outputLines.Add( new OutputLine( "Error",
+                "Failed to reach the API.",
+                DateTime.UtcNow.ToString( "O" ) ) );
+        } catch (Exception ex) {
+            Logger.LogError( ex, "Unexpected error during command execution on Agent {AgentId}.", AgentId );
+            ShowError( "danger", "Command Failed", "An unexpected error occurred while executing the command." );
+            _outputLines.Add( new OutputLine( "Error",
+                "An unexpected error occurred.",
+                DateTime.UtcNow.ToString( "O" ) ) );
+        } finally {
+            _isExecuting = false;
+            _cts?.Dispose( );
+            _cts = null;
+        }
+    }
+
+    private void ShowError( string level, string title, string message ) {
+        _errorLevel = level;
+        _errorTitle = title;
+        _errorMessage = message;
+        _hasError = true;
+    }
+
+    private void DismissError( ) {
+        _hasError = false;
+        _errorTitle = null;
+        _errorMessage = null;
+    }
+
+    private void CancelExecution( ) {
+        _cts?.Cancel( );
+    }
+
+    private async Task HandleKeyDown( KeyboardEventArgs e ) {
+        if (e.Key == "Enter" && !_isExecuting && !string.IsNullOrWhiteSpace( _command )) {
+            await ExecuteCommand( );
+        }
+    }
+
+    private void ClearOutput( ) {
+        _outputLines.Clear( );
+    }
+
+    private static string GetLogLevelClass( string logLevel ) =>
+        logLevel switch {
+            "Trace" or "Debug" => "text-secondary",
+            "Information" => "text-light",
+            "Warning" => "text-warning",
+            "Error" or "Critical" => "text-danger",
+            _ => "text-light"
+        };
+
+    public void Dispose( ) {
+        _cts?.Cancel( );
+        _cts?.Dispose( );
+    }
+
+    private sealed record OutputLine( string LogLevel, string Message, string Timestamp );
+}

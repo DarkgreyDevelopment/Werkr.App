@@ -1,0 +1,11 @@
+@* Displays a placeholder message when a list has no data. *@
+
+<div class="alert alert-info d-flex align-items-center">
+    <span class="bi bi-info-circle-fill me-2" aria-hidden="true"></span>
+    <div>@Message</div>
+</div>
+
+@code {
+    /// <summary>Message shown when no items are available.</summary>
+    [Parameter] public string Message { get; set; } = "No items found.";
+}

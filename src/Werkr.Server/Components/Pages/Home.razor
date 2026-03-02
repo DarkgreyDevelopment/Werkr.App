@@ -1,0 +1,487 @@
+﻿@page "/overview"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Diagnostics
+@using Werkr.Common.Models
+@using Werkr.Server.Services
+@using Werkr.Server.Helpers
+@attribute [Authorize]
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IHttpClientFactory HttpClientFactory
+@inject AuthenticationStateProvider AuthState
+@inject IConfiguration Configuration
+@inject ServerConfigCache ConfigCache
+
+<PageTitle>Werkr - Dashboard</PageTitle>
+
+<div class="container mt-4">
+    <h1>Welcome to Werkr</h1>
+    <Breadcrumb Items="_breadcrumbs" />
+
+    <p class="lead">Automation platform for scheduling and executing tasks across distributed agents.</p>
+
+    <div class="mb-3">
+        <button class="btn btn-outline-secondary" @onclick="RefreshAsync" disabled="@_isLoading">
+            @if ( _isLoading ) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            Refresh Now
+        </button>
+    </div>
+
+    @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+        <div class="alert alert-warning">@_errorMessage</div>
+    }
+
+    <div class="row mt-4 g-3">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Agents</h5>
+                    <p class="card-text display-4">@_agents.Count</p>
+                    <p class="card-text text-muted">Registered agents</p>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <a class="badge bg-success text-decoration-none" href="/agents?status=Connected">Connected: @CountByStatus( "Connected" )</a>
+                        <a class="badge bg-warning text-dark text-decoration-none" href="/agents?status=Disconnected">Disconnected: @CountByStatus( "Disconnected" )</a>
+                        <a class="badge bg-secondary text-decoration-none" href="/agents?status=Revoked">Revoked: @CountByStatus( "Revoked" )</a>
+                    </div>
+                    <a href="/agents" class="btn btn-primary">View Agents</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">System Info</h5>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Server Name</dt>
+                        <dd class="col-sm-8">@_serverName</dd>
+
+                        <dt class="col-sm-4">Uptime</dt>
+                        <dd class="col-sm-8">@GetUptime()</dd>
+
+                        <dt class="col-sm-4">.NET Version</dt>
+                        <dd class="col-sm-8">@Environment.Version</dd>
+
+                        <dt class="col-sm-4">Current User</dt>
+                        <dd class="col-sm-8">@_currentUserDisplay</dd>
+
+                        <dt class="col-sm-4">Database</dt>
+                        <dd class="col-sm-8">
+                            @if ( _databaseHealthy.HasValue ) {
+                                <span class="badge @(_databaseHealthy.Value ? "bg-success" : "bg-danger")">
+                                    @(_databaseHealthy.Value ? "Connected" : "Unavailable")
+                                </span>
+                            } else {
+                                <span class="badge bg-secondary">Unknown</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-4">Registration Policy</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge @(_allowRegistration ? "bg-success" : "bg-danger")">
+                                @(_allowRegistration ? "Open" : "Closed")
+                            </span>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Automation Summary ── *@
+    <div class="row mt-3 g-3">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Schedules</h5>
+                    <p class="display-4">@_scheduleCount</p>
+                    <a href="/schedules" class="btn btn-outline-primary btn-sm">Manage</a>
+                    <a href="/calendar" class="btn btn-outline-secondary btn-sm">Calendar</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Tasks</h5>
+                    <p class="display-4">@_taskCount</p>
+                    <a href="/tasks" class="btn btn-outline-primary btn-sm">Manage</a>
+                    <a href="/tasklist" class="btn btn-outline-secondary btn-sm">Overview</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Workflows</h5>
+                    <p class="display-4">@_workflowCount</p>
+                    <a href="/workflows" class="btn btn-outline-primary btn-sm">Manage</a>
+                    <a href="/jobs" class="btn btn-outline-secondary btn-sm">Jobs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Quick Actions</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <AuthorizeView Roles="Admin">
+                    <a class="btn btn-primary" href="/agents/register">Register Agent</a>
+                </AuthorizeView>
+                <AuthorizeView Roles="Admin,Operator">
+                    <a class="btn btn-outline-primary" href="/agents">Open Operator Console</a>
+                    <a class="btn btn-outline-primary" href="/schedules/create">New Schedule</a>
+                    <a class="btn btn-outline-primary" href="/tasks/create">New Task</a>
+                    <a class="btn btn-outline-primary" href="/workflows/create">New Workflow</a>
+                </AuthorizeView>
+                <AuthorizeView Roles="Admin">
+                    <a class="btn btn-outline-secondary" href="/admin/users">Manage Users</a>
+                    <a class="btn btn-outline-secondary" href="/settings">View Settings</a>
+                </AuthorizeView>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Agent Health</h5>
+            @if ( _health.Count == 0 ) {
+                <p class="text-muted mb-0">No health data available.</p>
+            } else {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Agent</th>
+                                <th>Status</th>
+                                <th>PowerShell</th>
+                                <th>SystemShell</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( AgentHealthDto item in _health ) {
+                                <tr>
+                                    <td>@item.ConnectionName</td>
+                                    <td><span class="badge @GetStatusBadgeClass( item.Status )">@item.Status</span></td>
+                                    <td>@FormatAvailability( item.PowerShellAvailable )</td>
+                                    <td>@FormatAvailability( item.SystemShellAvailable )</td>
+                                    <td>@FormatRelativeTime( item.LastSeen )</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Recent Activity</h5>
+            @if ( _activity.Count == 0 ) {
+                <p class="text-muted mb-0">No recent activity.</p>
+            } else {
+                <ul class="list-group list-group-flush">
+                    @foreach ( AgentActivityDto entry in _activity ) {
+                        <li class="list-group-item px-0">
+                            <strong>@entry.ConnectionName</strong> — @entry.EventType
+                            <span class="text-muted">(@FormatRelativeTime( entry.OccurredAtUtc ))</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    @* ── Recent Job Activity ── *@
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Recent Job Activity</h5>
+            @if ( _recentJobs.Count == 0 ) {
+                <p class="text-muted mb-0">No recent jobs.</p>
+            } else {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Job</th>
+                                <th>Task</th>
+                                <th>Result</th>
+                                <th>Runtime</th>
+                                <th>Started</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( JobListDto job in _recentJobs ) {
+                                <tr>
+                                    <td><a href="/jobs/@job.Id">@job.Id.ToString( )[..8]…</a></td>
+                                    <td><a href="/tasks/@job.TaskId">Task #@job.TaskId</a></td>
+                                    <td>
+                                        <span class="badge @( job.Success ? "bg-success" : "bg-danger" )">
+                                            @( job.Success ? "Success" : "Failed" )
+                                        </span>
+                                        @if ( !job.Success && !string.IsNullOrWhiteSpace( job.ErrorCategory ) ) {
+                                            <small class="text-muted ms-1">@job.ErrorCategory</small>
+                                        }
+                                    </td>
+                                    <td>@job.RuntimeSeconds.ToString( "F1" )s</td>
+                                    <td>@FormatRelativeTime( job.StartTime )</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <a href="/jobs" class="btn btn-outline-primary btn-sm mt-2">View All Jobs</a>
+            }
+        </div>
+    </div>
+
+    @* ── Schedule Health ── *@
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Schedule Health</h5>
+            @if ( _schedules.Count == 0 ) {
+                <p class="text-muted mb-0">No schedules configured.</p>
+            } else {
+                <div class="d-flex gap-3 mb-2">
+                    <div>
+                        <span class="badge bg-success">Active: @ActiveScheduleCount</span>
+                    </div>
+                    <div>
+                        <span class="badge bg-secondary">Expired: @ExpiredScheduleCount</span>
+                    </div>
+                    <div>
+                        <span class="badge bg-info">Total: @_schedules.Count</span>
+                    </div>
+                </div>
+                @if ( ActiveScheduleCount > 0 ) {
+                    <p class="text-muted small mb-0">
+                        @ActiveScheduleCount schedule(s) actively firing.
+                        @if ( ExpiredScheduleCount > 0 ) {
+                            <span class="text-warning">@ExpiredScheduleCount expired — consider cleanup.</span>
+                        }
+                    </p>
+                }
+            }
+        </div>
+    </div>
+
+    @* ── Workflow Runs ── *@
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Workflow Runs</h5>
+            @if ( _recentRuns.Count == 0 ) {
+                <p class="text-muted mb-0">No workflow runs recorded.</p>
+            } else {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Run</th>
+                                <th>Workflow</th>
+                                <th>Status</th>
+                                <th>Started</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( WorkflowRunDto run in _recentRuns ) {
+                                <tr>
+                                    <td><a href="/workflows/runs/@run.Id">@run.Id.ToString( )[..8]…</a></td>
+                                    <td><a href="/workflows/@run.WorkflowId">Workflow #@run.WorkflowId</a></td>
+                                    <td>
+                                        <span class="badge @GetRunStatusBadge( run.Status )">@run.Status</span>
+                                    </td>
+                                    <td>@FormatRelativeTime( run.StartTime )</td>
+                                    <td>
+                                        @if ( run.EndTime.HasValue ) {
+                                            @( ( run.EndTime.Value - run.StartTime ).TotalSeconds.ToString( "F1" ) )@:s
+                                        } else {
+                                            <span class="text-muted">Running…</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Overview" )
+    ];
+    private readonly DateTime _processStartUtc = Process.GetCurrentProcess( ).StartTime.ToUniversalTime( );
+
+    private List<AgentListDto> _agents = [];
+    private List<AgentHealthDto> _health = [];
+    private List<AgentActivityDto> _activity = [];
+    private List<DatabaseHealthDto> _databaseHealth = [];
+    private List<JobListDto> _recentJobs = [];
+    private List<WorkflowRunDto> _recentRuns = [];
+    private List<ScheduleDto> _schedules = [];
+    private int _scheduleCount;
+    private int _taskCount;
+    private int _workflowCount;
+    private bool _isLoading;
+
+    private int ActiveScheduleCount => _schedules.Count( s =>
+        s.Expiration is null || s.Expiration.Date > DateOnly.FromDateTime( DateTime.UtcNow ) );
+    private int ExpiredScheduleCount => _schedules.Count - ActiveScheduleCount;
+    private string? _errorMessage;
+    private string _serverName = "Werkr Server";
+    private bool _allowRegistration = true;
+    private bool? _databaseHealthy;
+    private string _currentUserDisplay = "Unknown";
+
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _refreshCancellationTokenSource;
+    private bool _disposed;
+
+    protected override async Task OnInitializedAsync( ) {
+        _serverName = Configuration["Server:Name"] ?? "Werkr Server";
+        _allowRegistration = bool.TryParse( Configuration["Server:AllowRegistration"], out bool allowRegistration )
+            ? allowRegistration
+            : true;
+
+        await RefreshAsync( );
+
+        _refreshCancellationTokenSource = new CancellationTokenSource( );
+        _refreshTimer = new PeriodicTimer( TimeSpan.FromSeconds( ConfigCache.PollingIntervalSeconds ) );
+        _ = RefreshLoopAsync( _refreshCancellationTokenSource.Token );
+    }
+
+    private async Task RefreshLoopAsync( CancellationToken cancellationToken ) {
+        if ( _refreshTimer is null ) {
+            return;
+        }
+
+        try {
+            while ( await _refreshTimer.WaitForNextTickAsync( cancellationToken ) ) {
+                if ( _disposed ) {
+                    return;
+                }
+
+                await RefreshAsync( );
+                await InvokeAsync( StateHasChanged );
+            }
+        } catch ( OperationCanceledException ) {
+        } catch ( ObjectDisposedException ) {
+        }
+    }
+
+    private async Task RefreshAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            Task<List<AgentListDto>?> agentsTask = client.GetFromJsonAsync<List<AgentListDto>>( "/api/agents" );
+            Task<List<AgentHealthDto>?> healthTask = client.GetFromJsonAsync<List<AgentHealthDto>>( "/api/agents/health" );
+            Task<List<AgentActivityDto>?> activityTask = client.GetFromJsonAsync<List<AgentActivityDto>>( "/api/agents/activity?count=10" );
+            Task<List<DatabaseHealthDto>?> databaseTask = client.GetFromJsonAsync<List<DatabaseHealthDto>>( "/api/diagnostics/health" );
+            Task<List<ScheduleDto>?> schedulesTask = client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" );
+            Task<List<TaskDto>?> tasksTask = client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            Task<List<WorkflowDto>?> workflowsTask = client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" );
+            Task<List<JobListDto>?> recentJobsTask = client.GetFromJsonAsync<List<JobListDto>>( "/api/jobs?limit=10" );
+            Task<AuthenticationState> authTask = AuthState.GetAuthenticationStateAsync( );
+
+            await Task.WhenAll( agentsTask, healthTask, activityTask, databaseTask, schedulesTask, tasksTask, workflowsTask, recentJobsTask, authTask );
+
+            _agents = await agentsTask ?? [];
+            _health = await healthTask ?? [];
+            _activity = await activityTask ?? [];
+            _databaseHealth = await databaseTask ?? [];
+            _schedules = await schedulesTask ?? [];
+            _scheduleCount = _schedules.Count;
+            _taskCount = ( await tasksTask )?.Count ?? 0;
+            _recentJobs = await recentJobsTask ?? [];
+
+            List<WorkflowDto>? workflows = await workflowsTask;
+            _workflowCount = workflows?.Count ?? 0;
+
+            // Fetch recent runs for each workflow (capped to keep it fast)
+            List<WorkflowRunDto> allRuns = [];
+            if ( workflows is { Count: > 0 } ) {
+                IEnumerable<Task<List<WorkflowRunDto>?>> runTasks = workflows.Take( 20 ).Select( w =>
+                    client.GetFromJsonAsync<List<WorkflowRunDto>>( $"/api/workflows/{w.Id}/runs" ) );
+                List<WorkflowRunDto>?[] results = await Task.WhenAll( runTasks );
+                foreach ( List<WorkflowRunDto>? runs in results ) {
+                    if ( runs is not null ) allRuns.AddRange( runs );
+                }
+            }
+            _recentRuns = allRuns.OrderByDescending( r => r.StartTime ).Take( 10 ).ToList( );
+
+            _databaseHealthy = _databaseHealth.Count > 0 && _databaseHealth.All( item => item.IsConnected );
+
+            AuthenticationState authState = await authTask;
+            string role = authState.User.IsInRole( "Admin" )
+                ? "Admin"
+                : authState.User.IsInRole( "Operator" )
+                    ? "Operator"
+                    : "Viewer";
+            _currentUserDisplay = $"{authState.User.Identity?.Name ?? "Unknown"} ({role})";
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load dashboard data: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private int CountByStatus( string status ) {
+        return _agents.Count( agent => string.Equals( agent.Status, status, StringComparison.OrdinalIgnoreCase ) );
+    }
+
+    private string GetUptime( ) {
+        TimeSpan uptime = DateTime.UtcNow - _processStartUtc;
+        if ( uptime.TotalDays >= 1 ) {
+            return $"{(int)uptime.TotalDays}d {uptime.Hours}h {uptime.Minutes}m";
+        }
+
+        if ( uptime.TotalHours >= 1 ) {
+            return $"{uptime.Hours}h {uptime.Minutes}m";
+        }
+
+        return $"{Math.Max( 0, uptime.Minutes )}m";
+    }
+
+    private static string FormatAvailability( bool? value ) => AgentDisplayHelper.FormatAvailability( value );
+    private static string FormatRelativeTime( DateTime? timestamp ) => AgentDisplayHelper.FormatRelativeTime( timestamp );
+    private static string GetStatusBadgeClass( string status ) => AgentDisplayHelper.GetStatusBadgeClass( status );
+
+    private static string GetRunStatusBadge( string status ) {
+        return status switch {
+            "Completed" or "Succeeded" => "bg-success",
+            "Failed" or "Faulted" => "bg-danger",
+            "Running" or "InProgress" => "bg-primary",
+            "Cancelled" or "Canceled" => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    public ValueTask DisposeAsync( ) {
+        _disposed = true;
+
+        if ( _refreshCancellationTokenSource is not null ) {
+            _refreshCancellationTokenSource.Cancel( );
+            _refreshCancellationTokenSource.Dispose( );
+            _refreshCancellationTokenSource = null;
+        }
+
+        if ( _refreshTimer is not null ) {
+            _refreshTimer.Dispose( );
+            _refreshTimer = null;
+        }
+
+        return ValueTask.CompletedTask;
+    }
+}

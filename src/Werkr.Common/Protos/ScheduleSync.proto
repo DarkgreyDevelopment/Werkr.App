@@ -1,0 +1,149 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+
+// Agent pulls assigned schedules from the Server (API hosts this service).
+// All RPCs use EncryptedEnvelope. Inner payload types defined below.
+service ScheduleSync {
+  // Request envelope contains AgentScheduleRequest; response contains AgentScheduleResponse.
+  rpc GetAssignedSchedules (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Request envelope contains GetBulkScheduleHolidayDatesRequest; response contains GetBulkScheduleHolidayDatesResponse.
+  rpc GetBulkScheduleHolidayDates (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Request envelope contains SubmitAuditLogRequest; response contains SubmitAuditLogResponse.
+  rpc SubmitAuditLog (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message AgentScheduleRequest {
+  // Agent's tags for matching against task TargetTags.
+  repeated string tags = 1;
+  // Agent's connection ID for authentication.
+  string connection_id = 2;
+}
+
+message AgentScheduleResponse {
+  repeated ScheduledTaskDefinition tasks = 1;
+  repeated ScheduledWorkflowDefinition workflows = 2;
+}
+
+message ScheduledTaskDefinition {
+  int64 task_id = 1;
+  string name = 2;
+  int32 action_type = 3;
+  string content = 4;
+  int64 timeout_minutes = 5;
+  int32 sync_interval_minutes = 6;
+  ScheduleDefinition schedule = 7;
+  string success_criteria = 8;
+  repeated string arguments = 9;
+  string action_sub_type = 10;
+  string action_parameters_json = 11;
+}
+
+message ScheduleDefinition {
+  string schedule_id = 1;
+  string start_date = 2;
+  string start_time = 3;
+  string time_zone_id = 4;
+  string expiration_date = 5;
+  string expiration_time = 6;
+  string expiration_time_zone_id = 7;
+  int64 stop_task_after_minutes = 8;
+  DailyRecurrenceDef daily = 9;
+  WeeklyRecurrenceDef weekly = 10;
+  MonthlyRecurrenceDef monthly = 11;
+  RepeatOptionsDef repeat = 12;
+  bool has_holiday_calendar = 13;
+  string holiday_calendar_mode = 14;
+}
+
+message DailyRecurrenceDef {
+  int32 day_interval = 1;
+}
+
+message WeeklyRecurrenceDef {
+  int32 week_interval = 1;
+  int32 recurrence_days = 2;
+}
+
+message MonthlyRecurrenceDef {
+  repeated int32 day_numbers = 1;
+  int32 months_of_year = 2;
+  int32 week_number = 3;
+  int32 days_of_week = 4;
+}
+
+message RepeatOptionsDef {
+  int32 interval_minutes = 1;
+  int32 duration_minutes = 2;
+}
+
+message ScheduledWorkflowDefinition {
+  int64 workflow_id = 1;
+  string name = 2;
+  repeated ScheduledWorkflowStepDef steps = 3;
+  ScheduleDefinition schedule = 4;
+}
+
+message ScheduledWorkflowStepDef {
+  int64 step_id = 1;
+  int64 task_id = 2;
+  int32 order = 3;
+  repeated int64 depends_on_step_ids = 4;
+  int32 control_statement = 5;
+  string condition_expression = 6;
+  int32 max_iterations = 7;
+  ScheduledTaskDefinition task = 8;
+  string agent_connection_id_override = 9;
+  int32 dependency_mode = 10;
+}
+
+// ── Bulk Holiday Date Fetch ──
+
+message GetBulkScheduleHolidayDatesRequest {
+  repeated ScheduleHolidayDateQuery queries = 1;
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message ScheduleHolidayDateQuery {
+  string schedule_id = 1;
+}
+
+message GetBulkScheduleHolidayDatesResponse {
+  repeated ScheduleHolidayDateResult results = 1;
+}
+
+message ScheduleHolidayDateResult {
+  string schedule_id = 1;
+  string calendar_id = 2;
+  string mode = 3;
+  repeated HolidayDateMessage dates = 4;
+}
+
+message HolidayDateMessage {
+  string date = 1;
+  string name = 2;
+  int32 year = 3;
+  string window_start = 4;
+  string window_end = 5;
+  string window_time_zone_id = 6;
+}
+
+// ── Audit Log Submission ──
+
+message SubmitAuditLogRequest {
+  string schedule_id = 1;
+  repeated AuditLogEntry entries = 2;
+}
+
+message AuditLogEntry {
+  string occurrence_utc = 1;
+  string holiday_name = 2;
+  string reason = 3;
+}
+
+message SubmitAuditLogResponse {
+  int32 accepted_count = 1;
+}

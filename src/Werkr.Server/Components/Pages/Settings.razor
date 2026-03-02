@@ -1,0 +1,349 @@
+﻿@page "/settings"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Options
+@using System.Runtime.InteropServices
+@using Werkr.Common.Models
+@attribute [Authorize( Roles = "Admin" )]
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpClientFactory
+@inject IConfiguration Configuration
+@inject IOptions<IdentityOptions> IdentityConfig
+
+<PageTitle>Werkr - Settings</PageTitle>
+
+<div class="container mt-4">
+    <h1>Settings</h1>
+    <Breadcrumb Items="_breadcrumbs" />
+
+    <p>Read-only configuration and diagnostics for this Werkr instance.</p>
+
+    <div class="mb-3">
+        <button class="btn btn-outline-secondary" @onclick="LoadAsync" disabled="@_isLoading">
+            @if ( _isLoading ) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            Refresh
+        </button>
+    </div>
+
+    @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+        <div class="alert alert-warning">@_errorMessage</div>
+    }
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Server Configuration</h5>
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Server Name</dt>
+                <dd class="col-sm-8">@_serverName</dd>
+
+                <dt class="col-sm-4">Server URL</dt>
+                <dd class="col-sm-8"><code>@_serverUrl</code></dd>
+
+                <dt class="col-sm-4">Default Command Timeout</dt>
+                <dd class="col-sm-8">@_defaultCommandTimeoutMinutes minutes</dd>
+
+                <dt class="col-sm-4">RSA Key Size</dt>
+                <dd class="col-sm-8">@_defaultKeySize bits</dd>
+
+                <dt class="col-sm-4">Allow Registration</dt>
+                <dd class="col-sm-8">
+                    <span class="badge @(_allowRegistration ? "bg-success" : "bg-danger")">
+                        @(_allowRegistration ? "Yes" : "No")
+                    </span>
+                </dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Identity Configuration</h5>
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Min Password Length</dt>
+                <dd class="col-sm-8">@IdentityConfig.Value.Password.RequiredLength</dd>
+
+                <dt class="col-sm-4">Require Digit</dt>
+                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.Password.RequireDigit )</dd>
+
+                <dt class="col-sm-4">Require Lowercase</dt>
+                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.Password.RequireLowercase )</dd>
+
+                <dt class="col-sm-4">Require Uppercase</dt>
+                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.Password.RequireUppercase )</dd>
+
+                <dt class="col-sm-4">Require Special Character</dt>
+                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.Password.RequireNonAlphanumeric )</dd>
+
+                <dt class="col-sm-4">Min Unique Characters</dt>
+                <dd class="col-sm-8">@IdentityConfig.Value.Password.RequiredUniqueChars</dd>
+
+                <dt class="col-sm-4">Lockout Duration</dt>
+                <dd class="col-sm-8">@IdentityConfig.Value.Lockout.DefaultLockoutTimeSpan.TotalMinutes minutes</dd>
+
+                <dt class="col-sm-4">Max Failed Attempts</dt>
+                <dd class="col-sm-8">@IdentityConfig.Value.Lockout.MaxFailedAccessAttempts</dd>
+
+                <dt class="col-sm-4">Require Unique Email</dt>
+                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.User.RequireUniqueEmail )</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Database Health</h5>
+            @if ( _databaseHealth.Count == 0 ) {
+                <p class="text-muted mb-0">No database diagnostics available.</p>
+            } else {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Context</th>
+                                <th>Provider</th>
+                                <th>Connected</th>
+                                <th>Applied</th>
+                                <th>Pending</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( DatabaseHealthDto item in _databaseHealth ) {
+                                <tr>
+                                    <td>@item.ContextName</td>
+                                    <td>@item.ProviderName</td>
+                                    <td>
+                                        <span class="badge @(item.IsConnected ? "bg-success" : "bg-danger")">
+                                            @(item.IsConnected ? "Yes" : "No")
+                                        </span>
+                                    </td>
+                                    <td>@item.AppliedMigrationCount</td>
+                                    <td>@item.PendingMigrationCount</td>
+                                </tr>
+                                @if ( item.PendingMigrationCount > 0 ) {
+                                    <tr>
+                                        <td colspan="5" class="text-muted">
+                                            Pending: @string.Join( ", ", item.PendingMigrations )
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5 class="card-title">Agent Configuration Summary</h5>
+            @if ( _agentHealth.Count == 0 ) {
+                <p class="text-muted mb-0">No agent health data available.</p>
+            } else {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Agent Name</th>
+                                <th>PowerShell</th>
+                                <th>SystemShell</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( AgentHealthDto item in _agentHealth ) {
+                                <tr>
+                                    <td>@item.ConnectionName</td>
+                                    <td>@FormatNullableBoolean( item.PowerShellAvailable )</td>
+                                    <td>@FormatNullableBoolean( item.SystemShellAvailable )</td>
+                                    <td><span class="badge @GetStatusBadgeClass( item.Status )">@item.Status</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mt-3 mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Infrastructure</h5>
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Aspire Service Discovery</dt>
+                <dd class="col-sm-8">@( _serviceDiscoveryKeys.Count > 0 ? string.Join( ", ", _serviceDiscoveryKeys ) : "No services:* keys found" )</dd>
+
+                <dt class="col-sm-4">OTLP Endpoint</dt>
+                <dd class="col-sm-8">@(string.IsNullOrWhiteSpace( _otlpEndpoint ) ? "Not configured" : _otlpEndpoint)</dd>
+
+                <dt class="col-sm-4">.NET Runtime</dt>
+                <dd class="col-sm-8">@Environment.Version</dd>
+
+                <dt class="col-sm-4">OS</dt>
+                <dd class="col-sm-8">@RuntimeInformation.OSDescription</dd>
+
+                <dt class="col-sm-4">Architecture</dt>
+                <dd class="col-sm-8">@RuntimeInformation.ProcessArchitecture</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card mt-3 mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Notify Agents of Server URL Change</h5>
+            <p class="text-muted">
+                If this Server's gRPC URL has changed, notify all connected Agents so they update
+                their stored endpoint and reconnect automatically.
+            </p>
+            <div class="mb-3" style="max-width: 480px;">
+                <label for="newServerUrl" class="form-label fw-bold">New Server URL</label>
+                <input id="newServerUrl" class="form-control" @bind="_notifyNewUrl"
+                       placeholder="https://new-server-host:port" />
+            </div>
+            <button class="btn btn-warning" @onclick="NotifyUrlChangeAsync" disabled="@_isNotifying">
+                @if ( _isNotifying ) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                Notify All Agents
+            </button>
+
+            @if ( _notifyResult is not null ) {
+                <div class="alert mt-3 @(_notifyResult.Failed > 0 ? "alert-warning" : "alert-success")">
+                    <span><strong>@_notifyResult.Notified</strong> agents notified successfully.</span>
+                    @if ( _notifyResult.Failed > 0 ) {
+                        <br />
+                        <span><strong>@_notifyResult.Failed</strong> agents failed:</span>
+                        <span>@string.Join( ", ", _notifyResult.FailedAgents )</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Settings" )
+    ];
+
+    private List<DatabaseHealthDto> _databaseHealth = [];
+    private List<AgentHealthDto> _agentHealth = [];
+    private List<string> _serviceDiscoveryKeys = [];
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    private string _serverName = "Werkr Server";
+    private string _serverUrl = "Not configured";
+    private int _defaultCommandTimeoutMinutes = 30;
+    private int _defaultKeySize = 4096;
+    private bool _allowRegistration = true;
+    private string _otlpEndpoint = string.Empty;
+
+    // URL notification state
+    private string _notifyNewUrl = string.Empty;
+    private bool _isNotifying;
+    private NotifyUrlChangeResponse? _notifyResult;
+
+    protected override async Task OnInitializedAsync( ) {
+        LoadConfiguration( );
+        await LoadAsync( );
+    }
+
+    private void LoadConfiguration( ) {
+        _serverName = Configuration["Server:Name"] ?? "Werkr Server";
+        _serverUrl = Configuration["Werkr:ServerUrl"] ?? "Not configured";
+
+        _defaultCommandTimeoutMinutes = int.TryParse( Configuration["Werkr:DefaultCommandTimeoutMinutes"], out int timeoutMinutes )
+            ? timeoutMinutes
+            : 30;
+
+        _defaultKeySize = int.TryParse( Configuration["Werkr:DefaultKeySize"], out int keySize )
+            ? keySize
+            : 4096;
+
+        _allowRegistration = bool.TryParse( Configuration["Server:AllowRegistration"], out bool allowRegistration )
+            ? allowRegistration
+            : true;
+
+        _serviceDiscoveryKeys = [.. Configuration.AsEnumerable( )
+            .Where( kvp => !string.IsNullOrWhiteSpace( kvp.Key ) && kvp.Key.StartsWith( "services:", StringComparison.OrdinalIgnoreCase ) )
+            .Select( kvp => kvp.Key )
+            .Distinct( )
+            .OrderBy( key => key )];
+
+        _otlpEndpoint = Environment.GetEnvironmentVariable( "OTEL_EXPORTER_OTLP_ENDPOINT" ) ?? string.Empty;
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            Task<List<DatabaseHealthDto>?> databaseTask = client.GetFromJsonAsync<List<DatabaseHealthDto>>( "/api/diagnostics/health" );
+            Task<List<AgentHealthDto>?> healthTask = client.GetFromJsonAsync<List<AgentHealthDto>>( "/api/agents/health" );
+
+            await Task.WhenAll( databaseTask, healthTask );
+
+            _databaseHealth = await databaseTask ?? [];
+            _agentHealth = await healthTask ?? [];
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load diagnostics: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatBoolean( bool value ) {
+        return value ? "Yes" : "No";
+    }
+
+    private static string FormatNullableBoolean( bool? value ) {
+        return value switch {
+            true => "Yes",
+            false => "No",
+            null => "Unknown"
+        };
+    }
+
+    private static string GetStatusBadgeClass( string status ) {
+        return status switch {
+            "Connected" => "bg-success",
+            "Disconnected" => "bg-warning text-dark",
+            "Revoked" => "bg-secondary",
+            "Unreachable" => "bg-danger",
+            _ => "bg-info"
+        };
+    }
+
+    private async Task NotifyUrlChangeAsync( ) {
+        if (string.IsNullOrWhiteSpace( _notifyNewUrl )) {
+            _errorMessage = "Please enter the new server URL.";
+            return;
+        }
+
+        _isNotifying = true;
+        _notifyResult = null;
+        _errorMessage = null;
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            NotifyUrlChangeRequest request = new( _notifyNewUrl.Trim( ) );
+            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/settings/notify-url-change", request );
+
+            if (response.IsSuccessStatusCode) {
+                _notifyResult = await response.Content.ReadFromJsonAsync<NotifyUrlChangeResponse>( );
+            } else {
+                _errorMessage = $"Failed to send URL notification: {response.StatusCode}";
+            }
+        } catch (Exception ex) {
+            _errorMessage = $"Failed to send URL notification: {ex.Message}";
+        } finally {
+            _isNotifying = false;
+        }
+    }
+}

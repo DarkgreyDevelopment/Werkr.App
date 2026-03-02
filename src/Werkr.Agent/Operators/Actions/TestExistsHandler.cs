@@ -1,0 +1,65 @@
+using System.Text.Json;
+using System.Threading.Channels;
+
+using Werkr.Common.Models;
+using Werkr.Common.Models.Actions;
+using Werkr.Core.Communication;
+using Werkr.Core.Operators;
+using Werkr.Core.Security;
+
+namespace Werkr.Agent.Operators.Actions;
+
+/// <summary>
+/// Handles the <c>TestExists</c> action — tests whether a file or directory exists.
+/// Uses <see cref="PathType"/> to discriminate between file, directory, or any.
+/// </summary>
+public sealed class TestExistsHandler : IActionHandler {
+
+    private readonly IFilePathResolver _resolver;
+    private readonly ILogger<TestExistsHandler> _logger;
+
+    /// <summary>Creates a new <see cref="TestExistsHandler"/>.</summary>
+    public TestExistsHandler( IFilePathResolver resolver, ILogger<TestExistsHandler> logger ) {
+        _resolver = resolver;
+        _logger = logger;
+    }
+
+    /// <inheritdoc/>
+    public string Action => "TestExists";
+
+    /// <inheritdoc/>
+    public async Task<ActionOperatorResult> ExecuteAsync(
+        JsonElement parameters,
+        ChannelWriter<OperatorOutput> output,
+        CancellationToken cancellationToken ) {
+        try {
+            TestExistsParameters p = parameters.Deserialize<TestExistsParameters>( ActionJson.SerializerOptions )
+                ?? throw new ArgumentException( "Failed to deserialize TestExists parameters." );
+
+            string fullPath = _resolver.ResolveSinglePath( p.Path );
+
+            bool exists = p.Type switch {
+                PathType.File => File.Exists( fullPath ),
+                PathType.Directory => Directory.Exists( fullPath ),
+                PathType.Any => File.Exists( fullPath ) || Directory.Exists( fullPath ),
+                _ => throw new ArgumentOutOfRangeException( nameof( p.Type ), p.Type, "Unknown PathType value." )
+            };
+
+            string typeLabel = p.Type.ToString( ).ToLowerInvariant( );
+            string status = exists ? "exists" : "does not exist";
+
+            await output.WriteAsync(
+                OperatorOutput.Create( LogLevel.Information, $"TestExists({typeLabel}): '{fullPath}' {status}" ),
+                cancellationToken );
+
+            // Success is true when the path exists, false when it does not.
+            return new ActionOperatorResult( Success: exists );
+        } catch (Exception ex) when (ex is not OperationCanceledException) {
+            _logger.LogError( ex, "TestExists action failed" );
+            await output.WriteAsync(
+                OperatorOutput.Create( LogLevel.Error, $"TestExists failed: {ex.Message}" ),
+                cancellationToken );
+            return new ActionOperatorResult( Success: false, Exception: ex );
+        }
+    }
+}

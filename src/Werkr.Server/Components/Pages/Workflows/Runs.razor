@@ -1,0 +1,132 @@
+﻿@page "/workflows/{WorkflowId:long}/runs"
+@using Werkr.Server.Services
+@rendermode InteractiveServer
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IHttpClientFactory HttpClientFactory
+@inject ServerConfigCache ConfigCache
+
+<PageTitle>Werkr - Workflow Runs</PageTitle>
+
+<h1>Workflow Runs</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<div class="mb-3">
+    <a href="/workflows/@WorkflowId" class="btn btn-outline-secondary">
+        ← Back to Workflow
+    </a>
+    <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _runs is null ) {
+    <LoadingSpinner Message="Loading runs…" />
+} else if ( _runs is not null && _runs.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Run ID</th>
+                    <th>Started</th>
+                    <th>Ended</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( WorkflowRunDto run in _runs ) {
+                    <tr>
+                        <td><a href="/workflows/runs/@run.Id">@run.Id.ToString()[..8]…</a></td>
+                        <td>@run.StartTime.ToString( "g" )</td>
+                        <td>@( run.EndTime?.ToString( "g" ) ?? "—" )</td>
+                        <td>
+                            <span class="badge @RunStatusBadge( run.Status )">@run.Status</span>
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm" href="/workflows/runs/@run.Id">Details</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( !_isLoading ) {
+    <EmptyState Message="No runs recorded for this workflow." />
+}
+
+@code {
+    [Parameter] public long WorkflowId { get; set; }
+
+    private List<WorkflowRunDto>? _runs;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _disposed;
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _cts;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
+
+    protected override async Task OnInitializedAsync( ) {
+        _breadcrumbs = [
+            new( "Task List", "/" ),
+            new( "Workflows", "/workflows" ),
+            new( $"Workflow {WorkflowId}", $"/workflows/{WorkflowId}" ),
+            new( "Runs" )
+        ];
+        await LoadAsync( );
+
+        _cts = new CancellationTokenSource( );
+        _refreshTimer = new PeriodicTimer( TimeSpan.FromSeconds( ConfigCache.RunDetailPollingIntervalSeconds ) );
+        _ = AutoRefreshAsync( _cts.Token );
+    }
+
+    private async Task AutoRefreshAsync( CancellationToken ct ) {
+        if ( _refreshTimer is null ) return;
+        try {
+            while ( await _refreshTimer.WaitForNextTickAsync( ct ) ) {
+                if ( _disposed ) return;
+                await LoadAsync( );
+                await InvokeAsync( StateHasChanged );
+            }
+        } catch ( OperationCanceledException ) { }
+        catch ( ObjectDisposedException ) { }
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _runs = await client.GetFromJsonAsync<List<WorkflowRunDto>>(
+                $"/api/workflows/{WorkflowId}/runs" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load runs: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private static string RunStatusBadge( string status ) => status switch {
+        "Completed" => "bg-success",
+        "Running" => "bg-primary",
+        "Failed" => "bg-danger",
+        "Cancelled" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    public ValueTask DisposeAsync( ) {
+        _disposed = true;
+        _cts?.Cancel( );
+        _cts?.Dispose( );
+        _refreshTimer?.Dispose( );
+        return ValueTask.CompletedTask;
+    }
+}

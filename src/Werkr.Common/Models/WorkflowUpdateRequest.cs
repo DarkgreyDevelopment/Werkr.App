@@ -1,0 +1,8 @@
+namespace Werkr.Common.Models;
+
+/// <summary>Request DTO for updating an existing workflow.</summary>
+public sealed record WorkflowUpdateRequest(
+    string Name,
+    string? Description = null,
+    bool Enabled = true,
+    Guid? ScheduleId = null );

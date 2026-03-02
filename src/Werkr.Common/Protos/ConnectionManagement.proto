@@ -1,0 +1,71 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+
+// Server pushes connection management commands to agents (Agent hosts this service).
+// All RPCs use EncryptedEnvelope. Inner payload types defined below.
+service ConnectionManagement {
+  // Request envelope contains NotifyServerUrlChangedRequest; response contains NotifyServerUrlChangedResponse.
+  rpc NotifyServerUrlChanged (EncryptedEnvelope) returns (EncryptedEnvelope);
+
+  // Application-level health check. Request envelope contains HeartbeatRequest;
+  // response contains HeartbeatResponse. Replaces Grpc.Health.V1 for agent health probing.
+  rpc Heartbeat (EncryptedEnvelope) returns (EncryptedEnvelope);
+
+  // Key rotation. Request envelope contains RotateSharedKeyRequest;
+  // response contains RotateSharedKeyResponse. Uses current PSK for envelope encryption;
+  // new key is additionally RSA-encrypted inside for defense-in-depth.
+  rpc RotateSharedKey (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+// --- NotifyServerUrlChanged ---
+
+message NotifyServerUrlChangedRequest {
+  // The new server URL the agent should use for outbound connections.
+  string new_server_url = 1;
+}
+
+message NotifyServerUrlChangedResponse {
+  // Whether the agent acknowledged and applied the new URL.
+  bool acknowledged = 1;
+  // Optional status message.
+  string message = 2;
+}
+
+// --- Heartbeat ---
+
+message HeartbeatRequest {
+  // Agent's assembly version string.
+  string agent_version = 1;
+  // Seconds since agent process started.
+  int64 uptime_seconds = 2;
+  // Number of active schedules currently loaded.
+  int32 active_schedule_count = 3;
+  // Free-form status message.
+  string status_message = 4;
+}
+
+message HeartbeatResponse {
+  // Whether the server acknowledged the heartbeat.
+  bool acknowledged = 1;
+  // Server's assembly version string.
+  string server_version = 2;
+}
+
+// --- RotateSharedKey ---
+
+message RotateSharedKeyRequest {
+  // New AES-256 key encrypted with the Agent's RSA public key (defense-in-depth).
+  bytes rsa_encrypted_new_key = 1;
+  // Identifier for the new key (UUID).
+  string new_key_id = 2;
+}
+
+message RotateSharedKeyResponse {
+  // Whether the agent accepted and activated the new key.
+  bool success = 1;
+  // The key ID now active on the agent.
+  string active_key_id = 2;
+}

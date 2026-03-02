@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <EnableMSTestRunner>true</EnableMSTestRunner>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Werkr.Agent\Werkr.Agent.csproj" />
+    <ProjectReference Include="..\..\Werkr.Data\Werkr.Data.csproj" />
+    <ProjectReference Include="..\..\Werkr.Core\Werkr.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,65 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="GitVersion.yml" />
+    <File Path="docker-compose.yml" />
+    <File Path=".dockerignore" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/.config/">
+    <File Path=".config/dotnet-tools.json" />
+  </Folder>
+  <Folder Name="/.github/" />
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/ci.yml" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/Architecture.md" />
+    <File Path="docs/Development.md" />
+  </Folder>
+  <Folder Name="/scripts/">
+    <File Path="scripts/publish.ps1" />
+    <File Path="scripts/docker-build.sh" />
+    <File Path="scripts/docker-build.ps1" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Werkr.Agent/Werkr.Agent.csproj" />
+    <Project Path="src/Werkr.Api/Werkr.Api.csproj" />
+    <Project Path="src/Werkr.AppHost/Werkr.AppHost.csproj" />
+    <Project Path="src/Werkr.Common.Configuration/Werkr.Common.Configuration.csproj" />
+    <Project Path="src/Werkr.Common/Werkr.Common.csproj" />
+    <Project Path="src/Werkr.Core/Werkr.Core.csproj" />
+    <Project Path="src/Werkr.Data.Identity/Werkr.Data.Identity.csproj" />
+    <Project Path="src/Werkr.Data/Werkr.Data.csproj" />
+    <Project Path="src/Werkr.Server/Werkr.Server.csproj" />
+    <Project Path="src/Werkr.ServiceDefaults/Werkr.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/Installer/" />
+  <Folder Name="/src/Installer/Msi/">
+    <Project Path="src/Installer/Msi/Agent/Agent.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0">
+      <Configuration Solution="*" Build="false" />
+      <Platform Solution="*|Any CPU" Project="x64" />
+    </Project>
+    <Project Path="src/Installer/Msi/CustomActions/Werkr.Installer.Msi.CustomActions.csproj" />
+    <Project Path="src/Installer/Msi/Server/Server.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0">
+      <Configuration Solution="*" Build="false" />
+      <Platform Solution="*|Any CPU" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/Test/">
+    <Project Path="src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj" />
+    <Project Path="src/Test/Werkr.Tests.Data/Werkr.Tests.Data.csproj" />
+    <Project Path="src/Test/Werkr.Tests.Server/Werkr.Tests.Server.csproj" />
+    <Project Path="src/Test/Werkr.Tests/Werkr.Tests.csproj" />
+  </Folder>
+</Solution>

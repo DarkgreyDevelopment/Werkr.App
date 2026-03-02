@@ -1,0 +1,236 @@
+@using Werkr.Server.Services
+@using System.Text.Json
+@rendermode InteractiveServer
+
+<div class="mb-3">
+    <label class="form-label" for="actionSubType">Action</label>
+    <select id="actionSubType" class="form-select" value="@ActionSubType"
+            @onchange="OnActionSelected">
+        <option value="">— select action —</option>
+        @foreach ( ActionFormDescriptor desc in ActionParameterRegistry.All ) {
+            <option value="@desc.Key">@desc.DisplayName</option>
+        }
+    </select>
+    @if ( _descriptor is not null ) {
+        <div class="form-text">@_descriptor.Description</div>
+    }
+</div>
+
+@if ( _descriptor is not null ) {
+    <div class="mb-3 d-flex justify-content-end">
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ToggleJsonMode">
+            <span class="bi @( _jsonMode ? "bi-ui-checks" : "bi-code-slash" ) me-1"></span>
+            @( _jsonMode ? "Form View" : "JSON View" )
+        </button>
+    </div>
+
+    @if ( _jsonMode ) {
+        <div class="mb-3">
+            <label class="form-label">JSON Parameters</label>
+            <textarea class="form-control font-monospace" rows="10"
+                      @bind="_rawJson" @bind:event="oninput"
+                      @onfocusout="OnJsonEdited"></textarea>
+            @if ( !string.IsNullOrWhiteSpace( _jsonError ) ) {
+                <div class="text-danger mt-1 small">@_jsonError</div>
+            }
+        </div>
+    } else {
+        @foreach ( FieldDescriptor field in _descriptor.Fields ) {
+            <div class="mb-3">
+                @switch ( field.Type ) {
+                    case FieldType.Text:
+                        <label class="form-label">@field.Label @RequiredStar( field )</label>
+                        <input type="text" class="form-control" placeholder="@field.Placeholder"
+                               value="@GetValue( field.Name )"
+                               @onchange="e => SetValue( field.Name, e.Value?.ToString() )" />
+                        break;
+
+                    case FieldType.TextArea:
+                        <label class="form-label">@field.Label @RequiredStar( field )</label>
+                        <textarea class="form-control font-monospace" rows="4" placeholder="@field.Placeholder"
+                                  @onchange="e => SetValue( field.Name, e.Value?.ToString() )">@GetValue( field.Name )</textarea>
+                        break;
+
+                    case FieldType.Number:
+                        <label class="form-label">@field.Label @RequiredStar( field )</label>
+                        <input type="number" class="form-control" placeholder="@field.Placeholder"
+                               value="@GetValue( field.Name )"
+                               @onchange="e => SetValue( field.Name, e.Value?.ToString() )" />
+                        break;
+
+                    case FieldType.Bool:
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="@($"ap_{field.Name}")"
+                                   checked="@( GetValue( field.Name ) == "true" )"
+                                   @onchange="e => SetBoolValue( field.Name, e.Value is true )" />
+                            <label class="form-check-label" for="@($"ap_{field.Name}")">@field.Label</label>
+                        </div>
+                        break;
+
+                    case FieldType.Select:
+                        <label class="form-label">@field.Label @RequiredStar( field )</label>
+                        <select class="form-select"
+                                value="@GetValue( field.Name )"
+                                @onchange="e => SetValue( field.Name, e.Value?.ToString() )">
+                            @if ( field.Options is not null ) {
+                                @foreach ( string opt in field.Options ) {
+                                    <option value="@opt">@opt</option>
+                                }
+                            }
+                        </select>
+                        break;
+                }
+                @if ( !string.IsNullOrWhiteSpace( field.HelpText ) ) {
+                    <div class="form-text">@field.HelpText</div>
+                }
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public string ActionSubType { get; set; } = "";
+    [Parameter] public EventCallback<string> ActionSubTypeChanged { get; set; }
+
+    /// <summary>Serialized JSON parameters string.</summary>
+    [Parameter] public string? ActionParameters { get; set; }
+    [Parameter] public EventCallback<string?> ActionParametersChanged { get; set; }
+
+    private ActionFormDescriptor? _descriptor;
+    private Dictionary<string, string> _values = new( StringComparer.OrdinalIgnoreCase );
+    private bool _jsonMode;
+    private string _rawJson = "";
+    private string? _jsonError;
+
+    protected override void OnParametersSet( ) {
+        ResolveDescriptor( );
+        if ( _descriptor is not null && !_jsonMode ) {
+            ParseParametersIntoValues( );
+        }
+    }
+
+    // ── Actions ──────────────────────────────────────────────────────
+    private async Task OnActionSelected( ChangeEventArgs e ) {
+        string key = e.Value?.ToString() ?? "";
+        ActionSubType = key;
+        await ActionSubTypeChanged.InvokeAsync( key );
+
+        ResolveDescriptor( );
+        _values.Clear( );
+
+        // Populate defaults
+        if ( _descriptor is not null ) {
+            foreach ( FieldDescriptor f in _descriptor.Fields ) {
+                if ( f.DefaultValue is not null ) {
+                    _values[f.Name] = f.DefaultValue;
+                }
+            }
+        }
+        await EmitJson( );
+    }
+
+    private void ToggleJsonMode( ) {
+        _jsonMode = !_jsonMode;
+        if ( _jsonMode ) {
+            _rawJson = BuildJson( );
+            _jsonError = null;
+        } else {
+            // Parse _rawJson back into _values
+            TryParseJsonIntoValues( _rawJson );
+        }
+    }
+
+    private async Task OnJsonEdited( ) {
+        _rawJson = _rawJson.Trim( );
+        if ( TryParseJsonIntoValues( _rawJson ) ) {
+            _jsonError = null;
+            await EmitJson( );
+        } else {
+            _jsonError = "Invalid JSON.";
+        }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────
+    private void ResolveDescriptor( ) {
+        _descriptor = !string.IsNullOrWhiteSpace( ActionSubType )
+            && ActionParameterRegistry.Actions.TryGetValue( ActionSubType, out ActionFormDescriptor? desc )
+                ? desc
+                : null;
+    }
+
+    private string GetValue( string name )
+        => _values.TryGetValue( name, out string? v ) ? v : "";
+
+    private async void SetBoolValue( string name, bool value ) {
+        _values[name] = value ? "true" : "false";
+        await EmitJson( );
+    }
+
+    private async void SetValue( string name, string? value ) {
+        if ( string.IsNullOrEmpty( value ) ) {
+            _values.Remove( name );
+        } else {
+            _values[name] = value;
+        }
+        await EmitJson( );
+    }
+
+    private async Task EmitJson( ) {
+        string json = BuildJson( );
+        ActionParameters = json;
+        await ActionParametersChanged.InvokeAsync( json );
+    }
+
+    private string BuildJson( ) {
+        if ( _descriptor is null || _values.Count == 0 ) return "{}";
+
+        var obj = new Dictionary<string, object?>( );
+        foreach ( FieldDescriptor field in _descriptor.Fields ) {
+            if ( !_values.TryGetValue( field.Name, out string? raw ) || string.IsNullOrEmpty( raw ) ) {
+                continue;
+            }
+
+            object? typed = field.Type switch {
+                FieldType.Bool => raw.Equals( "true", StringComparison.OrdinalIgnoreCase ),
+                FieldType.Number => long.TryParse( raw, out long n ) ? n : raw,
+                _ => raw
+            };
+
+            obj[field.Name] = typed;
+        }
+
+        return JsonSerializer.Serialize( obj, s_jsonOptions );
+    }
+
+    private void ParseParametersIntoValues( ) {
+        _values.Clear( );
+        TryParseJsonIntoValues( ActionParameters ?? "" );
+    }
+
+    private bool TryParseJsonIntoValues( string json ) {
+        if ( string.IsNullOrWhiteSpace( json ) ) return true;
+        try {
+            using JsonDocument doc = JsonDocument.Parse( json );
+            foreach ( JsonProperty prop in doc.RootElement.EnumerateObject( ) ) {
+                _values[prop.Name] = prop.Value.ValueKind switch {
+                    JsonValueKind.True => "true",
+                    JsonValueKind.False => "false",
+                    JsonValueKind.Number => prop.Value.GetRawText( ),
+                    JsonValueKind.String => prop.Value.GetString( ) ?? "",
+                    _ => prop.Value.GetRawText( )
+                };
+            }
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private static RenderFragment RequiredStar( FieldDescriptor f ) =>
+        f.Required ? @<span class="text-danger">*</span> : @<span></span>;
+
+    private static readonly JsonSerializerOptions s_jsonOptions = new( ) {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+}

@@ -1,0 +1,148 @@
+﻿@page "/workflows"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Workflows</PageTitle>
+
+<h1>Workflows</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Manage multi-step orchestrated workflows with DAG-based execution.</p>
+
+<div class="mb-3">
+    <a href="/workflows/create" class="btn btn-primary">
+        <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Workflow
+    </a>
+    <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _workflows is null ) {
+    <LoadingSpinner Message="Loading workflows…" />
+} else if ( _workflows is not null && _workflows.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Steps</th>
+                    <th>Enabled</th>
+                    <th>Schedule</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( WorkflowDto w in _workflows ) {
+                    <tr>
+                        <td>@w.Id</td>
+                        <td><a href="/workflows/@w.Id">@w.Name</a></td>
+                        <td>@w.Steps.Count</td>
+                        <td>
+                            <span class="badge @( w.Enabled ? "bg-success" : "bg-secondary" )">
+                                @( w.Enabled ? "Yes" : "No" )
+                            </span>
+                        </td>
+                        <td>@( w.ScheduleId?.ToString()[..8] ?? "—" )</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id">Edit</a>
+                            <button class="btn btn-outline-info btn-sm me-1" @onclick="() => RunWorkflow( w.Id )" disabled="@_isRunning">
+                                Run
+                            </button>
+                            <a class="btn btn-outline-secondary btn-sm me-1" href="/workflows/@w.Id/runs">Runs</a>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( w )">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( !_isLoading ) {
+    <EmptyState Message="No workflows configured yet. Click 'New Workflow' to create one." />
+}
+
+<ConfirmDialog @ref="_confirmDialog"
+               Title="Delete Workflow"
+               Message="@_deleteMessage"
+               ConfirmButtonText="Delete"
+               OnConfirmed="DeleteConfirmedAsync" />
+
+@code {
+    private List<WorkflowDto>? _workflows;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _isRunning;
+    private ConfirmDialog _confirmDialog = default!;
+    private long _pendingDeleteId;
+    private string _deleteMessage = "";
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Workflows" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load workflows: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void PromptDelete( WorkflowDto wf ) {
+        _pendingDeleteId = wf.Id;
+        _deleteMessage = $"Are you sure you want to delete workflow '{wf.Name}'? All steps and runs will be lost.";
+        _confirmDialog.Show( );
+    }
+
+    private async Task DeleteConfirmedAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/workflows/{_pendingDeleteId}" );
+            if ( response.IsSuccessStatusCode ) {
+                await LoadAsync( );
+            } else {
+                _errorMessage = $"Failed to delete workflow: HTTP {(int) response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to delete workflow: {ex.Message}";
+        }
+    }
+
+    private async Task RunWorkflow( long workflowId ) {
+        _isRunning = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PostAsync(
+                $"/api/workflows/{workflowId}/run", null );
+            if ( !response.IsSuccessStatusCode ) {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Run failed: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Run failed: {ex.Message}";
+        } finally {
+            _isRunning = false;
+        }
+    }
+}

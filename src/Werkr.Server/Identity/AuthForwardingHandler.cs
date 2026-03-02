@@ -1,0 +1,36 @@
+using System.Net.Http.Headers;
+
+namespace Werkr.Server.Identity;
+
+/// <summary>
+/// Delegating handler that attaches a self-minted JWT bearer token to
+/// outgoing API requests from the Blazor Server. The Server is the sole
+/// JWT issuer and trusts itself — no HTTP round-trip is needed (Decision A1).
+/// </summary>
+public sealed class AuthForwardingHandler : DelegatingHandler {
+    private readonly JwtTokenService _tokenService;
+    private readonly ILogger<AuthForwardingHandler> _logger;
+
+    /// <summary>
+    /// Initializes the auth forwarding handler.
+    /// </summary>
+    public AuthForwardingHandler(
+        JwtTokenService tokenService,
+        ILogger<AuthForwardingHandler> logger ) {
+        _tokenService = tokenService;
+        _logger = logger;
+    }
+
+    /// <inheritdoc/>
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken ) {
+        string token = _tokenService.GenerateServiceToken( );
+        request.Headers.Authorization = new AuthenticationHeaderValue( "Bearer", token );
+
+        if (_logger.IsEnabled( LogLevel.Debug )) {
+            _logger.LogDebug( "Attached self-minted service JWT to outgoing API request." );
+        }
+
+        return base.SendAsync( request, cancellationToken );
+    }
+}

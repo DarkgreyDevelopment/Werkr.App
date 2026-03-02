@@ -1,0 +1,293 @@
+﻿@page "/admin/users/{UserId}"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Werkr.Data.Identity.Entities
+@inject UserManager<WerkrUser> UserManager
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Edit User</PageTitle>
+
+<div class="container mt-4">
+    <h1>Edit User</h1>
+    <Breadcrumb Items="_breadcrumbs" />
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace( _statusMessage )) {
+        <div class="alert alert-success">@_statusMessage</div>
+    }
+
+    @if (_model is not null) {
+        <EditForm Model="_model" OnValidSubmit="SaveProfileAsync" FormName="edit-user-profile">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label">Display Name</label>
+                <InputText class="form-control" @bind-Value="_model.Name" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <InputText class="form-control" @bind-Value="_model.Email" />
+            </div>
+
+            <button class="btn btn-primary" type="submit">Save Profile</button>
+        </EditForm>
+
+        <hr />
+
+        <h5>Roles</h5>
+        <div class="form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="_model.IsAdmin" />
+            <label class="form-check-label">Admin</label>
+        </div>
+        <div class="form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="_model.IsOperator" />
+            <label class="form-check-label">Operator</label>
+        </div>
+        <div class="form-check mb-3">
+            <InputCheckbox class="form-check-input" @bind-Value="_model.IsViewer" />
+            <label class="form-check-label">Viewer</label>
+        </div>
+        <button class="btn btn-outline-primary" @onclick="SaveRolesAsync">Save Roles</button>
+
+        <hr />
+
+        <h5>Account Status</h5>
+        <button class="btn btn-outline-warning me-2" @onclick="ToggleEnabledAsync">@(_model.Enabled ? "Disable" : "Enable")</button>
+        <button class="btn btn-outline-danger me-2" @onclick="ForcePasswordResetAsync">Force Password Reset</button>
+        <button class="btn btn-outline-secondary" @onclick="ForceMfaReenrollmentAsync">Force MFA Re-enrollment</button>
+
+        <hr />
+
+        <h5>Danger Zone</h5>
+        <button class="btn btn-danger" @onclick="DeleteUserAsync">Delete Account</button>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string UserId { get; set; } = string.Empty;
+
+    [SupplyParameterFromForm]
+    private EditUserModel? _model { get; set; }
+
+    private WerkrUser? _user;
+    private string? _errorMessage;
+    private string? _statusMessage;
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Users", "/admin/users" ),
+        new( "Edit" )
+    ];
+
+    protected override async Task OnParametersSetAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _errorMessage = null;
+        _statusMessage = null;
+
+        _user = await UserManager.FindByIdAsync( UserId );
+        if (_user is null) {
+            _errorMessage = "User was not found.";
+            return;
+        }
+
+        IList<string> roles = await UserManager.GetRolesAsync( _user );
+
+        _model ??= new EditUserModel {
+            Name = _user.Name,
+            Email = _user.Email ?? string.Empty,
+            Enabled = _user.Enabled,
+            IsAdmin = roles.Contains( "Admin", StringComparer.OrdinalIgnoreCase ),
+            IsOperator = roles.Contains( "Operator", StringComparer.OrdinalIgnoreCase ),
+            IsViewer = roles.Contains( "Viewer", StringComparer.OrdinalIgnoreCase )
+        };
+
+        _breadcrumbs = [
+            new( "Task List", "/" ),
+            new( "Users", "/admin/users" ),
+            new( _user.Name )
+        ];
+    }
+
+    private async Task SaveProfileAsync( ) {
+        if (_user is null || _model is null) {
+            return;
+        }
+
+        _user.Name = _model.Name.Trim( );
+        _user.Email = _model.Email.Trim( );
+        _user.UserName = _model.Email.Trim( );
+
+        IdentityResult result = await UserManager.UpdateAsync( _user );
+        if (!result.Succeeded) {
+            _errorMessage = string.Join( " ", result.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        _statusMessage = "Profile updated.";
+        await LoadAsync( );
+    }
+
+    private async Task SaveRolesAsync( ) {
+        if (_user is null || _model is null) {
+            return;
+        }
+
+        List<string> targetRoles = [];
+        if (_model.IsAdmin) {
+            targetRoles.Add( "Admin" );
+        }
+        if (_model.IsOperator) {
+            targetRoles.Add( "Operator" );
+        }
+        if (_model.IsViewer) {
+            targetRoles.Add( "Viewer" );
+        }
+
+        if (targetRoles.Count == 0) {
+            _errorMessage = "At least one role is required.";
+            return;
+        }
+
+        IList<string> currentRoles = await UserManager.GetRolesAsync( _user );
+        bool removingAdmin = currentRoles.Contains( "Admin", StringComparer.OrdinalIgnoreCase )
+            && !targetRoles.Contains( "Admin", StringComparer.OrdinalIgnoreCase );
+
+        if (removingAdmin && await IsLastAdminAsync( _user )) {
+            _errorMessage = "Cannot remove the last Admin user.";
+            return;
+        }
+
+        IdentityResult removeResult = await UserManager.RemoveFromRolesAsync( _user, currentRoles );
+        if (!removeResult.Succeeded) {
+            _errorMessage = string.Join( " ", removeResult.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        IdentityResult addResult = await UserManager.AddToRolesAsync( _user, targetRoles );
+        if (!addResult.Succeeded) {
+            _errorMessage = string.Join( " ", addResult.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        if (_model.IsAdmin && !_user.Requires2FA) {
+            _user.Requires2FA = true;
+            _ = await UserManager.UpdateAsync( _user );
+        }
+
+        _statusMessage = "Roles updated.";
+        await LoadAsync( );
+    }
+
+    private async Task ToggleEnabledAsync( ) {
+        if (_user is null || _model is null) {
+            return;
+        }
+
+        if (_user.Enabled && await UserManager.IsInRoleAsync( _user, "Admin" ) && await IsLastAdminAsync( _user )) {
+            _errorMessage = "Cannot disable the last Admin user.";
+            return;
+        }
+
+        _user.Enabled = !_user.Enabled;
+        IdentityResult result = await UserManager.UpdateAsync( _user );
+        if (!result.Succeeded) {
+            _errorMessage = string.Join( " ", result.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        _statusMessage = _user.Enabled ? "Account enabled." : "Account disabled.";
+        await LoadAsync( );
+    }
+
+    private async Task ForcePasswordResetAsync( ) {
+        if (_user is null) {
+            return;
+        }
+
+        _user.ChangePassword = true;
+        IdentityResult result = await UserManager.UpdateAsync( _user );
+        if (!result.Succeeded) {
+            _errorMessage = string.Join( " ", result.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        _statusMessage = "Password reset requirement applied.";
+        await LoadAsync( );
+    }
+
+    private async Task ForceMfaReenrollmentAsync( ) {
+        if (_user is null) {
+            return;
+        }
+
+        IdentityResult disableResult = await UserManager.SetTwoFactorEnabledAsync( _user, false );
+        if (!disableResult.Succeeded) {
+            _errorMessage = string.Join( " ", disableResult.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        await UserManager.ResetAuthenticatorKeyAsync( _user );
+        _statusMessage = "MFA re-enrollment has been enforced.";
+        await LoadAsync( );
+    }
+
+    private async Task DeleteUserAsync( ) {
+        if (_user is null) {
+            return;
+        }
+
+        AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
+        string? currentUserId = UserManager.GetUserId( authState.User );
+        if (string.Equals( currentUserId, _user.Id, StringComparison.OrdinalIgnoreCase )) {
+            _errorMessage = "You cannot delete your own account.";
+            return;
+        }
+
+        if (await UserManager.IsInRoleAsync( _user, "Admin" ) && await IsLastAdminAsync( _user )) {
+            _errorMessage = "Cannot delete the last Admin user.";
+            return;
+        }
+
+        IdentityResult result = await UserManager.DeleteAsync( _user );
+        if (!result.Succeeded) {
+            _errorMessage = string.Join( " ", result.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        Navigation.NavigateTo( "/admin/users", forceLoad: true );
+    }
+
+    private async Task<bool> IsLastAdminAsync( WerkrUser user ) {
+        IList<WerkrUser> admins = await UserManager.GetUsersInRoleAsync( "Admin" );
+        return admins.Count == 1 && admins[0].Id == user.Id;
+    }
+
+    private sealed class EditUserModel {
+        [Required]
+        [StringLength( 100 )]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        public bool Enabled { get; set; }
+
+        public bool IsAdmin { get; set; }
+
+        public bool IsOperator { get; set; }
+
+        public bool IsViewer { get; set; }
+    }
+}

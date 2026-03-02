@@ -1,0 +1,77 @@
+@page "/account/mfa-verify"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using Werkr.Data.Identity.Entities
+@using Werkr.Server.Helpers
+@inject SignInManager<WerkrUser> SignInManager
+@inject NavigationManager Navigation
+
+<PageTitle>MFA Verification</PageTitle>
+
+<div class="container mt-4">
+    <h1>Multi-Factor Verification</h1>
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    <EditForm Model="_model" OnValidSubmit="HandleVerify" FormName="mfa-verify">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label" for="mfa-code">Authenticator code</label>
+            <InputText id="mfa-code" class="form-control" @bind-Value="_model!.AuthenticatorCode" autofocus />
+            <ValidationMessage For="() => _model!.AuthenticatorCode" />
+        </div>
+
+        <button class="btn btn-primary me-2" type="submit">Verify</button>
+        <a href="/account/mfa-recovery@(ReturnUrl is not null ? $"?returnUrl={Uri.EscapeDataString( ReturnUrl )}" : "")"
+           class="btn btn-link">Use a recovery code</a>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromQuery( Name = "returnUrl" )]
+    public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm]
+    private MfaVerifyModel? _model { get; set; }
+
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync( ) {
+        _model ??= new( );
+        WerkrUser? user = await SignInManager.GetTwoFactorAuthenticationUserAsync( );
+        if (user is null) {
+            Navigation.NavigateTo( "/account/login", forceLoad: true );
+        }
+    }
+
+    private async Task HandleVerify( ) {
+        _errorMessage = null;
+
+        string code = (_model!.AuthenticatorCode ?? string.Empty)
+            .Trim( ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
+
+        SignInResult result = await SignInManager.TwoFactorAuthenticatorSignInAsync(
+            code, isPersistent: false, rememberClient: false );
+
+        if (result.Succeeded) {
+            string safeUrl = UrlValidator.IsLocalUrl( ReturnUrl ) ? ReturnUrl! : "/";
+            Navigation.NavigateTo( safeUrl, forceLoad: true );
+            return;
+        }
+
+        _errorMessage = result.IsLockedOut
+            ? "Your account is locked due to too many failed attempts."
+            : "Invalid authenticator code.";
+    }
+
+    private sealed class MfaVerifyModel {
+        [Required]
+        [StringLength( 7, MinimumLength = 6 )]
+        public string AuthenticatorCode { get; set; } = string.Empty;
+    }
+}

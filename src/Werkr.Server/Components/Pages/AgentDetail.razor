@@ -1,0 +1,264 @@
+﻿@page "/agents/{AgentId:guid}"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using Werkr.Common.Models
+@using Werkr.Server.Helpers
+@using Microsoft.AspNetCore.Components.Web
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Agent Detail</PageTitle>
+
+<div class="container mt-4">
+    <h1>Agent Detail</h1>
+    <Breadcrumb Items="_breadcrumbs" />
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    @if (_agent is not null) {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">@_agent.ConnectionName</h5>
+                <span class="badge @GetStatusBadgeClass( _agent.Status )">@_agent.Status</span>
+                <dl class="row mt-3 mb-0">
+                    <dt class="col-sm-3">Connection ID</dt>
+                    <dd class="col-sm-9"><code>@_agent.Id</code></dd>
+
+                    <dt class="col-sm-3">Remote URL</dt>
+                    <dd class="col-sm-9"><code>@_agent.RemoteUrl</code></dd>
+
+                    <dt class="col-sm-3">Registered At</dt>
+                    <dd class="col-sm-9">@_agent.RegisteredAt.ToLocalTime( ).ToString( "g" )</dd>
+
+                    <dt class="col-sm-3">Last Seen</dt>
+                    <dd class="col-sm-9">@(_agent.LastSeen?.ToLocalTime( ).ToString( "g" ) ?? "Never")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Tags</h5>
+                <TagInput Value="@_tags" ValueChanged="OnTagsChanged" />
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Security</h5>
+                <p class="mb-1"><strong>RSA fingerprint</strong></p>
+                <code>@DisplayFingerprint( _agent.RsaKeyFingerprint )</code>
+                @if (_agent.RsaKeyFingerprint.Length > 24) {
+                    <button class="btn btn-sm btn-link" @onclick="ToggleFingerprint">@(_showFullFingerprint ? "Show less" : "Show full")</button>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Operator Availability</h5>
+                <p class="mb-1">PowerShell: @FormatAvailability( _agent.PowerShellAvailable )</p>
+                <p class="mb-3">System Shell: @FormatAvailability( _agent.SystemShellAvailable )</p>
+                <a class="btn btn-outline-primary" href="/agents/@_agent.Id/console">Open Console</a>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Actions</h5>
+
+                @if (_isEditingName) {
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Connection Name</label>
+                        <InputText class="form-control" @bind-Value="_editedName" />
+                    </div>
+                    <button class="btn btn-primary me-2" @onclick="SaveNameAsync">Save</button>
+                    <button class="btn btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+                } else {
+                    <button class="btn btn-outline-primary me-2" @onclick="BeginEdit">Edit Name</button>
+                }
+
+                <hr class="my-3" />
+
+                @if (_isEditingUrl) {
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Remote URL</label>
+                        <InputText class="form-control" @bind-Value="_editedUrl" placeholder="https://agent-host:port" />
+                        <div class="form-text">Changing the URL will drop the cached gRPC channel and reconnect.</div>
+                    </div>
+                    <button class="btn btn-primary me-2" @onclick="SaveUrlAsync">Save URL</button>
+                    <button class="btn btn-outline-secondary" @onclick="CancelUrlEdit">Cancel</button>
+                } else {
+                    <button class="btn btn-outline-primary me-2" @onclick="BeginUrlEdit">Edit URL</button>
+                }
+
+                @if (_agent.Status != "Revoked") {
+                    <button class="btn btn-outline-danger ms-2" @onclick="RevokeAsync">Revoke</button>
+                }
+
+                <a class="btn btn-link" href="/agents">Back</a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid AgentId { get; set; }
+
+    private AgentDetailDto? _agent;
+    private string? _errorMessage;
+    private bool _isEditingName;
+    private string _editedName = string.Empty;
+    private bool _isEditingUrl;
+    private string _editedUrl = string.Empty;
+    private bool _showFullFingerprint;
+    private string[] _tags = [];
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Agents", "/agents" ),
+        new( "Detail" )
+    ];
+
+    protected override async Task OnParametersSetAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _errorMessage = null;
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _agent = await client.GetFromJsonAsync<AgentDetailDto>( $"/api/agents/{AgentId}" );
+            _editedName = _agent?.ConnectionName ?? string.Empty;
+            _editedUrl = _agent?.RemoteUrl ?? string.Empty;
+            if (_agent is not null) {
+                _breadcrumbs = [
+                    new( "Task List", "/" ),
+                    new( "Agents", "/agents" ),
+                    new( _agent.ConnectionName )
+                ];
+                _tags = await client.GetFromJsonAsync<string[]>( $"/api/agents/{AgentId}/tags" ) ?? [];
+            }
+        } catch (Exception ex) {
+            _errorMessage = $"Failed to load agent details: {ex.Message}";
+        }
+    }
+
+    private void BeginEdit( ) {
+        _isEditingName = true;
+    }
+
+    private void CancelEdit( ) {
+        _isEditingName = false;
+        _editedName = _agent?.ConnectionName ?? string.Empty;
+    }
+
+    private void BeginUrlEdit( ) {
+        _isEditingUrl = true;
+    }
+
+    private void CancelUrlEdit( ) {
+        _isEditingUrl = false;
+        _editedUrl = _agent?.RemoteUrl ?? string.Empty;
+    }
+
+    private async Task SaveNameAsync( ) {
+        if (_agent is null) {
+            return;
+        }
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            UpdateAgentRequest request = new( _editedName, null );
+            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/agents/{_agent.Id}", request );
+            if (!response.IsSuccessStatusCode) {
+                _errorMessage = $"Failed to update name: {(int) response.StatusCode}";
+                return;
+            }
+
+            _isEditingName = false;
+            await LoadAsync( );
+        } catch (Exception ex) {
+            _errorMessage = $"Failed to update name: {ex.Message}";
+        }
+    }
+
+    private async Task SaveUrlAsync( ) {
+        if (_agent is null) {
+            return;
+        }
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            UpdateAgentRequest request = new( null, _editedUrl );
+            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/agents/{_agent.Id}", request );
+            if (!response.IsSuccessStatusCode) {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to update URL: {(int) response.StatusCode} — {body}";
+                return;
+            }
+
+            _isEditingUrl = false;
+            await LoadAsync( );
+        } catch (Exception ex) {
+            _errorMessage = $"Failed to update URL: {ex.Message}";
+        }
+    }
+
+    private async Task RevokeAsync( ) {
+        if (_agent is null) {
+            return;
+        }
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PostAsync( $"/api/agents/{_agent.Id}/revoke", null );
+            if (!response.IsSuccessStatusCode) {
+                _errorMessage = $"Failed to revoke agent: {(int) response.StatusCode}";
+                return;
+            }
+
+            await LoadAsync( );
+        } catch (Exception ex) {
+            _errorMessage = $"Failed to revoke agent: {ex.Message}";
+        }
+    }
+
+    private void ToggleFingerprint( ) {
+        _showFullFingerprint = !_showFullFingerprint;
+    }
+
+    private async Task OnTagsChanged( string[] tags ) {
+        await SaveTagsAsync( tags );
+    }
+
+    private async Task SaveTagsAsync( string[] tags ) {
+        if (_agent is null) return;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PutAsJsonAsync(
+                $"/api/agents/{_agent.Id}/tags", new { Tags = tags } );
+            if (response.IsSuccessStatusCode) {
+                _tags = await response.Content.ReadFromJsonAsync<string[]>( ) ?? [];
+            } else {
+                _errorMessage = $"Failed to update tags: {(int) response.StatusCode}";
+            }
+        } catch (Exception ex) {
+            _errorMessage = $"Failed to update tags: {ex.Message}";
+        }
+    }
+
+    private string DisplayFingerprint( string fingerprint ) {
+        if (_showFullFingerprint || fingerprint.Length <= 24) {
+            return fingerprint;
+        }
+
+        return $"{fingerprint[..24]}...";
+    }
+
+    private static string FormatAvailability( bool? value ) => AgentDisplayHelper.FormatAvailability( value );
+    private static string GetStatusBadgeClass( string status ) => AgentDisplayHelper.GetStatusBadgeClass( status );
+}

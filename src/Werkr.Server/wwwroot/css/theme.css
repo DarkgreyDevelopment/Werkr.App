@@ -1,0 +1,296 @@
+/* ══════════════════════════════════════════════════════════════
+   Werkr Theme — VS Code-inspired grey palette with dark/light modes
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ── Grey scale ── */
+    --grey-950: #1e1e1e;
+    --grey-900: #2d2d30;
+    --grey-800: #333337;
+    --grey-700: #5e5e5e;
+    --grey-600: #777;
+    --grey-500: #b6b6b6;
+    --grey-400: #dadada;
+    --grey-300: #e7e7e7;
+    --grey-200: #f0f0f0;
+    --grey-100: #fafafa;
+    --grey-50:  #e1e1e1;
+
+    /* ── Semantic base colors ── */
+    --body-bg-light:    #d2d2cf;
+    --body-subnav-light:#ccccc8;
+
+    /* ── Accent palette ── */
+    --blue-700: #06357a;
+    --blue-500: #0a53be;
+    --blue-300: #86b7fe;
+    --blue-200: #bacbe6;
+    --blue-100: #ccd5dc;
+    --cyan:     #0dcaf0;
+    --green:    #198754;
+    --yellow:   #ffd042;
+    --red:      #dc3545;
+}
+
+/* ── Dark Theme (DEFAULT) ─────────────────────────────────── */
+body.dark-theme {
+    --body-bg-dark:         var(--grey-950);
+    --body-bg:              var(--grey-900);
+    --body-bg-subnav:       var(--grey-800);
+    --body-content-color:   var(--blue-100);
+    --sidebar-bg:           var(--grey-950);
+    --sidebar-text:         var(--grey-400);
+    --sidebar-active-bg:    rgba(255,255,255,0.12);
+    --sidebar-hover-bg:     rgba(255,255,255,0.07);
+    --topbar-bg:            var(--grey-800);
+    --topbar-border:        var(--grey-700);
+    --card-bg:              var(--grey-800);
+    --card-border:          var(--grey-700);
+    --table-stripe-bg:      rgba(255,255,255,0.03);
+    --input-bg:             var(--grey-800);
+    --input-border:         var(--grey-600);
+    --input-text:           var(--grey-300);
+    --link-color:           var(--blue-300);
+    --btn-primary-bg:       var(--blue-500);
+    --btn-primary-border:   #1861ac;
+    --focus-ring-color:     #258cfb;
+    --text-muted-color:     var(--grey-600);
+    --badge-bg:             var(--grey-700);
+
+    background-color: var(--body-bg);
+    color: var(--body-content-color);
+}
+
+/* ── Light Theme ──────────────────────────────────────────── */
+body.light-theme {
+    --body-bg-dark:         var(--grey-50);
+    --body-bg:              var(--body-bg-light);
+    --body-bg-subnav:       var(--body-subnav-light);
+    --body-content-color:   var(--grey-950);
+    --sidebar-bg:           var(--grey-50);
+    --sidebar-text:         var(--grey-700);
+    --sidebar-active-bg:    rgba(0,0,0,0.10);
+    --sidebar-hover-bg:     rgba(0,0,0,0.05);
+    --topbar-bg:            var(--grey-200);
+    --topbar-border:        var(--grey-400);
+    --card-bg:              var(--grey-100);
+    --card-border:          var(--grey-300);
+    --table-stripe-bg:      rgba(0,0,0,0.03);
+    --input-bg:             var(--grey-100);
+    --input-border:         var(--grey-400);
+    --input-text:           var(--grey-900);
+    --link-color:           var(--blue-700);
+    --btn-primary-bg:       var(--blue-500);
+    --btn-primary-border:   #1861ac;
+    --focus-ring-color:     #258cfb;
+    --text-muted-color:     var(--grey-600);
+    --badge-bg:             var(--grey-400);
+
+    background-color: var(--body-bg);
+    color: var(--body-content-color);
+}
+
+/* ── Bootstrap overrides via CSS variables ────────────────── */
+body.dark-theme,
+body.light-theme {
+    --bs-body-bg: var(--body-bg);
+    --bs-body-color: var(--body-content-color);
+    --bs-link-color: var(--link-color);
+    --bs-link-hover-color: var(--link-color);
+    --bs-border-color: var(--card-border);
+}
+
+body.dark-theme .card,
+body.light-theme .card {
+    --bs-card-bg: var(--card-bg);
+    --bs-card-border-color: var(--card-border);
+    --bs-card-color: var(--body-content-color);
+    --bs-card-cap-bg: var(--card-bg);
+}
+
+body.dark-theme .table,
+body.light-theme .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--body-content-color);
+    --bs-table-striped-bg: var(--table-stripe-bg);
+    --bs-table-border-color: var(--card-border);
+    --bs-table-hover-bg: var(--sidebar-hover-bg);
+}
+
+body.dark-theme .form-control,
+body.dark-theme .form-select,
+body.light-theme .form-control,
+body.light-theme .form-select {
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--input-text);
+}
+
+body.dark-theme .form-control:focus,
+body.dark-theme .form-select:focus,
+body.light-theme .form-control:focus,
+body.light-theme .form-select:focus {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--focus-ring-color);
+}
+
+body.dark-theme .form-control::placeholder,
+body.light-theme .form-control::placeholder {
+    color: var(--text-muted-color);
+}
+
+body.dark-theme .dropdown-menu,
+body.light-theme .dropdown-menu {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--body-content-color);
+}
+
+body.dark-theme .dropdown-item,
+body.light-theme .dropdown-item {
+    color: var(--body-content-color);
+}
+
+body.dark-theme .dropdown-item:hover,
+body.dark-theme .dropdown-item:focus,
+body.light-theme .dropdown-item:hover,
+body.light-theme .dropdown-item:focus {
+    background-color: var(--sidebar-hover-bg);
+    color: var(--body-content-color);
+}
+
+body.dark-theme .modal-content,
+body.light-theme .modal-content {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--body-content-color);
+}
+
+body.dark-theme .alert-info {
+    --bs-alert-bg: #04414d;
+    --bs-alert-color: var(--blue-100);
+    --bs-alert-border-color: #065a6b;
+}
+
+body.dark-theme .alert-danger {
+    --bs-alert-bg: #6a1a21;
+    --bs-alert-color: #f5c2c7;
+    --bs-alert-border-color: #842029;
+}
+
+body.dark-theme .alert-warning {
+    --bs-alert-bg: #523e02;
+    --bs-alert-color: #e6dbb9;
+    --bs-alert-border-color: #6d5303;
+}
+
+body.dark-theme .alert-success {
+    --bs-alert-bg: #0c4128;
+    --bs-alert-color: #badbcc;
+    --bs-alert-border-color: #13653f;
+}
+
+body.dark-theme .text-muted {
+    color: var(--text-muted-color) !important;
+}
+
+body.dark-theme code {
+    color: var(--cyan);
+}
+
+body.dark-theme .form-check-input {
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+}
+
+body.dark-theme .form-check-input:checked {
+    background-color: var(--btn-primary-bg);
+    border-color: var(--btn-primary-bg);
+}
+
+body.dark-theme .btn-outline-primary {
+    --bs-btn-color: var(--blue-300);
+    --bs-btn-border-color: var(--blue-300);
+    --bs-btn-hover-bg: var(--blue-500);
+    --bs-btn-hover-border-color: var(--blue-500);
+    --bs-btn-hover-color: #fff;
+}
+
+body.dark-theme .btn-outline-secondary {
+    --bs-btn-color: var(--grey-400);
+    --bs-btn-border-color: var(--grey-600);
+    --bs-btn-hover-bg: var(--grey-700);
+    --bs-btn-hover-border-color: var(--grey-600);
+    --bs-btn-hover-color: #fff;
+}
+
+body.dark-theme .btn-outline-danger {
+    --bs-btn-color: #f5c2c7;
+    --bs-btn-border-color: var(--red);
+    --bs-btn-hover-bg: var(--red);
+    --bs-btn-hover-border-color: var(--red);
+    --bs-btn-hover-color: #fff;
+}
+
+body.dark-theme .table-dark {
+    --bs-table-bg: var(--grey-800);
+    --bs-table-color: var(--grey-300);
+    --bs-table-border-color: var(--grey-700);
+}
+
+body.dark-theme .badge.bg-secondary {
+    background-color: var(--grey-700) !important;
+}
+
+/* ── Theme toggle switch ──────────────────────────────────── */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    user-select: none;
+}
+
+.theme-toggle .icon {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.theme-toggle .switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 18px;
+}
+
+.theme-toggle .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.theme-toggle .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--green);
+    transition: .3s;
+    border-radius: 18px;
+}
+
+.theme-toggle .slider::before {
+    content: "";
+    position: absolute;
+    height: 12px;
+    width: 12px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.theme-toggle .switch input:checked + .slider::before {
+    transform: translateX(18px);
+}

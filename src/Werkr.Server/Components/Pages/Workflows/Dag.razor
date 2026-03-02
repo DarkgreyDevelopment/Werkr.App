@@ -1,0 +1,107 @@
+﻿@page "/workflows/{Id:long}/dag"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Werkr - Workflow DAG</PageTitle>
+
+<h1>Workflow DAG</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading workflow..." />
+} else if ( _workflow is not null ) {
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">@_workflow.Name</h4>
+        <a href="/workflows/@Id" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back to Workflow
+        </a>
+    </div>
+
+    @if ( _workflow.Steps.Count == 0 ) {
+        <EmptyState Message="This workflow has no steps to visualize." />
+    } else {
+        <div class="card">
+            <div class="card-body p-2 overflow-auto">
+                <DagView WorkflowId="Id" Steps="_workflow.Steps" OnStepSelected="HandleStepSelected" />
+            </div>
+        </div>
+
+        @if ( _selectedStep is not null ) {
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Step Details</h5>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => _selectedStep = null">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">Step</dt>
+                        <dd class="col-sm-9">Step #@_selectedStep.Id (Order: @_selectedStep.Order)</dd>
+
+                        <dt class="col-sm-3">Control</dt>
+                        <dd class="col-sm-9"><code>@_selectedStep.ControlStatement</code></dd>
+
+                        <dt class="col-sm-3">Task</dt>
+                        <dd class="col-sm-9">
+                            <a href="/tasks/@_selectedStep.TaskId">Task #@_selectedStep.TaskId</a>
+                        </dd>
+
+                        @if ( _selectedStep.Dependencies is { Count: > 0 } ) {
+                            <dt class="col-sm-3">Depends On</dt>
+                            <dd class="col-sm-9">
+                                @foreach ( StepDependencyDto dep in _selectedStep.Dependencies ) {
+                                    <span class="badge bg-secondary me-1">Step @dep.DependsOnStepId</span>
+                                }
+                            </dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter]
+    public long Id { get; set; }
+
+    private WorkflowDto? _workflow;
+    private WorkflowStepDto? _selectedStep;
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
+
+    protected override async Task OnInitializedAsync( ) {
+        _breadcrumbs = [
+            new( "Task List", "/" ),
+            new( "Workflows", "/workflows" ),
+            new( $"Workflow #{Id}", $"/workflows/{Id}" ),
+            new( "DAG" )
+        ];
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/workflows/{Id}" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load workflow: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void HandleStepSelected( WorkflowStepDto step ) {
+        _selectedStep = step;
+    }
+}

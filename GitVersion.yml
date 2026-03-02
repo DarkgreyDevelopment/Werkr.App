@@ -1,0 +1,41 @@
+workflow: GitHubFlow/v1
+mode: ContinuousDeployment
+tag-prefix: 'v'
+major-version-bump-message: "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\(.*\\))?!:|BREAKING CHANGE"
+minor-version-bump-message: "^feat(\\(.*\\))?:"
+patch-version-bump-message: "^fix(\\(.*\\))?:"
+commit-date-format: "yyyy-MM-dd"
+assembly-versioning-scheme: MajorMinorPatch
+assembly-file-versioning-scheme: MajorMinorPatch
+branches:
+  main:
+    regex: ^main$
+    label: ''
+    increment: Patch
+    prevent-increment:
+      when-current-commit-tagged: true
+    track-merge-target: false
+    is-release-branch: true
+  develop:
+    regex: ^develop$
+    label: alpha
+    increment: Minor
+  feature:
+    regex: ^features?[/-]
+    label: '{BranchName}'
+    increment: Inherit
+  pull-request:
+    regex: ^(pull|pull\-requests|pr)[/-]
+    label: pr.{BranchName}
+    increment: Inherit
+  release:
+    regex: ^releases?[/-]
+    label: rc
+    increment: None
+    is-release-branch: true
+  hotfix:
+    regex: ^hotfix(es)?[/-]
+    label: hotfix
+    increment: Patch
+ignore:
+  sha: []

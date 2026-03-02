@@ -1,0 +1,190 @@
+﻿@page "/tasks"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Tasks</PageTitle>
+
+<h1>Tasks</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Manage automation tasks — the units of work executed on agents.</p>
+
+<div class="mb-3">
+    <a href="/tasks/create" class="btn btn-primary">
+        <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Task
+    </a>
+    <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <input type="text" class="form-control form-control-sm" style="max-width: 250px;"
+           placeholder="Filter by name…" @bind="_filterText" @bind:event="oninput" />
+    <select class="form-select form-select-sm" style="max-width: 180px;" @bind="_filterActionType">
+        <option value="">All Action Types</option>
+        <option value="PowerShellCommand">PowerShell Command</option>
+        <option value="PowerShellScript">PowerShell Script</option>
+        <option value="ShellCommand">Shell Command</option>
+        <option value="ShellScript">Shell Script</option>
+        <option value="Action">Action</option>
+    </select>
+    <select class="form-select form-select-sm" style="max-width: 140px;" @bind="_filterEnabled">
+        <option value="">All</option>
+        <option value="enabled">Enabled</option>
+        <option value="disabled">Disabled</option>
+    </select>
+    <input type="text" class="form-control form-control-sm" style="max-width: 200px;"
+           placeholder="Filter by tag…" @bind="_filterTag" @bind:event="oninput" />
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _tasks is null ) {
+    <LoadingSpinner Message="Loading tasks…" />
+} else if ( _tasks is not null && FilteredTasks.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Action</th>
+                    <th>Tags</th>
+                    <th>Enabled</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( TaskDto t in FilteredTasks ) {
+                    <tr>
+                        <td>@t.Id</td>
+                        <td><a href="/tasks/@t.Id">@t.Name</a></td>
+                        <td><code>@t.ActionType</code></td>
+                        <td>
+                            @foreach ( string tag in t.TargetTags ) {
+                                <span class="badge bg-secondary me-1">@tag</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge @( t.Enabled ? "bg-success" : "bg-secondary" )">
+                                @( t.Enabled ? "Yes" : "No" )
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm me-1" href="/tasks/@t.Id">Edit</a>
+                            <a class="btn btn-outline-secondary btn-sm me-1" href="/jobs?taskId=@t.Id">Logs</a>
+                            <button class="btn btn-outline-info btn-sm me-1" @onclick="() => RunTask( t.Id )" disabled="@_isRunning">
+                                Run
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( t )">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( !_isLoading ) {
+    <EmptyState Message="No tasks configured yet. Click 'New Task' to create one." />
+}
+
+<ConfirmDialog @ref="_confirmDialog"
+               Title="Delete Task"
+               Message="@_deleteMessage"
+               ConfirmButtonText="Delete"
+               OnConfirmed="DeleteConfirmedAsync" />
+
+@code {
+    private List<TaskDto>? _tasks;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _isRunning;
+    private string _filterText = "";
+    private string _filterActionType = "";
+    private string _filterEnabled = "";
+    private string _filterTag = "";
+    private ConfirmDialog _confirmDialog = default!;
+    private long _pendingDeleteId;
+    private string _deleteMessage = "";
+
+    private List<TaskDto> FilteredTasks => ( _tasks ?? [] )
+        .Where( t =>
+            ( string.IsNullOrWhiteSpace( _filterText )
+              || t.Name.Contains( _filterText, StringComparison.OrdinalIgnoreCase ) )
+            && ( string.IsNullOrWhiteSpace( _filterActionType )
+              || t.ActionType.Equals( _filterActionType, StringComparison.OrdinalIgnoreCase ) )
+            && ( _filterEnabled switch {
+                "enabled" => t.Enabled,
+                "disabled" => !t.Enabled,
+                _ => true
+            } )
+            && ( string.IsNullOrWhiteSpace( _filterTag )
+              || t.TargetTags.Any( tag => tag.Contains( _filterTag, StringComparison.OrdinalIgnoreCase ) ) ) )
+        .ToList( );
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Tasks" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load tasks: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void PromptDelete( TaskDto task ) {
+        _pendingDeleteId = task.Id;
+        _deleteMessage = $"Are you sure you want to delete task '{task.Name}'? All associated jobs will be lost.";
+        _confirmDialog.Show( );
+    }
+
+    private async Task DeleteConfirmedAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/tasks/{_pendingDeleteId}" );
+            if ( response.IsSuccessStatusCode ) {
+                await LoadAsync( );
+            } else {
+                _errorMessage = $"Failed to delete task: HTTP {(int) response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to delete task: {ex.Message}";
+        }
+    }
+
+    private async Task RunTask( long taskId ) {
+        _isRunning = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PostAsJsonAsync( $"/api/tasks/{taskId}/run", new TaskRunRequest( null ) );
+            if ( !response.IsSuccessStatusCode ) {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Run failed: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Run failed: {ex.Message}";
+        } finally {
+            _isRunning = false;
+        }
+    }
+}

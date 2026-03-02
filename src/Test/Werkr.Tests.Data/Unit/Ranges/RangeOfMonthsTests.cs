@@ -1,0 +1,97 @@
+using Werkr.Data.Calendar.Enums;
+using Werkr.Data.Ranges;
+
+namespace Werkr.Tests.Data.Unit.Ranges;
+
+[TestClass]
+public class RangeOfMonthsTests {
+
+    #region GetContiguousRanges
+
+    [TestMethod]
+    public void GetContiguousRanges_SingleMonth_ReturnsSingleRange( ) {
+        List<RangeOfMonths> ranges = [.. RangeOfMonths
+            .GetContiguousRanges( MonthsOfYear.March )];
+
+        Assert.HasCount( 1, ranges );
+        Assert.AreEqual( Month.March, ranges[0].Start );
+        Assert.AreEqual( Month.March, ranges[0].End );
+    }
+
+    [TestMethod]
+    public void GetContiguousRanges_FirstQuarter_ReturnsSingleRange( ) {
+        MonthsOfYear q1 = MonthsOfYear.January | MonthsOfYear.February | MonthsOfYear.March;
+        List<RangeOfMonths> ranges = [.. RangeOfMonths
+            .GetContiguousRanges( q1 )];
+
+        Assert.HasCount( 1, ranges );
+        Assert.AreEqual( Month.January, ranges[0].Start );
+        Assert.AreEqual( Month.March, ranges[0].End );
+    }
+
+    [TestMethod]
+    public void GetContiguousRanges_Quarterly_ReturnsFourRanges( ) {
+        MonthsOfYear quarterly = MonthsOfYear.January | MonthsOfYear.April
+                               | MonthsOfYear.July | MonthsOfYear.October;
+        List<RangeOfMonths> ranges = [.. RangeOfMonths
+            .GetContiguousRanges( quarterly )];
+
+        Assert.HasCount( 4, ranges );
+    }
+
+    [TestMethod]
+    public void GetContiguousRanges_AllMonths_ReturnsSingleRange( ) {
+        MonthsOfYear all = MonthsOfYear.January | MonthsOfYear.February | MonthsOfYear.March
+                         | MonthsOfYear.April | MonthsOfYear.May | MonthsOfYear.June
+                         | MonthsOfYear.July | MonthsOfYear.August | MonthsOfYear.September
+                         | MonthsOfYear.October | MonthsOfYear.November | MonthsOfYear.December;
+        List<RangeOfMonths> ranges = [.. RangeOfMonths
+            .GetContiguousRanges( all )];
+
+        Assert.HasCount( 1, ranges );
+        Assert.AreEqual( Month.January, ranges[0].Start );
+        Assert.AreEqual( Month.December, ranges[0].End );
+    }
+
+    [TestMethod]
+    public void GetContiguousRanges_JanMaySep_ReturnsThreeRanges( ) {
+        MonthsOfYear months = MonthsOfYear.January | MonthsOfYear.May | MonthsOfYear.September;
+        List<RangeOfMonths> ranges = [.. RangeOfMonths
+            .GetContiguousRanges( months )];
+
+        Assert.HasCount( 3, ranges );
+    }
+
+    #endregion GetContiguousRanges
+
+    #region ToString
+
+    [TestMethod]
+    public void ToString_SingleMonth_ReturnsAbbreviatedName( ) {
+        RangeOfMonths range = new( );
+        range.SetStart( 6 );
+        range.SetEnd( 6 );
+        string result = range.ToString( abbreviated: true );
+        Assert.AreEqual( "Jun", result );
+    }
+
+    [TestMethod]
+    public void ToString_Range_ReturnsDashSeparated( ) {
+        RangeOfMonths range = new( );
+        range.SetStart( 1 );
+        range.SetEnd( 3 );
+        string result = range.ToString( abbreviated: true );
+        Assert.AreEqual( "Jan - Mar", result );
+    }
+
+    [TestMethod]
+    public void ToString_FullNames_ReturnsFullNames( ) {
+        RangeOfMonths range = new( );
+        range.SetStart( 12 );
+        range.SetEnd( 12 );
+        string result = range.ToString( abbreviated: false );
+        Assert.AreEqual( "December", result );
+    }
+
+    #endregion ToString
+}

@@ -1,0 +1,376 @@
+@page "/"
+@page "/tasklist"
+@using Werkr.Server.Services
+@rendermode InteractiveServer
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IHttpClientFactory HttpClientFactory
+@inject ServerConfigCache ConfigCache
+
+<PageTitle>Werkr - Task List</PageTitle>
+
+<h1>Task List</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Quick overview of all tasks with their current status and last execution result.</p>
+
+<div class="d-flex gap-2 mb-3">
+    <input type="text" class="form-control form-control-sm" style="max-width: 300px;"
+           placeholder="Filter by name..." @bind="_filterText" @bind:event="oninput" />
+    <select class="form-select form-select-sm" style="max-width: 180px;" @bind="_filterStatus">
+        <option value="">All</option>
+        <option value="enabled">Enabled</option>
+        <option value="disabled">Disabled</option>
+    </select>
+    <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading tasks..." />
+} else if ( FilteredTasks.Count == 0 ) {
+    <EmptyState Message="No tasks match the current filter." />
+} else {
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 60px; cursor: pointer;" @onclick='() => SetSort("status")'>
+                        Status @SortIndicator("status")
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => SetSort("name")'>
+                        Name @SortIndicator("name")
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => SetSort("action")'>
+                        Action @SortIndicator("action")
+                    </th>
+                    <th>Tags</th>
+                    <th style="cursor: pointer;" @onclick='() => SetSort("schedule")'>
+                        Schedule @SortIndicator("schedule")
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => SetSort("nextrun")'>
+                        Next Run @SortIndicator("nextrun")
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => SetSort("workflow")'>
+                        Workflow @SortIndicator("workflow")
+                    </th>
+                    <th style="cursor: pointer;" @onclick='() => SetSort("lastrun")'>
+                        Last Run @SortIndicator("lastrun")
+                    </th>
+                    <th style="width: 110px">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( TaskListItem item in FilteredTasks ) {
+                    <tr>
+                        <td>
+                            @if ( item.LastJob is not null && item.LastJob.EndTime is null && !item.LastJob.Success ) {
+                                <span class="badge bg-primary" title="Running">
+                                    <span class="spinner-grow spinner-grow-sm me-1" role="status"></span>Running
+                                </span>
+                            } else if ( item.Task.Enabled ) {
+                                @if ( item.LastJob is null ) {
+                                    <span class="badge bg-info" title="Enabled — never run">
+                                        <i class="bi bi-clock"></i> Pending
+                                    </span>
+                                } else if ( item.LastJob.Success ) {
+                                    <span class="badge bg-success" title="Last run succeeded">
+                                        <i class="bi bi-check-circle"></i> OK
+                                    </span>
+                                } else {
+                                    <span class="badge bg-danger" title="Last run failed">
+                                        <i class="bi bi-x-circle"></i> Failed
+                                    </span>
+                                }
+                            } else {
+                                <span class="badge bg-secondary" title="Disabled">Off</span>
+                            }
+                        </td>
+                        <td>
+                            <a href="/tasks/@item.Task.Id">@item.Task.Name</a>
+                            @if ( !string.IsNullOrWhiteSpace( item.Task.Description ) ) {
+                                <br />
+                                <small class="text-muted">@Truncate( item.Task.Description, 80 )</small>
+                            }
+                        </td>
+                        <td><code>@item.Task.ActionType</code></td>
+                        <td>
+                            @if ( item.Task.TargetTags is { Length: > 0 } ) {
+                                @foreach ( string tag in item.Task.TargetTags ) {
+                                    <span class="badge bg-info me-1">@tag</span>
+                                }
+                            } else {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if ( item.Task.ScheduleId is not null ) {
+                                <a href="/schedules/@item.Task.ScheduleId">
+                                    <i class="bi bi-clock"></i> Assigned
+                                </a>
+                            } else {
+                                <span class="text-muted">Manual</span>
+                            }
+                        </td>
+                        <td>
+                            @{ string nextRunKey = $"{item.Task.Id}"; }
+                            @if ( _nextRuns.TryGetValue( item.Task.Id, out DateTime nextRun ) ) {
+                                <small>@nextRun.ToString( "g" )</small>
+                            } else if ( item.Task.ScheduleId is null ) {
+                                <span class="text-muted">—</span>
+                            } else {
+                                <span class="text-muted">…</span>
+                            }
+                        </td>
+                        <td>
+                            @if ( item.Task.WorkflowId is not null ) {
+                                <a href="/workflows/@item.Task.WorkflowId">
+                                    <i class="bi bi-diagram-3"></i> #@item.Task.WorkflowId
+                                </a>
+                            } else {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if ( item.LastJob is not null ) {
+                                <a href="/jobs/@item.LastJob.Id">
+                                    <span class="badge @GetResultBadge( item.LastJob.Success )">@( item.LastJob.Success ? "Success" : "Failed" )</span>
+                                </a>
+                                <br />
+                                <small class="text-muted">@item.LastJob.StartTime.ToString( "g" )</small>
+                            } else {
+                                <span class="text-muted">Never</span>
+                            }
+                        </td>
+                        <td>
+                            <a href="/tasks/@item.Task.Id" class="btn btn-outline-primary btn-sm me-1" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button class="btn btn-outline-success btn-sm me-1" title="Run Now" @onclick="() => RunTaskAsync( item.Task.Id )">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                            <button class="btn @( item.Task.Enabled ? "btn-outline-warning" : "btn-outline-info" ) btn-sm me-1"
+                                    title="@( item.Task.Enabled ? "Disable" : "Enable" )"
+                                    @onclick="() => ToggleEnabledAsync( item.Task )">
+                                <i class="bi @( item.Task.Enabled ? "bi-pause-circle" : "bi-play-circle" )"></i>
+                            </button>
+                            <a href="/tasks/@item.Task.Id" class="btn btn-outline-secondary btn-sm" title="View History">
+                                <i class="bi bi-clock-history"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="text-muted small">
+        Showing @FilteredTasks.Count of @_items.Count tasks
+    </div>
+}
+
+@code {
+    private List<TaskListItem> _items = [];
+    private Dictionary<long, DateTime> _nextRuns = new( );
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _disposed;
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _cts;
+    private string _filterText = "";
+    private string _filterStatus = "";
+    private string _sortColumn = "name";
+    private bool _sortAscending = true;
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List" )
+    ];
+
+    private List<TaskListItem> FilteredTasks {
+        get {
+            IEnumerable<TaskListItem> query = _items
+                .Where( i =>
+                    ( string.IsNullOrWhiteSpace( _filterText )
+                      || i.Task.Name.Contains( _filterText, StringComparison.OrdinalIgnoreCase ) )
+                    && ( _filterStatus switch {
+                        "enabled" => i.Task.Enabled,
+                        "disabled" => !i.Task.Enabled,
+                        _ => true
+                    } ) );
+
+            query = _sortColumn switch {
+                "status" => _sortAscending
+                    ? query.OrderBy( i => i.Task.Enabled )
+                    : query.OrderByDescending( i => i.Task.Enabled ),
+                "name" => _sortAscending
+                    ? query.OrderBy( i => i.Task.Name, StringComparer.OrdinalIgnoreCase )
+                    : query.OrderByDescending( i => i.Task.Name, StringComparer.OrdinalIgnoreCase ),
+                "action" => _sortAscending
+                    ? query.OrderBy( i => i.Task.ActionType, StringComparer.OrdinalIgnoreCase )
+                    : query.OrderByDescending( i => i.Task.ActionType, StringComparer.OrdinalIgnoreCase ),
+                "schedule" => _sortAscending
+                    ? query.OrderBy( i => i.Task.ScheduleId.HasValue ).ThenBy( i => i.Task.ScheduleId )
+                    : query.OrderByDescending( i => i.Task.ScheduleId.HasValue ).ThenByDescending( i => i.Task.ScheduleId ),
+                "nextrun" => _sortAscending
+                    ? query.OrderBy( i => _nextRuns.TryGetValue( i.Task.Id, out DateTime nr ) ? nr : DateTime.MaxValue )
+                    : query.OrderByDescending( i => _nextRuns.TryGetValue( i.Task.Id, out DateTime nr ) ? nr : DateTime.MinValue ),
+                "workflow" => _sortAscending
+                    ? query.OrderBy( i => i.Task.WorkflowId ?? long.MaxValue )
+                    : query.OrderByDescending( i => i.Task.WorkflowId ?? long.MinValue ),
+                "lastrun" => _sortAscending
+                    ? query.OrderBy( i => i.LastJob?.StartTime ?? DateTime.MaxValue )
+                    : query.OrderByDescending( i => i.LastJob?.StartTime ?? DateTime.MinValue ),
+                _ => query.OrderBy( i => i.Task.Name, StringComparer.OrdinalIgnoreCase )
+            };
+
+            return query.ToList( );
+        }
+    }
+
+    private void SetSort( string column ) {
+        if ( _sortColumn == column ) {
+            _sortAscending = !_sortAscending;
+        } else {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+    }
+
+    private MarkupString SortIndicator( string column ) {
+        if ( _sortColumn != column ) return new MarkupString( "" );
+        return new MarkupString( _sortAscending
+            ? "<i class=\"bi bi-sort-up\"></i>"
+            : "<i class=\"bi bi-sort-down\"></i>" );
+    }
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+        _cts = new CancellationTokenSource( );
+        _refreshTimer = new PeriodicTimer( TimeSpan.FromSeconds( ConfigCache.PollingIntervalSeconds ) );
+        _ = AutoRefreshAsync( _cts.Token );
+    }
+
+    private async Task AutoRefreshAsync( CancellationToken ct ) {
+        if ( _refreshTimer is null ) return;
+        try {
+            while ( await _refreshTimer.WaitForNextTickAsync( ct ) ) {
+                if ( _disposed ) return;
+                await LoadAsync( );
+                await InvokeAsync( StateHasChanged );
+            }
+        } catch ( OperationCanceledException ) { }
+        catch ( ObjectDisposedException ) { }
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            List<TaskDto>? tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            if ( tasks is null ) {
+                _items = [];
+                return;
+            }
+
+            List<TaskListItem> items = [];
+            foreach ( TaskDto task in tasks ) {
+                JobListDto? lastJob = null;
+                try {
+                    List<JobListDto>? jobs = await client.GetFromJsonAsync<List<JobListDto>>(
+                        $"/api/tasks/{task.Id}/jobs?limit=1" );
+                    lastJob = jobs?.FirstOrDefault( );
+                } catch {
+                    // Skip job lookup errors
+                }
+                items.Add( new TaskListItem( task, lastJob ) );
+            }
+            _items = items;
+
+            // Fetch next occurrences for schedule-bound tasks
+            Dictionary<long, DateTime> nextRuns = new( );
+            IEnumerable<Guid> scheduleIds = tasks
+                .Where( t => t.ScheduleId.HasValue )
+                .Select( t => t.ScheduleId!.Value )
+                .Distinct( );
+
+            foreach ( Guid scheduleId in scheduleIds ) {
+                try {
+                    OccurrencePreviewResponse? response = await client.GetFromJsonAsync<OccurrencePreviewResponse>(
+                        $"/api/schedules/{scheduleId}/occurrences" );
+                    if ( response?.Occurrences is { Count: > 0 } ) {
+                        DateTime nextOccurrence = response.Occurrences[0];
+                        foreach ( TaskDto task in tasks.Where( t => t.ScheduleId == scheduleId ) ) {
+                            nextRuns[task.Id] = nextOccurrence;
+                        }
+                    }
+                } catch {
+                    // Skip occurrence lookup errors
+                }
+            }
+            _nextRuns = nextRuns;
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load tasks: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RunTaskAsync( long taskId ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            await client.PostAsJsonAsync( $"/api/tasks/{taskId}/run", new TaskRunRequest( null ) );
+        } catch {
+            _errorMessage = "Failed to run task.";
+        }
+    }
+
+    private async Task ToggleEnabledAsync( TaskDto task ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            TaskUpdateRequest request = new(
+                Name: task.Name,
+                Description: task.Description,
+                ActionType: task.ActionType,
+                Content: task.Content,
+                Arguments: task.Arguments,
+                TargetTags: task.TargetTags,
+                Enabled: !task.Enabled,
+                TimeoutMinutes: task.TimeoutMinutes,
+                SuccessCriteria: task.SuccessCriteria,
+                ScheduleId: task.ScheduleId,
+                WorkflowId: task.WorkflowId );
+            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/tasks/{task.Id}", request );
+            if ( response.IsSuccessStatusCode ) {
+                await LoadAsync( );
+            } else {
+                _errorMessage = $"Failed to toggle task: HTTP {(int) response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to toggle task: {ex.Message}";
+        }
+    }
+
+    private static string GetResultBadge( bool success ) => success ? "bg-success" : "bg-danger";
+
+    private static string Truncate( string text, int max ) =>
+        text.Length <= max ? text : text[..max] + "…";
+
+    private sealed record TaskListItem( TaskDto Task, JobListDto? LastJob );
+
+    public ValueTask DisposeAsync( ) {
+        _disposed = true;
+        _cts?.Cancel( );
+        _cts?.Dispose( );
+        _refreshTimer?.Dispose( );
+        return ValueTask.CompletedTask;
+    }
+}

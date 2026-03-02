@@ -1,0 +1,307 @@
+using System.ComponentModel.DataAnnotations;
+
+using Werkr.Api.Models;
+using Werkr.Common.Auth;
+using Werkr.Common.Models;
+using Werkr.Core.Workflows;
+using Werkr.Data.Entities.Workflows;
+
+namespace Werkr.Api.Endpoints;
+
+/// <summary>
+/// Extension methods for mapping workflow REST endpoints to the application.
+/// </summary>
+internal static class WorkflowEndpoints {
+
+    /// <summary>Maps all workflow-related REST endpoints.</summary>
+    public static WebApplication MapWorkflowEndpoints( this WebApplication app ) {
+        MapWorkflowCrud( app );
+        MapWorkflowSteps( app );
+        MapStepDependencies( app );
+        MapWorkflowExecution( app );
+        return app;
+    }
+
+    // ── Workflow CRUD ──
+
+    private static void MapWorkflowCrud( WebApplication app ) {
+
+        _ = app.MapGet( "/api/workflows", async (
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                IReadOnlyList<Workflow> workflows = await workflowService.GetAllAsync( ct );
+                List<WorkflowDto> dtos = [.. workflows.Select( WorkflowMapper.ToDto )];
+                return Results.Ok( dtos );
+            } )
+        .WithName( "GetWorkflows" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapGet( "/api/workflows/{id}", async (
+            long id,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                Workflow? workflow = await workflowService.GetByIdAsync( id, ct );
+                return workflow is null
+                    ? Results.NotFound( )
+                    : Results.Ok( WorkflowMapper.ToDto( workflow ) );
+            } )
+        .WithName( "GetWorkflow" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapPost( "/api/workflows", async (
+            WorkflowCreateRequest request,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    Workflow entity = WorkflowMapper.ToEntity( request );
+                    Workflow created = await workflowService.CreateAsync( entity, ct );
+                    WorkflowDto dto = WorkflowMapper.ToDto( created );
+                    return Results.Created( $"/api/workflows/{dto.Id}", dto );
+                } catch (ValidationException ex) {
+                    return Results.BadRequest( new { message = ex.Message } );
+                }
+            } )
+        .WithName( "CreateWorkflow" )
+        .RequireAuthorization( Policies.CanCreate );
+
+        _ = app.MapPut( "/api/workflows/{id}", async (
+            long id,
+            WorkflowUpdateRequest request,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    Workflow entity = WorkflowMapper.ToEntity( id, request );
+                    Workflow updated = await workflowService.UpdateAsync( entity, ct );
+                    return Results.Ok( WorkflowMapper.ToDto( updated ) );
+                } catch (KeyNotFoundException) {
+                    return Results.NotFound( );
+                } catch (ValidationException ex) {
+                    return Results.BadRequest( new { message = ex.Message } );
+                }
+            } )
+        .WithName( "UpdateWorkflow" )
+        .RequireAuthorization( Policies.CanUpdate );
+
+        _ = app.MapDelete( "/api/workflows/{id}", async (
+            long id,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    await workflowService.DeleteAsync( id, ct );
+                    return Results.NoContent( );
+                } catch (KeyNotFoundException) {
+                    return Results.NotFound( );
+                }
+            } )
+        .WithName( "DeleteWorkflow" )
+        .RequireAuthorization( Policies.CanDelete );
+
+        _ = app.MapPatch( "/api/workflows/{id}/enabled", async (
+            long id,
+            WorkflowSetEnabledRequest request,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                Workflow? workflow = await workflowService.GetByIdAsync( id, ct );
+                if (workflow is null) {
+                    return Results.NotFound( );
+                }
+
+                workflow.Enabled = request.Enabled;
+                _ = await workflowService.UpdateAsync( workflow, ct );
+                return Results.Ok( WorkflowMapper.ToDto( workflow ) );
+            } )
+        .WithName( "SetWorkflowEnabled" )
+        .RequireAuthorization( Policies.CanUpdate );
+    }
+
+    // ── Workflow Steps ──
+
+    private static void MapWorkflowSteps( WebApplication app ) {
+
+        _ = app.MapPost( "/api/workflows/{workflowId}/steps", async (
+            long workflowId,
+            WorkflowStepCreateRequest request,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    WorkflowStep step = WorkflowMapper.ToStepEntity( workflowId, request );
+                    WorkflowStep created = await workflowService.AddStepAsync( workflowId, step, ct );
+                    WorkflowStepDto dto = WorkflowMapper.ToStepDto( created );
+                    return Results.Created( $"/api/workflows/{workflowId}/steps/{dto.Id}", dto );
+                } catch (KeyNotFoundException) {
+                    return Results.NotFound( );
+                } catch (Exception ex) when (ex is FormatException or ArgumentException) {
+                    return Results.BadRequest( new { message = ex.Message } );
+                }
+            } )
+        .WithName( "AddWorkflowStep" )
+        .RequireAuthorization( Policies.CanCreate );
+
+        _ = app.MapPut( "/api/workflows/{workflowId}/steps/{stepId}", async (
+            long workflowId,
+            long stepId,
+            WorkflowStepUpdateRequest request,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    WorkflowStep step = new( ) {
+                        Id = stepId,
+                        WorkflowId = workflowId,
+                        Order = request.Order,
+                        ControlStatement = Enum.Parse<ControlStatement>(
+                            request.ControlStatement, ignoreCase: true ),
+                        ConditionExpression = request.ConditionExpression,
+                        MaxIterations = request.MaxIterations,
+                        AgentConnectionIdOverride = request.AgentConnectionIdOverride,
+                        DependencyMode = Enum.Parse<DependencyMode>(
+                            request.DependencyMode, ignoreCase: true ),
+                    };
+                    WorkflowStep updated = await workflowService.UpdateStepAsync( step, ct );
+                    return Results.Ok( WorkflowMapper.ToStepDto( updated ) );
+                } catch (KeyNotFoundException) {
+                    return Results.NotFound( );
+                } catch (Exception ex) when (ex is FormatException or ArgumentException) {
+                    return Results.BadRequest( new { message = ex.Message } );
+                }
+            } )
+        .WithName( "UpdateWorkflowStep" )
+        .RequireAuthorization( Policies.CanUpdate );
+
+        _ = app.MapDelete( "/api/workflows/{workflowId}/steps/{stepId}", async (
+            long workflowId,
+            long stepId,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    await workflowService.RemoveStepAsync( stepId, ct );
+                    return Results.NoContent( );
+                } catch (KeyNotFoundException) {
+                    return Results.NotFound( );
+                }
+            } )
+        .WithName( "RemoveWorkflowStep" )
+        .RequireAuthorization( Policies.CanDelete );
+    }
+
+    // ── Step Dependencies ──
+
+    private static void MapStepDependencies( WebApplication app ) {
+
+        _ = app.MapPost( "/api/workflows/{workflowId}/steps/{stepId}/dependencies", async (
+            long workflowId,
+            long stepId,
+            StepDependencyRequest request,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    await workflowService.AddStepDependencyAsync(
+                        stepId, request.DependsOnStepId, ct );
+                    StepDependencyDto depDto = new( StepId: stepId, DependsOnStepId: request.DependsOnStepId );
+                    return Results.Created(
+                        $"/api/workflows/{workflowId}/steps/{stepId}/dependencies/{request.DependsOnStepId}",
+                        depDto );
+                } catch (KeyNotFoundException) {
+                    return Results.NotFound( );
+                } catch (InvalidOperationException ex) {
+                    return Results.BadRequest( new { message = ex.Message } );
+                }
+            } )
+        .WithName( "AddStepDependency" )
+        .RequireAuthorization( Policies.CanCreate );
+
+        _ = app.MapDelete( "/api/workflows/{workflowId}/steps/{stepId}/dependencies/{dependsOnStepId}", async (
+            long workflowId,
+            long stepId,
+            long dependsOnStepId,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    await workflowService.RemoveStepDependencyAsync( stepId, dependsOnStepId, ct );
+                    return Results.NoContent( );
+                } catch (KeyNotFoundException) {
+                    return Results.NotFound( );
+                }
+            } )
+        .WithName( "RemoveStepDependency" )
+        .RequireAuthorization( Policies.CanDelete );
+    }
+
+    // ── Workflow Execution & Runs ──
+
+    private static void MapWorkflowExecution( WebApplication app ) {
+
+        _ = app.MapPost( "/api/workflows/{id}/validate", async (
+            long id,
+            WorkflowService workflowService,
+            CancellationToken ct ) => {
+                try {
+                    _ = await workflowService.ValidateDagAsync( id, ct );
+                    return Results.Ok( new DagValidationResult(
+                        IsValid: true, Errors: [] ) );
+                } catch (KeyNotFoundException) {
+                    return Results.NotFound( );
+                } catch (InvalidOperationException ex) {
+                    return Results.Ok( new DagValidationResult(
+                        IsValid: false, Errors: [ex.Message] ) );
+                }
+            } )
+        .WithName( "ValidateWorkflow" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapPost( "/api/workflows/{id}/run", async (
+            long id,
+            WorkflowService workflowService,
+            WorkflowExecutor workflowExecutor,
+            CancellationToken ct ) => {
+                Workflow? workflow = await workflowService.GetByIdAsync( id, ct );
+                if (workflow is null) {
+                    return Results.NotFound( );
+                }
+
+                if (!workflow.Enabled) {
+                    return Results.BadRequest( new { message = "Workflow is disabled." } );
+                }
+
+                WorkflowRun run = await workflowExecutor.ExecuteAsync( workflow, ct );
+                return Results.Ok( WorkflowMapper.ToRunDto( run ) );
+            } )
+        .WithName( "RunWorkflow" )
+        .RequireAuthorization( Policies.CanExecute );
+
+        _ = app.MapGet( "/api/workflows/{id}/runs", async (
+            long id,
+            int? limit,
+            WorkflowExecutor workflowExecutor,
+            CancellationToken ct ) => {
+                IReadOnlyList<WorkflowRun> runs = await workflowExecutor.GetRunsAsync(
+                    id, limit ?? 50, ct );
+                List<WorkflowRunDto> dtos = [.. runs.Select( WorkflowMapper.ToRunDto )];
+                return Results.Ok( dtos );
+            } )
+        .WithName( "GetWorkflowRuns" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapGet( "/api/workflows/runs/{runId}", async (
+            Guid runId,
+            WorkflowExecutor workflowExecutor,
+            CancellationToken ct ) => {
+                WorkflowRun? run = await workflowExecutor.GetRunAsync( runId, ct );
+                return run is null
+                    ? Results.NotFound( )
+                    : Results.Ok( WorkflowMapper.ToRunDetailDto( run ) );
+            } )
+        .WithName( "GetWorkflowRun" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapGet( "/api/workflows/runs/{runId}/stream", (
+            Guid runId,
+            WorkflowRunTracker tracker ) => {
+                IAsyncEnumerable<WorkflowStepStatusUpdate>? updates = tracker.GetUpdates( runId );
+                return updates is null
+                    ? Results.NotFound( )
+                    : Results.Ok( updates );
+            } )
+        .WithName( "StreamWorkflowRunUpdates" )
+        .RequireAuthorization( Policies.CanRead );
+    }
+}

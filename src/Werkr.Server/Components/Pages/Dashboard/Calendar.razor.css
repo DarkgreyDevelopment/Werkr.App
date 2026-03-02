@@ -1,0 +1,167 @@
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.calendar-header {
+    background: var(--bs-secondary-bg);
+    font-weight: 600;
+    text-align: center;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.calendar-cell {
+    min-height: 90px;
+    padding: 4px 6px;
+    border: 1px solid var(--bs-border-color);
+    overflow: hidden;
+    background: var(--bs-body-bg);
+}
+
+.calendar-cell-dim {
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary-color);
+}
+
+.calendar-cell-today {
+    background: rgba(var(--bs-primary-rgb), 0.08);
+    border-color: var(--bs-primary);
+}
+
+.calendar-date {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+}
+
+.calendar-event {
+    background: var(--bs-primary);
+    color: #fff;
+    border-radius: 0.25rem;
+    padding: 1px 4px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.75rem;
+}
+
+/* ── Timeline view ── */
+
+.timeline-container {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+}
+
+.timeline-table {
+    margin-bottom: 0;
+}
+
+.timeline-time-col {
+    width: 80px;
+    min-width: 80px;
+    position: sticky;
+    left: 0;
+    background: var(--bs-secondary-bg);
+    z-index: 1;
+}
+
+.timeline-schedule-col {
+    max-width: 140px;
+    font-size: 0.8rem;
+}
+
+.timeline-time-cell {
+    font-weight: 600;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    background: var(--bs-body-bg);
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+
+.timeline-cell-active {
+    background: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.timeline-bubble {
+    display: inline-block;
+    background: var(--bs-primary);
+    color: #fff;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    text-align: center;
+    line-height: 24px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: default;
+}
+
+/* ── Weekly view ── */
+
+.weekly-container {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+}
+
+.weekly-table {
+    margin-bottom: 0;
+    table-layout: fixed;
+}
+
+.weekly-time-col {
+    width: 70px;
+    min-width: 70px;
+    position: sticky;
+    left: 0;
+    background: var(--bs-secondary-bg);
+    z-index: 1;
+}
+
+.weekly-day-col {
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.weekly-today {
+    background: rgba(var(--bs-primary-rgb), 0.12);
+    font-weight: 700;
+}
+
+.weekly-time-cell {
+    font-weight: 600;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    background: var(--bs-body-bg);
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+
+.weekly-cell-active {
+    background: rgba(var(--bs-primary-rgb), 0.08);
+}
+
+.weekly-event {
+    background: var(--bs-primary);
+    color: #fff;
+    border-radius: 0.25rem;
+    padding: 1px 4px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.7rem;
+}

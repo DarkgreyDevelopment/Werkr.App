@@ -1,0 +1,123 @@
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpClientFactory
+
+<div class="d-flex flex-wrap gap-1 mb-2">
+    @foreach (string tag in Value) {
+        <span class="badge bg-primary d-flex align-items-center gap-1">
+            @tag
+            <button type="button" class="btn-close btn-close-white btn-sm"
+                    aria-label="Remove" @onclick="( ) => RemoveTag( tag )"></button>
+        </span>
+    }
+    @if (Value.Length == 0) {
+        <span class="text-muted fst-italic">No tags assigned.</span>
+    }
+</div>
+
+<div class="position-relative" style="max-width: 320px;">
+    <div class="input-group input-group-sm">
+        <input type="text" class="form-control" placeholder="Add tag…"
+               @bind="_inputText" @bind:event="oninput"
+               @onfocus="ShowSuggestions"
+               @onkeydown="OnKeyDown"
+               @onblur="OnBlurAsync" />
+        <button class="btn btn-outline-primary" type="button" @onclick="AddCurrentTag">Add</button>
+    </div>
+
+    @if (_showSuggestions && FilteredSuggestions.Count > 0) {
+        <div class="list-group position-absolute w-100 shadow-sm" style="z-index: 1050; max-height: 200px; overflow-y: auto;">
+            @foreach (string suggestion in FilteredSuggestions) {
+                <button type="button" class="list-group-item list-group-item-action py-1 px-2 small"
+                        @onmousedown="( ) => SelectSuggestion( suggestion )">
+                    @suggestion
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Current tags array — two-way bound.</summary>
+    [Parameter]
+    public string[] Value { get; set; } = [];
+
+    /// <summary>Callback when tags change.</summary>
+    [Parameter]
+    public EventCallback<string[]> ValueChanged { get; set; }
+
+    private string _inputText = string.Empty;
+    private bool _showSuggestions;
+    private List<string> _allTags = [];
+
+    private List<string> FilteredSuggestions {
+        get {
+            if (string.IsNullOrWhiteSpace( _inputText )) {
+                // Show all tags not already selected
+                return [.. _allTags.Where( t => !Value.Contains( t, StringComparer.OrdinalIgnoreCase ) )];
+            }
+
+            return [.. _allTags
+                .Where( t => t.Contains( _inputText, StringComparison.OrdinalIgnoreCase )
+                    && !Value.Contains( t, StringComparer.OrdinalIgnoreCase ) )];
+        }
+    }
+
+    protected override async Task OnInitializedAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _allTags = await client.GetFromJsonAsync<List<string>>( "/api/tags" ) ?? [];
+        } catch {
+            _allTags = [];
+        }
+    }
+
+    private void ShowSuggestions( ) {
+        _showSuggestions = true;
+    }
+
+    private async Task OnBlurAsync( ) {
+        // Delay to allow click on suggestion to register
+        await Task.Delay( 200 );
+        _showSuggestions = false;
+    }
+
+    private async Task OnKeyDown( KeyboardEventArgs e ) {
+        if (e.Key == "Enter") {
+            await AddCurrentTag( );
+        } else if (e.Key == "Escape") {
+            _showSuggestions = false;
+        }
+    }
+
+    private async Task AddCurrentTag( ) {
+        string trimmed = _inputText.Trim( );
+        if (string.IsNullOrEmpty( trimmed ) || Value.Contains( trimmed, StringComparer.OrdinalIgnoreCase )) {
+            _inputText = string.Empty;
+            return;
+        }
+
+        _inputText = string.Empty;
+        _showSuggestions = false;
+        string[] updated = [.. Value, trimmed];
+        Value = updated;
+        await ValueChanged.InvokeAsync( updated );
+    }
+
+    private async Task RemoveTag( string tag ) {
+        string[] updated = [.. Value.Where( t => !t.Equals( tag, StringComparison.OrdinalIgnoreCase ) )];
+        Value = updated;
+        await ValueChanged.InvokeAsync( updated );
+    }
+
+    private async Task SelectSuggestion( string tag ) {
+        if (Value.Contains( tag, StringComparer.OrdinalIgnoreCase )) {
+            return;
+        }
+
+        _inputText = string.Empty;
+        _showSuggestions = false;
+        string[] updated = [.. Value, tag];
+        Value = updated;
+        await ValueChanged.InvokeAsync( updated );
+    }
+}

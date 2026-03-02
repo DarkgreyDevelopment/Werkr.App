@@ -1,0 +1,25 @@
+namespace Werkr.Common.Configuration;
+
+/// <summary>
+/// Configuration DTO for agent-specific settings.
+/// Compatible with the options pattern (<c>IOptions&lt;T&gt;</c>).
+/// </summary>
+public sealed class AgentSettings {
+    /// <summary>Configuration section name.</summary>
+    public const string SectionName = "Agent";
+
+    /// <summary>Display name for this agent instance.</summary>
+    public string Name { get; set; } = "Default Agent";
+
+    /// <summary>Port the agent gRPC service listens on.</summary>
+    public int GrpcPort { get; set; } = 5100;
+
+    /// <summary>Whether the PowerShell operator is enabled.</summary>
+    public bool EnablePowerShell { get; set; } = true;
+
+    /// <summary>Whether the system shell operator is enabled.</summary>
+    public bool EnableSystemShell { get; set; } = true;
+
+    /// <summary>PowerShell-specific settings.</summary>
+    public PowerShellSettings PowerShell { get; set; } = new( );
+}

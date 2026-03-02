@@ -1,0 +1,29 @@
+@* Toggle switch for enabled/disabled state. Renders a Bootstrap form-check with a switch. *@
+
+<div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" id="@_inputId" checked="@Value"
+           @onchange="OnToggle" disabled="@Disabled" />
+    <label class="form-check-label" for="@_inputId">@Label</label>
+</div>
+
+@code {
+    private readonly string _inputId = $"toggle-{Guid.NewGuid():N}";
+
+    /// <summary>Current switch value.</summary>
+    [Parameter] public bool Value { get; set; }
+
+    /// <summary>Two-way binding callback.</summary>
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+
+    /// <summary>Label next to the switch.</summary>
+    [Parameter] public string Label { get; set; } = "Enabled";
+
+    /// <summary>Disable interaction.</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    private async Task OnToggle( ChangeEventArgs e ) {
+        bool newValue = (bool) ( e.Value ?? false );
+        Value = newValue;
+        await ValueChanged.InvokeAsync( newValue );
+    }
+}

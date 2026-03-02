@@ -1,0 +1,14 @@
+@page "/account/logout"
+@using Microsoft.AspNetCore.Identity
+@using Werkr.Data.Identity.Entities
+@inject SignInManager<WerkrUser> SignInManager
+@inject NavigationManager Navigation
+
+<PageTitle>Logout — Werkr</PageTitle>
+
+@code {
+    protected override async Task OnInitializedAsync( ) {
+        await SignInManager.SignOutAsync( );
+        Navigation.NavigateTo( "/account/login", forceLoad: true );
+    }
+}

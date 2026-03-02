@@ -1,0 +1,287 @@
+﻿@page "/account/manage/mfa"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using QRCoder
+@using Werkr.Data.Identity.Entities
+@using Werkr.Server.Components.Shared
+@inject UserManager<WerkrUser> UserManager
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+@inject ILogger<Mfa> Logger
+
+<PageTitle>MFA Management</PageTitle>
+
+<div class="container mt-4">
+    <h1>Multi-Factor Authentication</h1>
+    <Breadcrumb Items="_breadcrumbs" />
+
+    @if (_isMfaRequired) {
+        <div class="alert alert-warning">Admin accounts require MFA. Please enroll now.</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace( _statusMessage )) {
+        <div class="alert alert-info">@_statusMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    @if (_isEnabled) {
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-success">MFA is enabled</h5>
+                <p class="card-text">Recovery codes remaining: @_recoveryCodeCount</p>
+
+                <div class="mb-3">
+                    <label class="form-label">Confirm current password to reset MFA</label>
+                    <InputText type="password" class="form-control" @bind-Value="_resetPassword" />
+                </div>
+                <button class="btn btn-outline-danger me-2" @onclick="ResetMfaAsync">Reset MFA</button>
+
+                <div class="mb-3 mt-3">
+                    <label class="form-label">Confirm current password to regenerate recovery codes</label>
+                    <InputText type="password" class="form-control" @bind-Value="_regenPassword" />
+                </div>
+                <button class="btn btn-outline-secondary" @onclick="RegenerateRecoveryCodesAsync">Regenerate Recovery Codes</button>
+            </div>
+        </div>
+    } else {
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Set up authenticator app</h5>
+                <p>Scan this QR code using your authenticator app.</p>
+
+                @if (!string.IsNullOrWhiteSpace( _qrBase64 )) {
+                    <img src="@_qrBase64" alt="Authenticator QR code" class="img-thumbnail" />
+                }
+
+                <p class="mt-3 mb-1"><strong>Manual entry key</strong></p>
+                <code>@_formattedSharedKey</code>
+
+                <EditForm Model="_verifyModel" OnValidSubmit="VerifyEnrollmentAsync" FormName="mfa-enroll" class="mt-3">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <label class="form-label" for="verification-code">6-digit verification code</label>
+                        <InputText id="verification-code" class="form-control" @bind-Value="_verifyModel!.Code" />
+                        <ValidationMessage For="() => _verifyModel!.Code" />
+                    </div>
+                    <button class="btn btn-primary" type="submit">Verify & Enable MFA</button>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (_recoveryCodes.Count > 0) {
+        <div class="alert alert-warning mt-3">Save these codes. They will not be shown again.</div>
+        <pre class="p-3 border rounded bg-light">@string.Join(Environment.NewLine, _recoveryCodes)</pre>
+    }
+
+    <div class="mt-3">
+        <a href="/account/manage" class="btn btn-link">Back to account</a>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery( Name = "required" )]
+    public bool RequiredByPolicy { get; set; }
+
+    private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6&period=30";
+
+    [SupplyParameterFromForm]
+    private VerifyCodeModel? _verifyModel { get; set; }
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "My Account", "/account/manage" ),
+        new( "MFA" )
+    ];
+    private readonly List<string> _recoveryCodes = [];
+
+    private WerkrUser? _currentUser;
+    private bool _isEnabled;
+    private bool _isMfaRequired;
+    private int _recoveryCodeCount;
+    private string? _sharedKey;
+    private string? _formattedSharedKey;
+    private string? _qrBase64;
+    private string? _statusMessage;
+    private string? _errorMessage;
+    private string _resetPassword = string.Empty;
+    private string _regenPassword = string.Empty;
+
+    protected override async Task OnInitializedAsync( ) {
+        _verifyModel ??= new( );
+        _isMfaRequired = RequiredByPolicy;
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _errorMessage = null;
+        _statusMessage = null;
+
+        AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
+        _currentUser = await UserManager.GetUserAsync( authState.User );
+
+        if (_currentUser is null) {
+            Navigation.NavigateTo( "/account/login", forceLoad: true );
+            return;
+        }
+
+        _isEnabled = await UserManager.GetTwoFactorEnabledAsync( _currentUser );
+        _recoveryCodeCount = await UserManager.CountRecoveryCodesAsync( _currentUser );
+
+        if (_isEnabled) {
+            return;
+        }
+
+        string? authenticatorKey = await UserManager.GetAuthenticatorKeyAsync( _currentUser );
+        if (string.IsNullOrWhiteSpace( authenticatorKey )) {
+            await UserManager.ResetAuthenticatorKeyAsync( _currentUser );
+            authenticatorKey = await UserManager.GetAuthenticatorKeyAsync( _currentUser );
+        }
+
+        _sharedKey = authenticatorKey;
+        _formattedSharedKey = FormatKey( authenticatorKey ?? string.Empty );
+
+        string issuer = UrlEncoder.Default.Encode( "Werkr" );
+        string username = UrlEncoder.Default.Encode( _currentUser.Email ?? _currentUser.UserName ?? "user" );
+        string otpAuthUri = string.Format(
+            CultureInfo.InvariantCulture,
+            AuthenticatorUriFormat,
+            issuer,
+            username,
+            authenticatorKey );
+
+        QRCodeGenerator qrGenerator = new( );
+        QRCodeData qrCodeData = qrGenerator.CreateQrCode( otpAuthUri, QRCodeGenerator.ECCLevel.Q );
+        PngByteQRCode qrCode = new( qrCodeData );
+        byte[] qrBytes = qrCode.GetGraphic( 5 );
+        _qrBase64 = $"data:image/png;base64,{Convert.ToBase64String( qrBytes )}";
+    }
+
+    private async Task VerifyEnrollmentAsync( ) {
+        _errorMessage = null;
+
+        if (_currentUser is null) {
+            await LoadAsync( );
+            return;
+        }
+
+        string verificationCode = (_verifyModel!.Code ?? string.Empty)
+            .Replace( " ", string.Empty, StringComparison.Ordinal )
+            .Replace( "-", string.Empty, StringComparison.Ordinal );
+
+        Logger.LogInformation( "MFA enrollment verification attempted for user {UserId}", _currentUser.Id );
+
+        bool isValid = await UserManager.VerifyTwoFactorTokenAsync(
+            _currentUser,
+            UserManager.Options.Tokens.AuthenticatorTokenProvider,
+            verificationCode );
+
+        if (!isValid) {
+            Logger.LogWarning( "MFA verification failed for user {UserId}", _currentUser.Id );
+            _errorMessage = "Verification code is invalid.";
+            return;
+        }
+
+        Logger.LogInformation( "MFA verification succeeded for user {UserId}, enabling 2FA", _currentUser.Id );
+
+        IdentityResult result = await UserManager.SetTwoFactorEnabledAsync( _currentUser, true );
+        if (!result.Succeeded) {
+            Logger.LogError( "Failed to enable 2FA for user {UserId}: {Errors}",
+                _currentUser.Id, string.Join( "; ", result.Errors.Select( e => e.Description ) ) );
+            _errorMessage = string.Join( " ", result.Errors.Select( e => e.Description ) );
+            return;
+        }
+
+        IEnumerable<string> newCodes = await UserManager.GenerateNewTwoFactorRecoveryCodesAsync( _currentUser, 10 )
+            ?? Array.Empty<string>( );
+        _recoveryCodes.Clear( );
+        _recoveryCodes.AddRange( newCodes );
+
+        Logger.LogInformation( "MFA enabled and recovery codes generated for user {UserId}", _currentUser.Id );
+        _statusMessage = "MFA has been enabled.";
+        await LoadAsync( );
+    }
+
+    private async Task ResetMfaAsync( ) {
+        _errorMessage = null;
+
+        if (_currentUser is null) {
+            await LoadAsync( );
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace( _resetPassword )
+            || !await UserManager.CheckPasswordAsync( _currentUser, _resetPassword )) {
+            _errorMessage = "Current password is required to reset MFA.";
+            return;
+        }
+
+        IdentityResult disableResult = await UserManager.SetTwoFactorEnabledAsync( _currentUser, false );
+        if (!disableResult.Succeeded) {
+            _errorMessage = string.Join( " ", disableResult.Errors.Select( e => e.Description ) );
+            return;
+        }
+
+        await UserManager.ResetAuthenticatorKeyAsync( _currentUser );
+        _resetPassword = string.Empty;
+        _statusMessage = "MFA has been reset. Enroll again with your authenticator app.";
+        await LoadAsync( );
+    }
+
+    private async Task RegenerateRecoveryCodesAsync( ) {
+        _errorMessage = null;
+
+        if (_currentUser is null) {
+            await LoadAsync( );
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace( _regenPassword )
+            || !await UserManager.CheckPasswordAsync( _currentUser, _regenPassword )) {
+            _errorMessage = "Current password is required to regenerate recovery codes.";
+            return;
+        }
+
+        IEnumerable<string> newCodes = await UserManager.GenerateNewTwoFactorRecoveryCodesAsync( _currentUser, 10 )
+            ?? Array.Empty<string>( );
+        _recoveryCodes.Clear( );
+        _recoveryCodes.AddRange( newCodes );
+        _regenPassword = string.Empty;
+        _statusMessage = "Recovery codes regenerated.";
+        await LoadAsync( );
+    }
+
+    private static string FormatKey( string unformattedKey ) {
+        if (string.IsNullOrWhiteSpace( unformattedKey )) {
+            return string.Empty;
+        }
+
+        StringBuilder output = new( );
+        for (int index = 0; index < unformattedKey.Length; index += 4) {
+            int length = Math.Min( 4, unformattedKey.Length - index );
+            _ = output.Append( unformattedKey.AsSpan( index, length ) );
+            if (index + length < unformattedKey.Length) {
+                _ = output.Append( ' ' );
+            }
+        }
+
+        return output.ToString( ).ToLowerInvariant( );
+    }
+
+    private sealed class VerifyCodeModel {
+        [Required]
+        [StringLength( 7, MinimumLength = 6 )]
+        public string Code { get; set; } = string.Empty;
+    }
+}

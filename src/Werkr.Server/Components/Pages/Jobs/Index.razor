@@ -1,0 +1,176 @@
+﻿@page "/jobs"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Werkr - Jobs</PageTitle>
+
+<h1>Job History</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Browse execution history across all tasks. Use the filters to narrow results.</p>
+
+<div class="row mb-3 align-items-end g-2">
+    <div class="col-md-2">
+        <label class="form-label" for="taskIdFilter">Task ID (optional)</label>
+        <input type="number" id="taskIdFilter" class="form-control" @bind="_taskIdFilter" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label" for="statusFilter">Status</label>
+        <select id="statusFilter" class="form-select" @bind="_statusFilter">
+            <option value="">All</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+            <option value="running">Running</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label" for="sinceFilter">Since</label>
+        <input type="date" id="sinceFilter" class="form-control" @bind="_sinceFilter" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label" for="untilFilter">Until</label>
+        <input type="date" id="untilFilter" class="form-control" @bind="_untilFilter" />
+    </div>
+    <div class="col-md-1">
+        <label class="form-label" for="limitFilter">Limit</label>
+        <input type="number" id="limitFilter" class="form-control" @bind="_limit" />
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button class="btn btn-primary" @onclick="LoadAsync" disabled="@_isLoading">
+            @if ( _isLoading ) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            Search
+        </button>
+        <button class="btn btn-outline-secondary" @onclick="ClearFilters" disabled="@_isLoading">
+            Clear
+        </button>
+    </div>
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _jobs is null ) {
+    <LoadingSpinner Message="Loading jobs…" />
+} else if ( _jobs is not null && _jobs.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Task</th>
+                    <th>Agent</th>
+                    <th>Started</th>
+                    <th>Runtime</th>
+                    <th>Result</th>
+                    <th>Error Category</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( JobListDto j in _jobs ) {
+                    <tr>
+                        <td><a href="/jobs/@j.Id">@j.Id.ToString()[..8]…</a></td>
+                        <td><a href="/tasks/@j.TaskId">@( j.TaskName ?? $"#{j.TaskId}" )</a></td>
+                        <td>@( j.AgentName ?? "—" )</td>
+                        <td>@j.StartTime.ToString( "g" )</td>
+                        <td>@j.RuntimeSeconds.ToString( "F1" )s</td>
+                        <td>
+                            @{ bool isRunning = j.EndTime is null && !j.Success; }
+                            @if ( isRunning ) {
+                                <span class="badge bg-warning text-dark">
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>Running
+                                </span>
+                            } else {
+                                <span class="badge @( j.Success ? "bg-success" : "bg-danger" )">
+                                    @( j.Success ? "Success" : "Failed" )
+                                </span>
+                            }
+                        </td>
+                        <td>@j.ErrorCategory</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm" href="/jobs/@j.Id">Details</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="text-muted small">
+        Showing @_jobs.Count job(s)
+    </div>
+} else if ( !_isLoading && _jobs is not null ) {
+    <EmptyState Message="No jobs match the current filters." />
+}
+
+@code {
+    private List<JobListDto>? _jobs;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private long? _taskIdFilter;
+    private string _statusFilter = "";
+    private DateTime? _sinceFilter;
+    private DateTime? _untilFilter;
+    private int _limit = 50;
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Jobs" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            if ( _taskIdFilter.HasValue ) {
+                // Use task-specific endpoint when a task ID is provided
+                _jobs = await client.GetFromJsonAsync<List<JobListDto>>(
+                    $"/api/tasks/{_taskIdFilter}/jobs?limit={_limit}" );
+            } else {
+                // Use global jobs endpoint
+                string url = BuildGlobalJobsUrl( );
+                _jobs = await client.GetFromJsonAsync<List<JobListDto>>( url );
+            }
+
+            // Client-side running filter — no server param for this
+            if ( _statusFilter == "running" && _jobs is not null ) {
+                _jobs = _jobs.Where( j => j.EndTime is null && !j.Success ).ToList( );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load jobs: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private string BuildGlobalJobsUrl( ) {
+        List<string> queryParams = [$"limit={_limit}"];
+
+        if ( _statusFilter == "success" ) queryParams.Add( "success=true" );
+        else if ( _statusFilter == "failed" ) queryParams.Add( "success=false" );
+
+        if ( _sinceFilter.HasValue )
+            queryParams.Add( $"since={_sinceFilter.Value:O}" );
+        if ( _untilFilter.HasValue )
+            queryParams.Add( $"until={_untilFilter.Value:O}" );
+
+        return $"/api/jobs?{string.Join( "&", queryParams )}";
+    }
+
+    private void ClearFilters( ) {
+        _taskIdFilter = null;
+        _statusFilter = "";
+        _sinceFilter = null;
+        _untilFilter = null;
+        _limit = 50;
+    }
+}

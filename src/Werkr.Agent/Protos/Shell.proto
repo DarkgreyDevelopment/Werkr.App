@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option csharp_namespace = "Werkr.Agent.Protos";
+
+import "EncryptedEnvelope.proto";
+
+// PowerShell shell service.
+// All RPCs use EncryptedEnvelope for request/response payloads.
+// Request envelopes contain a serialized ShellRequest or ScriptRequest.
+// Streaming response envelopes each contain a serialized GrpcLogMsg.
+service Pwsh {
+  rpc RunCommand (werkr.common.protos.EncryptedEnvelope) returns (stream werkr.common.protos.EncryptedEnvelope);
+  rpc RunScript (werkr.common.protos.EncryptedEnvelope) returns (stream werkr.common.protos.EncryptedEnvelope);
+  rpc RunScriptWithArgs (werkr.common.protos.EncryptedEnvelope) returns (stream werkr.common.protos.EncryptedEnvelope);
+}
+
+// System shell service (cmd.exe / bash).
+// All RPCs use EncryptedEnvelope for request/response payloads.
+service SystemShell {
+  rpc RunCommand (werkr.common.protos.EncryptedEnvelope) returns (stream werkr.common.protos.EncryptedEnvelope);
+  rpc RunScript (werkr.common.protos.EncryptedEnvelope) returns (stream werkr.common.protos.EncryptedEnvelope);
+  rpc RunScriptWithArgs (werkr.common.protos.EncryptedEnvelope) returns (stream werkr.common.protos.EncryptedEnvelope);
+}
+
+// Inner payload messages — serialized, encrypted, then placed inside EncryptedEnvelope.
+// These are NOT used directly in RPC signatures.
+message ShellRequest {
+  string command = 1;
+}
+
+message ScriptRequest {
+  string script = 1;
+  repeated string args = 2;
+}

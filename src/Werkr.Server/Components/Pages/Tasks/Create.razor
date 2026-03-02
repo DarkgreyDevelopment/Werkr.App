@@ -1,0 +1,220 @@
+@page "/tasks/create"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - New Task</PageTitle>
+
+<h1>Create Task</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+<EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="CreateTask">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" />
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Basic Information</h5>
+
+            <div class="mb-3">
+                <label class="form-label" for="name">Name</label>
+                <InputText id="name" class="form-control" @bind-Value="_model.Name" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="desc">Description</label>
+                <InputTextArea id="desc" class="form-control" rows="3" @bind-Value="_model.Description" />
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="actionType">Action Type</label>
+                    <InputSelect id="actionType" class="form-select" @bind-Value="_model.ActionType">
+                        <option value="PowerShellCommand">PowerShell Command</option>
+                        <option value="PowerShellScript">PowerShell Script</option>
+                        <option value="ShellCommand">Shell Command</option>
+                        <option value="ShellScript">Shell Script</option>
+                        <option value="Action">Action</option>
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="timeout">Timeout (minutes, optional)</label>
+                    <InputNumber id="timeout" class="form-control" @bind-Value="_model.TimeoutMinutes" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="content">Content (command / script)</label>
+                <InputTextArea id="content" class="form-control font-monospace" rows="5" @bind-Value="_model.Content" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="args">Arguments (one per line)</label>
+                <InputTextArea id="args" class="form-control font-monospace" rows="3" @bind-Value="_model.Arguments" />
+            </div>
+        </div>
+    </div>
+
+    @if ( _model.ActionType == "Action" ) {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Action Parameters</h5>
+                <ActionParameterEditor @bind-ActionSubType="_model.ActionSubType"
+                                       @bind-ActionParameters="_model.ActionParameters" />
+            </div>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Targeting &amp; Scheduling</h5>
+
+            <div class="mb-3">
+                <label class="form-label" for="tags">Target Tags</label>
+                <TagInput Value="@_targetTags" ValueChanged="OnTargetTagsChanged" />
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="scheduleId">Schedule</label>
+                    <InputSelect id="scheduleId" class="form-select" @bind-Value="_model.ScheduleId">
+                        <option value="">None</option>
+                        @foreach ( ScheduleDto s in _schedules ) {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="successCriteria">Success Criteria</label>
+                    <InputText id="successCriteria" class="form-control" @bind-Value="_model.SuccessCriteria" placeholder="ExitCodeZero" />
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="workflowId">Workflow (optional)</label>
+                    <InputSelect id="workflowId" class="form-select" @bind-Value="_model.WorkflowId">
+                        <option value="">None</option>
+                        @foreach ( WorkflowDto w in _workflows ) {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <ToggleSwitch @bind-Value="_model.Enabled" Label="Enabled" />
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+            @if ( _isSaving ) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            Create Task
+        </button>
+        <a href="/tasks" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</EditForm>
+
+@code {
+    private readonly TaskFormModel _model = new( );
+    private string? _errorMessage;
+    private bool _isSaving;
+    private List<ScheduleDto> _schedules = [];
+    private List<WorkflowDto> _workflows = [];
+    private string[] _targetTags = [];
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Tasks", "/tasks" ),
+        new( "Create" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _schedules = await client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" ) ?? [];
+            _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" ) ?? [];
+        } catch {
+            // Non-critical — dropdown will be empty
+        }
+    }
+
+    private async Task SubmitAsync( ) {
+        _isSaving = true;
+        _errorMessage = null;
+        _model.TargetTags = string.Join( ",", _targetTags );
+        try {
+            TaskCreateRequest request = _model.ToCreateRequest( );
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/tasks", request );
+            if ( response.IsSuccessStatusCode ) {
+                Navigation.NavigateTo( "/tasks" );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to create task: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to create task: {ex.Message}";
+        } finally {
+            _isSaving = false;
+        }
+    }
+
+    private void OnTargetTagsChanged( string[] tags ) {
+        _targetTags = tags;
+        _model.TargetTags = string.Join( ",", tags );
+    }
+
+    private sealed class TaskFormModel {
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public string ActionType { get; set; } = "ShellCommand";
+        public string Content { get; set; } = "";
+        public string? Arguments { get; set; }
+        public string TargetTags { get; set; } = "";
+        public bool Enabled { get; set; } = true;
+        public long? TimeoutMinutes { get; set; }
+        public string? SuccessCriteria { get; set; }
+        public string? ScheduleId { get; set; }
+        public string? WorkflowId { get; set; }
+        public string ActionSubType { get; set; } = "";
+        public string? ActionParameters { get; set; }
+
+        public TaskCreateRequest ToCreateRequest( ) {
+            string[]? args = string.IsNullOrWhiteSpace( Arguments )
+                ? null
+                : Arguments.Split( '\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries );
+
+            string[] tags = string.IsNullOrWhiteSpace( TargetTags )
+                ? []
+                : TargetTags.Split( ',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries );
+
+            Guid? scheduleId = Guid.TryParse( ScheduleId, out Guid sid ) ? sid : null;
+            long? workflowId = long.TryParse( WorkflowId, out long wid ) ? wid : null;
+
+            return new TaskCreateRequest(
+                Name: Name,
+                Description: Description,
+                ActionType: ActionType,
+                Content: Content,
+                Arguments: args,
+                TargetTags: tags,
+                Enabled: Enabled,
+                TimeoutMinutes: TimeoutMinutes,
+                SuccessCriteria: SuccessCriteria,
+                ScheduleId: scheduleId,
+                WorkflowId: workflowId,
+                ActionSubType: string.IsNullOrWhiteSpace( ActionSubType ) ? null : ActionSubType,
+                ActionParameters: string.IsNullOrWhiteSpace( ActionParameters ) ? null : ActionParameters );
+        }
+    }
+}

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Werkr.Server</RootNamespace>
+    <AssemblyName>Werkr.Server</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="Serilog.Sinks.OpenTelemetry" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Werkr.ServiceDefaults\Werkr.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Werkr.Common\Werkr.Common.csproj" />
+    <ProjectReference Include="..\Werkr.Data.Identity\Werkr.Data.Identity.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,188 @@
+﻿@page "/admin/users"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using Werkr.Data.Identity.Entities
+@inject UserManager<WerkrUser> UserManager
+
+<PageTitle>User Management</PageTitle>
+
+<div class="container mt-4">
+    <h1>Users</h1>
+    <Breadcrumb Items="_breadcrumbs" />
+    <p>Manage user accounts, role assignments, and security flags.</p>
+
+    <div class="mb-3">
+        <a href="/admin/users/create" class="btn btn-primary">Create User</a>
+        <button class="btn btn-outline-secondary ms-2" @onclick="LoadUsersAsync">Refresh</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace( _statusMessage )) {
+        <div class="alert alert-success">@_statusMessage</div>
+    }
+
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Enabled</th>
+                    <th>MFA</th>
+                    <th>Password Reset</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (UserRow row in _users) {
+                    <tr>
+                        <td>@row.Name</td>
+                        <td>@row.Email</td>
+                        <td>@string.Join( ", ", row.Roles )</td>
+                        <td>
+                            <span class="badge @(row.Enabled ? "bg-success" : "bg-danger")">
+                                @(row.Enabled ? "Enabled" : "Disabled")
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge @(row.TwoFactorEnabled ? "bg-success" : "bg-secondary")">
+                                @(row.TwoFactorEnabled ? "Enabled" : "Off")
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge @(row.ChangePassword ? "bg-warning text-dark" : "bg-secondary")">
+                                @(row.ChangePassword ? "Pending" : "No")
+                            </span>
+                        </td>
+                        <td>@(row.LastLoginUtc?.ToLocalTime( ).ToString( "g" ) ?? "Never")</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-primary me-1" href="/admin/users/@row.Id">Edit</a>
+                            <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => ToggleEnabledAsync( row.Id )">
+                                @(row.Enabled ? "Disable" : "Enable")
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ForcePasswordResetAsync( row.Id )">Force Password Reset</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private readonly List<UserRow> _users = [];
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Users" )
+    ];
+    private string? _errorMessage;
+    private string? _statusMessage;
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadUsersAsync( );
+    }
+
+    private async Task LoadUsersAsync( ) {
+        _errorMessage = null;
+        _statusMessage = null;
+        _users.Clear( );
+
+        List<WerkrUser> users = await UserManager.Users.OrderBy( user => user.Name ).ToListAsync( );
+        foreach (WerkrUser user in users) {
+            IList<string> roles = await UserManager.GetRolesAsync( user );
+            _users.Add( new UserRow {
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email ?? string.Empty,
+                Roles = [.. roles],
+                Enabled = user.Enabled,
+                TwoFactorEnabled = user.TwoFactorEnabled,
+                ChangePassword = user.ChangePassword,
+                LastLoginUtc = user.LastLoginUtc
+            } );
+        }
+    }
+
+    private async Task ToggleEnabledAsync( string userId ) {
+        _errorMessage = null;
+        _statusMessage = null;
+
+        WerkrUser? user = await UserManager.FindByIdAsync( userId );
+        if (user is null) {
+            _errorMessage = "User was not found.";
+            return;
+        }
+
+        if (user.Enabled) {
+            int adminCount = await CountAdminsAsync( );
+            bool isAdmin = await UserManager.IsInRoleAsync( user, "Admin" );
+            if (isAdmin && adminCount <= 1) {
+                _errorMessage = "Cannot disable the last Admin user.";
+                return;
+            }
+        }
+
+        user.Enabled = !user.Enabled;
+        IdentityResult result = await UserManager.UpdateAsync( user );
+        if (!result.Succeeded) {
+            _errorMessage = string.Join( " ", result.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        _statusMessage = $"User {(user.Enabled ? "enabled" : "disabled")}.";
+        await LoadUsersAsync( );
+    }
+
+    private async Task ForcePasswordResetAsync( string userId ) {
+        _errorMessage = null;
+        _statusMessage = null;
+
+        WerkrUser? user = await UserManager.FindByIdAsync( userId );
+        if (user is null) {
+            _errorMessage = "User was not found.";
+            return;
+        }
+
+        user.ChangePassword = true;
+        IdentityResult result = await UserManager.UpdateAsync( user );
+        if (!result.Succeeded) {
+            _errorMessage = string.Join( " ", result.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        _statusMessage = "Password reset requirement has been set.";
+        await LoadUsersAsync( );
+    }
+
+    private async Task<int> CountAdminsAsync( ) {
+        IList<WerkrUser> admins = await UserManager.GetUsersInRoleAsync( "Admin" );
+        return admins.Count;
+    }
+
+    private sealed class UserRow {
+        public string Id { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
+
+        public string Email { get; set; } = string.Empty;
+
+        public List<string> Roles { get; set; } = [];
+
+        public bool Enabled { get; set; }
+
+        public bool TwoFactorEnabled { get; set; }
+
+        public bool ChangePassword { get; set; }
+
+        public DateTime? LastLoginUtc { get; set; }
+    }
+}

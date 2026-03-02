@@ -1,0 +1,502 @@
+﻿@page "/holiday-calendars/{Id:guid}"
+@using System.ComponentModel.DataAnnotations
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+@using Werkr.Common.Models.Holidays
+
+<PageTitle>Werkr - Edit Holiday Calendar</PageTitle>
+
+<h1>Edit Holiday Calendar</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+@if ( !string.IsNullOrWhiteSpace( _successMessage ) ) {
+    <StatusBanner Visible="true" Level="success" Title="Success" Message="@_successMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading calendar…" />
+} else if ( _calendar is not null ) {
+
+    @* ── Calendar Info Card ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Calendar Information</h5>
+            <EditForm Model="_infoModel" OnValidSubmit="SaveInfoAsync" FormName="EditCalendarInfo">
+                <DataAnnotationsValidator />
+                <div class="mb-3">
+                    <label class="form-label" for="name">Name</label>
+                    <InputText id="name" class="form-control" @bind-Value="_infoModel.Name" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="desc">Description</label>
+                    <InputTextArea id="desc" class="form-control" rows="2" @bind-Value="_infoModel.Description" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Save Info</button>
+            </EditForm>
+        </div>
+    </div>
+
+    @* ── Rules Card ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Holiday Rules</h5>
+            @if ( _rules is not null && _rules.Count > 0 ) {
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Config</th>
+                                <th>Observance</th>
+                                <th>Time Window</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( HolidayRuleDto rule in _rules ) {
+                                <tr>
+                                    <td>@rule.Name</td>
+                                    <td><span class="badge bg-primary">@rule.RuleType</span></td>
+                                    <td>@DescribeRuleConfig( rule )</td>
+                                    <td>@rule.ObservanceRule</td>
+                                    <td>@FormatWindow( rule )</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-outline-info btn-sm me-1" @onclick="() => PreviewRuleAsync( rule )">Preview</button>
+                                        <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDeleteRule( rule )">Remove</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            } else {
+                <p class="text-muted mb-3">No rules defined yet.</p>
+            }
+
+            @* Add Rule inline form *@
+            <div class="border rounded p-3 bg-light">
+                <h6>Add Rule</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm">Name</label>
+                        <input class="form-control form-control-sm" @bind="_newRuleName" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label form-label-sm">Type</label>
+                        <select class="form-select form-select-sm" @bind="_newRuleType">
+                            <option value="FixedDate">Fixed Date</option>
+                            <option value="NthWeekdayOfMonth">Nth Weekday</option>
+                            <option value="LastWeekdayOfMonth">Last Weekday</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label form-label-sm">Month</label>
+                        <input type="number" class="form-control form-control-sm" min="1" max="12" @bind="_newRuleMonth" />
+                    </div>
+                    @if ( _newRuleType == "FixedDate" ) {
+                        <div class="col-md-1">
+                            <label class="form-label form-label-sm">Day</label>
+                            <input type="number" class="form-control form-control-sm" min="1" max="31" @bind="_newRuleDay" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label form-label-sm">Observance</label>
+                            <select class="form-select form-select-sm" @bind="_newRuleObservance">
+                                <option value="None">None</option>
+                                <option value="SaturdayToFriday_SundayToMonday">Sat→Fri / Sun→Mon</option>
+                                <option value="SaturdayToMonday">Sat→Mon</option>
+                                <option value="NearestWeekday">Nearest Weekday</option>
+                            </select>
+                        </div>
+                    } else {
+                        <div class="col-md-2">
+                            <label class="form-label form-label-sm">Day of Week</label>
+                            <select class="form-select form-select-sm" @bind="_newRuleDayOfWeek">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                        </div>
+                        @if ( _newRuleType == "NthWeekdayOfMonth" ) {
+                            <div class="col-md-1">
+                                <label class="form-label form-label-sm">Week #</label>
+                                <input type="number" class="form-control form-control-sm" min="1" max="5" @bind="_newRuleWeekNumber" />
+                            </div>
+                        }
+                    }
+                </div>
+                <button class="btn btn-success btn-sm" @onclick="AddRuleAsync">
+                    <span class="bi bi-plus me-1"></span>Add Rule
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @* ── Rule Preview (conditional) ── *@
+    @if ( _rulePreviewDates is not null ) {
+        <div class="card mb-4 border-info">
+            <div class="card-body">
+                <h6 class="card-title">Rule Preview: @_rulePreviewName</h6>
+                @if ( _rulePreviewDates.Count > 0 ) {
+                    <div class="row">
+                        @foreach ( HolidayDateDto d in _rulePreviewDates ) {
+                            <div class="col-auto mb-1">
+                                <span class="badge bg-light text-dark border">@d.Date — @d.Name</span>
+                            </div>
+                        }
+                    </div>
+                } else {
+                    <p class="text-muted mb-0">No dates generated for the preview range.</p>
+                }
+                <button class="btn btn-sm btn-outline-secondary mt-2" @onclick="() => _rulePreviewDates = null">Close Preview</button>
+            </div>
+        </div>
+    }
+
+    @* ── Manual Dates Card ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Manual Dates</h5>
+            @if ( _manualDates is not null && _manualDates.Count > 0 ) {
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Time Window</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( HolidayDateDto date in _manualDates ) {
+                                <tr>
+                                    <td>@date.Date</td>
+                                    <td>@date.Name</td>
+                                    <td>@FormatDateWindow( date )</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveDateAsync( date.Id )">Remove</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            } else {
+                <p class="text-muted mb-3">No manual dates added.</p>
+            }
+
+            <div class="border rounded p-3 bg-light">
+                <h6>Add Manual Date</h6>
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm">Date</label>
+                        <input type="date" class="form-control form-control-sm" @bind="_newDateValue" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm">Name</label>
+                        <input class="form-control form-control-sm" @bind="_newDateName" />
+                    </div>
+                </div>
+                <button class="btn btn-success btn-sm mt-2" @onclick="AddDateAsync">
+                    <span class="bi bi-plus me-1"></span>Add Date
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @* ── Calendar Preview Card ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Calendar Preview</h5>
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-auto">
+                    <label class="form-label form-label-sm">Start Year</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_previewStartYear" style="width:100px" />
+                </div>
+                <div class="col-auto">
+                    <label class="form-label form-label-sm">End Year</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_previewEndYear" style="width:100px" />
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="PreviewCalendarAsync">Preview</button>
+                </div>
+            </div>
+
+            @if ( _previewDates is not null ) {
+                @if ( _previewDates.Count > 0 ) {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead><tr><th>Date</th><th>Name</th><th>Source</th></tr></thead>
+                            <tbody>
+                                @foreach ( HolidayDateDto d in _previewDates ) {
+                                    <tr>
+                                        <td>@d.Date</td>
+                                        <td>@d.Name</td>
+                                        <td>@( d.IsManual ? "Manual" : "Rule" )</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } else {
+                    <p class="text-muted">No dates found for the selected range.</p>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a href="/holiday-calendars" class="btn btn-outline-secondary">Back to List</a>
+    </div>
+
+}
+
+<ConfirmDialog @ref="_confirmDialog"
+               Title="Remove Rule"
+               Message="@_deleteMessage"
+               ConfirmButtonText="Remove"
+               OnConfirmed="DeleteRuleConfirmedAsync" />
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private HolidayCalendarDto? _calendar;
+    private List<HolidayRuleDto>? _rules;
+    private List<HolidayDateDto>? _manualDates;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private bool _isLoading;
+
+    // Info form model
+    private InfoModel _infoModel = new( );
+
+    // Add Rule fields
+    private string _newRuleName = "";
+    private string _newRuleType = "FixedDate";
+    private int _newRuleMonth = 1;
+    private int? _newRuleDay = 1;
+    private string _newRuleObservance = "None";
+    private int _newRuleDayOfWeek;
+    private int _newRuleWeekNumber = 1;
+
+    // Rule preview
+    private string? _rulePreviewName;
+    private List<HolidayDateDto>? _rulePreviewDates;
+
+    // Manual date fields
+    private DateOnly _newDateValue = DateOnly.FromDateTime( DateTime.Today );
+    private string _newDateName = "";
+
+    // Calendar preview
+    private int _previewStartYear = DateTime.Now.Year;
+    private int _previewEndYear = DateTime.Now.Year + 1;
+    private List<HolidayDateDto>? _previewDates;
+
+    // Delete confirm
+    private ConfirmDialog _confirmDialog = default!;
+    private long _pendingDeleteRuleId;
+    private string _deleteMessage = "";
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Holiday Calendars", "/holiday-calendars" ),
+        new( "Edit" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAllAsync( );
+    }
+
+    private async Task LoadAllAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _calendar = await client.GetFromJsonAsync<HolidayCalendarDto>( $"/api/holiday-calendars/{Id}" );
+
+            if ( _calendar is not null ) {
+                // Guard: system calendars go to detail page
+                if ( _calendar.IsSystemCalendar ) {
+                    Navigation.NavigateTo( $"/holiday-calendars/{Id}/detail" );
+                    return;
+                }
+                _infoModel = new InfoModel { Name = _calendar.Name, Description = _calendar.Description };
+                _breadcrumbs = [
+                    new( "Task List", "/" ),
+                    new( "Holiday Calendars", "/holiday-calendars" ),
+                    new( _calendar.Name )
+                ];
+            }
+
+            _rules = await client.GetFromJsonAsync<List<HolidayRuleDto>>( $"/api/holiday-calendars/{Id}/rules" );
+            _manualDates = await client.GetFromJsonAsync<List<HolidayDateDto>>( $"/api/holiday-calendars/{Id}/dates" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load calendar: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveInfoAsync( ) {
+        _errorMessage = null;
+        _successMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HolidayCalendarUpdateRequest req = new( _infoModel.Name, _infoModel.Description ?? "" );
+            HttpResponseMessage res = await client.PutAsJsonAsync( $"/api/holiday-calendars/{Id}", req );
+            if ( res.IsSuccessStatusCode ) {
+                _successMessage = "Calendar info saved.";
+                _calendar = await res.Content.ReadFromJsonAsync<HolidayCalendarDto>( );
+            } else {
+                _errorMessage = $"Save failed: HTTP {(int) res.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Save failed: {ex.Message}";
+        }
+    }
+
+    private async Task AddRuleAsync( ) {
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HolidayRuleCreateRequest req = new(
+                Name: _newRuleName,
+                RuleType: _newRuleType,
+                Month: _newRuleMonth,
+                Day: _newRuleType == "FixedDate" ? _newRuleDay : null,
+                DayOfWeek: _newRuleType != "FixedDate" ? ((DayOfWeek) _newRuleDayOfWeek).ToString( ) : null,
+                WeekNumber: _newRuleType == "NthWeekdayOfMonth" ? _newRuleWeekNumber : null,
+                ObservanceRule: _newRuleType == "FixedDate" ? _newRuleObservance : "None",
+                WindowStart: null, WindowEnd: null, WindowTimeZoneId: null,
+                YearStart: null, YearEnd: null );
+            HttpResponseMessage res = await client.PostAsJsonAsync( $"/api/holiday-calendars/{Id}/rules", req );
+            if ( res.IsSuccessStatusCode ) {
+                _newRuleName = "";
+                await LoadAllAsync( );
+            } else {
+                _errorMessage = $"Failed to add rule: HTTP {(int) res.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to add rule: {ex.Message}";
+        }
+    }
+
+    private void PromptDeleteRule( HolidayRuleDto rule ) {
+        _pendingDeleteRuleId = rule.Id;
+        _deleteMessage = $"Remove rule '{rule.Name}'?";
+        _confirmDialog.Show( );
+    }
+
+    private async Task DeleteRuleConfirmedAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage res = await client.DeleteAsync( $"/api/holiday-calendars/{Id}/rules/{_pendingDeleteRuleId}" );
+            if ( res.IsSuccessStatusCode ) {
+                await LoadAllAsync( );
+            } else {
+                _errorMessage = $"Failed to remove rule: HTTP {(int) res.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to remove rule: {ex.Message}";
+        }
+    }
+
+    private async Task PreviewRuleAsync( HolidayRuleDto rule ) {
+        _rulePreviewName = rule.Name;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            RulePreviewRequest req = new(
+                Name: rule.Name, RuleType: rule.RuleType,
+                Month: rule.Month, Day: rule.Day,
+                DayOfWeek: rule.DayOfWeek, WeekNumber: rule.WeekNumber,
+                ObservanceRule: rule.ObservanceRule,
+                WindowStart: rule.WindowStart, WindowEnd: rule.WindowEnd,
+                WindowTimeZoneId: rule.WindowTimeZoneId,
+                YearStart: rule.YearStart, YearEnd: rule.YearEnd );
+            HttpResponseMessage res = await client.PostAsJsonAsync(
+                $"/api/holiday-calendars/rules/preview?startYear={_previewStartYear}&endYear={_previewEndYear}", req );
+            if ( res.IsSuccessStatusCode ) {
+                RulePreviewResponse? preview = await res.Content.ReadFromJsonAsync<RulePreviewResponse>( );
+                _rulePreviewDates = preview?.Dates?.ToList( ) ?? [];
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Preview failed: {ex.Message}";
+        }
+    }
+
+    private async Task AddDateAsync( ) {
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HolidayDateCreateRequest req = new( _newDateValue.ToString( "yyyy-MM-dd" ), _newDateName, null, null, null );
+            HttpResponseMessage res = await client.PostAsJsonAsync( $"/api/holiday-calendars/{Id}/dates", req );
+            if ( res.IsSuccessStatusCode ) {
+                _newDateName = "";
+                await LoadAllAsync( );
+            } else {
+                _errorMessage = $"Failed to add date: HTTP {(int) res.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to add date: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveDateAsync( long dateId ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage res = await client.DeleteAsync( $"/api/holiday-calendars/{Id}/dates/{dateId}" );
+            if ( res.IsSuccessStatusCode ) {
+                await LoadAllAsync( );
+            } else {
+                _errorMessage = $"Failed to remove date: HTTP {(int) res.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to remove date: {ex.Message}";
+        }
+    }
+
+    private async Task PreviewCalendarAsync( ) {
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HolidayPreviewResponse? preview = await client.GetFromJsonAsync<HolidayPreviewResponse>(
+                $"/api/holiday-calendars/{Id}/preview?startYear={_previewStartYear}&endYear={_previewEndYear}" );
+            _previewDates = preview?.Dates?.ToList( );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Preview failed: {ex.Message}";
+        }
+    }
+
+    private static string DescribeRuleConfig( HolidayRuleDto rule ) => rule.RuleType switch {
+        "FixedDate" => $"Month {rule.Month}, Day {rule.Day}",
+        "NthWeekdayOfMonth" => $"#{rule.WeekNumber} {rule.DayOfWeek} of month {rule.Month}",
+        "LastWeekdayOfMonth" => $"Last {rule.DayOfWeek} of month {rule.Month}",
+        _ => "—"
+    };
+
+    private static string FormatWindow( HolidayRuleDto rule ) =>
+        rule.WindowStart is not null && rule.WindowEnd is not null
+            ? $"{rule.WindowStart} – {rule.WindowEnd} ({rule.WindowTimeZoneId})"
+            : "Full day";
+
+    private static string FormatDateWindow( HolidayDateDto d ) =>
+        d.WindowStart is not null && d.WindowEnd is not null
+            ? $"{d.WindowStart} – {d.WindowEnd}"
+            : "Full day";
+
+    private sealed class InfoModel {
+        [Required] [StringLength( 256, MinimumLength = 1 )]
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+    }
+}

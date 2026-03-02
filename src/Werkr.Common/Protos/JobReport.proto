@@ -1,0 +1,46 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+
+// Agent reports completed job results to the Server (API hosts this service).
+// All RPCs use EncryptedEnvelope. Inner payload types defined below.
+service JobReporting {
+  // Request envelope contains JobResultRequest; response contains JobResultResponse.
+  rpc ReportJobResult (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message JobResultRequest {
+  // Agent's connection ID for authentication.
+  string connection_id = 1;
+  // The task ID that was executed.
+  int64 task_id = 2;
+  // Snapshot of the task content at execution time.
+  string task_snapshot = 3;
+  // Total runtime in seconds.
+  double runtime_seconds = 4;
+  // Job start time in ISO 8601 UTC format.
+  string start_time = 5;
+  // Job end time in ISO 8601 UTC format.
+  string end_time = 6;
+  // Whether the job succeeded.
+  bool success = 7;
+  // Process/shell exit code.
+  int32 exit_code = 8;
+  // Error category enum value.
+  int32 error_category = 9;
+  // Relative path to the full output log file on the agent's local disk.
+  string output_path = 10;
+  // Optional workflow run ID if this job was part of a workflow.
+  string workflow_run_id = 11;
+  // Tail preview of the output (last N lines) for quick display without fetching the full log.
+  string output_preview = 12;
+}
+
+message JobResultResponse {
+  // Whether the server accepted the result.
+  bool accepted = 1;
+  // The assigned job ID on the server.
+  string job_id = 2;
+}

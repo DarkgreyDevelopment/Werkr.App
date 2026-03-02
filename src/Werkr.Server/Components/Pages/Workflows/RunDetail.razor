@@ -1,0 +1,158 @@
+﻿@page "/workflows/runs/{RunId:guid}"
+@using Werkr.Server.Services
+@rendermode InteractiveServer
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IHttpClientFactory HttpClientFactory
+@inject ServerConfigCache ConfigCache
+
+<PageTitle>Werkr - Workflow Run Detail</PageTitle>
+
+<h1>Workflow Run Detail</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading run…" />
+} else if ( _detail is not null ) {
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Run Summary</h5>
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Run ID</dt>
+                <dd class="col-sm-9"><code>@_detail.Id</code></dd>
+
+                <dt class="col-sm-3">Workflow</dt>
+                <dd class="col-sm-9"><a href="/workflows/@_detail.WorkflowId">@_detail.WorkflowId</a></dd>
+
+                <dt class="col-sm-3">Status</dt>
+                <dd class="col-sm-9">
+                    <span class="badge @RunStatusBadge( _detail.Status )">@_detail.Status</span>
+                </dd>
+
+                <dt class="col-sm-3">Started</dt>
+                <dd class="col-sm-9">@_detail.StartTime.ToString( "G" )</dd>
+
+                <dt class="col-sm-3">Ended</dt>
+                <dd class="col-sm-9">@( _detail.EndTime?.ToString( "G" ) ?? "Still running" )</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Jobs (@_detail.Jobs.Count)</h5>
+            @if ( _detail.Jobs.Count > 0 ) {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Job ID</th>
+                                <th>Task ID</th>
+                                <th>Started</th>
+                                <th>Runtime</th>
+                                <th>Result</th>
+                                <th>Exit Code</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( JobDto j in _detail.Jobs ) {
+                                <tr>
+                                    <td><a href="/jobs/@j.Id">@j.Id.ToString()[..8]…</a></td>
+                                    <td><a href="/tasks/@j.TaskId">@j.TaskId</a></td>
+                                    <td>@j.StartTime.ToString( "g" )</td>
+                                    <td>@j.RuntimeSeconds.ToString( "F1" )s</td>
+                                    <td>
+                                        <span class="badge @( j.Success ? "bg-success" : "bg-danger" )">
+                                            @( j.Success ? "Success" : "Failed" )
+                                        </span>
+                                    </td>
+                                    <td>@( j.ExitCode?.ToString( ) ?? "—" )</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            } else {
+                <p class="text-muted">No jobs in this run.</p>
+            }
+        </div>
+    </div>
+
+    <a href="/workflows/@_detail.WorkflowId/runs" class="btn btn-outline-secondary">← Back to Runs</a>
+}
+
+@code {
+    [Parameter] public Guid RunId { get; set; }
+
+    private WorkflowRunDetailDto? _detail;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _disposed;
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _cts;
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Workflows", "/workflows" ),
+        new( "Run Detail" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+
+        _cts = new CancellationTokenSource( );
+        _refreshTimer = new PeriodicTimer( TimeSpan.FromSeconds( ConfigCache.RunDetailPollingIntervalSeconds ) );
+        _ = AutoRefreshAsync( _cts.Token );
+    }
+
+    private async Task AutoRefreshAsync( CancellationToken ct ) {
+        if ( _refreshTimer is null ) return;
+        try {
+            while ( await _refreshTimer.WaitForNextTickAsync( ct ) ) {
+                if ( _disposed ) return;
+                await LoadAsync( );
+                await InvokeAsync( StateHasChanged );
+            }
+        } catch ( OperationCanceledException ) { }
+        catch ( ObjectDisposedException ) { }
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _detail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
+                $"/api/workflows/runs/{RunId}" );
+            if ( _detail is null ) {
+                _errorMessage = "Run not found.";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load run: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private static string RunStatusBadge( string status ) => status switch {
+        "Completed" => "bg-success",
+        "Running" => "bg-primary",
+        "Failed" => "bg-danger",
+        "Cancelled" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    public async ValueTask DisposeAsync( ) {
+        if ( _disposed ) return;
+        _disposed = true;
+        if ( _cts is not null ) {
+            await _cts.CancelAsync( );
+            _cts.Dispose( );
+        }
+        _refreshTimer?.Dispose( );
+    }
+}

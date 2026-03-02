@@ -1,0 +1,181 @@
+﻿@page "/schedules"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Schedules</PageTitle>
+
+<h1>Schedules</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Manage recurring execution schedules for tasks and workflows.</p>
+
+<div class="mb-3">
+    <a href="/schedules/create" class="btn btn-primary">
+        <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Schedule
+    </a>
+    <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _schedules is null ) {
+    <LoadingSpinner Message="Loading schedules…" />
+} else if ( _schedules is not null && _schedules.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Recurrence</th>
+                    <th>Start</th>
+                    <th>Expires</th>
+                    <th>Status</th>
+                    <th>Next Occurrence</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( ScheduleDto s in _schedules ) {
+                    <tr>
+                        <td><a href="/schedules/@s.Id">@s.Name</a></td>
+                        <td>@DescribeRecurrence( s )</td>
+                        <td>@FormatStart( s.StartDateTime )</td>
+                        <td>@FormatExpiration( s.Expiration )</td>
+                        <td>
+                            <span class="badge @GetStatusBadgeClass( s )">@GetStatus( s )</span>
+                        </td>
+                        <td>@GetNextOccurrence( s.Id )</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm me-1" href="/schedules/@s.Id">Edit</a>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( s )">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( !_isLoading ) {
+    <EmptyState Message="No schedules configured yet. Click 'New Schedule' to create one." />
+}
+
+<ConfirmDialog @ref="_confirmDialog"
+               Title="Delete Schedule"
+               Message="@_deleteMessage"
+               ConfirmButtonText="Delete"
+               OnConfirmed="DeleteConfirmedAsync" />
+
+@code {
+    private List<ScheduleDto>? _schedules;
+    private Dictionary<Guid, DateTime?> _nextOccurrences = new( );
+    private string? _errorMessage;
+    private bool _isLoading;
+    private ConfirmDialog _confirmDialog = default!;
+    private Guid _pendingDeleteId;
+    private string _deleteMessage = "";
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Schedules" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _schedules = await client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" );
+
+            // Fetch next occurrence for each schedule concurrently
+            if ( _schedules is not null ) {
+                DateTime windowEnd = DateTime.UtcNow.AddDays( 60 );
+                string windowEndParam = Uri.EscapeDataString( windowEnd.ToString( "o" ) );
+                Task[] fetchTasks = _schedules.Select( s =>
+                    FetchNextOccurrenceAsync( client, s.Id, windowEndParam ) ).ToArray( );
+                await Task.WhenAll( fetchTasks );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load schedules: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task FetchNextOccurrenceAsync( HttpClient client, Guid scheduleId, string windowEndParam ) {
+        try {
+            OccurrencePreview? preview = await client.GetFromJsonAsync<OccurrencePreview>(
+                $"/api/schedules/{scheduleId}/occurrences?windowEnd={windowEndParam}" );
+            DateTime? next = preview?.Occurrences?.Where( o => o > DateTime.UtcNow ).OrderBy( o => o ).FirstOrDefault( );
+            _nextOccurrences[scheduleId] = next == default ? null : next;
+        } catch {
+            _nextOccurrences[scheduleId] = null;
+        }
+    }
+
+    private void PromptDelete( ScheduleDto schedule ) {
+        _pendingDeleteId = schedule.Id;
+        _deleteMessage = $"Are you sure you want to delete schedule '{schedule.Name}'? This cannot be undone.";
+        _confirmDialog.Show( );
+    }
+
+    private async Task DeleteConfirmedAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/schedules/{_pendingDeleteId}" );
+            if ( response.IsSuccessStatusCode ) {
+                await LoadAsync( );
+            } else {
+                _errorMessage = $"Failed to delete schedule: HTTP {(int) response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to delete schedule: {ex.Message}";
+        }
+    }
+
+    private static string DescribeRecurrence( ScheduleDto s ) {
+        if ( s.DailyRecurrence is not null ) return $"Daily (every {s.DailyRecurrence.DayInterval} day(s))";
+        if ( s.WeeklyRecurrence is not null ) return $"Weekly (every {s.WeeklyRecurrence.WeekInterval} week(s))";
+        if ( s.MonthlyRecurrence is not null ) return "Monthly";
+        return "One-time";
+    }
+
+    private static string FormatStart( StartDateTimeDto? start ) {
+        return start is null ? "—" : $"{start.Date:yyyy-MM-dd} {start.Time:HH:mm} ({start.TimeZoneId})";
+    }
+
+    private static string FormatExpiration( ExpirationDateTimeDto? exp ) {
+        return exp is null ? "None" : $"{exp.Date:yyyy-MM-dd} {exp.Time:HH:mm}";
+    }
+
+    private static string GetStatus( ScheduleDto s ) {
+        if ( s.Expiration is not null ) {
+            DateTime expDt = s.Expiration.Date.ToDateTime( s.Expiration.Time );
+            if ( expDt < DateTime.Now ) return "Expired";
+        }
+        return "Active";
+    }
+
+    private static string GetStatusBadgeClass( ScheduleDto s ) =>
+        GetStatus( s ) == "Active" ? "bg-success" : "bg-secondary";
+
+    private string GetNextOccurrence( Guid scheduleId ) {
+        if ( _nextOccurrences.TryGetValue( scheduleId, out DateTime? next ) && next.HasValue ) {
+            return next.Value.ToLocalTime( ).ToString( "g" );
+        }
+        return "—";
+    }
+
+    private sealed record OccurrencePreview( Guid ScheduleId, DateTime WindowEnd, List<DateTime>? Occurrences );
+}
