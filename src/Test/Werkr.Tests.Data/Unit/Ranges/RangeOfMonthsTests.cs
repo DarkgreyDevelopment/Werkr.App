@@ -17,7 +17,7 @@ public class RangeOfMonthsTests {
     /// </summary>
     [TestMethod]
     public void GetContiguousRanges_SingleMonth_ReturnsSingleRange( ) {
-        List<RangeOfMonths> ranges = [.. RangeOfMonths .GetContiguousRanges( MonthsOfYear.March )];
+        List<RangeOfMonths> ranges = [.. RangeOfMonths.GetContiguousRanges( MonthsOfYear.March )];
 
         Assert.HasCount(
             1,
@@ -39,7 +39,7 @@ public class RangeOfMonthsTests {
     [TestMethod]
     public void GetContiguousRanges_FirstQuarter_ReturnsSingleRange( ) {
         MonthsOfYear q1 = MonthsOfYear.January | MonthsOfYear.February | MonthsOfYear.March;
-        List<RangeOfMonths> ranges = [.. RangeOfMonths .GetContiguousRanges( q1 )];
+        List<RangeOfMonths> ranges = [.. RangeOfMonths.GetContiguousRanges( q1 )];
 
         Assert.HasCount(
             1,
@@ -62,7 +62,7 @@ public class RangeOfMonthsTests {
     public void GetContiguousRanges_Quarterly_ReturnsFourRanges( ) {
         MonthsOfYear quarterly = MonthsOfYear.January | MonthsOfYear.April
                                | MonthsOfYear.July | MonthsOfYear.October;
-        List<RangeOfMonths> ranges = [.. RangeOfMonths .GetContiguousRanges( quarterly )];
+        List<RangeOfMonths> ranges = [.. RangeOfMonths.GetContiguousRanges( quarterly )];
 
         Assert.HasCount(
             4,
@@ -79,7 +79,7 @@ public class RangeOfMonthsTests {
                          | MonthsOfYear.April | MonthsOfYear.May | MonthsOfYear.June
                          | MonthsOfYear.July | MonthsOfYear.August | MonthsOfYear.September
                          | MonthsOfYear.October | MonthsOfYear.November | MonthsOfYear.December;
-        List<RangeOfMonths> ranges = [.. RangeOfMonths .GetContiguousRanges( all )];
+        List<RangeOfMonths> ranges = [.. RangeOfMonths.GetContiguousRanges( all )];
 
         Assert.HasCount(
             1,
@@ -101,7 +101,7 @@ public class RangeOfMonthsTests {
     [TestMethod]
     public void GetContiguousRanges_JanMaySep_ReturnsThreeRanges( ) {
         MonthsOfYear months = MonthsOfYear.January | MonthsOfYear.May | MonthsOfYear.September;
-        List<RangeOfMonths> ranges = [.. RangeOfMonths .GetContiguousRanges( months )];
+        List<RangeOfMonths> ranges = [.. RangeOfMonths.GetContiguousRanges( months )];
 
         Assert.HasCount(
             3,

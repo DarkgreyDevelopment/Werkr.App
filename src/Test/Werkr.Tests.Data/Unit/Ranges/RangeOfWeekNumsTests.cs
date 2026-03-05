@@ -17,7 +17,7 @@ public class RangeOfWeekNumsTests {
     /// </summary>
     [TestMethod]
     public void GetContiguousRanges_FirstOnly_ReturnsSingleRange( ) {
-        List<RangeOfWeekNums> ranges = [.. RangeOfWeekNums .GetContiguousRanges( WeekNumberWithinMonth.First )];
+        List<RangeOfWeekNums> ranges = [.. RangeOfWeekNums.GetContiguousRanges( WeekNumberWithinMonth.First )];
 
         Assert.HasCount(
             1,
@@ -40,7 +40,7 @@ public class RangeOfWeekNumsTests {
     public void GetContiguousRanges_FirstThroughThird_ReturnsSingleRange( ) {
         WeekNumberWithinMonth weeks = WeekNumberWithinMonth.First | WeekNumberWithinMonth.Second
                                     | WeekNumberWithinMonth.Third;
-        List<RangeOfWeekNums> ranges = [.. RangeOfWeekNums .GetContiguousRanges( weeks )];
+        List<RangeOfWeekNums> ranges = [.. RangeOfWeekNums.GetContiguousRanges( weeks )];
 
         Assert.HasCount(
             1,
@@ -62,7 +62,7 @@ public class RangeOfWeekNumsTests {
     [TestMethod]
     public void GetContiguousRanges_FirstAndFifth_ReturnsTwoRanges( ) {
         WeekNumberWithinMonth weeks = WeekNumberWithinMonth.First | WeekNumberWithinMonth.Fifth;
-        List<RangeOfWeekNums> ranges = [.. RangeOfWeekNums .GetContiguousRanges( weeks )];
+        List<RangeOfWeekNums> ranges = [.. RangeOfWeekNums.GetContiguousRanges( weeks )];
 
         Assert.HasCount(
             2,
@@ -78,7 +78,7 @@ public class RangeOfWeekNumsTests {
         WeekNumberWithinMonth all = WeekNumberWithinMonth.First | WeekNumberWithinMonth.Second
                                   | WeekNumberWithinMonth.Third | WeekNumberWithinMonth.Fourth
                                   | WeekNumberWithinMonth.Fifth | WeekNumberWithinMonth.Sixth;
-        List<RangeOfWeekNums> ranges = [.. RangeOfWeekNums .GetContiguousRanges( all )];
+        List<RangeOfWeekNums> ranges = [.. RangeOfWeekNums.GetContiguousRanges( all )];
 
         Assert.HasCount(
             1,

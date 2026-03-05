@@ -124,7 +124,15 @@ public class BundleExpirationServiceTests {
         // Seed a completed bundle (expired in the past but already completed)
         using (IServiceScope scope = _serviceProvider.CreateScope( )) {
             WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
-            _ = db.RegistrationBundles.Add( new RegistrationBundle { ConnectionName = "AlreadyDone", BundleId = EncryptionProvider.GenerateRandomBytes( 16 ), Status = RegistrationStatus.Completed, ExpiresAt = DateTime.UtcNow.AddHours( -1 ), KeySize = 4096, } );
+            _ = db.RegistrationBundles.Add(
+                new RegistrationBundle {
+                    ConnectionName = "AlreadyDone",
+                    BundleId = EncryptionProvider.GenerateRandomBytes( 16 ),
+                    Status = RegistrationStatus.Completed,
+                    ExpiresAt = DateTime.UtcNow.AddHours( -1 ),
+                    KeySize = 4096,
+                }
+            );
             _ = await db.SaveChangesAsync( TestContext.CancellationToken );
         }
 
@@ -163,7 +171,15 @@ public class BundleExpirationServiceTests {
         // Seed a pending bundle that has not yet expired
         using (IServiceScope scope = _serviceProvider.CreateScope( )) {
             WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
-            _ = db.RegistrationBundles.Add( new RegistrationBundle { ConnectionName = "Fresh", BundleId = EncryptionProvider.GenerateRandomBytes( 16 ), Status = RegistrationStatus.Pending, ExpiresAt = DateTime.UtcNow.AddHours( 24 ), KeySize = 4096, } );
+            _ = db.RegistrationBundles.Add(
+                new RegistrationBundle {
+                    ConnectionName = "Fresh",
+                    BundleId = EncryptionProvider.GenerateRandomBytes( 16 ),
+                    Status = RegistrationStatus.Pending,
+                    ExpiresAt = DateTime.UtcNow.AddHours( 24 ),
+                    KeySize = 4096,
+                }
+            );
             _ = await db.SaveChangesAsync( TestContext.CancellationToken );
         }
 

@@ -17,7 +17,7 @@ public class RangeOfDaysTests {
     /// </summary>
     [TestMethod]
     public void GetContiguousRanges_SingleDay_ReturnsSingleRange( ) {
-        List<RangeOfDays> ranges = [.. RangeOfDays .GetContiguousRanges( DaysOfWeek.Wednesday )];
+        List<RangeOfDays> ranges = [.. RangeOfDays.GetContiguousRanges( DaysOfWeek.Wednesday )];
 
         Assert.HasCount(
             1,
@@ -40,7 +40,7 @@ public class RangeOfDaysTests {
     public void GetContiguousRanges_ContiguousDays_ReturnsSingleRange( ) {
         DaysOfWeek weekdays = DaysOfWeek.Monday | DaysOfWeek.Tuesday | DaysOfWeek.Wednesday
                             | DaysOfWeek.Thursday | DaysOfWeek.Friday;
-        List<RangeOfDays> ranges = [.. RangeOfDays .GetContiguousRanges( weekdays )];
+        List<RangeOfDays> ranges = [.. RangeOfDays.GetContiguousRanges( weekdays )];
 
         Assert.HasCount(
             1,
@@ -62,7 +62,7 @@ public class RangeOfDaysTests {
     [TestMethod]
     public void GetContiguousRanges_MondayWednesdayFriday_ReturnsThreeRanges( ) {
         DaysOfWeek days = DaysOfWeek.Monday | DaysOfWeek.Wednesday | DaysOfWeek.Friday;
-        List<RangeOfDays> ranges = [.. RangeOfDays .GetContiguousRanges( days )];
+        List<RangeOfDays> ranges = [.. RangeOfDays.GetContiguousRanges( days )];
 
         Assert.HasCount(
             3,
@@ -78,7 +78,7 @@ public class RangeOfDaysTests {
         DaysOfWeek all = DaysOfWeek.Monday | DaysOfWeek.Tuesday | DaysOfWeek.Wednesday
                        | DaysOfWeek.Thursday | DaysOfWeek.Friday | DaysOfWeek.Saturday
                        | DaysOfWeek.Sunday;
-        List<RangeOfDays> ranges = [.. RangeOfDays .GetContiguousRanges( all )];
+        List<RangeOfDays> ranges = [.. RangeOfDays.GetContiguousRanges( all )];
 
         Assert.HasCount(
             1,

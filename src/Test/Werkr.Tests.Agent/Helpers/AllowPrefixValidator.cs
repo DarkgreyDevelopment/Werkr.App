@@ -28,7 +28,6 @@ internal sealed class AllowPrefixValidator : IPathAllowlistValidator {
     /// is outside every allowed prefix.
     /// </summary>
     public void ValidatePath( string path ) {
-
         if (!IsPathAllowed( path )) {
             throw new UnauthorizedAccessException(
                 $"Path '{path}' is outside the configured allowlist." );
