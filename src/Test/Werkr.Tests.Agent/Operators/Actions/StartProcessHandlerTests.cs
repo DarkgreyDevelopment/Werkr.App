@@ -226,6 +226,7 @@ public class StartProcessHandlerTests {
             _channel.Writer,
             TestContext.CancellationToken
         );
+        Assert.IsTrue( result.Success );
         _channel.Writer.Complete( );
         List<OperatorOutput> outputs = [];
         await foreach (OperatorOutput output in _channel.Reader.ReadAllAsync( TestContext.CancellationToken )) {

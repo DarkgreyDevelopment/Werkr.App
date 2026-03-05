@@ -67,7 +67,15 @@ public class BundleExpirationServiceTests {
         // Seed an expired pending bundle
         using (IServiceScope scope = _serviceProvider.CreateScope( )) {
             WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
-            _ = db.RegistrationBundles.Add( new RegistrationBundle { ConnectionName = "Stale", BundleId = EncryptionProvider.GenerateRandomBytes( 16 ), Status = RegistrationStatus.Pending, ExpiresAt = DateTime.UtcNow.AddHours( -1 ), KeySize = 4096, } );
+            _ = db.RegistrationBundles.Add(
+                new RegistrationBundle {
+                    ConnectionName = "Stale",
+                    BundleId = EncryptionProvider.GenerateRandomBytes( 16 ),
+                    Status = RegistrationStatus.Pending,
+                    ExpiresAt = DateTime.UtcNow.AddHours( -1 ),
+                    KeySize = 4096,
+                }
+            );
             _ = await db.SaveChangesAsync( TestContext.CancellationToken );
         }
 

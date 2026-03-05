@@ -224,7 +224,7 @@ public class CommandDispatcherTests {
     private static async Task<List<OperatorOutput>> ToListAsync(
         IAsyncEnumerable<OperatorOutput> sequence,
         CancellationToken cancellationToken
-    ){
+    ) {
 
         List<OperatorOutput> outputs = [];
         await foreach (OperatorOutput output in sequence.WithCancellation( cancellationToken )) {
