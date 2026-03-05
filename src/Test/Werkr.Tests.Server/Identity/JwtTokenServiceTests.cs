@@ -172,7 +172,7 @@ public class JwtTokenServiceTests {
     }
 
     /// <summary>
-    /// Verifies that the generated JWT's expiration timestamp (<see cref="ValidTo"/>) is in the future (after <see
+    /// Verifies that the generated JWT's expiration timestamp (<see cref="JsonWebToken.ValidTo"/>) is in the future (after <see
     /// cref="DateTime.UtcNow"/>) and within 20 minutes, matching the configured 15-minute token lifetime with a
     /// reasonable tolerance.
     /// </summary>
