@@ -13,18 +13,30 @@ public static class PermissionPolicyExtensions {
     /// Call from <c>builder.Services.AddAuthorization()</c>.
     /// </summary>
     public static AuthorizationOptions AddWerkrPermissionPolicies( this AuthorizationOptions options ) {
-        options.AddPolicy( Policies.CanCreate, policy =>
-            policy.Requirements.Add( new PermissionRequirement( Permission.Create ) ) );
-        options.AddPolicy( Policies.CanRead, policy =>
-            policy.Requirements.Add( new PermissionRequirement( Permission.Read ) ) );
-        options.AddPolicy( Policies.CanUpdate, policy =>
-            policy.Requirements.Add( new PermissionRequirement( Permission.Update ) ) );
-        options.AddPolicy( Policies.CanDelete, policy =>
-            policy.Requirements.Add( new PermissionRequirement( Permission.Delete ) ) );
-        options.AddPolicy( Policies.CanExecute, policy =>
-            policy.Requirements.Add( new PermissionRequirement( Permission.Execute ) ) );
-        options.AddPolicy( Policies.IsAdmin, policy =>
-            policy.Requirements.Add( new PermissionRequirement( Permission.Admin ) ) );
+        options.AddPolicy(
+            Policies.CanCreate,
+            policy => policy.Requirements.Add( new PermissionRequirement( Permission.Create ) )
+        );
+        options.AddPolicy(
+            Policies.CanRead,
+            policy => policy.Requirements.Add( new PermissionRequirement( Permission.Read ) )
+        );
+        options.AddPolicy(
+            Policies.CanUpdate,
+            policy => policy.Requirements.Add( new PermissionRequirement( Permission.Update ) )
+        );
+        options.AddPolicy(
+            Policies.CanDelete,
+            policy => policy.Requirements.Add( new PermissionRequirement( Permission.Delete ) )
+        );
+        options.AddPolicy(
+            Policies.CanExecute,
+            policy => policy.Requirements.Add( new PermissionRequirement( Permission.Execute ) )
+        );
+        options.AddPolicy(
+            Policies.IsAdmin,
+            policy => policy.Requirements.Add( new PermissionRequirement( Permission.Admin ) )
+        );
 
         return options;
     }

@@ -5,4 +5,5 @@ public sealed record WorkflowUpdateRequest(
     string Name,
     string? Description = null,
     bool Enabled = true,
-    Guid? ScheduleId = null );
+    Guid? ScheduleId = null
+);

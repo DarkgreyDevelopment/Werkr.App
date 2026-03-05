@@ -1,8 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
-
 using Microsoft.Extensions.Logging;
-
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
 
@@ -14,20 +12,40 @@ namespace Werkr.Tests.Agent.Helpers;
 /// </summary>
 internal sealed class SlowHandler : IActionHandler {
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SlowHandler"/> class with an optional action name.
+    /// </summary>
     public SlowHandler( string action = "SlowAction" ) {
         Action = action;
     }
 
+    /// <summary>
+    /// Gets the action name that this handler is registered under.
+    /// </summary>
     public string Action { get; }
 
+    /// <summary>
+    /// Executes the handler by writing a start message and then blocking
+    /// indefinitely. The method will only return if the
+    /// <paramref name="cancellationToken"/> is cancelled.
+    /// </summary>
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
         await output.WriteAsync(
-            OperatorOutput.Create( LogLevel.Information, "Starting slow action..." ), cancellationToken );
+            OperatorOutput.Create(
+                LogLevel.Information,
+                "Starting slow action..."
+            ),
+            cancellationToken
+        );
         // Wait indefinitely until cancelled
-        await Task.Delay( Timeout.Infinite, cancellationToken );
+        await Task.Delay(
+            Timeout.Infinite,
+            cancellationToken
+        );
         return new ActionOperatorResult( Success: true );
     }
 }

@@ -1,54 +1,11 @@
-
 using System.Collections.Frozen;
+using Werkr.Server.Components.Shared;
 
 namespace Werkr.Server.Services;
-/// <summary>Describes the field type rendered in the parameter editor.</summary>
-public enum FieldType {
-    /// <summary>Single-line text input.</summary>
-    Text,
-    /// <summary>Multi-line text area.</summary>
-    TextArea,
-    /// <summary>Numeric input.</summary>
-    Number,
-    /// <summary>Boolean toggle / checkbox.</summary>
-    Bool,
-    /// <summary>Dropdown select from a fixed set of options.</summary>
-    Select
-}
-
-/// <summary>Describes a single form field for an action parameter.</summary>
-/// <param name="Name">JSON property name (PascalCase) written into the parameters blob.</param>
-/// <param name="Label">Human-friendly label shown in the form.</param>
-/// <param name="Type">Control type to render.</param>
-/// <param name="Required">Whether the field must have a value.</param>
-/// <param name="DefaultValue">Default value as a string (bool → "false", int → "0", etc.).</param>
-/// <param name="Placeholder">Optional placeholder text.</param>
-/// <param name="Options">For <see cref="FieldType.Select"/> — the allowed option values.</param>
-/// <param name="HelpText">Tooltip or small help text shown below the control.</param>
-public sealed record FieldDescriptor(
-    string Name,
-    string Label,
-    FieldType Type,
-    bool Required = false,
-    string? DefaultValue = null,
-    string? Placeholder = null,
-    string[]? Options = null,
-    string? HelpText = null );
-
-/// <summary>Describes a single built-in action and its expected parameter fields.</summary>
-/// <param name="Key">Action key string (e.g. "CopyFile") stored in ActionSubType.</param>
-/// <param name="DisplayName">Human-friendly name shown in the dropdown.</param>
-/// <param name="Description">Short description of what the action does.</param>
-/// <param name="Fields">Ordered list of form fields.</param>
-public sealed record ActionFormDescriptor(
-    string Key,
-    string DisplayName,
-    string Description,
-    IReadOnlyList<FieldDescriptor> Fields );
 
 /// <summary>
 /// Registry of all built-in action form descriptors.
-/// Used by the <c>ActionParameterEditor</c> component to render dynamic forms.
+/// Used by the <see cref="ActionParameterEditor"/> component to render dynamic forms.
 /// </summary>
 public static class ActionParameterRegistry {
     /// <summary>Encoding values matching the PowerShell Out-File parameter set.</summary>
@@ -58,9 +15,12 @@ public static class ActionParameterRegistry {
     ];
 
     /// <summary>PathType values for TestExists (matches Werkr.Common.Models.PathType enum).</summary>
-    private static readonly string[] PathTypes = ["File", "Directory", "Any"];
+    private static readonly string[] s_pathTypes = ["File", "Directory", "Any"];
 
-    private static readonly ActionFormDescriptor[] AllDescriptors = [
+    /// <summary>
+    /// The master array of all <see cref="ActionFormDescriptor"/> instances that define every supported action and its parameters. This array is the source of truth from which <see cref="Actions"/> and <see cref="All"/> are derived.
+    /// </summary>
+    private static readonly ActionFormDescriptor[] s_allDescriptors = [
         // ── File operations ──────────────────────────────────────────
         new( "CopyFile", "Copy File", "Copy a file or directory to a new location.", [
             new( "Source", "Source Path", FieldType.Text, Required: true, Placeholder: "C:\\source\\file.txt", HelpText: "Supports wildcard patterns." ),
@@ -101,7 +61,7 @@ public static class ActionParameterRegistry {
 
         new( "TestExists", "Test Exists", "Check if a path exists.", [
             new( "Path", "Path", FieldType.Text, Required: true, Placeholder: "C:\\path\\to\\check" ),
-            new( "Type", "Path Type", FieldType.Select, DefaultValue: "Any", Options: PathTypes, HelpText: "File, Directory, or Any." ),
+            new( "Type", "Path Type", FieldType.Select, DefaultValue: "Any", Options: s_pathTypes, HelpText: "File, Directory, or Any." ),
         ] ),
 
         // ── Content operations ───────────────────────────────────────
@@ -134,8 +94,8 @@ public static class ActionParameterRegistry {
 
     /// <summary>Fast lookup by action key (case-insensitive).</summary>
     public static readonly FrozenDictionary<string, ActionFormDescriptor> Actions =
-        AllDescriptors.ToFrozenDictionary( d => d.Key, StringComparer.OrdinalIgnoreCase );
+        s_allDescriptors.ToFrozenDictionary( d => d.Key, StringComparer.OrdinalIgnoreCase );
 
     /// <summary>Ordered list of all descriptors for populating dropdowns.</summary>
-    public static IReadOnlyList<ActionFormDescriptor> All => AllDescriptors;
+    public static IReadOnlyList<ActionFormDescriptor> All => s_allDescriptors;
 }

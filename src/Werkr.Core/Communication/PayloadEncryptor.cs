@@ -1,4 +1,4 @@
-using Google.Protobuf;
+﻿using Google.Protobuf;
 
 using Werkr.Common.Protos;
 using Werkr.Core.Cryptography;
@@ -20,12 +20,24 @@ public static class PayloadEncryptor {
     /// <param name="keyId">Identifier for the key used (supports key rotation).</param>
     /// <returns>An <see cref="EncryptedEnvelope"/> containing the encrypted payload.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="sharedKey"/> is null.</exception>
-    public static EncryptedEnvelope EncryptToEnvelope<T>( T message, byte[] sharedKey, string keyId )
+    public static EncryptedEnvelope EncryptToEnvelope<T>(
+        T message,
+        byte[] sharedKey,
+        string keyId
+    )
         where T : IMessage<T> {
-        ArgumentNullException.ThrowIfNull( sharedKey, nameof( sharedKey ) );
+        ArgumentNullException.ThrowIfNull(
+            sharedKey,
+            nameof( sharedKey )
+        );
 
         byte[] plaintext = message.ToByteArray( );
-        byte[] ciphertext = EncryptionProvider.AesGcmEncrypt( plaintext, sharedKey, out byte[] nonce, out byte[] tag );
+        byte[] ciphertext = EncryptionProvider.AesGcmEncrypt(
+            plaintext,
+            sharedKey,
+            out byte[] nonce,
+            out byte[] tag
+        );
 
         return new EncryptedEnvelope {
             Ciphertext = ByteString.CopyFrom( ciphertext ),
@@ -44,15 +56,22 @@ public static class PayloadEncryptor {
     /// <returns>The decrypted protobuf message.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="sharedKey"/> is null.</exception>
     /// <exception cref="WerkrCryptoException">Thrown when decryption fails (wrong key or tampered data).</exception>
-    public static T DecryptFromEnvelope<T>( EncryptedEnvelope envelope, byte[] sharedKey )
+    public static T DecryptFromEnvelope<T>(
+        EncryptedEnvelope envelope,
+        byte[] sharedKey
+    )
         where T : IMessage<T>, new() {
-        ArgumentNullException.ThrowIfNull( sharedKey, nameof( sharedKey ) );
+        ArgumentNullException.ThrowIfNull(
+            sharedKey,
+            nameof( sharedKey )
+        );
 
         byte[] plaintext = EncryptionProvider.AesGcmDecrypt(
             envelope.Ciphertext.ToByteArray( ),
             sharedKey,
             envelope.Iv.ToByteArray( ),
-            envelope.AuthTag.ToByteArray( ) );
+            envelope.AuthTag.ToByteArray( )
+        );
 
         MessageParser<T> parser = new( ( ) => new T( ) );
         return parser.ParseFrom( plaintext );
@@ -77,22 +96,35 @@ public static class PayloadEncryptor {
         byte[] currentKey,
         string currentKeyId,
         byte[]? previousKey,
-        string? previousKeyId )
+        string? previousKeyId
+    )
         where T : IMessage<T>, new() {
-        ArgumentNullException.ThrowIfNull( currentKey, nameof( currentKey ) );
+        ArgumentNullException.ThrowIfNull(
+            currentKey,
+            nameof( currentKey )
+        );
 
         // If the key ID matches the current key, or no key ID is set, use current key
         if (string.IsNullOrEmpty( envelope.KeyId ) || envelope.KeyId == currentKeyId) {
-            return DecryptFromEnvelope<T>( envelope, currentKey );
+            return DecryptFromEnvelope<T>(
+                envelope,
+                currentKey
+            );
         }
 
         // If the key ID matches the previous key and a previous key exists, use it
         if (previousKey is not null && previousKeyId is not null && envelope.KeyId == previousKeyId) {
-            return DecryptFromEnvelope<T>( envelope, previousKey );
+            return DecryptFromEnvelope<T>(
+                envelope,
+                previousKey
+            );
         }
 
         // Key ID doesn't match any known key — try current key as a last resort
         // (handles the case where key IDs haven't been synchronized yet)
-        return DecryptFromEnvelope<T>( envelope, currentKey );
+        return DecryptFromEnvelope<T>(
+            envelope,
+            currentKey
+        );
     }
 }

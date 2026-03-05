@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
-
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -10,15 +9,24 @@ using Werkr.Core.Security;
 namespace Werkr.Agent.Operators.Actions;
 
 /// <summary>
-/// Handles the <c>WriteContent</c> action — writes or appends text content to a file.
+/// Handles the <c>WriteContent</c> action - writes or appends text content to a file.
 /// </summary>
 public sealed class WriteContentHandler : IActionHandler {
 
+    /// <summary>
+    /// Resolves and validates file paths against the agent's allowed-path allowlist.
+    /// </summary>
     private readonly IFilePathResolver _resolver;
+    /// <summary>
+    /// Logger for recording execution errors for this handler.
+    /// </summary>
     private readonly ILogger<WriteContentHandler> _logger;
 
     /// <summary>Creates a new <see cref="WriteContentHandler"/>.</summary>
-    public WriteContentHandler( IFilePathResolver resolver, ILogger<WriteContentHandler> logger ) {
+    public WriteContentHandler(
+        IFilePathResolver resolver,
+        ILogger<WriteContentHandler> logger
+    ) {
         _resolver = resolver;
         _logger = logger;
     }
@@ -30,7 +38,8 @@ public sealed class WriteContentHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
         try {
             WriteContentParameters p = parameters.Deserialize<WriteContentParameters>( ActionJson.SerializerOptions )
                 ?? throw new ArgumentException( "Failed to deserialize WriteContent parameters." );

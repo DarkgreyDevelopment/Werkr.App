@@ -10,6 +10,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "schedule_expiration" )]
 public class ExpirationDateTimeInfo : DateTimeInfoBase {
+
     /// <summary>Foreign key to the parent schedule.</summary>
     [Key]
     public Guid ScheduleId { get; set; }

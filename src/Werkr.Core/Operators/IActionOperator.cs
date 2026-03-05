@@ -1,4 +1,4 @@
-using Werkr.Common.Models.Actions;
+﻿using Werkr.Common.Models.Actions;
 
 namespace Werkr.Core.Operators;
 
@@ -21,5 +21,8 @@ public interface IActionOperator {
     /// <returns>
     /// An <see cref="OperatorExecution"/> containing streamed output and a typed result.
     /// </returns>
-    OperatorExecution Execute( ActionDescriptor descriptor, CancellationToken cancellationToken = default );
+    OperatorExecution Execute(
+        ActionDescriptor descriptor,
+        CancellationToken cancellationToken = default
+    );
 }

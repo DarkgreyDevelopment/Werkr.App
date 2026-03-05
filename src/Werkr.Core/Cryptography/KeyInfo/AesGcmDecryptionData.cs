@@ -1,4 +1,4 @@
-namespace Werkr.Core.Cryptography.KeyInfo;
+﻿namespace Werkr.Core.Cryptography.KeyInfo;
 
 /// <summary>
 /// Holds AES-GCM decryption data: the symmetric key and ordered chunk notes.
@@ -17,11 +17,15 @@ public class AesGcmDecryptionData {
     /// <param name="key">The 32-byte AES-256 key.</param>
     /// <param name="notes">The ordered decryption notes.</param>
     /// <exception cref="ArgumentException">Thrown when key length is not 32 bytes.</exception>
-    public AesGcmDecryptionData( byte[] key, List<AesGcmDecryptionNote> notes ) {
+    public AesGcmDecryptionData(
+        byte[] key,
+        List<AesGcmDecryptionNote> notes
+    ) {
         if (key.Length != EncryptionProvider.AesGcmKeySize) {
             throw new ArgumentException(
                 $"AES-GCM key must be {EncryptionProvider.AesGcmKeySize} bytes, got {key.Length}.",
-                nameof( key ) );
+                nameof( key )
+            );
         }
 
         Key = key;

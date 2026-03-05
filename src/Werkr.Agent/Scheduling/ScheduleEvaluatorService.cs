@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Threading.Channels;
-
 using Werkr.Agent.Communication;
 using Werkr.Agent.Operators;
 using Werkr.Common.Models.Actions;
@@ -59,7 +58,8 @@ public sealed class ScheduleEvaluatorService(
     internal sealed record FireQueueEntry(
         DateTime FireTimeUtc,
         ScheduledTaskDefinition? Task,
-        ScheduledWorkflowDefinition? Workflow ) : IComparable<FireQueueEntry> {
+        ScheduledWorkflowDefinition? Workflow
+    ) : IComparable<FireQueueEntry> {
         public int CompareTo( FireQueueEntry? other ) {
             if (other is null) {
                 return 1;
@@ -86,7 +86,8 @@ public sealed class ScheduleEvaluatorService(
     private readonly Dictionary<string, DateTime> _lastSyncTimes = [];
 
     /// <summary>
-    /// Stores the current assigned task/workflow definitions from the last sync.
+    /// Stores the current assigned task definitions from the last sync.
+    /// Workflows are tracked separately in <see cref="_currentWorkflows"/>.
     /// </summary>
     private readonly List<ScheduledTaskDefinition> _currentTasks = [];
     private readonly List<ScheduledWorkflowDefinition> _currentWorkflows = [];
@@ -559,7 +560,8 @@ public sealed class ScheduleEvaluatorService(
     private async Task SubmitAuditLogAsync(
         Guid scheduleId,
         IReadOnlyList<SuppressedOccurrence> suppressed,
-        CancellationToken ct ) {
+        CancellationToken ct
+    ) {
         try {
             ScheduleSync.ScheduleSyncClient client = await clientFactory.CreateScheduleSyncClientAsync( ct );
             Grpc.Core.CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
@@ -777,7 +779,8 @@ public sealed class ScheduleEvaluatorService(
         ErrorCategory errorCategory,
         string? workflowRunId,
         string? outputPreview,
-        CancellationToken ct ) {
+        CancellationToken ct
+    ) {
 
         JobReporting.JobReportingClient client = await clientFactory.CreateJobReportingClientAsync( ct );
         RegisteredConnectionInfo connection = await GetConnectionInfoAsync( ct );

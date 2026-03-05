@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Channels;
-
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -9,11 +8,14 @@ using Werkr.Core.Operators;
 namespace Werkr.Agent.Operators.Actions;
 
 /// <summary>
-/// Handles the <c>StopProcess</c> action — stops a running process by name or PID.
+/// Handles the <c>StopProcess</c> action - stops a running process by name or PID.
 /// Optionally force-kills the process.
 /// </summary>
 public sealed class StopProcessHandler : IActionHandler {
 
+    /// <summary>
+    /// Logger for recording execution errors for this handler.
+    /// </summary>
     private readonly ILogger<StopProcessHandler> _logger;
 
     /// <summary>Creates a new <see cref="StopProcessHandler"/>.</summary>
@@ -28,7 +30,8 @@ public sealed class StopProcessHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
         try {
             StopProcessParameters p = parameters.Deserialize<StopProcessParameters>( ActionJson.SerializerOptions )
                 ?? throw new ArgumentException( "Failed to deserialize StopProcess parameters." );

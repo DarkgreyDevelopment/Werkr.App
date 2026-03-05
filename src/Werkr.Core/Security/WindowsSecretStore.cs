@@ -1,4 +1,4 @@
-using System.Runtime.Versioning;
+﻿using System.Runtime.Versioning;
 using System.Security.Cryptography;
 
 namespace Werkr.Core.Security;
@@ -15,7 +15,11 @@ public class WindowsSecretStore : ISecretStore {
     /// <summary>Creates a new <see cref="WindowsSecretStore"/>.</summary>
     public WindowsSecretStore( ) {
         string localAppData = Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData );
-        _basePath = Path.Combine( localAppData, "Werkr", "secrets" );
+        _basePath = Path.Combine(
+            localAppData,
+            "Werkr",
+            "secrets"
+        );
         _ = Directory.CreateDirectory( _basePath );
     }
 
@@ -27,17 +31,31 @@ public class WindowsSecretStore : ISecretStore {
         }
 
         byte[] encryptedBytes = File.ReadAllBytes( filePath );
-        byte[] decryptedBytes = ProtectedData.Unprotect( encryptedBytes, null, DataProtectionScope.CurrentUser );
+        byte[] decryptedBytes = ProtectedData.Unprotect(
+            encryptedBytes,
+            null,
+            DataProtectionScope.CurrentUser
+        );
         string value = System.Text.Encoding.UTF8.GetString( decryptedBytes );
         return Task.FromResult<string?>( value );
     }
 
     /// <inheritdoc/>
-    public Task SetSecretAsync( string key, string value ) {
+    public Task SetSecretAsync(
+        string key,
+        string value
+    ) {
         byte[] plainBytes = System.Text.Encoding.UTF8.GetBytes( value );
-        byte[] encryptedBytes = ProtectedData.Protect( plainBytes, null, DataProtectionScope.CurrentUser );
+        byte[] encryptedBytes = ProtectedData.Protect(
+            plainBytes,
+            null,
+            DataProtectionScope.CurrentUser
+        );
         string filePath = GetFilePath( key );
-        File.WriteAllBytes( filePath, encryptedBytes );
+        File.WriteAllBytes(
+            filePath,
+            encryptedBytes
+        );
         return Task.CompletedTask;
     }
 
@@ -53,7 +71,13 @@ public class WindowsSecretStore : ISecretStore {
 
     private string GetFilePath( string key ) {
         // Sanitize key for file system
-        string safeKey = string.Join( "_", key.Split( Path.GetInvalidFileNameChars( ) ) );
-        return Path.Combine( _basePath, safeKey + ".bin" );
+        string safeKey = string.Join(
+            "_",
+            key.Split( Path.GetInvalidFileNameChars( ) )
+        );
+        return Path.Combine(
+            _basePath,
+            safeKey + ".bin"
+        );
     }
 }

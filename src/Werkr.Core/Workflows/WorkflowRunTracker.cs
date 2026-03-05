@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Threading.Channels;
 
 using Werkr.Common.Models;
@@ -22,7 +22,10 @@ public sealed class WorkflowRunTracker {
     public ChannelWriter<WorkflowStepStatusUpdate> StartTracking( Guid runId ) {
         Channel<WorkflowStepStatusUpdate> channel = Channel.CreateUnbounded<WorkflowStepStatusUpdate>(
             new UnboundedChannelOptions { SingleWriter = true } );
-        _ = _channels.TryAdd( runId, channel );
+        _ = _channels.TryAdd(
+            runId,
+            channel
+        );
         return channel.Writer;
     }
 
@@ -31,7 +34,10 @@ public sealed class WorkflowRunTracker {
     /// Called by <see cref="WorkflowExecutor"/> when the run ends.
     /// </summary>
     public void CompleteTracking( Guid runId ) {
-        if (_channels.TryRemove( runId, out Channel<WorkflowStepStatusUpdate>? channel )) {
+        if (_channels.TryRemove(
+            runId,
+            out Channel<WorkflowStepStatusUpdate>? channel
+        )) {
             _ = channel.Writer.TryComplete( );
         }
     }
@@ -41,7 +47,10 @@ public sealed class WorkflowRunTracker {
     /// for the given run. Returns null if the run is not being tracked.
     /// </summary>
     public IAsyncEnumerable<WorkflowStepStatusUpdate>? GetUpdates( Guid runId ) {
-        return _channels.TryGetValue( runId, out Channel<WorkflowStepStatusUpdate>? channel ) ? channel.Reader.ReadAllAsync( ) : null;
+        return _channels.TryGetValue(
+            runId,
+            out Channel<WorkflowStepStatusUpdate>? channel
+        ) ? channel.Reader.ReadAllAsync( ) : null;
     }
 
     /// <summary>Returns true if the run is currently being tracked.</summary>

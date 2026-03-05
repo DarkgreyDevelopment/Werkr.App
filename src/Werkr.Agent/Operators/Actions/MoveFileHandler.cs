@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Threading.Channels;
-
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -9,16 +8,25 @@ using Werkr.Core.Security;
 namespace Werkr.Agent.Operators.Actions;
 
 /// <summary>
-/// Handles the <c>MoveFile</c> action — moves files or directories from source to destination.
+/// Handles the <c>MoveFile</c> action - moves files or directories from source to destination.
 /// Supports wildcard file resolution. Directory move is implemented as copy + delete.
 /// </summary>
 public sealed class MoveFileHandler : IActionHandler {
 
+    /// <summary>
+    /// Resolves and validates file paths against the agent's allowed-path allowlist.
+    /// </summary>
     private readonly IFilePathResolver _resolver;
+    /// <summary>
+    /// Logger for recording execution errors for this handler.
+    /// </summary>
     private readonly ILogger<MoveFileHandler> _logger;
 
     /// <summary>Creates a new <see cref="MoveFileHandler"/>.</summary>
-    public MoveFileHandler( IFilePathResolver resolver, ILogger<MoveFileHandler> logger ) {
+    public MoveFileHandler(
+        IFilePathResolver resolver,
+        ILogger<MoveFileHandler> logger
+    ) {
         _resolver = resolver;
         _logger = logger;
     }
@@ -30,69 +38,136 @@ public sealed class MoveFileHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
         try {
-            MoveFileParameters p = parameters.Deserialize<MoveFileParameters>( ActionJson.SerializerOptions )
-                ?? throw new ArgumentException( "Failed to deserialize MoveFile parameters." );
+            MoveFileParameters p = parameters
+                .Deserialize<MoveFileParameters>(
+                    ActionJson.SerializerOptions
+                )
+                ?? throw new ArgumentException(
+                    "Failed to deserialize MoveFile parameters."
+                );
 
-            _resolver.ValidateSourceDestination( p.Source, p.Destination );
+            _resolver.ValidateSourceDestination(
+                p.Source,
+                p.Destination
+            );
 
             string source = Path.GetFullPath( p.Source );
             string destination = _resolver.ResolveSinglePath( p.Destination );
 
             if (Directory.Exists( source )) {
                 // Directory move (copy + delete)
-                CopyDirectoryRecursive( source, destination, p.Overwrite );
-                Directory.Delete( source, recursive: true );
+                CopyDirectoryRecursive(
+                    source,
+                    destination,
+                    p.Overwrite
+                );
+                Directory.Delete(
+                    source,
+                    recursive: true
+                );
                 await output.WriteAsync(
-                    OperatorOutput.Create( LogLevel.Information, $"Moved directory '{source}' → '{destination}'" ),
-                    cancellationToken );
+                    OperatorOutput.Create(
+                        LogLevel.Information,
+                        $"Moved directory '{source}' → '{destination}'"
+                    ),
+                    cancellationToken
+                );
             } else {
                 // File move (supports wildcards)
                 string[] files = _resolver.ResolveFiles( source );
                 if (files.Length == 0) {
                     await output.WriteAsync(
-                        OperatorOutput.Create( LogLevel.Warning, $"No files found matching '{source}'." ),
-                        cancellationToken );
+                        OperatorOutput.Create(
+                            LogLevel.Warning,
+                            $"No files found matching '{source}'."
+                        ),
+                        cancellationToken
+                    );
                     return new ActionOperatorResult( Success: false );
                 }
 
                 foreach (string file in files) {
                     cancellationToken.ThrowIfCancellationRequested( );
                     string dest = Directory.Exists( destination )
-                        ? Path.Join( destination, Path.GetFileName( file ) )
+                        ? Path.Join(
+                            destination,
+                            Path.GetFileName( file )
+                        )
                         : destination;
-                    File.Move( file, dest, p.Overwrite );
+                    File.Move(
+                        file,
+                        dest,
+                        p.Overwrite
+                    );
                     await output.WriteAsync(
-                        OperatorOutput.Create( LogLevel.Information, $"Moved '{file}' → '{dest}'" ),
-                        cancellationToken );
+                        OperatorOutput.Create(
+                            LogLevel.Information,
+                            $"Moved '{file}' → '{dest}'"
+                        ),
+                        cancellationToken
+                    );
                 }
             }
 
             return new ActionOperatorResult( Success: true );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "MoveFile action failed" );
+            _logger.LogError(
+                ex,
+                "MoveFile action failed"
+            );
             await output.WriteAsync(
-                OperatorOutput.Create( LogLevel.Error, $"MoveFile failed: {ex.Message}" ),
-                cancellationToken );
-            return new ActionOperatorResult( Success: false, Exception: ex );
+                OperatorOutput.Create(
+                    LogLevel.Error,
+                    $"MoveFile failed: {ex.Message}"
+                ),
+                cancellationToken
+            );
+            return new ActionOperatorResult(
+                Success: false,
+                Exception: ex
+            );
         }
     }
 
-    private static void CopyDirectoryRecursive( string source, string destination, bool overwrite ) {
+    /// <summary>
+    /// Recursively copies a directory tree from source to
+    /// destination, used as part of the directory move
+    /// operation (copy + delete source).
+    /// </summary>
+    private static void CopyDirectoryRecursive(
+        string source,
+        string destination,
+        bool overwrite
+    ) {
         DirectoryInfo dir = new( source );
         if (!dir.Exists) { return; }
 
         _ = Directory.CreateDirectory( destination );
 
         foreach (FileInfo file in dir.GetFiles( )) {
-            string targetPath = Path.Join( destination, file.Name );
-            _ = file.CopyTo( targetPath, overwrite );
+            string targetPath = Path.Join(
+                destination,
+                file.Name
+            );
+            _ = file.CopyTo(
+                targetPath,
+                overwrite
+            );
         }
 
         foreach (DirectoryInfo subDir in dir.GetDirectories( )) {
-            string newDest = Path.Join( destination, subDir.Name );
-            CopyDirectoryRecursive( subDir.FullName, newDest, overwrite );
+            string newDest = Path.Join(
+                destination,
+                subDir.Name
+            );
+            CopyDirectoryRecursive(
+                subDir.FullName,
+                newDest,
+                overwrite
+            );
         }
     }
 }

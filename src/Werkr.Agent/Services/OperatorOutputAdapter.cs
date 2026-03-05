@@ -1,5 +1,4 @@
 using Grpc.Core;
-
 using Werkr.Agent.Protos;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
@@ -28,7 +27,8 @@ internal static class OperatorOutputAdapter {
         IServerStreamWriter<EncryptedEnvelope> responseStream,
         byte[] sharedKey,
         string keyId,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
 
         ArgumentNullException.ThrowIfNull( sharedKey, nameof( sharedKey ) );
 

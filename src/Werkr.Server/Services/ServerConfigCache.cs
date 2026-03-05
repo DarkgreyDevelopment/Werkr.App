@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 
@@ -14,8 +13,17 @@ namespace Werkr.Server.Services;
 /// </para>
 /// </summary>
 public sealed class ServerConfigCache {
+    /// <summary>
+    /// Root service provider used to create scoped services for database access.
+    /// </summary>
     private readonly IServiceProvider _services;
+    /// <summary>
+    /// Logger for recording cache initialisation and refresh events.
+    /// </summary>
     private readonly ILogger<ServerConfigCache> _logger;
+    /// <summary>
+    /// The currently cached configuration entity. Marked <see langword="volatile"/> because it may be replaced by a background refresh while other threads read it.
+    /// </summary>
     private volatile ConfigurationSettings _config = new( );
 
     /// <summary>Creates a new instance backed by the application service provider.</summary>
@@ -39,7 +47,6 @@ public sealed class ServerConfigCache {
     public bool AllowRegistration => _config.AllowRegistration;
 
     // ── Lifecycle ────────────────────────────────────────────────────
-
     /// <summary>
     /// Load config from the database, creating a default row if none exists.
     /// Called once from <c>Program.cs</c> after DB migration and before the identity seeder.

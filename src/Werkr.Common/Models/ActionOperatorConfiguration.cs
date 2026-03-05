@@ -1,7 +1,7 @@
 namespace Werkr.Common.Models;
 
 /// <summary>
-/// Configuration options for the <c>ActionOperator</c> — the built-in action
+/// Configuration options for the <c>ActionOperator</c> - the built-in action
 /// handler dispatch engine. Bound from the <c>"ActionOperator"</c> configuration section.
 /// </summary>
 public sealed class ActionOperatorConfiguration {
@@ -11,7 +11,7 @@ public sealed class ActionOperatorConfiguration {
 
     /// <summary>
     /// Default timeout applied to each action handler invocation.
-    /// Set to <c>null</c> to disable the timeout entirely.
+    /// Set to <see langword="null"/> to disable the timeout entirely.
     /// Default: 1 hour.
     /// </summary>
     public TimeSpan? DefaultTimeout { get; set; } = TimeSpan.FromHours( 1 );

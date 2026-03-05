@@ -7,4 +7,5 @@ public sealed record WorkflowDto(
     string Description,
     bool Enabled,
     Guid? ScheduleId,
-    IReadOnlyList<WorkflowStepDto> Steps );
+    IReadOnlyList<WorkflowStepDto> Steps
+);

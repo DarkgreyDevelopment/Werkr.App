@@ -10,4 +10,5 @@ public sealed record ScheduleDto(
     DailyRecurrenceDto? DailyRecurrence,
     WeeklyRecurrenceDto? WeeklyRecurrence,
     MonthlyRecurrenceDto? MonthlyRecurrence,
-    RepeatOptionsDto? RepeatOptions );
+    RepeatOptionsDto? RepeatOptions
+);

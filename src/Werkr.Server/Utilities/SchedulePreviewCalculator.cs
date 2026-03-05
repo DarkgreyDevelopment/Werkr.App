@@ -3,9 +3,9 @@ using Werkr.Common.Models;
 namespace Werkr.Server.Utilities;
 
 /// <summary>
-/// Client-side occurrence preview calculator for schedule forms.
-/// Computes the next N occurrences from a <see cref="ScheduleCreateRequest"/>
-/// without requiring a server round-trip.
+/// Produces a preview list of upcoming UTC occurrences for a schedule definition.
+/// Handles daily, weekly, and monthly recurrence patterns as well as
+/// intra-day repeat windows.
 /// </summary>
 internal static class SchedulePreviewCalculator {
     /// <summary>
@@ -67,11 +67,13 @@ internal static class SchedulePreviewCalculator {
     }
 
     /// <summary>
-    /// Adds intra-cycle repeat occurrences within the RepeatDurationMinutes window.
+    /// Appends intra-day repeat occurrences following a base occurrence
+    /// for up to <c>RepeatDurationMinutes</c>.
     /// </summary>
     private static void AddRepeatOccurrences(
         List<DateTime> results, DateTime baseOccurrence,
-        RepeatOptionsDto? repeatOptions, DateTime windowEnd, int maxCount ) {
+        RepeatOptionsDto? repeatOptions, DateTime windowEnd, int maxCount
+    ) {
         if (repeatOptions is null || repeatOptions.RepeatIntervalMinutes <= 0) {
             return;
         }
@@ -98,6 +100,10 @@ internal static class SchedulePreviewCalculator {
         }
     }
 
+    /// <summary>
+    /// Advances the UTC cursor to the next primary occurrence based on the active
+    /// recurrence type (daily, weekly, or monthly).
+    /// </summary>
     private static DateTime AdvanceCursor( DateTime cursorUtc, TimeZoneInfo tz, ScheduleCreateRequest req ) {
         DateTime local = TimeZoneInfo.ConvertTimeFromUtc( cursorUtc, tz );
 
@@ -115,6 +121,10 @@ internal static class SchedulePreviewCalculator {
         return TimeZoneInfo.ConvertTimeToUtc( local, tz );
     }
 
+    /// <summary>
+    /// Advances the local-time cursor to the next weekly occurrence
+    /// based on the selected days-of-week bitmask and the configured week interval.
+    /// </summary>
     private static DateTime AdvanceWeekly( DateTime local, WeeklyRecurrenceDto weekly ) {
         // Try next day-of-week in current week, otherwise jump to next N-week cycle
         DateTime next = local.AddDays( 1 );
@@ -141,6 +151,10 @@ internal static class SchedulePreviewCalculator {
         return local.AddDays( interval * 7 );
     }
 
+    /// <summary>
+    /// Advances the local-time cursor to the next monthly occurrence, supporting
+    /// both day-number and week-number + day-of-week modes.
+    /// </summary>
     private static DateTime AdvanceMonthly( DateTime local, MonthlyRecurrenceDto monthly ) {
         // Week+Day mode: find Nth weekday of matching month
         if (monthly.WeekNumber is not null && monthly.DaysOfWeek is not null) {
@@ -169,6 +183,9 @@ internal static class SchedulePreviewCalculator {
         return local.AddYears( 2 ); // fallback
     }
 
+    /// <summary>
+    /// Advances the local-time cursor to the next matching month for monthly recurrences that use a week-number + day-of-week combination (e.g. "second Tuesday of the month").
+    /// </summary>
     private static DateTime AdvanceMonthlyWeekAndDay( DateTime local, MonthlyRecurrenceDto monthly ) {
         DateTime next = local.AddMonths( 1 );
         for (int attempt = 0; attempt < 24; attempt++) {
@@ -191,7 +208,8 @@ internal static class SchedulePreviewCalculator {
     /// </summary>
     private static DateTime? FindWeekAndDayInMonth(
         int year, int month, int hour, int minute, int second,
-        int weekNumberFlags, int daysOfWeekFlags, DateTimeKind kind ) {
+        int weekNumberFlags, int daysOfWeekFlags, DateTimeKind kind
+    ) {
         int daysInMonth = DateTime.DaysInMonth( year, month );
         _ = new DateTime( year, month, 1 );
         // Build a list of (weekNumber, dayOfWeek, dayOfMonth) for each day
@@ -224,6 +242,9 @@ internal static class SchedulePreviewCalculator {
         return 0; // 0 is invalid
     }
 
+    /// <summary>
+    /// Converts a <see cref="DayOfWeek"/> value to a single-bit flag suitable for comparison against the bitmask format used by <see cref="WeeklyRecurrenceDto"/> and <see cref="MonthlyRecurrenceDto"/> (Sunday = 1, Monday = 2, Tuesday = 4, …, Saturday = 64).
+    /// </summary>
     private static int DayOfWeekToFlag( DayOfWeek day ) => day switch {
         DayOfWeek.Sunday => 1,
         DayOfWeek.Monday => 2,
@@ -235,6 +256,9 @@ internal static class SchedulePreviewCalculator {
         _ => 0
     };
 
+    /// <summary>
+    /// Resolves a time-zone identifier string to a <see cref="TimeZoneInfo"/> instance. Falls back to <see cref="TimeZoneInfo.Utc"/> when the identifier is not found on the current system.
+    /// </summary>
     private static TimeZoneInfo GetTimeZone( string timeZoneId ) {
         try {
             return TimeZoneInfo.FindSystemTimeZoneById( timeZoneId );

@@ -5,11 +5,15 @@
         {
           "src": "../src",
           "files": [
-            "Werkr.Agent/src/Werkr.Agent.csproj",
-            "Werkr.Common/src/Werkr.Common.csproj",
-            "Werkr.Common.Configuration/src/Werkr.Common.Configuration.csproj",
-            "Werkr.Installers/src/Wix/CustomActions.csproj",
-            "Werkr.Server/src/Werkr.Server.csproj"
+            "Werkr.Agent/Werkr.Agent.csproj",
+            "Werkr.Api/Werkr.Api.csproj",
+            "Werkr.Common/Werkr.Common.csproj",
+            "Werkr.Common.Configuration/Werkr.Common.Configuration.csproj",
+            "Werkr.Core/Werkr.Core.csproj",
+            "Werkr.Data/Werkr.Data.csproj",
+            "Werkr.Data.Identity/Werkr.Data.Identity.csproj",
+            "Werkr.Server/Werkr.Server.csproj",
+            "Installer/Msi/CustomActions/Werkr.Installer.Msi.CustomActions.csproj"
           ],
           "exclude": [
             "**/bin/**",

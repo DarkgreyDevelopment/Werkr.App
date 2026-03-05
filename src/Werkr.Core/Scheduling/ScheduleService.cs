@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Werkr.Data;
@@ -25,7 +25,10 @@ public sealed partial class ScheduleService(
     /// Creates a new schedule with all sub-entities in a single save.
     /// </summary>
     /// <exception cref="ValidationException">Thrown when the schedule fails validation.</exception>
-    public async Task<Schedule> CreateAsync( Schedule schedule, CancellationToken ct = default ) {
+    public async Task<Schedule> CreateAsync(
+        Schedule schedule,
+        CancellationToken ct = default
+    ) {
         ValidationResult? validation = ScheduleValidator.Validate( schedule );
         if (validation != ValidationResult.Success) {
             throw new ValidationException( validation!.ErrorMessage );
@@ -68,9 +71,16 @@ public sealed partial class ScheduleService(
         }
 
         _ = await _db.SaveChangesAsync( ct );
-        LogScheduleCreated( _logger, id, dbSchedule.Name );
+        LogScheduleCreated(
+            _logger,
+            id,
+            dbSchedule.Name
+        );
 
-        return (await GetByIdAsync( id, ct ))!;
+        return (await GetByIdAsync(
+            id,
+            ct
+        ))!;
     }
 
     /// <summary>
@@ -79,14 +89,20 @@ public sealed partial class ScheduleService(
     /// </summary>
     /// <exception cref="ValidationException">Thrown when the schedule fails validation.</exception>
     /// <exception cref="KeyNotFoundException">Thrown when the schedule does not exist.</exception>
-    public async Task<Schedule> UpdateAsync( Schedule schedule, CancellationToken ct = default ) {
+    public async Task<Schedule> UpdateAsync(
+        Schedule schedule,
+        CancellationToken ct = default
+    ) {
         ValidationResult? validation = ScheduleValidator.Validate( schedule );
         if (validation != ValidationResult.Success) {
             throw new ValidationException( validation!.ErrorMessage );
         }
 
         Guid id = schedule.DbSchedule.Id;
-        DbSchedule existing = await _db.Schedules.FindAsync( [id], ct )
+        DbSchedule existing = await _db.Schedules.FindAsync(
+            [id],
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Schedule {id} not found." );
 
         // Update core properties
@@ -94,7 +110,10 @@ public sealed partial class ScheduleService(
         existing.StopTaskAfterMinutes = schedule.DbSchedule.StopTaskAfterMinutes;
 
         // Update StartDateTime
-        StartDateTimeInfo? startDt = await _db.StartDateTimeInfos.FindAsync( [id], ct );
+        StartDateTimeInfo? startDt = await _db.StartDateTimeInfos.FindAsync(
+            [id],
+            ct
+        );
         if (startDt is null) {
             schedule.StartDateTime!.ScheduleId = id;
             _ = _db.StartDateTimeInfos.Add( schedule.StartDateTime );
@@ -105,7 +124,10 @@ public sealed partial class ScheduleService(
         }
 
         // Update Expiration
-        ExpirationDateTimeInfo? expiration = await _db.ExpirationDateTimeInfos.FindAsync( [id], ct );
+        ExpirationDateTimeInfo? expiration = await _db.ExpirationDateTimeInfos.FindAsync(
+            [id],
+            ct
+        );
         if (schedule.Expiration is not null) {
             if (expiration is null) {
                 schedule.Expiration.ScheduleId = id;
@@ -120,7 +142,10 @@ public sealed partial class ScheduleService(
         }
 
         // Update RepeatOptions
-        ScheduleRepeatOptions? repeat = await _db.ScheduleRepeatOptions.FindAsync( [id], ct );
+        ScheduleRepeatOptions? repeat = await _db.ScheduleRepeatOptions.FindAsync(
+            [id],
+            ct
+        );
         if (schedule.RepeatOptions is not null) {
             if (repeat is null) {
                 schedule.RepeatOptions.ScheduleId = id;
@@ -134,9 +159,18 @@ public sealed partial class ScheduleService(
         }
 
         // Recurrence — remove old, add new (at most one type)
-        DailyRecurrence? daily = await _db.DailyRecurrences.FindAsync( [id], ct );
-        WeeklyRecurrence? weekly = await _db.WeeklyRecurrences.FindAsync( [id], ct );
-        MonthlyRecurrence? monthly = await _db.MonthlyRecurrences.FindAsync( [id], ct );
+        DailyRecurrence? daily = await _db.DailyRecurrences.FindAsync(
+            [id],
+            ct
+        );
+        WeeklyRecurrence? weekly = await _db.WeeklyRecurrences.FindAsync(
+            [id],
+            ct
+        );
+        MonthlyRecurrence? monthly = await _db.MonthlyRecurrences.FindAsync(
+            [id],
+            ct
+        );
 
         // Remove existing recurrences that differ from the incoming type
         if (daily is not null && schedule.DailyRecurrence is null) {
@@ -182,46 +216,76 @@ public sealed partial class ScheduleService(
         }
 
         _ = await _db.SaveChangesAsync( ct );
-        LogScheduleUpdated( _logger, id );
+        LogScheduleUpdated(
+            _logger,
+            id
+        );
 
-        return (await GetByIdAsync( id, ct ))!;
+        return (await GetByIdAsync(
+            id,
+            ct
+        ))!;
     }
 
     /// <summary>
     /// Deletes a schedule and all related sub-entities.
     /// </summary>
     /// <exception cref="KeyNotFoundException">Thrown when the schedule does not exist.</exception>
-    public async Task DeleteAsync( Guid scheduleId, CancellationToken ct = default ) {
-        DbSchedule existing = await _db.Schedules.FindAsync( [scheduleId], ct )
+    public async Task DeleteAsync(
+        Guid scheduleId,
+        CancellationToken ct = default
+    ) {
+        DbSchedule existing = await _db.Schedules.FindAsync(
+            [scheduleId],
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Schedule {scheduleId} not found." );
 
         // Remove all sub-entities
-        StartDateTimeInfo? startDt = await _db.StartDateTimeInfos.FindAsync( [scheduleId], ct );
+        StartDateTimeInfo? startDt = await _db.StartDateTimeInfos.FindAsync(
+            [scheduleId],
+            ct
+        );
         if (startDt is not null) {
             _ = _db.StartDateTimeInfos.Remove( startDt );
         }
 
-        ExpirationDateTimeInfo? expiration = await _db.ExpirationDateTimeInfos.FindAsync( [scheduleId], ct );
+        ExpirationDateTimeInfo? expiration = await _db.ExpirationDateTimeInfos.FindAsync(
+            [scheduleId],
+            ct
+        );
         if (expiration is not null) {
             _ = _db.ExpirationDateTimeInfos.Remove( expiration );
         }
 
-        ScheduleRepeatOptions? repeat = await _db.ScheduleRepeatOptions.FindAsync( [scheduleId], ct );
+        ScheduleRepeatOptions? repeat = await _db.ScheduleRepeatOptions.FindAsync(
+            [scheduleId],
+            ct
+        );
         if (repeat is not null) {
             _ = _db.ScheduleRepeatOptions.Remove( repeat );
         }
 
-        DailyRecurrence? daily = await _db.DailyRecurrences.FindAsync( [scheduleId], ct );
+        DailyRecurrence? daily = await _db.DailyRecurrences.FindAsync(
+            [scheduleId],
+            ct
+        );
         if (daily is not null) {
             _ = _db.DailyRecurrences.Remove( daily );
         }
 
-        WeeklyRecurrence? weekly = await _db.WeeklyRecurrences.FindAsync( [scheduleId], ct );
+        WeeklyRecurrence? weekly = await _db.WeeklyRecurrences.FindAsync(
+            [scheduleId],
+            ct
+        );
         if (weekly is not null) {
             _ = _db.WeeklyRecurrences.Remove( weekly );
         }
 
-        MonthlyRecurrence? monthly = await _db.MonthlyRecurrences.FindAsync( [scheduleId], ct );
+        MonthlyRecurrence? monthly = await _db.MonthlyRecurrences.FindAsync(
+            [scheduleId],
+            ct
+        );
         if (monthly is not null) {
             _ = _db.MonthlyRecurrences.Remove( monthly );
         }
@@ -229,24 +293,45 @@ public sealed partial class ScheduleService(
         _ = _db.Schedules.Remove( existing );
         _ = await _db.SaveChangesAsync( ct );
 
-        LogScheduleDeleted( _logger, scheduleId );
+        LogScheduleDeleted(
+            _logger,
+            scheduleId
+        );
     }
 
     /// <summary>
     /// Loads a complete <see cref="Schedule"/> composite by ID, or returns null if not found.
     /// </summary>
-    public async Task<Schedule?> GetByIdAsync( Guid scheduleId, CancellationToken ct = default ) {
-        DbSchedule? dbSchedule = await _db.Schedules.FindAsync( [scheduleId], ct );
-        return dbSchedule is null ? null : await BuildComposite( dbSchedule, ct );
+    public async Task<Schedule?> GetByIdAsync(
+        Guid scheduleId,
+        CancellationToken ct = default
+    ) {
+        DbSchedule? dbSchedule = await _db.Schedules.FindAsync(
+            [scheduleId],
+            ct
+        );
+        return dbSchedule is null ? null : await BuildComposite(
+            dbSchedule,
+            ct
+        );
     }
 
     /// <summary>
     /// Loads a schedule by name, or returns null if not found.
     /// </summary>
-    public async Task<Schedule?> GetByNameAsync( string name, CancellationToken ct = default ) {
+    public async Task<Schedule?> GetByNameAsync(
+        string name,
+        CancellationToken ct = default
+    ) {
         DbSchedule? dbSchedule = await _db.Schedules
-            .FirstOrDefaultAsync( s => s.Name == name, ct );
-        return dbSchedule is null ? null : await BuildComposite( dbSchedule, ct );
+            .FirstOrDefaultAsync(
+                s => s.Name == name,
+                ct
+            );
+        return dbSchedule is null ? null : await BuildComposite(
+            dbSchedule,
+            ct
+        );
     }
 
     /// <summary>
@@ -256,7 +341,10 @@ public sealed partial class ScheduleService(
         List<DbSchedule> dbSchedules = await _db.Schedules.ToListAsync( ct );
         List<Schedule> result = new( dbSchedules.Count );
         foreach (DbSchedule dbSchedule in dbSchedules) {
-            result.Add( await BuildComposite( dbSchedule, ct ) );
+            result.Add( await BuildComposite(
+                dbSchedule,
+                ct
+            ) );
         }
         return result;
     }
@@ -269,7 +357,10 @@ public sealed partial class ScheduleService(
     public async Task<ScheduleOccurrenceResult> PreviewOccurrencesAsync(
         Guid scheduleId, DateTime windowEnd, CancellationToken ct = default
     ) {
-        Schedule schedule = await GetByIdAsync( scheduleId, ct )
+        Schedule schedule = await GetByIdAsync(
+            scheduleId,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Schedule {scheduleId} not found." );
 
         IReadOnlyList<HolidayDate>? holidayDates = null;
@@ -279,7 +370,8 @@ public sealed partial class ScheduleService(
                 schedule.HolidayCalendar.Id,
                 DateOnly.FromDateTime( start ),
                 DateOnly.FromDateTime( windowEnd ),
-                ct );
+                ct
+            );
         }
 
         return ScheduleCalculator.CalculateOccurrences(
@@ -290,35 +382,72 @@ public sealed partial class ScheduleService(
     /// Assembles a <see cref="Schedule"/> composite from a <see cref="DbSchedule"/> and its sub-entities.
     /// Follows the reference code's pattern of loading each sub-entity by FK.
     /// </summary>
-    private async Task<Schedule> BuildComposite( DbSchedule dbSchedule, CancellationToken ct ) {
+    private async Task<Schedule> BuildComposite(
+        DbSchedule dbSchedule,
+        CancellationToken ct
+    ) {
         Guid id = dbSchedule.Id;
         Schedule schedule = new( ) {
             DbSchedule = dbSchedule,
-            StartDateTime = await _db.StartDateTimeInfos.FindAsync( [id], ct ),
-            Expiration = await _db.ExpirationDateTimeInfos.FindAsync( [id], ct ),
-            RepeatOptions = await _db.ScheduleRepeatOptions.FindAsync( [id], ct ),
-            DailyRecurrence = await _db.DailyRecurrences.FindAsync( [id], ct ),
-            WeeklyRecurrence = await _db.WeeklyRecurrences.FindAsync( [id], ct ),
-            MonthlyRecurrence = await _db.MonthlyRecurrences.FindAsync( [id], ct ),
+            StartDateTime = await _db.StartDateTimeInfos.FindAsync(
+                [id],
+                ct
+            ),
+            Expiration = await _db.ExpirationDateTimeInfos.FindAsync(
+                [id],
+                ct
+            ),
+            RepeatOptions = await _db.ScheduleRepeatOptions.FindAsync(
+                [id],
+                ct
+            ),
+            DailyRecurrence = await _db.DailyRecurrences.FindAsync(
+                [id],
+                ct
+            ),
+            WeeklyRecurrence = await _db.WeeklyRecurrences.FindAsync(
+                [id],
+                ct
+            ),
+            MonthlyRecurrence = await _db.MonthlyRecurrences.FindAsync(
+                [id],
+                ct
+            ),
         };
 
         // Load holiday calendar link if attached
         ScheduleHolidayCalendar? link = await _db.ScheduleHolidayCalendars
-            .FirstOrDefaultAsync( shc => shc.ScheduleId == id, ct );
+            .FirstOrDefaultAsync(
+                shc => shc.ScheduleId == id,
+                ct
+            );
         if (link is not null) {
             schedule.HolidayCalendarMode = link.Mode;
-            schedule.HolidayCalendar = await _db.HolidayCalendars.FindAsync( [link.HolidayCalendarId], ct );
+            schedule.HolidayCalendar = await _db.HolidayCalendars.FindAsync(
+                [link.HolidayCalendarId],
+                ct
+            );
         }
 
         return schedule;
     }
 
     [LoggerMessage( Level = LogLevel.Information, Message = "Created schedule {ScheduleId} ({Name})" )]
-    private static partial void LogScheduleCreated( ILogger logger, Guid scheduleId, string name );
+    private static partial void LogScheduleCreated(
+        ILogger logger,
+        Guid scheduleId,
+        string name
+    );
 
     [LoggerMessage( Level = LogLevel.Information, Message = "Updated schedule {ScheduleId}" )]
-    private static partial void LogScheduleUpdated( ILogger logger, Guid scheduleId );
+    private static partial void LogScheduleUpdated(
+        ILogger logger,
+        Guid scheduleId
+    );
 
     [LoggerMessage( Level = LogLevel.Information, Message = "Deleted schedule {ScheduleId}" )]
-    private static partial void LogScheduleDeleted( ILogger logger, Guid scheduleId );
+    private static partial void LogScheduleDeleted(
+        ILogger logger,
+        Guid scheduleId
+    );
 }

@@ -1,7 +1,5 @@
 using System.Security.Cryptography;
-
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 
@@ -27,7 +25,8 @@ public sealed class ApiKeyService( WerkrIdentityDbContext dbContext, ILogger<Api
         string role,
         string createdByUserId,
         DateTime? expiresUtc = null,
-        CancellationToken ct = default ) {
+        CancellationToken ct = default
+    ) {
         // Generate a crypto-random 32-byte key, encoded as base64url
         byte[] keyBytes = RandomNumberGenerator.GetBytes( 32 );
         string rawKey = $"wk_{Convert.ToBase64String( keyBytes ).TrimEnd( '=' ).Replace( '+', '-' ).Replace( '/', '_' )}";
@@ -52,7 +51,8 @@ public sealed class ApiKeyService( WerkrIdentityDbContext dbContext, ILogger<Api
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "API key '{Name}' (prefix: {Prefix}) created for user {UserId} with role {Role}.",
-                apiKey.Name, apiKey.KeyPrefix, createdByUserId, role );
+                apiKey.Name, apiKey.KeyPrefix, createdByUserId, role
+            );
         }
 
         return (apiKey, rawKey);
@@ -64,7 +64,7 @@ public sealed class ApiKeyService( WerkrIdentityDbContext dbContext, ILogger<Api
     /// </summary>
     /// <param name="rawKey">The raw API key to validate.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>The API key entity if valid; otherwise <c>null</c>.</returns>
+    /// <returns>The API key entity if valid; otherwise <see langword="null"/>.</returns>
     public async Task<ApiKey?> ValidateAsync( string rawKey, CancellationToken ct = default ) {
         if (string.IsNullOrWhiteSpace( rawKey )) {
             return null;
@@ -81,13 +81,15 @@ public sealed class ApiKeyService( WerkrIdentityDbContext dbContext, ILogger<Api
 
         if (apiKey.IsRevoked) {
             logger.LogWarning( "Attempt to use revoked API key '{Name}' (prefix: {Prefix}).",
-                apiKey.Name, apiKey.KeyPrefix );
+                apiKey.Name, apiKey.KeyPrefix
+            );
             return null;
         }
 
         if (apiKey.ExpiresUtc.HasValue && apiKey.ExpiresUtc.Value < DateTime.UtcNow) {
             logger.LogWarning( "Attempt to use expired API key '{Name}' (prefix: {Prefix}).",
-                apiKey.Name, apiKey.KeyPrefix );
+                apiKey.Name, apiKey.KeyPrefix
+            );
             return null;
         }
 
@@ -103,7 +105,7 @@ public sealed class ApiKeyService( WerkrIdentityDbContext dbContext, ILogger<Api
     /// </summary>
     /// <param name="keyId">The API key ID.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns><c>true</c> if the key was found and revoked; otherwise <c>false</c>.</returns>
+    /// <returns><see langword="true"/> if the key was found and revoked; otherwise <see langword="false"/>.</returns>
     public async Task<bool> RevokeAsync( Guid keyId, CancellationToken ct = default ) {
         ApiKey? apiKey = await dbContext.ApiKeys.FindAsync( [keyId], ct );
         if (apiKey is null) {

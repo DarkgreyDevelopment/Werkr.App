@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Werkr.Data.Calendar.Enums;
 
 namespace Werkr.Data.Entities.Schedule;
@@ -10,6 +9,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "holiday_rules" )]
 public class HolidayRule {
+
     /// <summary>Auto-incrementing primary key.</summary>
     [Key]
     [DatabaseGenerated( DatabaseGeneratedOption.Identity )]
@@ -26,16 +26,16 @@ public class HolidayRule {
     /// <summary>The type of rule (FixedDate, NthWeekdayOfMonth, LastWeekdayOfMonth).</summary>
     public HolidayRuleType RuleType { get; set; }
 
-    /// <summary>Month (1–12). Required for all rule types. Uses int? not the Month enum (Decision H20).</summary>
+    /// <summary>Month (1-12). Required for all rule types. Uses int? not the Month enum (Decision H20).</summary>
     public int? Month { get; set; }
 
-    /// <summary>Day of month (1–31). Required for FixedDate rules.</summary>
+    /// <summary>Day of month (1-31). Required for FixedDate rules.</summary>
     public int? Day { get; set; }
 
     /// <summary>Day of week. Required for NthWeekdayOfMonth and LastWeekdayOfMonth.</summary>
     public DayOfWeek? DayOfWeek { get; set; }
 
-    /// <summary>Week number within the month (1–5). Required for NthWeekdayOfMonth.</summary>
+    /// <summary>Week number within the month (1-5). Required for NthWeekdayOfMonth.</summary>
     public int? WeekNumber { get; set; }
 
     /// <summary>Optional start of time window for partial-day holidays.</summary>

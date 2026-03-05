@@ -1,7 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-
 using Microsoft.AspNetCore.Identity;
-
 using Werkr.Common.Auth;
 
 namespace Werkr.Data.Identity.Entities;

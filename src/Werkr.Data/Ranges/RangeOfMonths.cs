@@ -5,7 +5,7 @@ namespace Werkr.Data.Ranges;
 
 /// <summary>
 /// Produces contiguous range descriptions for <see cref="MonthsOfYear"/> flags
-/// (e.g., "Jan–Mar, Jun").
+/// (e.g., "Jan-Mar, Jun").
 /// </summary>
 public class RangeOfMonths : IRange<Month> {
     private int _start = 1;
@@ -33,8 +33,8 @@ public class RangeOfMonths : IRange<Month> {
     /// Formats this range as a string using either abbreviated or full month names.
     /// </summary>
     /// <param name="abbreviated">
-    /// When <c>true</c>, uses abbreviations (e.g., "Jan").
-    /// When <c>false</c>, uses full names (e.g., "January").
+    /// When <see langword="true"/>, uses abbreviations (e.g., "Jan").
+    /// When <see langword="false"/>, uses full names (e.g., "January").
     /// </param>
     public string ToString( bool abbreviated = false ) =>
         _start == _end

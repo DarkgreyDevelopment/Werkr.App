@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 using Microsoft.Extensions.Logging;
 
@@ -21,7 +21,10 @@ public sealed partial class ConditionEvaluator(
     /// <param name="expression">The condition expression to evaluate. Null/empty = always true.</param>
     /// <param name="priorJob">The prior step's completed job record.</param>
     /// <returns><c>true</c> if the condition is satisfied.</returns>
-    public bool Evaluate( string? expression, WerkrJob priorJob ) {
+    public bool Evaluate(
+        string? expression,
+        WerkrJob priorJob
+    ) {
         if (string.IsNullOrWhiteSpace( expression )) {
             return true;
         }
@@ -31,7 +34,11 @@ public sealed partial class ConditionEvaluator(
         // $? -eq $true / $? -eq $false
         Match successMatch = SuccessRegex( ).Match( trimmed );
         if (successMatch.Success) {
-            bool expected = string.Equals( successMatch.Groups[1].Value, "true", StringComparison.OrdinalIgnoreCase );
+            bool expected = string.Equals(
+                successMatch.Groups[1].Value,
+                "true",
+                StringComparison.OrdinalIgnoreCase
+            );
             return priorJob.Success == expected;
         }
 
@@ -54,7 +61,10 @@ public sealed partial class ConditionEvaluator(
         }
 
         // Unknown expression — fail-safe
-        logger.LogWarning( "Unknown condition expression: '{Expression}'. Returning false.", trimmed );
+        logger.LogWarning(
+            "Unknown condition expression: '{Expression}'. Returning false.",
+            trimmed
+        );
         return false;
     }
 
@@ -69,7 +79,8 @@ public sealed partial class ConditionEvaluator(
     public bool EvaluateMultiple(
         string? expression,
         IReadOnlyList<WerkrJob> predecessorJobs,
-        DependencyMode dependencyMode ) {
+        DependencyMode dependencyMode
+    ) {
 
         if (string.IsNullOrWhiteSpace( expression )) {
             return true;
@@ -77,13 +88,25 @@ public sealed partial class ConditionEvaluator(
 
         if (predecessorJobs.Count == 0) {
             // No predecessors — default: expression against default values
-            return Evaluate( expression, new WerkrJob { Success = true, ExitCode = 0 } );
+            return Evaluate(
+                expression,
+                new WerkrJob { Success = true, ExitCode = 0 }
+            );
         }
 
         return dependencyMode switch {
-            DependencyMode.All => predecessorJobs.All( job => Evaluate( expression, job ) ),
-            DependencyMode.Any => predecessorJobs.Any( job => Evaluate( expression, job ) ),
-            _ => predecessorJobs.All( job => Evaluate( expression, job ) ),
+            DependencyMode.All => predecessorJobs.All( job => Evaluate(
+                expression,
+                job
+            ) ),
+            DependencyMode.Any => predecessorJobs.Any( job => Evaluate(
+                expression,
+                job
+            ) ),
+            _ => predecessorJobs.All( job => Evaluate(
+                expression,
+                job
+            ) ),
         };
     }
 

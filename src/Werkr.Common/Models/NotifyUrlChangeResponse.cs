@@ -4,4 +4,5 @@ namespace Werkr.Common.Models;
 public sealed record NotifyUrlChangeResponse(
     int Notified,
     int Failed,
-    IReadOnlyList<string> FailedAgents );
+    IReadOnlyList<string> FailedAgents
+);

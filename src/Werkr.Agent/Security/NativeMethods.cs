@@ -4,7 +4,7 @@ namespace Werkr.Agent.Security;
 
 /// <summary>
 /// Platform-specific native methods for file path resolution.
-/// Contains the <c>GetLongPathNameW</c> P/Invoke for expanding 8.3 short file
+/// Contains the <see cref="GetLongPathNameW"/> P/Invoke for expanding 8.3 short file
 /// names on Windows. On non-Windows platforms, all methods are safe no-ops that
 /// return the input path unchanged.
 /// </summary>
@@ -31,6 +31,8 @@ internal static partial class NativeMethods {
     /// first call retrieves the required buffer size, second call
     /// performs the actual expansion.
     /// </summary>
+    /// <param name="path">The file-system path to expand.</param>
+    /// <returns>The expanded long path, or the original path on failure.</returns>
     private static string GetLongPathWindows( string path ) {
         // First call: determine required buffer size.
         // Pass buffer length 0 to get the required size (including null terminator).
@@ -60,7 +62,7 @@ internal static partial class NativeMethods {
     /// </summary>
     /// <param name="lpszShortPath">The path to expand.</param>
     /// <param name="lpszLongPath">
-    /// A buffer that receives the long path form. May be <c>null</c> when
+    /// A buffer that receives the long path form. May be <see langword="null"/> when
     /// <paramref name="cchBuffer"/> is 0 (to query the required size).
     /// </param>
     /// <param name="cchBuffer">

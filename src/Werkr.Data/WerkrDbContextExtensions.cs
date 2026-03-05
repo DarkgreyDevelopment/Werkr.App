@@ -8,6 +8,7 @@ namespace Werkr.Data;
 /// Extension methods for registering <see cref="WerkrDbContext"/> with DI.
 /// </summary>
 public static class WerkrDbContextExtensions {
+
     /// <summary>
     /// Registers <see cref="WerkrDbContext"/> with the specified database provider and connection string.
     /// Uses provider-specific derived contexts so that EF Core migrations resolve correctly at runtime.
@@ -15,7 +16,8 @@ public static class WerkrDbContextExtensions {
     public static IServiceCollection AddWerkrDbContext(
         this IServiceCollection services,
         DatabaseProvider provider,
-        string connectionString ) {
+        string connectionString
+    ) {
         switch (provider) {
             case DatabaseProvider.Postgres:
                 _ = services.AddDbContext<PostgresWerkrDbContext>( options => {

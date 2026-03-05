@@ -3,7 +3,7 @@ using Werkr.Common.Models;
 namespace Werkr.Api.Endpoints;
 
 /// <summary>
-/// Maps the token proxy endpoint on the API. The API does NOT issue tokens —
+/// Maps the token proxy endpoint on the API. The API does NOT issue tokens -
 /// it forwards <see cref="TokenRequest"/> to the Server (the sole JWT issuer)
 /// and returns the <see cref="TokenResponse"/> verbatim (Decision A14).
 /// </summary>
@@ -12,10 +12,13 @@ public static class AuthProxyEndpoints {
     /// Maps <c>POST /api/auth/token</c> as a transparent pass-through to the Server.
     /// </summary>
     public static WebApplication MapAuthProxyEndpoints( this WebApplication app ) {
-        _ = app.MapPost( "/api/auth/token", async (
-            TokenRequest request,
-            IHttpClientFactory httpClientFactory,
-            CancellationToken ct ) => {
+        _ = app.MapPost(
+            "/api/auth/token",
+            async (
+                TokenRequest request,
+                IHttpClientFactory httpClientFactory,
+                CancellationToken ct
+            ) => {
                 if (string.IsNullOrWhiteSpace( request.ApiKey )) {
                     return Results.BadRequest( new { message = "API key is required." } );
                 }

@@ -8,6 +8,7 @@ namespace Werkr.Data;
 /// when <c>--context PostgresWerkrDbContext</c> is specified.
 /// </summary>
 public class PostgresDesignTimeFactory : IDesignTimeDbContextFactory<PostgresWerkrDbContext> {
+
     /// <inheritdoc/>
     public PostgresWerkrDbContext CreateDbContext( string[] args ) {
         DbContextOptionsBuilder<PostgresWerkrDbContext> optionsBuilder = new( );

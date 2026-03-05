@@ -5,7 +5,7 @@ namespace Werkr.Data.Encryption;
 /// <summary>
 /// Provides transparent field-level encryption using AES-256-GCM for sensitive
 /// <see cref="Werkr.Data.Entities.Registration.RegisteredConnection"/> columns
-/// (<c>OutboundApiKey</c>, <c>LocalPrivateKey</c>, <c>SharedKey</c>).
+/// (<see cref="Entities.Registration.RegisteredConnection.OutboundApiKey"/>, <see cref="Entities.Registration.RegisteredConnection.LocalPrivateKey"/>, <see cref="Entities.Registration.RegisteredConnection.SharedKey"/>).
 /// <para>
 /// The symmetric passphrase is sourced from the OS secret store via
 /// <c>ISecretStore</c> (DPAPI on Windows, Keychain on macOS, libsecret on Linux).
@@ -15,7 +15,7 @@ namespace Werkr.Data.Encryption;
 /// <para>
 /// This implementation performs encryption at the application level, making it
 /// database-provider-agnostic. When the Agent runs on Postgres, the encrypted
-/// <c>bytea</c> payload is stored directly; when on SQLite/SQLCipher, it is a
+/// <c>bytea</c> payload is stored directly; when on SQLite, it is a
 /// secondary layer on top of the whole-DB encryption.
 /// </para>
 /// </summary>
@@ -48,7 +48,7 @@ public sealed class FieldEncryptionProvider {
     /// (nonce ‖ ciphertext ‖ tag).
     /// </summary>
     /// <param name="plaintext">The value to encrypt.</param>
-    /// <returns>Base64-encoded encrypted blob, or <c>null</c> if <paramref name="plaintext"/> is <c>null</c>.</returns>
+    /// <returns>Base64-encoded encrypted blob, or <see langword="null"/> if <paramref name="plaintext"/> is <see langword="null"/>.</returns>
     public string? Encrypt( string? plaintext ) {
         if (plaintext is null) {
             return null;
@@ -77,7 +77,7 @@ public sealed class FieldEncryptionProvider {
     /// Decrypts a Base64-encoded AES-256-GCM blob (nonce ‖ ciphertext ‖ tag) back to plaintext.
     /// </summary>
     /// <param name="encryptedBase64">The Base64-encoded encrypted blob.</param>
-    /// <returns>The decrypted plaintext, or <c>null</c> if <paramref name="encryptedBase64"/> is <c>null</c>.</returns>
+    /// <returns>The decrypted plaintext, or <see langword="null"/> if <paramref name="encryptedBase64"/> is <see langword="null"/>.</returns>
     /// <exception cref="AuthenticationTagMismatchException">If the tag is invalid (data tampered).</exception>
     public string? Decrypt( string? encryptedBase64 ) {
         if (encryptedBase64 is null) {

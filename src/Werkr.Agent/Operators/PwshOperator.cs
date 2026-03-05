@@ -2,9 +2,7 @@ using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Text;
 using System.Threading.Channels;
-
 using Microsoft.Extensions.Options;
-
 using Werkr.Common.Configuration;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -12,7 +10,7 @@ using Werkr.Core.Operators;
 namespace Werkr.Agent.Operators;
 
 /// <summary>
-/// PowerShell operator — executes PowerShell commands and scripts using the PowerShell SDK.
+/// PowerShell operator - executes PowerShell commands and scripts using the PowerShell SDK.
 /// Uses a custom <see cref="WerkrPSHost"/> to route all output (formatting cmdlets,
 /// <c>Write-Host</c>, <c>Write-Error</c>, etc.) through a single
 /// <see cref="ChannelWriter{T}"/> path. A new <see cref="Runspace"/> is created per
@@ -23,8 +21,13 @@ namespace Werkr.Agent.Operators;
 /// <param name="logger">Logger for diagnostics.</param>
 public class PwshOperator(
     IOptions<AgentSettings> agentSettingsOptions,
-    ILogger<PwshOperator> logger ) : IShellOperator {
+    ILogger<PwshOperator> logger
+) : IShellOperator {
 
+    /// <summary>
+    /// The configured buffer width (in characters) for the virtual PowerShell console.
+    /// Controls line wrapping in formatted output such as <c>Format-Table</c>.
+    /// </summary>
     private readonly int _bufferWidth = agentSettingsOptions.Value.PowerShell.BufferWidth;
 
     /// <inheritdoc/>
@@ -59,7 +62,11 @@ public class PwshOperator(
     }
 
     /// <inheritdoc/>
-    public OperatorExecution RunScriptWithArgs( string scriptPath, IEnumerable<string> args, CancellationToken cancellationToken = default ) {
+    public OperatorExecution RunScriptWithArgs(
+        string scriptPath,
+        IEnumerable<string> args,
+        CancellationToken cancellationToken = default
+    ) {
         if (!File.Exists( scriptPath )) {
             Guid errorCallId = Guid.NewGuid( );
             Channel<OperatorOutput> errorChannel = Channel.CreateBounded<OperatorOutput>(
@@ -80,12 +87,18 @@ public class PwshOperator(
         return new OperatorExecution( channel.Reader.ReadAllAsync( cancellationToken ), resultTcs.Task );
     }
 
+    /// <summary>
+    /// Core execution loop for running a PowerShell command string.
+    /// Creates an isolated runspace with the custom <see cref="WerkrPSHost"/>, invokes the command,
+    /// captures errors, extracts the <c>$LASTEXITCODE</c>, and writes all output to the channel.
+    /// </summary>
     private async Task ExecuteCommandInternal(
         string command,
         Guid callId,
         ChannelWriter<OperatorOutput> writer,
         TaskCompletionSource<IOperatorResult> resultTcs,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
 
         Runspace? runspace = null;
         try {
@@ -148,13 +161,19 @@ public class PwshOperator(
         }
     }
 
+    /// <summary>
+    /// Core execution loop for running a PowerShell script file with arguments.
+    /// Creates an isolated runspace with the custom <see cref="WerkrPSHost"/>,
+    /// reads the script from disk, binds arguments via <c>AddParameters</c>, and invokes the pipeline.
+    /// </summary>
     private async Task ExecuteScriptWithArgsInternal(
         string scriptPath,
         IEnumerable<string> args,
         Guid callId,
         ChannelWriter<OperatorOutput> writer,
         TaskCompletionSource<IOperatorResult> resultTcs,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
 
         Runspace? runspace = null;
         try {
@@ -215,8 +234,8 @@ public class PwshOperator(
 
     /// <summary>
     /// Extracts the <c>$LASTEXITCODE</c> variable from the PowerShell session, if set.
-    /// Returns null when no native command was invoked.
     /// </summary>
+    /// <returns>The exit code if a native command was invoked; otherwise <see langword="null"/>.</returns>
     private static int? ExtractLastExitCode( PowerShell pwsh ) {
         try {
             object? lastExitCodeObj = pwsh.Runspace.SessionStateProxy
@@ -230,6 +249,11 @@ public class PwshOperator(
         return null;
     }
 
+    /// <summary>
+    /// Formats a PowerShell <see cref="ErrorRecord"/> into a human-readable string including the exception message,
+    /// script location (file, line, position), and error category.
+    /// </summary>
+    /// <returns>A formatted string containing the error message, script location, and category.</returns>
     private static string FormatErrorRecord( ErrorRecord error ) {
         StringBuilder sb = new( );
         _ = sb.AppendLine( error.Exception?.Message ?? "Unknown error" );
@@ -246,6 +270,11 @@ public class PwshOperator(
         return sb.ToString( ).TrimEnd( );
     }
 
+    /// <summary>
+    /// Writes a standardized error sequence (debug begin marker, error message,
+    /// debug end marker) to the channel writer and then completes the channel.
+    /// Used for early failures such as missing script files.
+    /// </summary>
     private static async Task WriteErrorAndComplete( ChannelWriter<OperatorOutput> writer, Guid callId, string message ) {
         await writer.WriteAsync( OperatorOutput.Create( "Debug", $"Begin CallId: {callId}" ) );
         await writer.WriteAsync( OperatorOutput.Create( "Error", message ) );

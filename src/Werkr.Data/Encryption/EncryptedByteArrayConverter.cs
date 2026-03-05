@@ -8,10 +8,12 @@ namespace Werkr.Data.Encryption;
 /// Uses <see cref="FieldEncryptionProvider"/> (AES-256-GCM).
 /// </summary>
 public sealed class EncryptedByteArrayConverter : ValueConverter<byte[], string> {
+
     /// <summary>Creates a new converter backed by the specified encryption provider.</summary>
     /// <param name="provider">The AES-256-GCM encryption provider.</param>
     public EncryptedByteArrayConverter( FieldEncryptionProvider provider )
         : base(
             v => provider.EncryptBytes( v )!,
-            v => provider.DecryptBytes( v )! ) { }
+            v => provider.DecryptBytes( v )!
+        ) { }
 }

@@ -1,7 +1,5 @@
 using Google.Protobuf;
-
 using Grpc.Core;
-
 using Werkr.Api.Protos;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Registration;
@@ -11,7 +9,7 @@ namespace Werkr.Api.Services;
 
 /// <summary>
 /// gRPC service endpoint for Agent registration.
-/// Pure pass-through to <see cref="RegistrationService"/> — zero business logic in API layer.
+/// Pure pass-through to <see cref="RegistrationService"/> - zero business logic in API layer.
 /// </summary>
 /// <remarks>
 /// Creates a new <see cref="RegistrationGrpcService"/>.
@@ -31,7 +29,8 @@ public class RegistrationGrpcService(
     /// <returns>The registration response.</returns>
     public override async Task<RegisterAgentResponse> RegisterAgent(
         RegisterAgentRequest request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
         try {
             (AgentRegistrationResult result, byte[]? encryptedResponseData) = await registrationService.CompleteRegistrationAsync(
                 request.BundleId.ToByteArray( ),

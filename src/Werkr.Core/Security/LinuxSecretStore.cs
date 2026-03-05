@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.Versioning;
 
 namespace Werkr.Core.Security;
@@ -27,19 +27,28 @@ public class LinuxSecretStore : ISecretStore {
             );
         }
 
-        _fallbackPath = Path.Combine( configDir, "werkr", "secrets" );
+        _fallbackPath = Path.Combine(
+            configDir,
+            "werkr",
+            "secrets"
+        );
         if (!_useSecretTool) {
             _ = Directory.CreateDirectory( _fallbackPath );
             // Restrict permissions: owner-only
             File.SetUnixFileMode( _fallbackPath,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute );
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+            );
         }
     }
 
     /// <inheritdoc/>
     public async Task<string?> GetSecretAsync( string key ) {
         if (_useSecretTool) {
-            (int exitCode, string stdout, _) = await RunSecretToolAsync(
+            (
+                int exitCode,
+                string stdout,
+                _
+            ) = await RunSecretToolAsync(
                 "lookup", $"{SchemaAttribute} {key}"
             ).ConfigureAwait( false );
 
@@ -51,9 +60,16 @@ public class LinuxSecretStore : ISecretStore {
     }
 
     /// <inheritdoc/>
-    public async Task SetSecretAsync( string key, string value ) {
+    public async Task SetSecretAsync(
+        string key,
+        string value
+    ) {
         if (_useSecretTool) {
-            (int exitCode, _, string stderr) = await RunSecretToolAsync(
+            (
+                int exitCode,
+                _,
+                string stderr
+            ) = await RunSecretToolAsync(
                 "store", $"--label=\"Werkr: {key}\" {SchemaAttribute} {key}",
                 stdinData: value
             ).ConfigureAwait( false );
@@ -66,8 +82,14 @@ public class LinuxSecretStore : ISecretStore {
         }
 
         string filePath = GetFallbackFilePath( key );
-        await File.WriteAllTextAsync( filePath, value ).ConfigureAwait( false );
-        File.SetUnixFileMode( filePath, UnixFileMode.UserRead | UnixFileMode.UserWrite );
+        await File.WriteAllTextAsync(
+            filePath,
+            value
+        ).ConfigureAwait( false );
+        File.SetUnixFileMode(
+            filePath,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite
+        );
     }
 
     /// <inheritdoc/>
@@ -86,8 +108,14 @@ public class LinuxSecretStore : ISecretStore {
     }
 
     private string GetFallbackFilePath( string key ) {
-        string safeKey = string.Join( "_", key.Split( Path.GetInvalidFileNameChars( ) ) );
-        return Path.Combine( _fallbackPath, safeKey );
+        string safeKey = string.Join(
+            "_",
+            key.Split( Path.GetInvalidFileNameChars( ) )
+        );
+        return Path.Combine(
+            _fallbackPath,
+            safeKey
+        );
     }
 
     private static bool IsSecretToolAvailable( ) {

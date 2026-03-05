@@ -1,139 +1,111 @@
-Werkr Project 1.0 Intended Feature List. This document is aspirational at this time.
+# Werkr Project Features
 
-## 1. Streamlined Task Management:
-- Predefine tasks or create one-off/ad-hoc tasks that run immediately or on a schedule.
-  - Allow users to set start dates, maximum running time length, and end times, for non-workflow defined tasks
-  - Enable users to create multiple tasks and link them together into a workflow with simple DAG visualizations for more comprehensive task scheduling.
-- Create ad-hoc tasks that run immediately or at a prescheduled time or on a time interval.
-  - Provides a user interface for creating and executing ad-hoc tasks
-- Create a "workflow" user interface that allows the user to create and link many different tasks together.
-- Limited webhook integration allows for task/workflow completion notification via popular project management or productivity tools (Slack, Discord, etc).
+This document describes features that are currently implemented in the codebase and features on the roadmap. For architectural context, see [Architecture.md](../Architecture.md).
 
-<br/>
+---
 
-## 2. The product has two primary components/applications: a Server and an Agent
-- Supported on Windows 10+ and Debian Linux (with systemd) based platforms
-  - There are MSI installers for the windows releases of each app
-  - There are .deb installers for the debian linux release of each app.
-  - There are portable editions of the application available as well.
-    - There is no difference between the portable edition of the app and the installed version.
-- Both server and agent applications support x64 and arm64 CPU architectures
-- MacOS support is planned after the .NET 8 release in November 2023
-  - Dotnet 8 will provide ALPN support to macos based platforms!
+## Implemented Features
 
-<br/>
+### Task Management
+- Predefine tasks to run on a schedule, or create ad-hoc tasks to run on demand.
+- Configure start dates, end times, and maximum run durations.
+- Link tasks together into workflows (viewable as DAGs [directed acyclic graphs]) for complex automation.
 
-## 3. Workflow-Centric Design:
-- Directed Acyclic Graph (DAG) visualizations
-  - Implements an intuitive UI to display DAGs and current workflow states
-    - There is a "workflow" view that only shows a single workflow
-    - There is a "system" view that shows all workflows and isolated tasks.
-  - Enable users to modify workflows via by modifying the DAG visualization.
-    - When in workflow editing mode you can click a button to draw links between tasks and other workflows.
-    - Once a link has been created you will receive be prompted on how to handle inputs, outputs, and exceptions.
-      - Sensible defaults and intuitive options make workflow configuration simple.
-- The Workflow model allows for expanded and advanced capabilities
-  - The software provides built-in branching logic, iteration, and exception handling based on task/workflow outputs and state.
+### Workflow Engine
+- Directed acyclic graph (DAG) model with topological ordering of steps.
+- Dependency-based execution - steps declare dependencies on other steps and specify a `DependencyMode`.
+- Branching logic via `ConditionEvaluator` - conditionally execute steps based on dependency outcomes.
+- Control statements and condition expressions per step.
+- Workflow run tracking.
+- See `src/Werkr.Core/Workflows/` for the executor, condition evaluator, and run tracker.
 
-<br/>
+### Scheduling
+- Daily, weekly, and monthly recurrence patterns with configurable intervals.
+- Repeat intervals within a duration window.
+- Time zone-aware scheduling with start and expiration dates.
+- **Holiday Calendar** support - skip or shift occurrences on configured holidays, with audit logging for suppressed runs.
+- See `src/Werkr.Core/Scheduling/` for the schedule calculator and holiday date service.
 
-## 4. Schedulable Tasks:
-- Run tasks inside or outside of a workflow
-  - Implements a UI for creating and scheduling tasks.
-  - Tasks outside of a workflow can only be triggered "immediately", based on a schedule, or on a time interval.
-    - Meaning that tasks outside a workflow cannot be triggered by filewatch, outside task completion, or workflow completion.
+### Task Types
+Five task types as defined by the `TaskActionType` enum:
 
-<br/>
+| Type | Description |
+|------|-------------|
+| **Action** | 11 built-in handlers for common operations (no scripting required). |
+| **PowerShell Script** | Execute PowerShell scripts with full output stream capture. |
+| **PowerShell Command** | Execute individual PowerShell commands. |
+| **Shell Command** | Run native OS shell commands with exit code capture. |
+| **Shell Script** | Execute shell scripts with native OS shell. |
 
-## 5. Flexible Task Triggers:
-- FileWatch (Poll FileWatch, Filesystem Event FileWatch)
-  - Implement a FileWatch component for triggering tasks based on file events
-  - Available as a workflow trigger, as well as a trigger for tasks within a workflow.
-- DateTime
-  - A scheduler component triggers tasks based on specified DateTime
-  - Available for all tasks types and workflows.
-- Interval/Cyclical (periodicity)
-  - A scheduler component triggers tasks based on starting intervals
-  - Available for all tasks types and workflows.
-- Task Completion States
-  - Tasks may be triggered based on the completion state of other tasks within the same worfklow.
-  - Available for use by tasks within a workflow.
-- Workflow Completion State
-  - Tasks and workflows may be triggered based on the operating state of outside workflows.
-  - Available for use by tasks within a workflow, as well as initial workflow triggering.
+### Built-in Actions
+The current set of action handlers in `src/Werkr.Agent/Operators/Actions/`:
 
-<br/>
+| Action | Operation |
+|--------|-----------|
+| CopyFile | Copy a file to a new location. |
+| MoveFile | Move a file to a new location. |
+| RenameFile | Rename a file. |
+| CreateFile | Create a new file. |
+| DeleteFile | Delete a file. |
+| CreateDirectory | Create a new directory. |
+| WriteContent | Write content to a file. |
+| ClearContent | Clear the content of a file. |
+| TestExists | Check whether a file or directory exists. |
+| StartProcess | Start an OS process. |
+| StopProcess | Stop a running OS process. |
 
-## 6. Versatile Task Types:
-- System-defined tasks
-  - Contains a library of system-defined tasks with required and optional input parameters
-    - File/Directory Creation
-    - Move/Copy files and/or directories
-    - Delete file and/or directories
-    - Test file/directory exists
-    - Write Content to file
-- User-defined tasks
-  - Create a UI for building user-defined tasks.
-    - User defined tasks are a linear sequence of system-defined tasks, PowerShell scripts, and native command executions
-- PowerShell Script Execution Tasks
-- PowerShell Command Execution Tasks
-- System Shell Command Execution Tasks
+### Triggers
+- **DateTime** - Run at a specific date and time.
+- **Interval/Cyclical** - Run periodically (daily, weekly, monthly recurrence).
+- **Task Completion** - Within workflows, trigger steps based on dependency completion states.
+- **Holiday Calendar** - Automatically skip or shift scheduled occurrences on holidays.
 
-<br/>
+### Security
+- **TLS** - Mandatory for all connections.
+- **Encrypted gRPC** - All payloads wrapped in `EncryptedEnvelope` (AES-256-GCM) after registration.
+- **Admin-bundle registration** - RSA+AES hybrid encryption for agent registration handshake.
+- **Key rotation** - `RotateSharedKey` RPC with grace period for in-flight messages.
+- **RBAC** - Permission-based role authorization with configurable policies.
+- **TOTP 2FA** - Built-in two-factor authentication.
+- **Path allowlisting** - Agents validate file paths before execution.
+- **Platform-native secret storage** - DPAPI (Windows), Keychain (macOS), file-based (Linux).
+- See `src/Werkr.Core/Cryptography/`, `src/Werkr.Core/Security/`, and `src/Werkr.Common/Auth/`.
 
-## 7. Task Outputs:
-- Standard PowerShell Outputs
-  - PowerShell Scripts and Command Execution Tasks share the same possible outputs:
-  - LastSuccess
-  - LastExitCode
-    - LastExitCode will be set prior to script execution.
-    - Initial LastExitCode can be set to any positive number.
-  - Terminating Exception information will be returned (if applicable).
-  - Output stream content will be returned as an array of objects.
-  - Error stream content will be returned as an array of ErrorRecord objects.
-  - Debug, Verbose, and Warning stream content (if any) will be returned as arrays of strings.
-- System Shell Command Execution Tasks
-  - Returns the process exit code after command execution.
-- System-defined tasks
-  - Returns the task success status as a [boolean?]. Return output will also contain [Exception?] information (if applicable).
+### Platform Support
+- **Server + API + Agent** on Windows 10+ and Linux (x64 and arm64).
+- MSI installers for Windows.
+- Portable editions (no difference from installed version).
 
-<br/>
+### Database
+- **PostgreSQL** and **SQLite** are both supported for all components. The API and Server default to PostgreSQL; the Agent defaults to SQLite.
+- Dual-provider EF Core architecture with shared entity model.
+- See `src/Werkr.Data/` and `src/Werkr.Data.Identity/`.
 
-## 8. Server and Agent Configuration:
-- Both the server is a C# Kestrel webservers that can be configured to access an external (Postgres?) or built-in SQLite database
-- The Agent is a C# worker process that hosts PowerShell and can create operating-system shells (predfined by OS).
-- The server and agent use grpc for inter-process communications.
+### Observability
+- **.NET Aspire** integration for local development orchestration (see `src/Werkr.AppHost/`).
+- **Serilog** structured logging (console, file, OpenTelemetry sinks).
+- **OpenTelemetry** metrics, traces, and logging (see `src/Werkr.ServiceDefaults/`).
+- Health check endpoints (`/health` and `/alive`).
 
-<br/>
+### Community & Licensing
+- MIT license.
+- GitHub issue templates for bugs, feature requests, documentation improvements, and CLA agreements.
+- Contribution License Agreement process.
 
-## 9. Security:
-- Access Control
-  - Implements role-based access control and standard authentication mechanisms.
-  - Manage users roles and permissions to restrict or allow access to certain features or data.
-- Native 2FA support (TOTP)
-- Implements simple TLS certificate configuration for both the webserver and agent components.
+---
 
-<br/>
+## Roadmap
 
-## 10. Licensing and Support:
-- The applications are offered free of charge under an MIT license.
-- Best effort support and triage is provided via a GitHub issue process
-- Documentation, tutorials, and other resources are available to help users get started and troubleshoot issues
+The following items are planned or not yet implemented. These are described at a category level - specific implementation details may change.
 
-<br/>
-
-## 11. Community Contributions:
-- Open collaboration
-  - Community membership and collaboration is encouraged! Please feel free to help with documentation, bug fixes, and new features
-  - Please help maintain a welcoming and inclusive environment for all contributors.
-- The project has been broken out into multiple separate repositories allowing for focused contributions.
-
-<br/>
-
-## 12. Extensibility and Built-in Utility:
-- The werkr project is designed to be extensible but with enough built-in utility to minimize the need for most extensions.
-  - Contains a comprehensive library of built-in tasks to cover a wide range of use cases
-  - User-defined tasks allow for consistent implementation of commonly performed operations.
-  - You have the full utility of PowerShell and the built in system shell at your disposal.
-- This product is aimed at users with moderate computer knowledge.
-  - You shouldn't have to be a computer expert to create expert level workflows.
+- **Additional built-in actions** - Archive operations, network connectivity checks, file introspection, notification dispatch, data transformation.
+- **File monitoring** - Directory watching for file-drop workflows.
+- **Workflow completion trigger** - Trigger tasks or workflows based on the completion state of an external workflow.
+- **DAG visualization UI** - Visual display and editing of workflow graphs.
+- **Inter-step data passing** - Workflow variable system for passing data between steps.
+- **macOS support** — Cross-platform secret store infrastructure is already in place. Installer and official platform support are on the roadmap.
+- **Linux installers** — `.deb` packages are on the roadmap. Currently, Linux deployment uses portable archives.
+- **Webhook notifications** - Task and workflow completion notifications to external services.
+- **OS-specific actions** - Windows Service management, systemd unit management.
+- **Secret/credential management** - Secure storage and injection of credentials into task execution contexts.
+- **Database Encryption** - Database encryption for defense in depth in addition to filesystem permissions.

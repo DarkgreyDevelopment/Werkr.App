@@ -7,4 +7,5 @@ namespace Werkr.Common.Models;
 public sealed record ExecuteCommandRequest(
     string OperatorType,
     string Command,
-    int TimeoutMinutes = 30 );
+    int TimeoutMinutes = 30
+);

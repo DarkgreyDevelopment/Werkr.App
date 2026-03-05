@@ -1,4 +1,4 @@
-using Werkr.Common.Models;
+﻿using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 
 namespace Werkr.Core.Communication;
@@ -19,7 +19,8 @@ public interface ICommandDispatcher {
         Guid agentConnectionId,
         OperatorType operatorType,
         string command,
-        CancellationToken cancellationToken = default );
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Executes a script on the specified agent and yields output.
@@ -35,7 +36,8 @@ public interface ICommandDispatcher {
         OperatorType operatorType,
         string scriptPath,
         IEnumerable<string>? args,
-        CancellationToken cancellationToken = default );
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Executes a built-in action on the specified agent and yields output.
@@ -47,5 +49,6 @@ public interface ICommandDispatcher {
     IAsyncEnumerable<OperatorOutput> ExecuteActionAsync(
         Guid agentConnectionId,
         ActionDescriptor descriptor,
-        CancellationToken cancellationToken = default );
+        CancellationToken cancellationToken = default
+    );
 }

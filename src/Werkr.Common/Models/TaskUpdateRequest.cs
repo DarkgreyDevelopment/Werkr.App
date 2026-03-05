@@ -14,4 +14,5 @@ public sealed record TaskUpdateRequest(
     Guid? ScheduleId = null,
     long? WorkflowId = null,
     string? ActionSubType = null,
-    string? ActionParameters = null );
+    string? ActionParameters = null
+);

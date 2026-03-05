@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using Werkr.Data;
@@ -12,7 +12,8 @@ namespace Werkr.Core.Scheduling;
 /// </summary>
 public sealed partial class HolidayDateService(
     WerkrDbContext db,
-    ILogger<HolidayDateService> logger ) {
+    ILogger<HolidayDateService> logger
+) {
 
     /// <summary>
     /// Computes dates from all rules in a calendar for the given year range and upserts into <c>HolidayDates</c>.
@@ -20,17 +21,32 @@ public sealed partial class HolidayDateService(
     /// on <c>(CalendarId, Date, WindowStart)</c>, the manual entry's <c>HolidayRuleId</c> is updated.
     /// Removes stale computed entries outside the year range.
     /// </summary>
-    public async Task MaterializeDatesAsync( Guid calendarId, int startYear, int endYear, CancellationToken ct = default ) {
+    public async Task MaterializeDatesAsync(
+        Guid calendarId,
+        int startYear,
+        int endYear,
+        CancellationToken ct = default
+    ) {
         HolidayCalendar? calendar = await db.HolidayCalendars
             .Include( c => c.Rules )
-            .FirstOrDefaultAsync( c => c.Id == calendarId, ct );
+            .FirstOrDefaultAsync(
+                c => c.Id == calendarId,
+                ct
+            );
 
         if (calendar is null) {
-            logger.LogWarning( "Calendar {CalendarId} not found for materialization.", calendarId );
+            logger.LogWarning(
+                "Calendar {CalendarId} not found for materialization.",
+                calendarId
+            );
             return;
         }
 
-        IReadOnlyList<HolidayDate> computed = HolidayCalculator.ComputeDatesForRange( calendar, startYear, endYear );
+        IReadOnlyList<HolidayDate> computed = HolidayCalculator.ComputeDatesForRange(
+            calendar,
+            startYear,
+            endYear
+        );
 
         // Load existing dates for the year range (both manual and rule-generated)
         List<HolidayDate> existing = await db.HolidayDates
@@ -57,7 +73,13 @@ public sealed partial class HolidayDateService(
         }
 
         _ = await db.SaveChangesAsync( ct );
-        LogMaterialized( logger, computed.Count, calendarId, startYear, endYear );
+        LogMaterialized(
+            logger,
+            computed.Count,
+            calendarId,
+            startYear,
+            endYear
+        );
     }
 
     /// <summary>
@@ -80,7 +102,11 @@ public sealed partial class HolidayDateService(
         // Auto-materialize missing years
         for (int year = startYear; year <= endYear; year++) {
             if (!materializedYears.Contains( year )) {
-                await EnsureMaterializedAsync( calendarId, year, ct );
+                await EnsureMaterializedAsync(
+                    calendarId,
+                    year,
+                    ct
+                );
             }
         }
 
@@ -97,32 +123,58 @@ public sealed partial class HolidayDateService(
     /// Manual entries (<c>HolidayRuleId == null</c>) are preserved.
     /// Called on any rule mutation to invalidate the cache.
     /// </summary>
-    public async Task InvalidateCacheAsync( Guid calendarId, CancellationToken ct = default ) {
+    public async Task InvalidateCacheAsync(
+        Guid calendarId,
+        CancellationToken ct = default
+    ) {
         int deleted = await db.HolidayDates
             .Where( d => d.HolidayCalendarId == calendarId && d.HolidayRuleId != null )
             .ExecuteDeleteAsync( ct );
 
-        LogCacheInvalidated( logger, deleted, calendarId );
+        LogCacheInvalidated(
+            logger,
+            deleted,
+            calendarId
+        );
     }
 
     /// <summary>
     /// Materializes a single year if not already present.
     /// </summary>
-    public async Task EnsureMaterializedAsync( Guid calendarId, int year, CancellationToken ct = default ) {
+    public async Task EnsureMaterializedAsync(
+        Guid calendarId,
+        int year,
+        CancellationToken ct = default
+    ) {
         bool hasData = await db.HolidayDates
             .AnyAsync( d => d.HolidayCalendarId == calendarId
                 && d.HolidayRuleId != null && d.Year == year, ct );
 
         if (!hasData) {
-            await MaterializeDatesAsync( calendarId, year, year, ct );
+            await MaterializeDatesAsync(
+                calendarId,
+                year,
+                year,
+                ct
+            );
         }
     }
 
     [LoggerMessage( Level = LogLevel.Information,
         Message = "Materialized {Count} dates for calendar {CalendarId} ({StartYear}-{EndYear})" )]
-    private static partial void LogMaterialized( ILogger logger, int count, Guid calendarId, int startYear, int endYear );
+    private static partial void LogMaterialized(
+        ILogger logger,
+        int count,
+        Guid calendarId,
+        int startYear,
+        int endYear
+    );
 
     [LoggerMessage( Level = LogLevel.Information,
         Message = "Invalidated {Count} cached dates for calendar {CalendarId}" )]
-    private static partial void LogCacheInvalidated( ILogger logger, int count, Guid calendarId );
+    private static partial void LogCacheInvalidated(
+        ILogger logger,
+        int count,
+        Guid calendarId
+    );
 }

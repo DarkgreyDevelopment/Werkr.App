@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
-
 using Werkr.Data.Identity.Entities;
 
 namespace Werkr.Server.Identity;
@@ -45,6 +44,9 @@ public sealed class WerkrCookieAuthEvents : CookieAuthenticationEvents {
         }
     }
 
+    /// <summary>
+    /// Determines whether the specified <paramref name="path"/> is allowed while the user is being forced to change their password. Allowed paths include the change-password page, the Blazor SignalR hub (<c>/_blazor</c>), logout, access-denied, and static assets.
+    /// </summary>
     private static bool IsAllowedPathForPasswordChange( PathString path ) {
         return path.StartsWithSegments( "/account/change-password", StringComparison.OrdinalIgnoreCase )
             || path.StartsWithSegments( "/_blazor", StringComparison.OrdinalIgnoreCase )
@@ -53,6 +55,9 @@ public sealed class WerkrCookieAuthEvents : CookieAuthenticationEvents {
             || IsStaticAsset( path );
     }
 
+    /// <summary>
+    /// Determines whether the specified <paramref name="path"/> is allowed while the user is being required to enrol in multi-factor authentication. In addition to the MFA enrolment page itself, the change-password page, Blazor hub, logout, access-denied, and static assets are permitted.
+    /// </summary>
     private static bool IsAllowedPathForMfaEnrollment( PathString path ) {
         return path.StartsWithSegments( "/account/manage/mfa", StringComparison.OrdinalIgnoreCase )
             || path.StartsWithSegments( "/_blazor", StringComparison.OrdinalIgnoreCase )
@@ -62,6 +67,9 @@ public sealed class WerkrCookieAuthEvents : CookieAuthenticationEvents {
             || IsStaticAsset( path );
     }
 
+    /// <summary>
+    /// Checks whether the current request targets a static asset path that should always be accessible regardless of password-change or MFA-enrolment gates. Paths under <c>/_framework</c>, <c>/_content</c>, <c>/lib</c>, <c>/css</c>, <c>/js</c>, <c>/images</c>, and any path with a file extension are treated as static assets.
+    /// </summary>
     private static bool IsStaticAsset( PathString path ) {
         return path.StartsWithSegments( "/_framework", StringComparison.OrdinalIgnoreCase )
             || path.StartsWithSegments( "/_content", StringComparison.OrdinalIgnoreCase )

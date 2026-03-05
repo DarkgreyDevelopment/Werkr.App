@@ -9,4 +9,5 @@ public sealed record OccurrencePreviewResponse(
     IReadOnlyList<DateTime> Occurrences,
     IReadOnlyList<SuppressedOccurrenceDto>? Suppressed = null,
     string? HolidayCalendarName = null,
-    string? HolidayCalendarMode = null );
+    string? HolidayCalendarMode = null
+);

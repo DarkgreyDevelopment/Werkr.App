@@ -2,8 +2,8 @@ namespace Werkr.Server.Helpers;
 
 /// <summary>
 /// Consolidated UI helpers for agent status display.
-/// Replaces duplicated <c>GetStatusBadgeClass</c>, <c>FormatAvailability</c>,
-/// and <c>FormatRelativeTime</c> methods spread across multiple pages.
+/// Replaces duplicated <see cref="GetStatusBadgeClass"/>, <see cref="FormatAvailability"/>,
+/// and <see cref="FormatRelativeTime"/> methods spread across multiple pages.
 /// </summary>
 public static class AgentDisplayHelper {
 

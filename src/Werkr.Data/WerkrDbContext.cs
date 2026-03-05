@@ -18,8 +18,9 @@ namespace Werkr.Data;
 /// Primary DbContext for Werkr application data (non-Identity).
 /// </summary>
 public class WerkrDbContext : DbContext {
-    /// <summary>Creates a new instance configured with the specified options.</summary>
-    /// <param name="options">The strongly-typed options for this context.</param>
+
+    /// <summary>Creates a new instance for use by derived provider-specific contexts.</summary>
+    /// <param name="options">The options forwarded from a derived context.</param>
     public WerkrDbContext( DbContextOptions<WerkrDbContext> options ) : base( options ) { }
 
     /// <summary>Creates a new instance for use by derived provider-specific contexts.</summary>
@@ -105,18 +106,23 @@ public class WerkrDbContext : DbContext {
                 new ValueComparer<byte[]>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, b ) => HashCode.Combine( hash, b ) ),
-                    v => v == null ? Array.Empty<byte>( ) : v.ToArray( ) ) );
+                    v => v == null ? Array.Empty<byte>( ) : v.ToArray( )
+                )
+            );
 
             // RegistrationBundle.AllowedPaths stored as JSON
             PropertyBuilder<string[]> allowedPathsProp = entity.Property( e => e.AllowedPaths )
                 .HasConversion(
                     v => JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
-                    v => JsonSerializer.Deserialize<string[]>( v, (JsonSerializerOptions?)null ) ?? Array.Empty<string>( ) );
+                    v => JsonSerializer.Deserialize<string[]>(v, (JsonSerializerOptions?)null) ?? Array.Empty<string>()
+                );
             allowedPathsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
-                    v => v == null ? Array.Empty<string>( ) : v.ToArray( ) ) );
+                    v => v == null ? Array.Empty<string>( ) : v.ToArray( )
+                )
+            );
         } );
 
         // RegisteredConnection indexes
@@ -129,13 +135,17 @@ public class WerkrDbContext : DbContext {
                 new ValueComparer<byte[]>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, b ) => HashCode.Combine( hash, b ) ),
-                    v => v == null ? Array.Empty<byte>( ) : v.ToArray( ) ) );
+                    v => v == null ? Array.Empty<byte>( ) : v.ToArray( )
+                )
+            );
 
             entity.Property( e => e.PreviousSharedKey ).Metadata.SetValueComparer(
                 new ValueComparer<byte[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, b ) => HashCode.Combine( hash, b ) ),
-                    v => v == null ? null : v.ToArray( ) ) );
+                    v => v == null ? null : v.ToArray( )
+                )
+            );
         } );
 
         // MonthlyRecurrence.DayNumbers stored as JSON
@@ -143,12 +153,15 @@ public class WerkrDbContext : DbContext {
             PropertyBuilder<int[]?> prop = entity.Property( e => e.DayNumbers )
                 .HasConversion(
                     v => v == null ? null : JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
-                    v => v == null ? null : JsonSerializer.Deserialize<int[]>( v, (JsonSerializerOptions?)null ) );
+                    v => v == null ? null : JsonSerializer.Deserialize<int[]>(v, (JsonSerializerOptions?)null)
+                );
             prop.Metadata.SetValueComparer(
                 new ValueComparer<int[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item ) ),
-                    v => v == null ? null : v.ToArray( ) ) );
+                    v => v == null ? null : v.ToArray( )
+                )
+            );
         } );
 
         // RegisteredConnection.Tags stored as JSON
@@ -156,23 +169,29 @@ public class WerkrDbContext : DbContext {
             PropertyBuilder<string[]> prop = entity.Property( e => e.Tags )
                 .HasConversion(
                     v => JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
-                    v => JsonSerializer.Deserialize<string[]>( v, (JsonSerializerOptions?)null ) ?? Array.Empty<string>( ) );
+                    v => JsonSerializer.Deserialize<string[]>(v, (JsonSerializerOptions?)null) ?? Array.Empty<string>()
+                );
             prop.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
-                    v => v == null ? Array.Empty<string>( ) : v.ToArray( ) ) );
+                    v => v == null ? Array.Empty<string>( ) : v.ToArray( )
+                )
+            );
 
             // RegisteredConnection.AllowedPaths stored as JSON
             PropertyBuilder<string[]> allowedPathsProp = entity.Property( e => e.AllowedPaths )
                 .HasConversion(
                     v => JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
-                    v => JsonSerializer.Deserialize<string[]>( v, (JsonSerializerOptions?)null ) ?? Array.Empty<string>( ) );
+                    v => JsonSerializer.Deserialize<string[]>(v, (JsonSerializerOptions?)null) ?? Array.Empty<string>()
+                );
             allowedPathsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
-                    v => v == null ? Array.Empty<string>( ) : v.ToArray( ) ) );
+                    v => v == null ? Array.Empty<string>( ) : v.ToArray( )
+                )
+            );
         } );
 
         // WerkrTask.TargetTags stored as JSON
@@ -180,23 +199,29 @@ public class WerkrDbContext : DbContext {
             PropertyBuilder<string[]> targetTagsProp = entity.Property( e => e.TargetTags )
                 .HasConversion(
                     v => JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
-                    v => JsonSerializer.Deserialize<string[]>( v, (JsonSerializerOptions?)null ) ?? Array.Empty<string>( ) );
+                    v => JsonSerializer.Deserialize<string[]>(v, (JsonSerializerOptions?)null) ?? Array.Empty<string>()
+                );
             targetTagsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
-                    v => v == null ? Array.Empty<string>( ) : v.ToArray( ) ) );
+                    v => v == null ? Array.Empty<string>( ) : v.ToArray( )
+                )
+            );
 
             // WerkrTask.Arguments stored as JSON
             PropertyBuilder<string[]?> argsProp = entity.Property( e => e.Arguments )
                 .HasConversion(
                     v => v == null ? null : JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
-                    v => v == null ? null : JsonSerializer.Deserialize<string[]>( v, (JsonSerializerOptions?)null ) );
+                    v => v == null ? null : JsonSerializer.Deserialize<string[]>(v, (JsonSerializerOptions?)null)
+                );
             argsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item ) ),
-                    v => v == null ? null : v.ToArray( ) ) );
+                    v => v == null ? null : v.ToArray( )
+                )
+            );
         } );
 
         // WorkflowStepDependency composite key and relationships
@@ -387,7 +412,7 @@ public class WerkrDbContext : DbContext {
             dt => dt.ToString( "o" ),
             s => DateTime.Parse( s ).ToUniversalTime( ) );
 
-    /// <summary>JSON options that include fields — required for <see cref="RSAParameters"/> which uses public fields, not properties.</summary>
+    /// <summary>JSON options that include fields - required for <see cref="RSAParameters"/> which uses public fields, not properties.</summary>
     private static readonly JsonSerializerOptions s_rsaJsonOptions = new( ) { IncludeFields = true };
 
     private sealed class RSAParametersStringConverter( )

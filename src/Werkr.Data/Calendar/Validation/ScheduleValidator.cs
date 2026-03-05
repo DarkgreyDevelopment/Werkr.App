@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-
 using Werkr.Data.Calendar.Models;
 
 namespace Werkr.Data.Calendar.Validation;
@@ -9,6 +8,7 @@ namespace Werkr.Data.Calendar.Validation;
 /// Invoked programmatically via <see cref="Validate"/> during schedule creation and updates.
 /// </summary>
 public static class ScheduleValidator {
+
     /// <summary>
     /// Validates the <paramref name="schedule"/> composite model and returns a <see cref="ValidationResult"/>
     /// or <see cref="ValidationResult.Success"/> if valid.

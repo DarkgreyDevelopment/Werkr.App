@@ -1,7 +1,5 @@
 using System.Security.Claims;
-
 using Microsoft.AspNetCore.Authorization;
-
 using Werkr.Common.Auth;
 
 namespace Werkr.Api.Authorization;
@@ -17,7 +15,8 @@ public sealed class ClaimsPermissionAuthorizationHandler
     /// <inheritdoc/>
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
-        PermissionRequirement requirement ) {
+        PermissionRequirement requirement
+    ) {
         if (context.User.Identity?.IsAuthenticated != true) {
             return Task.CompletedTask;
         }

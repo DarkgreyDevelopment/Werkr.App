@@ -1,5 +1,6 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Clone-calendar request.</summary>
+/// <summary>Request body to clone a holiday calendar with a new name.</summary>
 public sealed record CloneHolidayCalendarRequest(
-    string NewName );
+    string NewName
+);

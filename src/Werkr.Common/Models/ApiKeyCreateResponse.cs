@@ -11,4 +11,5 @@ public sealed record ApiKeyCreateResponse(
     string KeyPrefix,
     string Role,
     DateTime CreatedUtc,
-    DateTime? ExpiresUtc );
+    DateTime? ExpiresUtc
+);

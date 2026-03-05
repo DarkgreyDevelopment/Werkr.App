@@ -5,10 +5,15 @@ namespace Werkr.Tests.Server.Pages;
 
 /// <summary>
 /// Tests for Agent Detail page data: connection info display, name editing,
-/// and revoke status changes (§3.12.5).
+/// and revoke status changes.
 /// </summary>
 [TestClass]
 public class AgentDetailTests {
+    /// <summary>
+    /// Verifies that an <see cref="AgentDetailDto"/> constructed with full connection information exposes all
+    /// properties correctly: ID, connection name, remote URL, status, RSA key fingerprint, registration and last-seen
+    /// timestamps, and operator availability flags.
+    /// </summary>
     [TestMethod]
     public void AgentDetail_ShowsConnectionInfo( ) {
         Guid id = Guid.NewGuid( );
@@ -24,7 +29,8 @@ public class AgentDetailTests {
             registered,
             lastSeen,
             PowerShellAvailable: true,
-            SystemShellAvailable: true );
+            SystemShellAvailable: true
+        );
 
         Assert.AreEqual( id, dto.Id );
         Assert.AreEqual( "Production-Agent", dto.ConnectionName );
@@ -37,6 +43,11 @@ public class AgentDetailTests {
         Assert.IsTrue( dto.SystemShellAvailable!.Value, "SystemShell should be available." );
     }
 
+    /// <summary>
+    /// Verifies that editing an agent name with leading/trailing whitespace produces an <see
+    /// cref="UpdateAgentRequest"/> with the trimmed name and that the trimmed length does not exceed the 200-character
+    /// maximum enforced by the server's validation rules.
+    /// </summary>
     [TestMethod]
     public void AgentDetail_EditName_ProducesValidRequest( ) {
         string newName = "  Renamed-Agent  ";
@@ -49,6 +60,10 @@ public class AgentDetailTests {
             "Connection name must be 200 characters or fewer." );
     }
 
+    /// <summary>
+    /// Verifies that a whitespace-only name is detected as invalid by the trimming and emptiness check, preventing
+    /// empty agent names from being submitted.
+    /// </summary>
     [TestMethod]
     public void AgentDetail_EditName_RejectsEmptyName( ) {
         string newName = "   ";
@@ -57,6 +72,10 @@ public class AgentDetailTests {
         Assert.IsFalse( isValid, "Empty/whitespace name should be rejected." );
     }
 
+    /// <summary>
+    /// Verifies that a name exceeding 200 characters is detected as invalid by the length check, enforcing the maximum
+    /// connection name length constraint.
+    /// </summary>
     [TestMethod]
     public void AgentDetail_EditName_RejectsOverlongName( ) {
         string newName = new( 'x', 201 );
@@ -66,6 +85,10 @@ public class AgentDetailTests {
         Assert.IsFalse( isValid, "Name over 200 characters should be rejected." );
     }
 
+    /// <summary>
+    /// Verifies that revoking an agent changes its status from "Connected" to "Revoked" via the <c>with</c> expression
+    /// on the <see cref="AgentListDto"/> record.
+    /// </summary>
     [TestMethod]
     public void AgentDetail_Revoke_ChangesStatus( ) {
         // Simulate the revoke flow: connected → revoked
@@ -80,6 +103,11 @@ public class AgentDetailTests {
         Assert.AreEqual( "Revoked", after.Status );
     }
 
+    /// <summary>
+    /// Verifies that <see cref="EncryptionProvider.ComputeKeyFingerprint"/> produces the same SHA-256 fingerprint (64
+    /// hex characters) for the same RSA public key XML string across multiple invocations, confirming deterministic
+    /// hashing.
+    /// </summary>
     [TestMethod]
     public void AgentDetail_RsaFingerprint_ComputesConsistently( ) {
         string publicKey = "<RSAKeyValue><Modulus>testModulus</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";

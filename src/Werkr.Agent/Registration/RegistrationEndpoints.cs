@@ -1,8 +1,6 @@
 using System.Text.Json;
-
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
-
 using Werkr.Core.Registration.Models;
 using Werkr.Data;
 
@@ -31,6 +29,7 @@ public static class RegistrationEndpoints {
     /// <summary>
     /// Returns a simple HTML registration page.
     /// </summary>
+    /// <returns>An HTML content result with the registration form.</returns>
     private static IResult HandleGetRegistrationPage( IConfiguration configuration, IServer server ) {
         string agentUrl = ResolveAgentUrl( configuration, server );
 
@@ -126,13 +125,15 @@ public static class RegistrationEndpoints {
     /// <summary>
     /// Processes a registration bundle submitted by the admin.
     /// </summary>
+    /// <returns>A JSON result indicating registration success or failure.</returns>
     private static async Task<IResult> HandlePostRegistration(
         HttpRequest request,
         IConfiguration configuration,
         IServer server,
         AgentRegistrationHandler handler,
         WerkrDbContext dbContext,
-        CancellationToken ct ) {
+        CancellationToken ct
+    ) {
 
         RegistrationRequest? body;
         try {
@@ -161,6 +162,7 @@ public static class RegistrationEndpoints {
     /// Checks <c>Werkr:AgentUrl</c> configuration first; if not set, discovers
     /// the bound address from <see cref="IServer"/> (dynamic Aspire ports).
     /// </summary>
+    /// <returns>The agent's gRPC URL.</returns>
     private static string ResolveAgentUrl( IConfiguration configuration, IServer server ) {
         string? configured = configuration.GetValue<string>( "Werkr:AgentUrl" );
         if (!string.IsNullOrWhiteSpace( configured )) {

@@ -6,4 +6,5 @@ public sealed record AgentActivityDto(
     string ConnectionName,
     string EventType,
     DateTime OccurredAtUtc,
-    string Status );
+    string Status
+);

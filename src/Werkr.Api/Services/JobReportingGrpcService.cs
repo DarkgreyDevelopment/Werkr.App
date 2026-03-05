@@ -1,5 +1,4 @@
 using Grpc.Core;
-
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
@@ -25,7 +24,8 @@ public sealed class JobReportingGrpcService(
     /// </summary>
     public override async Task<EncryptedEnvelope> ReportJobResult(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
@@ -96,6 +96,9 @@ public sealed class JobReportingGrpcService(
         return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
     }
 
+    /// <summary>
+    /// Extracts the authenticated <see cref="RegisteredConnection"/> from the gRPC call context's user state.
+    /// </summary>
     private static RegisteredConnection GetConnection( ServerCallContext context ) {
         return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
             ? connection

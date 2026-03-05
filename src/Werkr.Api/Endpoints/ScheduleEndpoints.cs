@@ -4,6 +4,7 @@ using Werkr.Common.Auth;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Holidays;
 using Werkr.Core.Scheduling;
+using Werkr.Data.Calendar.Models;
 
 namespace Werkr.Api.Endpoints;
 
@@ -11,21 +12,27 @@ namespace Werkr.Api.Endpoints;
 internal static class ScheduleEndpoints {
     /// <summary>Maps schedule CRUD + occurrence-preview endpoints.</summary>
     public static WebApplication MapScheduleEndpoints( this WebApplication app ) {
-        _ = app.MapGet( "/api/schedules", async (
-            ScheduleService scheduleService,
-            CancellationToken ct ) => {
-                IReadOnlyList<Data.Calendar.Models.Schedule> schedules = await scheduleService.GetAllAsync( ct );
+        _ = app.MapGet(
+            "/api/schedules",
+            async (
+                ScheduleService scheduleService,
+                CancellationToken ct
+            ) => {
+                IReadOnlyList<Schedule> schedules = await scheduleService.GetAllAsync( ct );
                 List<ScheduleDto> dtos = [.. schedules.Select( ScheduleMapper.ToDto )];
                 return Results.Ok( dtos );
             } )
         .WithName( "GetSchedules" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/schedules/{id}", async (
-            Guid id,
-            ScheduleService scheduleService,
-            CancellationToken ct ) => {
-                Data.Calendar.Models.Schedule? schedule = await scheduleService.GetByIdAsync( id, ct );
+        _ = app.MapGet(
+            "/api/schedules/{id}",
+            async (
+                Guid id,
+                ScheduleService scheduleService,
+                CancellationToken ct
+            ) => {
+                Schedule? schedule = await scheduleService.GetByIdAsync( id, ct );
                 return schedule is null
                     ? Results.NotFound( )
                     : Results.Ok( ScheduleMapper.ToDto( schedule ) );
@@ -33,13 +40,16 @@ internal static class ScheduleEndpoints {
         .WithName( "GetSchedule" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPost( "/api/schedules", async (
-            ScheduleCreateRequest request,
-            ScheduleService scheduleService,
-            CancellationToken ct ) => {
+        _ = app.MapPost(
+            "/api/schedules",
+            async (
+                ScheduleCreateRequest request,
+                ScheduleService scheduleService,
+                CancellationToken ct
+            ) => {
                 try {
-                    Data.Calendar.Models.Schedule schedule = ScheduleMapper.ToSchedule( request );
-                    Data.Calendar.Models.Schedule created = await scheduleService.CreateAsync( schedule, ct );
+                    Schedule schedule = ScheduleMapper.ToSchedule( request );
+                    Schedule created = await scheduleService.CreateAsync( schedule, ct );
                     ScheduleDto dto = ScheduleMapper.ToDto( created );
                     return Results.Created( $"/api/schedules/{dto.Id}", dto );
                 } catch (System.ComponentModel.DataAnnotations.ValidationException ex) {
@@ -51,19 +61,26 @@ internal static class ScheduleEndpoints {
         .WithName( "CreateSchedule" )
         .RequireAuthorization( Policies.CanCreate );
 
-        _ = app.MapPut( "/api/schedules/{id}", async (
-            Guid id,
-            ScheduleUpdateRequest request,
-            ScheduleService scheduleService,
-            ScheduleInvalidationDispatcher invalidationDispatcher,
-            CancellationToken ct ) => {
+        _ = app.MapPut(
+            "/api/schedules/{id}",
+            async (
+                Guid id,
+                ScheduleUpdateRequest request,
+                ScheduleService scheduleService,
+                ScheduleInvalidationDispatcher invalidationDispatcher,
+                CancellationToken ct
+            ) => {
                 try {
-                    Data.Calendar.Models.Schedule schedule = ScheduleMapper.ToSchedule( id, request );
-                    Data.Calendar.Models.Schedule updated = await scheduleService.UpdateAsync( schedule, ct );
+                    Schedule schedule = ScheduleMapper.ToSchedule( id, request );
+                    Schedule updated = await scheduleService.UpdateAsync( schedule, ct );
 
                     // Push invalidation to affected agents (fire-and-forget)
                     _ = Task.Run( async ( ) => {
-                        try { await invalidationDispatcher.InvalidateAsync( id, CancellationToken.None ); } catch (Exception ex) { app.Logger.LogError( ex, "Schedule invalidation failed for {ScheduleId}.", id ); }
+                        try {
+                            await invalidationDispatcher.InvalidateAsync( id, CancellationToken.None );
+                        } catch (Exception ex) {
+                            app.Logger.LogError( ex, "Schedule invalidation failed for {ScheduleId}.", id );
+                        }
                     }, CancellationToken.None );
 
                     return Results.Ok( ScheduleMapper.ToDto( updated ) );
@@ -78,11 +95,14 @@ internal static class ScheduleEndpoints {
         .WithName( "UpdateSchedule" )
         .RequireAuthorization( Policies.CanUpdate );
 
-        _ = app.MapDelete( "/api/schedules/{id}", async (
-            Guid id,
-            ScheduleService scheduleService,
-            ScheduleInvalidationDispatcher invalidationDispatcher,
-            CancellationToken ct ) => {
+        _ = app.MapDelete(
+            "/api/schedules/{id}",
+            async (
+                Guid id,
+                ScheduleService scheduleService,
+                ScheduleInvalidationDispatcher invalidationDispatcher,
+                CancellationToken ct
+            ) => {
                 try {
                     // Push invalidation BEFORE deleting so we can still find affected tasks
                     await invalidationDispatcher.InvalidateAsync( id, ct );
@@ -96,11 +116,14 @@ internal static class ScheduleEndpoints {
         .WithName( "DeleteSchedule" )
         .RequireAuthorization( Policies.CanDelete );
 
-        _ = app.MapGet( "/api/schedules/{id}/occurrences", async (
-            Guid id,
-            DateTime windowEnd,
-            ScheduleService scheduleService,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/schedules/{id}/occurrences",
+            async (
+                Guid id,
+                DateTime windowEnd,
+                ScheduleService scheduleService,
+                CancellationToken ct
+            ) => {
                 try {
                     ScheduleOccurrenceResult result = await scheduleService.PreviewOccurrencesAsync( id, windowEnd, ct );
                     IReadOnlyList<SuppressedOccurrenceDto>? suppressed = result.Suppressed.Count > 0
@@ -108,7 +131,7 @@ internal static class ScheduleEndpoints {
                         : null;
 
                     // Load schedule to get calendar info for the response
-                    Data.Calendar.Models.Schedule? schedule = await scheduleService.GetByIdAsync( id, ct );
+                    Schedule? schedule = await scheduleService.GetByIdAsync( id, ct );
                     string? calendarName = schedule?.HolidayCalendar?.Name;
                     string? calendarMode = schedule?.HolidayCalendarMode?.ToString( );
 

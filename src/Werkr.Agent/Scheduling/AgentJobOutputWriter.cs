@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Options;
-
 using Werkr.Common.Configuration;
 using Werkr.Core.Communication;
 
@@ -13,7 +12,10 @@ namespace Werkr.Agent.Scheduling;
 /// </summary>
 /// <param name="options">Job output directory configuration.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class AgentJobOutputWriter( IOptions<JobOutputOptions> options, ILogger<AgentJobOutputWriter> logger ) {
+public sealed class AgentJobOutputWriter(
+    IOptions<JobOutputOptions> options,
+    ILogger<AgentJobOutputWriter> logger
+) {
 
     private readonly string _outputDirectory = options.Value.OutputDirectory;
     private readonly int _tailPreviewLength = options.Value.TailPreviewLength;
@@ -105,6 +107,7 @@ public sealed class AgentJobOutputWriter( IOptions<JobOutputOptions> options, IL
     /// <summary>
     /// Formats an <see cref="OperatorOutput"/> record into a log line.
     /// </summary>
+    /// <param name="output">The operator output record to format.</param>
     private static string FormatLine( OperatorOutput output ) =>
         $"[{output.Timestamp}] [{output.LogLevel}] {output.Message}";
 }

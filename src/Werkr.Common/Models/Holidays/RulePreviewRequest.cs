@@ -1,6 +1,9 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Rule preview request (without persisting).</summary>
+/// <summary>
+/// Request body for previewing a holiday rule's materialised dates
+/// over a year range without persisting.
+/// </summary>
 public sealed record RulePreviewRequest(
     string Name,
     string RuleType,
@@ -13,4 +16,5 @@ public sealed record RulePreviewRequest(
     string? WindowTimeZoneId,
     string ObservanceRule,
     int? YearStart,
-    int? YearEnd );
+    int? YearEnd
+);

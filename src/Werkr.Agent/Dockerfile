@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # -------------------------------------------------------------------
-#  Werkr.Agent — Background agent with gRPC, SQLCipher, PowerShell
+#  Werkr.Agent — Background agent with gRPC, SQLite, PowerShell
 #
 #  Two build modes (controlled by BUILD_MODE arg):
 #    source (default) — builds from source using the SDK image

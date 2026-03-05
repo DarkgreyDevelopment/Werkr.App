@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Werkr.Data.Entities.Interfaces;
 using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Tasks;
@@ -12,7 +11,8 @@ namespace Werkr.Data.Entities.Workflows;
 /// </summary>
 [Table( "workflows" )]
 public class Workflow : ConcurrencyBase, IKey<long> {
-    /// <summary>Unique identifier.</summary>
+
+    /// <summary>Database-generated primary key.</summary>
     [Key]
     [DatabaseGenerated( DatabaseGeneratedOption.Identity )]
     public long Id { get; set; }

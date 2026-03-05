@@ -50,7 +50,7 @@ public class CustomActions {
 
     /// <summary>
     /// Writes the configuration JSON to <c>appsettings.json</c> in the install directory.
-    /// This is a deferred custom action — it reads from <see cref="Session.CustomActionData"/>.
+    /// This is a deferred custom action - it reads from <see cref="Session.CustomActionData"/>.
     /// </summary>
     [CustomAction]
     public static ActionResult ConfigSaveExec( Session session ) {

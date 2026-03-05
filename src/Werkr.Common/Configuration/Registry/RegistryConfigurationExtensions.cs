@@ -21,7 +21,8 @@ public static class RegistryConfigurationExtensions {
     /// <returns>The builder for chaining.</returns>
     public static IConfigurationBuilder AddWerkrRegistry(
         this IConfigurationBuilder builder,
-        string subKey = "" ) {
+        string subKey = ""
+    ) {
         return builder.Add( new RegistryConfigurationSource { SubKey = subKey } );
     }
 }

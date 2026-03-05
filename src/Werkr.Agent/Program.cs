@@ -25,6 +25,7 @@ namespace Werkr.Agent;
 
 /// <summary>Application entry point for the Werkr Agent.</summary>
 public class Program {
+
     /// <summary>Main entry point.</summary>
     /// <param name="args">Command-line arguments.</param>
     public static async Task Main( string[] args ) {
@@ -44,13 +45,13 @@ public class Program {
             // Validate platform crypto support
             EncryptionProvider.ValidatePlatformCryptoSupport( );
 
-            // Retrieve or generate the SQLCipher passphrase from OS secret store
+            // Retrieve or generate the SQLite passphrase from OS secret store
             ISecretStore secretStore = SecretStoreFactory.Create( );
             string? passphrase = await secretStore.GetSecretAsync( "werkr-agent-db" );
             if (passphrase is null) {
                 passphrase = Convert.ToHexString( EncryptionProvider.GenerateRandomBytes( 32 ) );
                 await secretStore.SetSecretAsync( "werkr-agent-db", passphrase );
-                Log.Information( "Generated new SQLCipher passphrase for Agent database." );
+                Log.Information( "Generated new SQLite passphrase for Agent database." );
             }
 
             // Determine platform-appropriate data directory
@@ -73,7 +74,7 @@ public class Program {
             // Aspire service defaults
             _ = builder.AddServiceDefaults( );
 
-            // Local SQLite WerkrDbContext (unencrypted; SQLCipher removed)
+            // Local SQLite WerkrDbContext
             string connectionString = $"Data Source={dbPath}";
             _ = builder.Services.AddWerkrDbContext( DatabaseProvider.SQLite, connectionString );
 
@@ -92,8 +93,6 @@ public class Program {
             _ = builder.Services.AddGrpc( options => {
                 options.Interceptors.Add<BearerTokenInterceptor>( );
             } );
-
-
 
             // Kestrel endpoint configuration.
             // All endpoints use TLS with Http1AndHttp2 — ALPN negotiates HTTP/2
@@ -137,7 +136,7 @@ public class Program {
 
                 // Clear any stale EF Core migration lock left by a previous crash/kill.
                 // EF Core 9+ uses __EFMigrationsLock for distributed locking, but for a
-                // single-process SQLite/SQLCipher database this lock can only become stale
+                // single-process SQLite database this lock can only become stale
                 // (no second process will ever release it). Without this cleanup,
                 // MigrateAsync spins on INSERT OR IGNORE indefinitely.
                 try {

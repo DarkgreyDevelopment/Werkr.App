@@ -8,6 +8,7 @@ namespace Werkr.Data;
 /// when <c>--context SqliteWerkrDbContext</c> is specified.
 /// </summary>
 public class SqliteDesignTimeFactory : IDesignTimeDbContextFactory<SqliteWerkrDbContext> {
+
     /// <inheritdoc/>
     public SqliteWerkrDbContext CreateDbContext( string[] args ) {
         DbContextOptionsBuilder<SqliteWerkrDbContext> optionsBuilder = new( );

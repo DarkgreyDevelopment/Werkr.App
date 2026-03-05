@@ -2,11 +2,12 @@ namespace Werkr.Data.Entities.Tasks;
 
 /// <summary>
 /// Categorizes the type of error that occurred during job execution.
-/// Designed for expansion — only <see cref="None"/>, <see cref="ScriptError"/>,
+/// Designed for expansion - only <see cref="None"/>, <see cref="ScriptError"/>,
 /// and <see cref="AgentUnreachable"/> are populated in Phase 5.
 /// </summary>
 public enum ErrorCategory {
-    /// <summary>No error — job completed normally.</summary>
+
+    /// <summary>No error - job completed normally.</summary>
     None = 0,
 
     /// <summary>Job exceeded its configured timeout.</summary>

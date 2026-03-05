@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Extensions;
@@ -27,11 +27,20 @@ public static class ScheduleDescriptionBuilder {
 
         // Recurrence pattern
         if (schedule.DailyRecurrence is not null) {
-            AppendDailyDescription( sb, schedule.DailyRecurrence );
+            AppendDailyDescription(
+                sb,
+                schedule.DailyRecurrence
+            );
         } else if (schedule.WeeklyRecurrence is not null) {
-            AppendWeeklyDescription( sb, schedule.WeeklyRecurrence );
+            AppendWeeklyDescription(
+                sb,
+                schedule.WeeklyRecurrence
+            );
         } else if (schedule.MonthlyRecurrence is not null) {
-            AppendMonthlyDescription( sb, schedule.MonthlyRecurrence );
+            AppendMonthlyDescription(
+                sb,
+                schedule.MonthlyRecurrence
+            );
         } else {
             _ = sb.Append( "Once" );
             if (schedule.StartDateTime is not null) {
@@ -48,7 +57,10 @@ public static class ScheduleDescriptionBuilder {
 
         // Repeat options
         if (schedule.RepeatOptions is not null) {
-            AppendRepeatDescription( sb, schedule.RepeatOptions );
+            AppendRepeatDescription(
+                sb,
+                schedule.RepeatOptions
+            );
         }
 
         // Expiration
@@ -71,17 +83,31 @@ public static class ScheduleDescriptionBuilder {
         return sb.ToString( );
     }
 
-    private static void AppendDailyDescription( StringBuilder sb, DailyRecurrence daily ) {
+    private static void AppendDailyDescription(
+        StringBuilder sb,
+        DailyRecurrence daily
+    ) {
         _ = daily.DayInterval == 1 ? sb.Append( "Daily" ) : sb.Append( $"Every {daily.DayInterval} days" );
     }
 
-    private static void AppendWeeklyDescription( StringBuilder sb, WeeklyRecurrence weekly ) {
-        string days = RangeOfDays.ToString( RangeOfDays.GetContiguousRanges( weekly.DaysOfWeek ), abbreviated: true );
+    private static void AppendWeeklyDescription(
+        StringBuilder sb,
+        WeeklyRecurrence weekly
+    ) {
+        string days = RangeOfDays.ToString(
+            RangeOfDays.GetContiguousRanges( weekly.DaysOfWeek ),
+            abbreviated: true
+        );
 
-        _ = weekly.WeekInterval == 1 ? sb.Append( $"Weekly on {days}" ) : sb.Append( $"Every {weekly.WeekInterval} weeks on {days}" );
+        _ = weekly.WeekInterval == 1
+            ? sb.Append( $"Weekly on {days}" )
+            : sb.Append( $"Every {weekly.WeekInterval} weeks on {days}" );
     }
 
-    private static void AppendMonthlyDescription( StringBuilder sb, MonthlyRecurrence monthly ) {
+    private static void AppendMonthlyDescription(
+        StringBuilder sb,
+        MonthlyRecurrence monthly
+    ) {
         string months = RangeOfMonths.ToString(
             RangeOfMonths.GetContiguousRanges( monthly.MonthsOfYear ), abbreviated: true );
 
@@ -100,7 +126,10 @@ public static class ScheduleDescriptionBuilder {
         }
     }
 
-    private static void AppendRepeatDescription( StringBuilder sb, ScheduleRepeatOptions options ) {
+    private static void AppendRepeatDescription(
+        StringBuilder sb,
+        ScheduleRepeatOptions options
+    ) {
         string interval = FormatMinutes( options.RepeatIntervalMinutes );
 
         if (options.RepeatDurationMinutes < 0) {
@@ -132,7 +161,10 @@ public static class ScheduleDescriptionBuilder {
         return formatted.Length switch {
             1 => formatted[0],
             2 => $"{formatted[0]} and {formatted[1]}",
-            _ => string.Join( ", ", formatted[..^1] ) + $", and {formatted[^1]}",
+            _ => string.Join(
+                ", ",
+                formatted[..^1]
+            ) + $", and {formatted[^1]}",
         };
     }
 

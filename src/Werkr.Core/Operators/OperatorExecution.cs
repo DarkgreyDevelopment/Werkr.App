@@ -1,4 +1,4 @@
-using Werkr.Core.Communication;
+﻿using Werkr.Core.Communication;
 
 namespace Werkr.Core.Operators;
 
@@ -13,4 +13,5 @@ namespace Werkr.Core.Operators;
 /// </param>
 public sealed record OperatorExecution(
     IAsyncEnumerable<OperatorOutput> Output,
-    Task<IOperatorResult> Result );
+    Task<IOperatorResult> Result
+);

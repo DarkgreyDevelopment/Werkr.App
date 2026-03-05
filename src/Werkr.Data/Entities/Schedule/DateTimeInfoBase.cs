@@ -10,6 +10,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// inherit both concurrency tracking and date/time properties.
 /// </summary>
 public abstract class DateTimeInfoBase : ConcurrencyBase {
+
     /// <summary>Date component.</summary>
     [Required]
     public DateOnly Date { get; set; }

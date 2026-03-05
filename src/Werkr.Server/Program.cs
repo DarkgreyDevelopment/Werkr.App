@@ -31,7 +31,8 @@ public class Program {
 
             string version = System.Reflection.CustomAttributeExtensions
                 .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
-                    System.Reflection.Assembly.GetEntryAssembly( )! )
+                    System.Reflection.Assembly.GetEntryAssembly()!
+                )
                 ?.InformationalVersion ?? "unknown";
             Log.Information( "Werkr Server version {Version}", version );
 
@@ -43,7 +44,8 @@ public class Program {
             ConfigurationReaderOptions readerOptions = new(
                 typeof( Serilog.ConsoleLoggerConfigurationExtensions ).Assembly,
                 typeof( Serilog.FileLoggerConfigurationExtensions ).Assembly,
-                typeof( Serilog.Sinks.OpenTelemetry.OtlpProtocol ).Assembly );
+                typeof(Serilog.Sinks.OpenTelemetry.OtlpProtocol).Assembly
+            );
             _ = builder.Host.UseSerilog( ( ctx, lc ) => lc
                 .ReadFrom.Configuration( ctx.Configuration, readerOptions ) );
 
@@ -59,7 +61,8 @@ public class Program {
             // Identity (uses separate identity database) — provider is configurable via Database:Provider
             string connectionString = builder.Configuration.GetConnectionString( "werkridentitydb" ) ?? string.Empty;
             DatabaseProvider dbProvider = Enum.TryParse<DatabaseProvider>(
-                builder.Configuration["Database:Provider"], ignoreCase: true, out DatabaseProvider parsed )
+                builder.Configuration["Database:Provider"], ignoreCase: true, out DatabaseProvider parsed
+            )
                 ? parsed : DatabaseProvider.Postgres;
             _ = builder.Services.AddWerkrIdentity( dbProvider, connectionString );
 

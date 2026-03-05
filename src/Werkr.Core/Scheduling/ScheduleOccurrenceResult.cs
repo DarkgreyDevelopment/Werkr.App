@@ -1,4 +1,4 @@
-namespace Werkr.Core.Scheduling;
+﻿namespace Werkr.Core.Scheduling;
 
 /// <summary>
 /// Result of schedule occurrence calculation, including both kept and suppressed occurrences.
@@ -7,4 +7,5 @@ namespace Werkr.Core.Scheduling;
 /// <param name="Suppressed">Occurrences that were filtered out by the holiday calendar.</param>
 public sealed record ScheduleOccurrenceResult(
     IReadOnlyList<DateTime> Occurrences,
-    IReadOnlyList<SuppressedOccurrence> Suppressed );
+    IReadOnlyList<SuppressedOccurrence> Suppressed
+);

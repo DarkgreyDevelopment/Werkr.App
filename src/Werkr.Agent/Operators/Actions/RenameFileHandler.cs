@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Threading.Channels;
-
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -9,11 +8,17 @@ using Werkr.Core.Security;
 namespace Werkr.Agent.Operators.Actions;
 
 /// <summary>
-/// Handles the <c>RenameFile</c> action — renames a file or directory in place.
+/// Handles the <c>RenameFile</c> action - renames a file or directory in place.
 /// </summary>
 public sealed class RenameFileHandler : IActionHandler {
 
+    /// <summary>
+    /// Resolves and validates file paths against the agent's allowed-path allowlist.
+    /// </summary>
     private readonly IFilePathResolver _resolver;
+    /// <summary>
+    /// Logger for recording execution errors for this handler.
+    /// </summary>
     private readonly ILogger<RenameFileHandler> _logger;
 
     /// <summary>Creates a new <see cref="RenameFileHandler"/>.</summary>
@@ -29,7 +34,8 @@ public sealed class RenameFileHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
         try {
             RenameFileParameters p = parameters.Deserialize<RenameFileParameters>( ActionJson.SerializerOptions )
                 ?? throw new ArgumentException( "Failed to deserialize RenameFile parameters." );

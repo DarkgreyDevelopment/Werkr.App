@@ -1,7 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Core.Scheduling;
 using Werkr.Data;
 using Werkr.Data.Calendar.Enums;
@@ -19,8 +17,12 @@ public sealed class HolidayCalendarService(
     WerkrDbContext db,
     HolidayDateService dateService,
     ScheduleInvalidationDispatcher invalidationDispatcher,
-    ILogger<HolidayCalendarService> logger ) {
+    ILogger<HolidayCalendarService> logger
+) {
 
+    /// <summary>
+    /// Logger instance for diagnostic output from this service.
+    /// </summary>
     private readonly ILogger<HolidayCalendarService> _logger = logger;
 
     // ── Calendar-Level Operations ──────────────────────────────────────────────
@@ -282,7 +284,8 @@ public sealed class HolidayCalendarService(
 
     /// <summary>Bulk add manual dates. Blocked for system calendars. (H18)</summary>
     public async Task<IReadOnlyList<HolidayDate>> BulkAddManualDatesAsync(
-        Guid calendarId, IReadOnlyList<HolidayDate> dates, CancellationToken ct = default ) {
+        Guid calendarId, IReadOnlyList<HolidayDate> dates, CancellationToken ct = default
+    ) {
         HolidayCalendar calendar = await GetOrThrowAsync( calendarId, ct );
         ThrowIfSystem( calendar );
 
@@ -301,7 +304,8 @@ public sealed class HolidayCalendarService(
 
     /// <summary>Compute all dates (rules + manual) for a year range without persisting.</summary>
     public async Task<IReadOnlyList<HolidayDate>> PreviewDatesAsync(
-        Guid calendarId, int startYear, int endYear, CancellationToken ct = default ) {
+        Guid calendarId, int startYear, int endYear, CancellationToken ct = default
+    ) {
 
         HolidayCalendar calendar = await db.HolidayCalendars
             .Include( c => c.Rules )
@@ -329,7 +333,8 @@ public sealed class HolidayCalendarService(
 
     /// <summary>Attach a calendar to a schedule. Fails if already attached (H5). Dispatches invalidation (H18).</summary>
     public async Task<ScheduleHolidayCalendar> AttachToScheduleAsync(
-        Guid scheduleId, Guid calendarId, HolidayCalendarMode mode, CancellationToken ct = default ) {
+        Guid scheduleId, Guid calendarId, HolidayCalendarMode mode, CancellationToken ct = default
+    ) {
 
         // Verify calendar exists
         bool calendarExists = await db.HolidayCalendars.AnyAsync( c => c.Id == calendarId, ct );
@@ -379,10 +384,16 @@ public sealed class HolidayCalendarService(
 
     // ── Private Helpers ────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Loads a <see cref="HolidayCalendar"/> by ID or throws <see cref="KeyNotFoundException"/> if not found.
+    /// </summary>
     private async Task<HolidayCalendar> GetOrThrowAsync( Guid id, CancellationToken ct ) =>
         await db.HolidayCalendars.FindAsync( [id], ct )
             ?? throw new KeyNotFoundException( $"Calendar {id} not found." );
 
+    /// <summary>
+    /// Guards against modification of system calendars by throwing an <see cref="InvalidOperationException"/> if the calendar's <c>IsSystemCalendar</c> flag is <see langword="true"/>.
+    /// </summary>
     private static void ThrowIfSystem( HolidayCalendar calendar ) {
         if (calendar.IsSystemCalendar) {
             throw new InvalidOperationException( $"Calendar '{calendar.Name}' is a system calendar and cannot be modified." );

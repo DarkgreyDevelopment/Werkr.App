@@ -1,7 +1,5 @@
 using System.Text.Json;
-
 using Grpc.Core;
-
 using Werkr.Agent.Protos;
 using Werkr.Common.Models.Actions;
 using Werkr.Common.Protos;
@@ -13,7 +11,7 @@ namespace Werkr.Agent.Services;
 
 /// <summary>
 /// gRPC service implementation for built-in action operations.
-/// Authenticates via <c>BearerTokenInterceptor</c>, decrypts <see cref="EncryptedEnvelope"/>
+/// Authenticates via <see cref="Interceptors.BearerTokenInterceptor"/>, decrypts <see cref="EncryptedEnvelope"/>
 /// requests, streams encrypted output back in envelopes.
 /// </summary>
 /// <remarks>Creates a new <see cref="ActionService"/>.</remarks>
@@ -28,7 +26,8 @@ public class ActionService(
     public override async Task RunAction(
         EncryptedEnvelope request,
         IServerStreamWriter<EncryptedEnvelope> responseStream,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
 

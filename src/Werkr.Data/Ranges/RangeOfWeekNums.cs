@@ -5,7 +5,7 @@ namespace Werkr.Data.Ranges;
 
 /// <summary>
 /// Produces contiguous range descriptions for <see cref="WeekNumberWithinMonth"/> flags
-/// (e.g., "1st–3rd, 5th").
+/// (e.g., "1st-3rd, 5th").
 /// </summary>
 public class RangeOfWeekNums : IRange<WeekNumberWithinMonth> {
 
@@ -34,8 +34,8 @@ public class RangeOfWeekNums : IRange<WeekNumberWithinMonth> {
     /// Formats this range as a string.
     /// </summary>
     /// <param name="abbreviated">
-    /// When <c>true</c>, uses numeric representation (e.g., "1").
-    /// When <c>false</c>, uses ordinal names (e.g., "First").
+    /// When <see langword="true"/>, uses numeric representation (e.g., "1").
+    /// When <see langword="false"/>, uses ordinal names (e.g., "First").
     /// </param>
     public string ToString( bool abbreviated = false ) {
         string start = Start.ToString( );

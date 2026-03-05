@@ -199,6 +199,8 @@ dotnet_style_parentheses_in_other_operators = never_if_unnecessary:silent
 
 # CSharp code style settings:
 [*.cs]
+max_line_length = 120
+
 # Newline settings
 csharp_new_line_before_open_brace =false
 csharp_new_line_before_else =false

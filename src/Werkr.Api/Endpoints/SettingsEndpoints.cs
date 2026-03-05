@@ -17,64 +17,65 @@ internal static class SettingsEndpoints {
             NotifyUrlChangeRequest request,
             WerkrDbContext dbContext,
             AgentConnectionManager connectionManager,
-            CancellationToken ct ) => {
-                if (string.IsNullOrWhiteSpace( request.NewServerUrl )) {
-                    return Results.BadRequest( new { message = "NewServerUrl is required." } );
-                }
+            CancellationToken ct
+        ) => {
+            if (string.IsNullOrWhiteSpace( request.NewServerUrl )) {
+                return Results.BadRequest( new { message = "NewServerUrl is required." } );
+            }
 
-                if (!Uri.TryCreate( request.NewServerUrl, UriKind.Absolute, out Uri? parsedUri )
-                    || (parsedUri.Scheme != "https" && parsedUri.Scheme != "http")) {
-                    return Results.BadRequest( new { message = "NewServerUrl must be a valid HTTP or HTTPS URL." } );
-                }
+            if (!Uri.TryCreate( request.NewServerUrl, UriKind.Absolute, out Uri? parsedUri )
+                || (parsedUri.Scheme != "https" && parsedUri.Scheme != "http")) {
+                return Results.BadRequest( new { message = "NewServerUrl must be a valid HTTP or HTTPS URL." } );
+            }
 
-                List<RegisteredConnection> agents = await dbContext.RegisteredConnections
+            List<RegisteredConnection> agents = await dbContext.RegisteredConnections
                     .AsNoTracking( )
                     .Where( c => c.IsServer && c.Status == ConnectionStatus.Connected )
                     .ToListAsync( ct );
 
-                int notified = 0;
-                List<string> failedAgents = [];
+            int notified = 0;
+            List<string> failedAgents = [];
 
-                Werkr.Common.Protos.NotifyServerUrlChangedRequest grpcRequest = new( ) {
-                    NewServerUrl = request.NewServerUrl
-                };
+            Werkr.Common.Protos.NotifyServerUrlChangedRequest grpcRequest = new( ) {
+                NewServerUrl = request.NewServerUrl
+            };
 
-                foreach (RegisteredConnection agent in agents) {
-                    try {
-                        (Grpc.Net.Client.GrpcChannel channel, RegisteredConnection conn) =
-                            await connectionManager.GetChannelAsync( agent.Id, ct );
+            foreach (RegisteredConnection agent in agents) {
+                try {
+                    (Grpc.Net.Client.GrpcChannel channel, RegisteredConnection conn) =
+                        await connectionManager.GetChannelAsync( agent.Id, ct );
 
-                        string keyId = conn.ActiveKeyId ?? conn.Id.ToString( );
-                        EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
+                    string keyId = conn.ActiveKeyId ?? conn.Id.ToString( );
+                    EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
                             grpcRequest, conn.SharedKey, keyId );
 
-                        Grpc.Core.CallOptions callOptions = AgentConnectionManager.CreateCallOptions(
+                    Grpc.Core.CallOptions callOptions = AgentConnectionManager.CreateCallOptions(
                             conn,
                             timeout: TimeSpan.FromSeconds( 15 ),
                             cancellationToken: ct );
 
-                        ConnectionManagement.ConnectionManagementClient client = new( channel );
-                        EncryptedEnvelope responseEnvelope =
+                    ConnectionManagement.ConnectionManagementClient client = new( channel );
+                    EncryptedEnvelope responseEnvelope =
                             await client.NotifyServerUrlChangedAsync( envelope, callOptions );
 
-                        NotifyServerUrlChangedResponse response = PayloadEncryptor.DecryptFromEnvelope<NotifyServerUrlChangedResponse>(
+                    NotifyServerUrlChangedResponse response = PayloadEncryptor.DecryptFromEnvelope<NotifyServerUrlChangedResponse>(
                             responseEnvelope, conn.SharedKey );
 
-                        if (response.Acknowledged) {
-                            notified++;
-                        } else {
-                            failedAgents.Add( agent.ConnectionName );
-                        }
-                    } catch (Exception ex) {
-                        Log.Warning( ex,
-                            "Failed to notify agent {AgentId} ({Name}) of URL change.",
-                            agent.Id, agent.ConnectionName );
+                    if (response.Acknowledged) {
+                        notified++;
+                    } else {
                         failedAgents.Add( agent.ConnectionName );
                     }
+                } catch (Exception ex) {
+                    Log.Warning( ex,
+                        "Failed to notify agent {AgentId} ({Name}) of URL change.",
+                        agent.Id, agent.ConnectionName );
+                    failedAgents.Add( agent.ConnectionName );
                 }
+            }
 
-                return Results.Ok( new NotifyUrlChangeResponse( notified, failedAgents.Count, failedAgents ) );
-            } )
+            return Results.Ok( new NotifyUrlChangeResponse( notified, failedAgents.Count, failedAgents ) );
+        } )
         .WithName( "NotifyUrlChange" )
         .RequireAuthorization( Policies.IsAdmin );
 

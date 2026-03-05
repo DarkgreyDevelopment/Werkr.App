@@ -1,8 +1,6 @@
 using Grpc.Core;
-
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-
 using Werkr.Agent.Operators;
 using Werkr.Agent.Protos;
 using Werkr.Agent.Services;
@@ -15,10 +13,19 @@ using Werkr.Tests.Agent.Helpers;
 
 namespace Werkr.Tests.Agent.Services;
 
+/// <summary>
+/// Unit tests for the <see cref="SystemShellService"/> gRPC service. Validates that a valid encrypted <see cref="ShellRequest"/> produces encrypted <see cref="GrpcLogMsg"/> output, that the service rejects requests when the system shell is disabled (<see cref="StatusCode.Unimplemented"/>), and that a missing <see cref="RegisteredConnection"/> results in <see cref="StatusCode.Internal"/>.
+/// </summary>
 [TestClass]
 public class SystemShellServiceTests {
+    /// <summary>
+    /// Gets or sets the MSTest <see cref="TestContext"/> for cancellation token access.
+    /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
+    /// <summary>
+    /// Sends a valid encrypted command, verifies the service writes encrypted output, and asserts the decrypted stream contains the expected shell output.
+    /// </summary>
     [TestMethod]
     public async Task RunCommand_ValidEncryptedRequest_WritesEncryptedOutput( ) {
         byte[] sharedKey = EncryptionProvider.GenerateRandomBytes( 32 );
@@ -47,6 +54,9 @@ public class SystemShellServiceTests {
         Assert.AreNotEqual( -1, decryptedMessages.FindIndex( m => m.Contains( "shell-service-test", StringComparison.OrdinalIgnoreCase ) ) );
     }
 
+    /// <summary>
+    /// Verifies that invoking <see cref="SystemShellService.RunCommand"/> when the system shell is disabled throws an <see cref="RpcException"/> with <see cref="StatusCode.Unimplemented"/>.
+    /// </summary>
     [TestMethod]
     public async Task RunCommand_WhenSystemShellDisabled_ThrowsUnimplemented( ) {
         byte[] sharedKey = EncryptionProvider.GenerateRandomBytes( 32 );
@@ -71,6 +81,9 @@ public class SystemShellServiceTests {
         Assert.AreEqual( StatusCode.Unimplemented, ex.StatusCode );
     }
 
+    /// <summary>
+    /// Verifies that calling <see cref="SystemShellService.RunCommand"/> without a <see cref="RegisteredConnection"/> in the <see cref="ServerCallContext"/> user state throws an <see cref="RpcException"/> with <see cref="StatusCode.Internal"/>.
+    /// </summary>
     [TestMethod]
     public async Task RunCommand_MissingConnection_ThrowsInternal( ) {
         byte[] sharedKey = EncryptionProvider.GenerateRandomBytes( 32 );
@@ -93,6 +106,9 @@ public class SystemShellServiceTests {
         Assert.AreEqual( StatusCode.Internal, ex.StatusCode );
     }
 
+    /// <summary>
+    /// Creates a <see cref="RegisteredConnection"/> entity pre-loaded with the supplied shared key.
+    /// </summary>
     private static RegisteredConnection CreateConnection( byte[] sharedKey ) {
         return new RegisteredConnection {
             Id = Guid.NewGuid( ),

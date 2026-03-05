@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
 using Werkr.Core.Communication;
 using Werkr.Data.Entities.Tasks;
@@ -36,23 +36,40 @@ public sealed class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> 
         string? successCriteria,
         int? exitCode,
         IReadOnlyList<OperatorOutput> output,
-        Exception? exception ) {
+        Exception? exception
+    ) {
 
         // An unhandled exception always means failure, unless criteria is "always"
-        if (exception is not null && !string.Equals( successCriteria, "always", StringComparison.OrdinalIgnoreCase )) {
+        if (exception is not null && !string.Equals(
+            successCriteria,
+            "always",
+            StringComparison.OrdinalIgnoreCase
+        )) {
             if (logger.IsEnabled( LogLevel.Debug )) {
-                logger.LogDebug( "Job failed due to exception: {Message}", exception.Message );
+                logger.LogDebug(
+                    "Job failed due to exception: {Message}",
+                    exception.Message
+                );
             }
             return false;
         }
 
         // If explicit criteria provided, evaluate it
         if (!string.IsNullOrWhiteSpace( successCriteria )) {
-            return EvaluateExpression( successCriteria, exitCode, output, exception );
+            return EvaluateExpression(
+                successCriteria,
+                exitCode,
+                output,
+                exception
+            );
         }
 
         // Default criteria based on action type
-        return EvaluateDefault( actionType, exitCode, output );
+        return EvaluateDefault(
+            actionType,
+            exitCode,
+            output
+        );
     }
 
     /// <summary>
@@ -62,7 +79,10 @@ public sealed class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> 
     /// <param name="actionType">The task's action type.</param>
     /// <param name="successCriteria">The task's explicit criteria, if any.</param>
     /// <returns>A description of what will be evaluated.</returns>
-    public static string DescribeEffectiveCriteria( TaskActionType actionType, string? successCriteria ) {
+    public static string DescribeEffectiveCriteria(
+        TaskActionType actionType,
+        string? successCriteria
+    ) {
         return !string.IsNullOrWhiteSpace( successCriteria )
             ? successCriteria
             : actionType switch {
@@ -83,40 +103,67 @@ public sealed class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> 
         string criteria,
         int? exitCode,
         IReadOnlyList<OperatorOutput> output,
-        Exception? exception ) {
+        Exception? exception
+    ) {
 
         string trimmed = criteria.Trim( );
 
         // "always" — always succeed
-        if (string.Equals( trimmed, "always", StringComparison.OrdinalIgnoreCase )) {
+        if (string.Equals(
+            trimmed,
+            "always",
+            StringComparison.OrdinalIgnoreCase
+        )) {
             return true;
         }
 
         // "exitCode == 0" — exit code must be zero
-        if (string.Equals( trimmed, "exitCode == 0", StringComparison.OrdinalIgnoreCase )) {
+        if (string.Equals(
+            trimmed,
+            "exitCode == 0",
+            StringComparison.OrdinalIgnoreCase
+        )) {
             bool success = exitCode.HasValue && exitCode.Value == 0;
             if (!success && logger.IsEnabled( LogLevel.Debug )) {
-                logger.LogDebug( "Criteria 'exitCode == 0' failed: exitCode={ExitCode}.", exitCode?.ToString( ) ?? "null" );
+                logger.LogDebug(
+                    "Criteria 'exitCode == 0' failed: exitCode={ExitCode}.",
+                    exitCode?.ToString( ) ?? "null"
+                );
             }
             return success;
         }
 
         // "pwsh.HadErrors == false" — PowerShell had no errors
-        if (string.Equals( trimmed, "pwsh.HadErrors == false", StringComparison.OrdinalIgnoreCase )) {
+        if (string.Equals(
+            trimmed,
+            "pwsh.HadErrors == false",
+            StringComparison.OrdinalIgnoreCase
+        )) {
             // When server-side: no direct PwshOperatorResult access.
             // We infer from output — Error-level messages indicate HadErrors.
             bool hadErrors = output.Any( o =>
-                string.Equals( o.LogLevel, "Error", StringComparison.OrdinalIgnoreCase ) );
+                string.Equals(
+                    o.LogLevel,
+                    "Error",
+                    StringComparison.OrdinalIgnoreCase
+                ) );
             bool success = !hadErrors && exception is null;
             if (!success && logger.IsEnabled( LogLevel.Debug )) {
-                logger.LogDebug( "Criteria 'pwsh.HadErrors == false' failed: hadErrors={HadErrors}, exception={HasException}.",
-                    hadErrors.ToString( ), (exception is not null).ToString( ) );
+                logger.LogDebug(
+                    "Criteria 'pwsh.HadErrors == false' failed: " +
+                    "hadErrors={HadErrors}, exception={HasException}.",
+                    hadErrors.ToString( ),
+                    (exception is not null).ToString( )
+                );
             }
             return success;
         }
 
         // "output.contains("TEXT")" — output must contain the specified text
-        if (trimmed.StartsWith( "output.contains(", StringComparison.OrdinalIgnoreCase )
+        if (trimmed.StartsWith(
+            "output.contains(",
+            StringComparison.OrdinalIgnoreCase
+        )
             && trimmed.EndsWith( ')' )) {
             string inner = trimmed["output.contains(".Length..^1];
             // Strip surrounding quotes if present
@@ -124,16 +171,24 @@ public sealed class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> 
                 inner = inner[1..^1];
             }
             bool success = output.Any( o =>
-                o.Message.Contains( inner, StringComparison.OrdinalIgnoreCase ) );
+                o.Message.Contains(
+                    inner,
+                    StringComparison.OrdinalIgnoreCase
+                ) );
             if (!success && logger.IsEnabled( LogLevel.Debug )) {
                 logger.LogDebug( "Criteria 'output.contains(\"{Text}\")' failed: text not found in {LineCount} lines.",
-                    inner, output.Count.ToString( ) );
+                    inner,
+                    output.Count.ToString( )
+                );
             }
             return success;
         }
 
         // Unknown criteria — log warning and fall through to default success
-        logger.LogWarning( "Unknown success criteria expression: '{Criteria}'. Falling back to default.", trimmed );
+        logger.LogWarning(
+            "Unknown success criteria expression: '{Criteria}'. Falling back to default.",
+            trimmed
+        );
         return exitCode is null or 0;
     }
 
@@ -143,12 +198,17 @@ public sealed class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> 
     private bool EvaluateDefault(
         TaskActionType actionType,
         int? exitCode,
-        IReadOnlyList<OperatorOutput> output ) {
+        IReadOnlyList<OperatorOutput> output
+    ) {
 
         return actionType switch {
             // PowerShell: success when no Error-level output
             TaskActionType.PowerShellCommand or TaskActionType.PowerShellScript =>
-                !output.Any( o => string.Equals( o.LogLevel, "Error", StringComparison.OrdinalIgnoreCase ) ),
+                !output.Any( o => string.Equals(
+                    o.LogLevel,
+                    "Error",
+                    StringComparison.OrdinalIgnoreCase
+                ) ),
 
             // Shell: success when exit code is 0
             TaskActionType.ShellCommand or TaskActionType.ShellScript =>

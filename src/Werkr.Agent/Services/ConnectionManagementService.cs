@@ -1,9 +1,6 @@
 using System.Security.Cryptography;
-
 using Grpc.Core;
-
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Agent.Communication;
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
@@ -35,9 +32,11 @@ public sealed class ConnectionManagementService(
     /// Decrypts the envelope, updates the stored server URL in the Agent's local database,
     /// and resets the cached gRPC channel so subsequent calls use the new URL.
     /// </summary>
+    /// <returns>The encrypted acknowledgement envelope.</returns>
     public override async Task<EncryptedEnvelope> NotifyServerUrlChanged(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
@@ -109,9 +108,11 @@ public sealed class ConnectionManagementService(
     /// Application-level heartbeat. Returns agent version and runtime information.
     /// Replaces Grpc.Health.V1 for encrypted health probing.
     /// </summary>
+    /// <returns>The encrypted heartbeat response envelope.</returns>
     public override Task<EncryptedEnvelope> Heartbeat(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
@@ -141,9 +142,11 @@ public sealed class ConnectionManagementService(
     /// a new AES-256 key RSA-encrypted with the Agent's public key.
     /// The envelope itself is encrypted with the current SharedKey.
     /// </summary>
+    /// <returns>The encrypted key-rotation acknowledgement envelope.</returns>
     public override async Task<EncryptedEnvelope> RotateSharedKey(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string currentKeyId = connection.ActiveKeyId ?? connection.Id.ToString( );

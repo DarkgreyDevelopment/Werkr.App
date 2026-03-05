@@ -1,4 +1,4 @@
-using Grpc.Core;
+﻿using Grpc.Core;
 using Grpc.Net.Client;
 
 using Microsoft.EntityFrameworkCore;
@@ -35,17 +35,26 @@ public class AgentHealthCheckService(
     /// <inheritdoc/>
     protected override async Task ExecuteAsync( CancellationToken stoppingToken ) {
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "AgentHealthCheckService started. Sweep interval: {Interval}.", _interval );
+            logger.LogInformation(
+                "AgentHealthCheckService started. Sweep interval: {Interval}.",
+                _interval
+            );
         }
 
         while (!stoppingToken.IsCancellationRequested) {
             try {
                 await SweepAsync( stoppingToken );
             } catch (Exception ex) when (ex is not OperationCanceledException) {
-                logger.LogError( ex, "Error in AgentHealthCheckService sweep." );
+                logger.LogError(
+                    ex,
+                    "Error in AgentHealthCheckService sweep."
+                );
             }
 
-            await Task.Delay( _interval, stoppingToken );
+            await Task.Delay(
+                _interval,
+                stoppingToken
+            );
         }
     }
 
@@ -63,19 +72,36 @@ public class AgentHealthCheckService(
         }
 
         if (logger.IsEnabled( LogLevel.Debug )) {
-            logger.LogDebug( "AgentHealthCheckService sweeping {Count} agents.", agents.Count );
+            logger.LogDebug(
+                "AgentHealthCheckService sweeping {Count} agents.",
+                agents.Count
+            );
         }
 
         foreach (RegisteredConnection agent in agents) {
             ct.ThrowIfCancellationRequested( );
-            await ProbeAgentAsync( agent, dbContext, ct );
+            await ProbeAgentAsync(
+                agent,
+                dbContext,
+                ct
+            );
         }
     }
 
-    private async Task ProbeAgentAsync( RegisteredConnection agent, WerkrDbContext dbContext, CancellationToken ct ) {
+    private async Task ProbeAgentAsync(
+        RegisteredConnection agent,
+        WerkrDbContext dbContext,
+        CancellationToken ct
+    ) {
         try {
-            (GrpcChannel channel, RegisteredConnection resolved) =
-                await connectionManager.GetChannelAsync( agent.Id, ct );
+            (
+                GrpcChannel channel,
+                RegisteredConnection resolved
+            ) =
+                await connectionManager.GetChannelAsync(
+                    agent.Id,
+                    ct
+                );
 
             string keyId = resolved.ActiveKeyId ?? resolved.Id.ToString( );
 
@@ -95,7 +121,9 @@ public class AgentHealthCheckService(
                 AgentConnectionManager.CreateCallOptions(
                     resolved,
                     timeout: TimeSpan.FromSeconds( 5 ),
-                    cancellationToken: ct ) );
+                    cancellationToken: ct
+                )
+                );
 
             // Decrypt to confirm the agent can handle our shared key
             HeartbeatResponse response = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
@@ -106,7 +134,10 @@ public class AgentHealthCheckService(
                 if (logger.IsEnabled( LogLevel.Information )) {
                     logger.LogInformation(
                         "Agent {AgentId} ({Name}) transitioned from {OldStatus} to Connected.",
-                        agent.Id, agent.ConnectionName, agent.Status );
+                        agent.Id,
+                        agent.ConnectionName,
+                        agent.Status
+                    );
                 }
                 agent.Status = ConnectionStatus.Connected;
             }
@@ -119,7 +150,10 @@ public class AgentHealthCheckService(
                     logger.LogInformation(
                         "Clearing PreviousSharedKey for Agent {AgentId} ({Name}). " +
                         "Heartbeat confirmed current key is active (PreviousKeyId={PreviousKeyId}).",
-                        agent.Id, agent.ConnectionName, agent.PreviousKeyId );
+                        agent.Id,
+                        agent.ConnectionName,
+                        agent.PreviousKeyId
+                    );
                 }
                 agent.PreviousSharedKey = null;
                 agent.PreviousKeyId = null;
@@ -132,7 +166,10 @@ public class AgentHealthCheckService(
             if (logger.IsEnabled( LogLevel.Debug )) {
                 logger.LogDebug(
                     "Agent {AgentId} ({Name}) unreachable: {Status}.",
-                    agent.Id, agent.ConnectionName, ex.StatusCode );
+                    agent.Id,
+                    agent.ConnectionName,
+                    ex.StatusCode
+                );
             }
 
             // Only transition to Disconnected from Connected/Error
@@ -143,7 +180,9 @@ public class AgentHealthCheckService(
         } catch (Exception ex) {
             logger.LogWarning( ex,
                 "Unexpected error probing Agent {AgentId} ({Name}).",
-                agent.Id, agent.ConnectionName );
+                agent.Id,
+                agent.ConnectionName
+            );
 
             if (agent.Status == ConnectionStatus.Connected) {
                 agent.Status = ConnectionStatus.Error;

@@ -11,4 +11,5 @@ public sealed record JobListDto(
     string? TaskName = null,
     Guid? AgentConnectionId = null,
     string? AgentName = null,
-    DateTime? EndTime = null );
+    DateTime? EndTime = null
+);

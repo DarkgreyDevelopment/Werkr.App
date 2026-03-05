@@ -18,8 +18,14 @@ public sealed class ConfigurationExtensionsTests {
         // Arrange
         string tempFile = Path.GetTempFileName();
         try {
-            File.WriteAllText( tempFile, """{"TestSection": {"Key1": "Value1"}}""" );
-            Environment.SetEnvironmentVariable( "WERKR_CONFIG_PATH", tempFile );
+            File.WriteAllText(
+                tempFile,
+                """{"TestSection": {"Key1": "Value1"}}"""
+            );
+            Environment.SetEnvironmentVariable(
+                "WERKR_CONFIG_PATH",
+                tempFile
+            );
 
             IConfigurationBuilder builder = new ConfigurationBuilder();
 
@@ -28,9 +34,15 @@ public sealed class ConfigurationExtensionsTests {
             IConfigurationRoot config = builder.Build();
 
             // Assert
-            Assert.AreEqual( "Value1", config["TestSection:Key1"] );
+            Assert.AreEqual(
+                "Value1",
+                config["TestSection:Key1"]
+            );
         } finally {
-            Environment.SetEnvironmentVariable( "WERKR_CONFIG_PATH", null );
+            Environment.SetEnvironmentVariable(
+                "WERKR_CONFIG_PATH",
+                null
+            );
             File.Delete( tempFile );
         }
     }
@@ -42,7 +54,10 @@ public sealed class ConfigurationExtensionsTests {
     [TestMethod]
     public void AddWerkrConfigPath_WithNoEnvVar_ReturnsEmptyConfig( ) {
         // Arrange
-        Environment.SetEnvironmentVariable( "WERKR_CONFIG_PATH", null );
+        Environment.SetEnvironmentVariable(
+            "WERKR_CONFIG_PATH",
+            null
+        );
         IConfigurationBuilder builder = new ConfigurationBuilder();
 
         // Act
@@ -62,8 +77,14 @@ public sealed class ConfigurationExtensionsTests {
     [TestMethod]
     public void AddWerkrConfigPath_WithMissingFile_DoesNotThrow( ) {
         // Arrange
-        string missingPath = Path.Combine( Path.GetTempPath(), $"werkr-test-missing-{Guid.NewGuid()}.json" );
-        Environment.SetEnvironmentVariable( "WERKR_CONFIG_PATH", missingPath );
+        string missingPath = Path.Combine(
+            Path.GetTempPath(),
+            $"werkr-test-missing-{Guid.NewGuid()}.json"
+        );
+        Environment.SetEnvironmentVariable(
+            "WERKR_CONFIG_PATH",
+            missingPath
+        );
         IConfigurationBuilder builder = new ConfigurationBuilder();
 
         try {
@@ -74,7 +95,10 @@ public sealed class ConfigurationExtensionsTests {
             // Assert — should not throw and should produce a valid (empty) config
             Assert.IsNotNull( config );
         } finally {
-            Environment.SetEnvironmentVariable( "WERKR_CONFIG_PATH", null );
+            Environment.SetEnvironmentVariable(
+                "WERKR_CONFIG_PATH",
+                null
+            );
         }
     }
 
@@ -85,18 +109,24 @@ public sealed class ConfigurationExtensionsTests {
     [TestMethod]
     public void AddWerkrConfigPath_ReturnsSameBuilder_ForChaining( ) {
         // Arrange
-        Environment.SetEnvironmentVariable( "WERKR_CONFIG_PATH", null );
+        Environment.SetEnvironmentVariable(
+            "WERKR_CONFIG_PATH",
+            null
+        );
         IConfigurationBuilder builder = new ConfigurationBuilder();
 
         // Act
         IConfigurationBuilder result = builder.AddWerkrConfigPath();
 
         // Assert
-        Assert.AreSame( builder, result );
+        Assert.AreSame(
+            builder,
+            result
+        );
     }
 
     /// <summary>
-    /// Verifies that the assembly <c>InformationalVersion</c> attribute is present on the
+    /// Verifies that the assembly <see cref="InformationalVersion"/> attribute is present on the
     /// entry assembly, validating the GitVersion integration produces a version string.
     /// </summary>
     [TestMethod]
@@ -109,9 +139,13 @@ public sealed class ConfigurationExtensionsTests {
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>();
 
         // Assert — the attribute should always be present (defaults to 1.0.0 without GitVersion)
-        Assert.IsNotNull( attr, "AssemblyInformationalVersionAttribute should be present." );
+        Assert.IsNotNull(
+            attr,
+            "AssemblyInformationalVersionAttribute should be present."
+        );
         Assert.IsFalse(
             string.IsNullOrWhiteSpace( attr.InformationalVersion ),
-            "InformationalVersion should not be empty." );
+            "InformationalVersion should not be empty."
+        );
     }
 }

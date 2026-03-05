@@ -5,16 +5,31 @@ namespace Werkr.Tests.Integration;
 
 /// <summary>
 /// Integration tests for Action-type task CRUD and validation through the REST API.
-/// Validates <c>TaskMapper.ValidateActionFields</c>, parameter deserialization, and
-/// the full persistence round-trip for Action tasks.
+/// Validates <see cref="TaskMapper.ValidateActionFields"/>, parameter deserialization,
+/// and the full persistence round-trip for Action tasks.
 /// All tests share the <see cref="AppHostFixture"/> instance.
 /// </summary>
 [TestClass]
 public class ActionDispatchIntegrationTests {
 
+    /// <summary>
+    /// Gets or sets the MSTest <see cref="TestContext"/> for the current test execution,
+    /// providing access to test metadata and a <see cref="CancellationToken"/> for
+    /// cooperative cancellation.
+    /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
+    /// <summary>
+    /// Gets the shared <see cref="JsonSerializerOptions"/> configured with web defaults
+    /// from <see cref="AppHostFixture.JsonOptions"/> for JSON serialization and deserialization.
+    /// </summary>
     private static JsonSerializerOptions JsonOptions => AppHostFixture.JsonOptions;
+
+    /// <summary>
+    /// Gets the pre-configured, authenticated <see cref="HttpClient"/> from
+    /// <see cref="AppHostFixture.ApiClient"/> for sending HTTP requests to the
+    /// <c>Werkr.Api</c>.
+    /// </summary>
     private static HttpClient Api => AppHostFixture.ApiClient;
 
     #region Helper Methods
@@ -26,7 +41,8 @@ public class ActionDispatchIntegrationTests {
         string name,
         string actionSubType,
         object parameters,
-        CancellationToken ct ) {
+        CancellationToken ct
+    ) {
 
         string parametersJson = JsonSerializer.Serialize( parameters, JsonOptions );
 
@@ -34,7 +50,7 @@ public class ActionDispatchIntegrationTests {
             name,
             description = $"Integration test action task: {name}",
             actionType = "Action",
-            content = "",
+            content = string.Empty,
             targetTags = new[] { "integration-test" },
             enabled = true,
             timeoutMinutes = 5L,
@@ -54,6 +70,14 @@ public class ActionDispatchIntegrationTests {
 
     #region Action Task CRUD
 
+    /// <summary>
+    /// Verifies that creating a CopyFile action task persists all fields correctly and
+    /// that retrieving the task by ID returns the expected <see cref="ActionType"/>,
+    /// <see cref="ActionSubType"/>, and deserialized <see cref="ActionParameters"/>
+    /// (source, destination, overwrite). The test creates the task, reads it back via
+    /// GET, parses the action parameters JSON, and validates each parameter value.
+    /// Cleans up the created task after verification.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateActionTask_CopyFile_PersistsAndReturnsCorrectData( ) {
@@ -92,6 +116,14 @@ public class ActionDispatchIntegrationTests {
         _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
     }
 
+    /// <summary>
+    /// Verifies that all supported action sub-types (CopyFile, MoveFile, RenameFile,
+    /// DeleteFile, CreateFile, CreateDirectory, TestExists, ClearContent, WriteContent,
+    ///  StartProcess, StopProcess) can be created successfully. Each action type is
+    /// created with appropriate parameters, and the test asserts that each receives a
+    /// positive task ID and the correct <see cref="ActionSubType"/> value. All created
+    /// tasks are cleaned up after verification.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateActionTask_AllActionTypes_Succeed( ) {
@@ -131,6 +163,13 @@ public class ActionDispatchIntegrationTests {
         }
     }
 
+    /// <summary>
+    /// Verifies that updating an existing action task changes its <see cref="ActionSubType"/>,
+    /// <see cref="ActionParameters"/>, name, and timeout. Creates a CreateFile action task,
+    /// then issues a PUT request to change it to a WriteContent action with different parameters.
+    /// Asserts that the updated response reflects the new sub-type, name, and parameter
+    /// values (including the added "append" flag). Cleans up the task after verification.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task UpdateActionTask_ChangesActionParameters( ) {
@@ -153,7 +192,7 @@ public class ActionDispatchIntegrationTests {
             name = "IntTest_ActionUpdate_Modified",
             description = "Updated action task",
             actionType = "Action",
-            content = "",
+            content = string.Empty,
             targetTags = new[] { "integration-test" },
             enabled = true,
             timeoutMinutes = 10L,
@@ -181,6 +220,12 @@ public class ActionDispatchIntegrationTests {
         _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
     }
 
+    /// <summary>
+    /// Verifies that deleting an action task removes it from the system. Creates a DeleteFile
+    /// action task, issues a DELETE request, and asserts that the response is
+    /// <see cref="HttpStatusCode.NoContent"/>. Then attempts to retrieve the task by ID and
+    /// asserts that <see cref="HttpStatusCode.NotFound"/> is returned.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task DeleteActionTask_RemovesAndReturnsNotFound( ) {
@@ -205,6 +250,12 @@ public class ActionDispatchIntegrationTests {
 
     #region Validation — ActionSubType
 
+    /// <summary>
+    /// Verifies that creating an action task with a null <see cref="ActionSubType"/> returns
+    /// <see cref="HttpStatusCode.BadRequest"/>. Asserts that the error response body contains a
+    /// message referencing the missing "ActionSubType" field, confirming server-side validation
+    /// rejects action tasks that lack a required sub-type.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateActionTask_MissingActionSubType_ReturnsBadRequest( ) {
@@ -214,7 +265,7 @@ public class ActionDispatchIntegrationTests {
             name = "IntTest_MissingSubType",
             description = "Should fail validation",
             actionType = "Action",
-            content = "",
+            content = string.Empty,
             targetTags = new[] { "integration-test" },
             enabled = true,
             actionSubType = (string?) null,
@@ -234,6 +285,12 @@ public class ActionDispatchIntegrationTests {
             "Error message should reference the missing ActionSubType field." );
     }
 
+    /// <summary>
+    /// Verifies that creating an action task with an unrecognized <see cref="ActionSubType"/> value
+    /// ("FlyToMoon") returns <see cref="HttpStatusCode.BadRequest"/>. Asserts that the error response
+    /// body references the unknown action name, confirming server-side validation rejects unrecognized
+    /// action sub-types.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateActionTask_UnknownActionSubType_ReturnsBadRequest( ) {
@@ -243,7 +300,7 @@ public class ActionDispatchIntegrationTests {
             name = "IntTest_UnknownSubType",
             description = "Should fail validation",
             actionType = "Action",
-            content = "",
+            content = string.Empty,
             targetTags = new[] { "integration-test" },
             enabled = true,
             actionSubType = "FlyToMoon",
@@ -267,6 +324,12 @@ public class ActionDispatchIntegrationTests {
 
     #region Validation — ActionParameters
 
+    /// <summary>
+    /// Verifies that creating an action task with null <see cref="ActionParameters"/> returns
+    /// <see cref="HttpStatusCode.BadRequest"/>. Asserts that the error response body contains a
+    /// message referencing the missing "ActionParameters" field, confirming that action tasks
+    /// require parameters to be specified.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateActionTask_MissingActionParameters_ReturnsBadRequest( ) {
@@ -276,7 +339,7 @@ public class ActionDispatchIntegrationTests {
             name = "IntTest_MissingParams",
             description = "Should fail validation",
             actionType = "Action",
-            content = "",
+            content = string.Empty,
             targetTags = new[] { "integration-test" },
             enabled = true,
             actionSubType = "CreateFile",
@@ -296,6 +359,12 @@ public class ActionDispatchIntegrationTests {
             "Error message should reference the missing ActionParameters field." );
     }
 
+    /// <summary>
+    /// Verifies that creating an action task with malformed (non-JSON) <see cref="ActionParameters"/>
+    /// returns <see cref="HttpStatusCode.BadRequest"/>. Sends a request with the string
+    /// "not-valid-json!!!" as the action parameters and asserts that the API rejects the request,
+    /// confirming that action parameters must be valid JSON.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateActionTask_MalformedJsonParameters_ReturnsBadRequest( ) {
@@ -305,7 +374,7 @@ public class ActionDispatchIntegrationTests {
             name = "IntTest_MalformedJson",
             description = "Should fail validation",
             actionType = "Action",
-            content = "",
+            content = string.Empty,
             targetTags = new[] { "integration-test" },
             enabled = true,
             actionSubType = "CreateFile",
@@ -323,6 +392,12 @@ public class ActionDispatchIntegrationTests {
 
     #region Validation — Non-Action Tasks Reject Action Fields
 
+    /// <summary>
+    /// Verifies that creating a ShellCommand task with an <see cref="ActionSubType"/> set returns
+    /// <see cref="HttpStatusCode.BadRequest"/>. Asserts that the error message explains that
+    /// <see cref="ActionSubType"/> must be null for non-Action task types, enforcing the constraint
+    /// that action-specific fields are exclusive to Action-type tasks.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateShellTask_WithActionSubType_ReturnsBadRequest( ) {
@@ -351,6 +426,12 @@ public class ActionDispatchIntegrationTests {
             "Error message should explain ActionSubType must be null for non-Action tasks." );
     }
 
+    /// <summary>
+    /// Verifies that creating a ShellCommand task with <see cref="ActionParameters"/> set returns
+    /// <see cref="HttpStatusCode.BadRequest"/>. Asserts that the error message explains that
+    /// <see cref="ActionParameters"/> must be null for non-Action task types, enforcing the constraint
+    /// that action-specific fields are exclusive to Action-type tasks.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateShellTask_WithActionParameters_ReturnsBadRequest( ) {
@@ -383,6 +464,13 @@ public class ActionDispatchIntegrationTests {
 
     #region Ad-Hoc Execution — No Agent
 
+    /// <summary>
+    /// Verifies that attempting an ad-hoc run of an action task when no agent is connected returns
+    /// <see cref="HttpStatusCode.Conflict"/> (HTTP 409). Creates a TestExists action task with
+    /// "integration-test" target tags and issues a POST to <c>/api/tasks/{id}/run</c>. Asserts the
+    /// conflict status and that the response body contains "No connected agent", confirming the API
+    /// correctly reports the absence of a matching agent. Cleans up the task.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task AdHocRunActionTask_WithoutConnectedAgent_ReturnsConflict( ) {
@@ -414,6 +502,11 @@ public class ActionDispatchIntegrationTests {
 
     #region Job History — New Action Task
 
+    /// <summary>
+    /// Verifies that a newly created action task has no job execution history. Creates a
+    /// CreateDirectory action task, queries its job history via <c>GET /api/tasks/{id}/jobs</c>,
+    /// and asserts that the returned JSON array is empty. Cleans up the task after verification.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task JobHistory_ForNewActionTask_ReturnsEmptyList( ) {

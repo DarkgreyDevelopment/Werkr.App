@@ -9,6 +9,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "holiday_dates" )]
 public class HolidayDate {
+
     /// <summary>Auto-incrementing primary key.</summary>
     [Key]
     [DatabaseGenerated( DatabaseGeneratedOption.Identity )]

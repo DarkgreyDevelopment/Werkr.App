@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Security.Cryptography;
-
 using Werkr.Common.Models;
 using Werkr.Data.Entities.Interfaces;
+using Werkr.Data.Entities.Tasks;
 
 namespace Werkr.Data.Entities.Registration;
 
@@ -15,6 +15,7 @@ namespace Werkr.Data.Entities.Registration;
 /// </summary>
 [Table( "registered_connections" )]
 public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
+
     /// <summary>Unique identifier. Also serves as the connection ID in all post-registration communication.</summary>
     [Key]
     [DatabaseGenerated( DatabaseGeneratedOption.Identity )]
@@ -42,7 +43,6 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     /// <summary>
     /// API key for calling the remote party (outbound bearer token), max 512 characters.
     /// Agent stores the raw Agent→Server key; Server stores the raw Server→Agent key.
-    /// Protected at rest by SQLCipher (Agent) or database-level security (Server Postgres).
     /// </summary>
     [MaxLength( 512 )]
     public string OutboundApiKey { get; set; } = string.Empty;
@@ -62,7 +62,7 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     public byte[] SharedKey { get; set; } = [];
 
     /// <summary>
-    /// Previous shared key retained after a <c>RotateSharedKey</c> RPC so that in-flight
+    /// Previous shared key retained after a RotateSharedKey RPC so that in-flight
     /// messages encrypted with the old key can still be decrypted during the transition window.
     /// Null when no rotation has occurred or the previous key has been cleared.
     /// </summary>
@@ -93,22 +93,22 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     public DateTime? LastSeen { get; set; }
 
     /// <summary>
-    /// Tags assigned to this agent for task targeting. Tasks specify <c>TargetTags</c>
+    /// Tags assigned to this agent for task targeting. Tasks specify <see cref="WerkrTask.TargetTags"/>
     /// and agents are matched via case-insensitive tag intersection.
     /// </summary>
     public string[] Tags { get; set; } = [];
 
     /// <summary>
     /// Allowed filesystem path prefixes for built-in action operations.
-    /// When <see cref="EnforceAllowlist"/> is <c>true</c>, all file/process action
+    /// When <see cref="EnforceAllowlist"/> is <see langword="true"/>, all file/process action
     /// handler paths are validated against these prefixes on the Agent before execution.
     /// Stored as a JSON column, following the same pattern as <see cref="Tags"/>.
     /// </summary>
     public string[] AllowedPaths { get; set; } = [];
 
     /// <summary>
-    /// When <c>true</c>, the Agent enforces <see cref="AllowedPaths"/> restrictions
-    /// on all built-in action handlers. Default <c>false</c> preserves backward compatibility.
+    /// When <see langword="true"/>, the Agent enforces <see cref="AllowedPaths"/> restrictions
+    /// on all built-in action handlers. Default <see langword="false"/> preserves backward compatibility.
     /// </summary>
     public bool EnforceAllowlist { get; set; }
 }

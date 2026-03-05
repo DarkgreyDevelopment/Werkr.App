@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 using Werkr.Data.Identity.Roles;
@@ -13,11 +12,30 @@ using Werkr.Server.Services;
 
 namespace Werkr.Tests.Server.Identity;
 
+/// <summary>
+/// Unit tests for the <see cref="IdentitySeeder"/> class defined in the <c>Werkr.Server</c> project. Validates that
+/// the seeding process correctly creates the default roles defined by <see cref="DefaultRoles"/>, creates the default
+/// admin user with expected properties, assigns the admin role, and that repeated seed invocations are idempotent (no
+/// duplicates created). Uses an in-memory <see cref="WerkrIdentityDbContext"/> with a fully configured identity
+/// service provider.
+/// </summary>
 [TestClass]
 public class IdentitySeederTests {
+    /// <summary>
+    /// Gets or sets the MSTest <see cref="TestContext"/> used for cancellation token access and test run metadata.
+    /// </summary>
     public TestContext TestContext { get; set; } = null!;
+    /// <summary>
+    /// The fully configured <see cref="ServiceProvider"/> containing Identity, EF Core, logging, configuration, and
+    /// <see cref="ServerConfigCache"/> services used by all test methods.
+    /// </summary>
     private ServiceProvider _provider = null!;
 
+    /// <summary>
+    /// Initializes a fresh in-memory database, registers all required services (Identity, <see
+    /// cref="WerkrIdentityDbContext"/>, logging, configuration, and <see cref="ServerConfigCache"/>), and eagerly
+    /// initializes the <see cref="ServerConfigCache"/> before each test.
+    /// </summary>
     [TestInitialize]
     public async Task TestInit( ) {
         ServiceCollection services = new( );
@@ -28,14 +46,16 @@ public class IdentitySeederTests {
             options.UseInMemoryDatabase( dbName ) );
 
         _ = services.AddIdentity<WerkrUser, IdentityRole>(
-            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions )
+            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions
+        )
             .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
             .AddDefaultTokenProviders( );
 
         _ = services.AddLogging( b => b.AddProvider( NullLoggerProvider.Instance ) );
 
         _ = services.AddSingleton<IConfiguration>(
-            new ConfigurationBuilder( ).AddInMemoryCollection( ).Build( ) );
+            new ConfigurationBuilder( ).AddInMemoryCollection( ).Build( )
+        );
 
         // ServerConfigCache uses WerkrIdentityDbContext for config persistence
         _ = services.AddSingleton<ServerConfigCache>( );
@@ -47,11 +67,19 @@ public class IdentitySeederTests {
         await configCache.InitializeAsync( TestContext.CancellationToken );
     }
 
+    /// <summary>
+    /// Disposes the <see cref="ServiceProvider"/> and all scoped services after each test.
+    /// </summary>
     [TestCleanup]
     public void TestCleanup( ) {
         _provider.Dispose( );
     }
 
+    /// <summary>
+    /// Verifies that <see cref="IdentitySeeder.SeedAsync"/> creates all roles defined in the <see
+    /// cref="DefaultRoles"/> enum from the <c>Werkr.Data.Identity</c> project, confirming each role exists in the <see
+    /// cref="RoleManager"/> after seeding.
+    /// </summary>
     [TestMethod]
     public async Task SeedAsync_CreatesDefaultRoles( ) {
         await IdentitySeeder.SeedAsync( _provider );
@@ -66,6 +94,12 @@ public class IdentitySeederTests {
         }
     }
 
+    /// <summary>
+    /// Verifies that <see cref="IdentitySeeder.SeedAsync"/> creates a default admin user with the email
+    /// "admin@werkr.local", display name "Default Admin", and the appropriate flags set: <see cref="Enabled"/> = <see
+    /// langword="true"/>, <see cref="ChangePassword"/> = <see langword="true"/>, <see cref="Requires2FA"/> = <see
+    /// langword="true"/>, and <see cref="EmailConfirmed"/> = <see langword="true"/>.
+    /// </summary>
     [TestMethod]
     public async Task SeedAsync_CreatesDefaultAdminUser( ) {
         await IdentitySeeder.SeedAsync( _provider );
@@ -84,6 +118,10 @@ public class IdentitySeederTests {
         Assert.IsTrue( admin.EmailConfirmed, "Admin email should be confirmed." );
     }
 
+    /// <summary>
+    /// Verifies that the default admin user created by <see cref="IdentitySeeder.SeedAsync"/> is assigned to the
+    /// "Admin" role as defined in <see cref="DefaultRoles"/>.
+    /// </summary>
     [TestMethod]
     public async Task SeedAsync_AdminHasAdminRole( ) {
         await IdentitySeeder.SeedAsync( _provider );
@@ -101,6 +139,10 @@ public class IdentitySeederTests {
             "Admin user should be in Admin role." );
     }
 
+    /// <summary>
+    /// Verifies that calling <see cref="IdentitySeeder.SeedAsync"/> twice does not create a duplicate admin user,
+    /// confirming the seeder's idempotency for user creation.
+    /// </summary>
     [TestMethod]
     public async Task SeedAsync_SecondCallDoesNotCreateDuplicateAdmin( ) {
         await IdentitySeeder.SeedAsync( _provider );
@@ -116,6 +158,10 @@ public class IdentitySeederTests {
         Assert.HasCount( 1, admins, "Should have exactly one admin after double-seed." );
     }
 
+    /// <summary>
+    /// Verifies that calling <see cref="IdentitySeeder.SeedAsync"/> twice does not create duplicate roles, confirming
+    /// the seeder's idempotency for role creation.
+    /// </summary>
     [TestMethod]
     public async Task SeedAsync_SecondCallDoesNotCreateDuplicateRoles( ) {
         await IdentitySeeder.SeedAsync( _provider );

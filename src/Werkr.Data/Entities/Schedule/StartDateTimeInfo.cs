@@ -10,6 +10,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "schedule_start_datetimeinfo" )]
 public class StartDateTimeInfo : DateTimeInfoBase {
+
     /// <summary>Foreign key to the parent schedule.</summary>
     [Key]
     public Guid ScheduleId { get; set; }

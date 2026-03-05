@@ -7,6 +7,10 @@ namespace Werkr.Tests.Server.Pages;
 /// </summary>
 [TestClass]
 public class DtoModelTests {
+    /// <summary>
+    /// Verifies that a <see cref="ScheduleDto"/> constructed with a daily recurrence preserves all property values
+    /// correctly: name, stop-task timeout, daily interval, and null expiration.
+    /// </summary>
     [TestMethod]
     public void ScheduleDto_RoundTrip( ) {
         ScheduleDto dto = new(
@@ -18,7 +22,8 @@ public class DtoModelTests {
             new DailyRecurrenceDto( 1 ),
             null,
             null,
-            null );
+            null
+        );
 
         Assert.AreEqual( "Test Schedule", dto.Name );
         Assert.AreEqual( 60, dto.StopTaskAfterMinutes );
@@ -27,6 +32,10 @@ public class DtoModelTests {
         Assert.IsNull( dto.Expiration );
     }
 
+    /// <summary>
+    /// Verifies that a <see cref="TaskDto"/> correctly preserves the target tags list, confirming that the "prod" and
+    /// "db" tags are stored and accessible after construction.
+    /// </summary>
     [TestMethod]
     public void TaskDto_TagsPreserved( ) {
         TaskDto dto = new(
@@ -43,7 +52,8 @@ public class DtoModelTests {
             null,
             "ExitCode",
             null,
-            null );
+            null
+        );
 
         Assert.AreEqual( 42, dto.Id );
         Assert.HasCount( 2, dto.TargetTags );
@@ -51,6 +61,10 @@ public class DtoModelTests {
         Assert.Contains( "db", dto.TargetTags );
     }
 
+    /// <summary>
+    /// Verifies that a <see cref="WorkflowStepDto"/> correctly preserves its dependency list, including the <see
+    /// cref="StepDependencyDto"/> relationship linking step 2 to step 1.
+    /// </summary>
     [TestMethod]
     public void WorkflowStepDto_Dependencies( ) {
         StepDependencyDto dep = new( 2, 1 );
@@ -62,6 +76,10 @@ public class DtoModelTests {
         Assert.AreEqual( 2, step.Dependencies[0].StepId );
     }
 
+    /// <summary>
+    /// Verifies that a <see cref="WeeklyRecurrenceDto"/> correctly stores the week interval and the <see
+    /// cref="DaysOfWeek"/> flag integer value representing selected days.
+    /// </summary>
     [TestMethod]
     public void WeeklyRecurrenceDto_FlagIntValues( ) {
         // Sun=1, Mon=2, Wed=8 => 11
@@ -70,6 +88,11 @@ public class DtoModelTests {
         Assert.AreEqual( 11, dto.DaysOfWeek );
     }
 
+    /// <summary>
+    /// Verifies that a <see cref="MonthlyRecurrenceDto"/> correctly stores the day numbers list, months-of-year flag
+    /// integer, and that the optional <see cref="WeekNumber"/> and <see cref="DaysOfWeek"/> properties are <see
+    /// langword="null"/> when not specified.
+    /// </summary>
     [TestMethod]
     public void MonthlyRecurrenceDto_FlagIntValues( ) {
         // Jan=1, Mar=4 => 5
@@ -80,16 +103,25 @@ public class DtoModelTests {
         Assert.AreEqual( 15, dto.DayNumbers![0] );
     }
 
+    /// <summary>
+    /// Verifies that an <see cref="OccurrencePreviewResponse"/> with an empty occurrences list is correctly
+    /// constructed and the <see cref="Occurrences"/> collection is empty.
+    /// </summary>
     [TestMethod]
     public void OccurrencePreviewResponse_EmptyList( ) {
         OccurrencePreviewResponse resp = new(
             Guid.NewGuid( ),
             DateTime.UtcNow.AddDays( 30 ),
-            [] );
+            []
+        );
 
         Assert.IsEmpty( resp.Occurrences );
     }
 
+    /// <summary>
+    /// Verifies that a <see cref="DagValidationResult"/> with <see cref="IsValid"/> = <see langword="true"/> and an
+    /// empty error list correctly represents a valid DAG (directed acyclic graph) state.
+    /// </summary>
     [TestMethod]
     public void DagValidationResult_Valid( ) {
         DagValidationResult result = new( true, [] );
@@ -97,6 +129,11 @@ public class DtoModelTests {
         Assert.IsEmpty( result.Errors );
     }
 
+    /// <summary>
+    /// Verifies that a <see cref="DagValidationResult"/> with <see cref="IsValid"/> = <see langword="false"/> and a
+    /// single error message correctly represents an invalid DAG state, such as when a cycle is detected in the
+    /// workflow step graph.
+    /// </summary>
     [TestMethod]
     public void DagValidationResult_Invalid( ) {
         DagValidationResult result = new( false, ["Cycle detected at step 3"] );

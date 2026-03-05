@@ -10,4 +10,5 @@ namespace Werkr.Common.Models;
 public sealed record OperatorOutputLine(
     string LogLevel,
     string Message,
-    string Timestamp );
+    string Timestamp
+);

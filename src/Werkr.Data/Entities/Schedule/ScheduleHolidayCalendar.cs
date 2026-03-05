@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Werkr.Data.Calendar.Enums;
 
 namespace Werkr.Data.Entities.Schedule;
@@ -10,6 +9,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "schedule_holiday_calendars" )]
 public class ScheduleHolidayCalendar {
+
     /// <summary>FK to the schedule.</summary>
     public Guid ScheduleId { get; set; }
 

@@ -9,9 +9,12 @@ namespace Werkr.Api.Endpoints;
 internal static class DiagnosticsEndpoints {
     /// <summary>Maps <c>GET /api/diagnostics/health</c>.</summary>
     public static WebApplication MapDiagnosticsEndpoints( this WebApplication app ) {
-        _ = app.MapGet( "/api/diagnostics/health", async (
-            WerkrDbContext appDbContext,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/diagnostics/health",
+            async (
+                WerkrDbContext appDbContext,
+                CancellationToken ct
+            ) => {
                 List<DatabaseHealthDto> diagnostics = [];
 
                 bool appConnected = await appDbContext.Database.CanConnectAsync( ct );

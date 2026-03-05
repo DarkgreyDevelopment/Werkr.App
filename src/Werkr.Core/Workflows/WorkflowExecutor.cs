@@ -1,4 +1,4 @@
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -31,7 +31,8 @@ public sealed class WorkflowExecutor(
     AgentResolver agentResolver,
     ConditionEvaluator conditionEvaluator,
     WorkflowRunTracker runTracker,
-    ILogger<WorkflowExecutor> logger ) {
+    ILogger<WorkflowExecutor> logger
+) {
 
     /// <summary>
     /// Executes a workflow, resolving the appropriate agent for each step
@@ -42,7 +43,10 @@ public sealed class WorkflowExecutor(
     /// <param name="workflow">The workflow to execute.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The completed <see cref="WorkflowRun"/> record.</returns>
-    public async Task<WorkflowRun> ExecuteAsync( Workflow workflow, CancellationToken ct = default ) {
+    public async Task<WorkflowRun> ExecuteAsync(
+        Workflow workflow,
+        CancellationToken ct = default
+    ) {
         // Create workflow run first so cancellation can be recorded
         WorkflowRun run = new( ) {
             WorkflowId = workflow.Id,
@@ -57,7 +61,10 @@ public sealed class WorkflowExecutor(
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Starting workflow run {RunId} for workflow {WorkflowId} '{WorkflowName}'.",
-                run.Id.ToString( ), workflow.Id.ToString( ), workflow.Name );
+                run.Id.ToString( ),
+                workflow.Id.ToString( ),
+                workflow.Name
+            );
         }
 
         // Step result map: stepId → completed job
@@ -68,14 +75,20 @@ public sealed class WorkflowExecutor(
 
         try {
             // Validate DAG (throws if cycle or control flow error)
-            _ = await workflowService.ValidateDagAsync( workflow.Id, ct );
+            _ = await workflowService.ValidateDagAsync(
+                workflow.Id,
+                ct
+            );
 
             // Get topological levels for execution
             // NOTE: Steps within the same level are independent and could be parallelized
             // with an IDbContextFactory<WerkrDbContext> pattern. Currently executed
             // sequentially because DbContext is not thread-safe.
             IReadOnlyList<IReadOnlyList<WorkflowStep>> levels =
-                await workflowService.GetTopologicalLevelsAsync( workflow.Id, ct );
+                await workflowService.GetTopologicalLevelsAsync(
+                    workflow.Id,
+                    ct
+                );
 
             foreach (IReadOnlyList<WorkflowStep> level in levels) {
                 ct.ThrowIfCancellationRequested( );
@@ -111,7 +124,10 @@ public sealed class WorkflowExecutor(
                         run.EndTime = DateTime.UtcNow;
                         _ = await dbContext.SaveChangesAsync( CancellationToken.None );
                         logger.LogWarning( "Workflow run {RunId} failed at step {StepId}: {Error}.",
-                            run.Id.ToString( ), result.StepId.ToString( ), result.ErrorMessage );
+                            run.Id.ToString( ),
+                            result.StepId.ToString( ),
+                            result.ErrorMessage
+                        );
                         runTracker.CompleteTracking( run.Id );
                         return run;
                     }
@@ -133,7 +149,10 @@ public sealed class WorkflowExecutor(
                         run.EndTime = DateTime.UtcNow;
                         _ = await dbContext.SaveChangesAsync( CancellationToken.None );
                         logger.LogWarning( "Workflow run {RunId} failed at step {StepId}: {Error}.",
-                            run.Id.ToString( ), result.StepId.ToString( ), result.ErrorMessage );
+                            run.Id.ToString( ),
+                            result.StepId.ToString( ),
+                            result.ErrorMessage
+                        );
                         runTracker.CompleteTracking( run.Id );
                         return run;
                     }
@@ -147,18 +166,26 @@ public sealed class WorkflowExecutor(
 
             if (logger.IsEnabled( LogLevel.Information )) {
                 logger.LogInformation( "Workflow run {RunId} completed successfully.",
-                    run.Id.ToString( ) );
+                    run.Id.ToString( )
+                );
             }
         } catch (OperationCanceledException) {
             run.Status = WorkflowRunStatus.Cancelled;
             run.EndTime = DateTime.UtcNow;
             _ = await dbContext.SaveChangesAsync( CancellationToken.None );
-            logger.LogWarning( "Workflow run {RunId} was cancelled.", run.Id.ToString( ) );
+            logger.LogWarning(
+                "Workflow run {RunId} was cancelled.",
+                run.Id.ToString( )
+            );
         } catch (Exception ex) {
             run.Status = WorkflowRunStatus.Failed;
             run.EndTime = DateTime.UtcNow;
             _ = await dbContext.SaveChangesAsync( CancellationToken.None );
-            logger.LogError( ex, "Workflow run {RunId} failed with unexpected error.", run.Id.ToString( ) );
+            logger.LogError(
+                ex,
+                "Workflow run {RunId} failed with unexpected error.",
+                run.Id.ToString( )
+            );
         } finally {
             runTracker.CompleteTracking( run.Id );
         }
@@ -180,10 +207,16 @@ public sealed class WorkflowExecutor(
     /// <summary>
     /// Retrieves a single workflow run with its jobs.
     /// </summary>
-    public async Task<WorkflowRun?> GetRunAsync( Guid runId, CancellationToken ct = default ) =>
+    public async Task<WorkflowRun?> GetRunAsync(
+        Guid runId,
+        CancellationToken ct = default
+    ) =>
         await dbContext.WorkflowRuns.AsNoTracking( )
             .Include( r => r.Jobs )
-            .FirstOrDefaultAsync( r => r.Id == runId, ct );
+            .FirstOrDefaultAsync(
+                r => r.Id == runId,
+                ct
+            );
 
     /// <summary>Executes a single workflow step, handling control flow.</summary>
     private async Task<StepExecutionResult> ExecuteStepAsync(
@@ -192,7 +225,8 @@ public sealed class WorkflowExecutor(
         Dictionary<long, WerkrJob> stepResults,
         Dictionary<long, bool> branchTaken,
         ChannelWriter<WorkflowStepStatusUpdate> writer,
-        CancellationToken ct ) {
+        CancellationToken ct
+    ) {
 
         // Build a display name for status updates (WorkflowStep has no Name property)
         string stepLabel = $"Step {step.Order} (#{step.Id})";
@@ -204,12 +238,18 @@ public sealed class WorkflowExecutor(
         // Load task if not eagerly loaded
         WerkrTask? task = step.Task;
         if (task is null) {
-            task = await dbContext.Tasks.AsNoTracking( ).FirstOrDefaultAsync( t => t.Id == step.TaskId, ct );
+            task = await dbContext.Tasks.AsNoTracking( ).FirstOrDefaultAsync(
+                t => t.Id == step.TaskId,
+                ct
+            );
             if (task is null) {
                 string taskError = $"Task with Id={step.TaskId} not found for step {step.Id}.";
                 await writer.WriteAsync( new WorkflowStepStatusUpdate(
                     run.Id, step.Id, stepLabel, "Failed", DateTime.UtcNow, taskError ), ct );
-                return StepExecutionResult.Fail( step.Id, taskError );
+                return StepExecutionResult.Fail(
+                    step.Id,
+                    taskError
+                );
             }
         }
 
@@ -219,17 +259,26 @@ public sealed class WorkflowExecutor(
         // Gather predecessor jobs
         List<WerkrJob> predecessorJobs = [];
         foreach (WorkflowStepDependency dep in step.Dependencies) {
-            if (stepResults.TryGetValue( dep.DependsOnStepId, out WerkrJob? predJob )) {
+            if (stepResults.TryGetValue(
+                dep.DependsOnStepId,
+                out WerkrJob? predJob
+            )) {
                 predecessorJobs.Add( predJob );
             }
         }
 
         // Check dependency satisfaction
-        if (!CheckDependencies( step, stepResults )) {
+        if (!CheckDependencies(
+            step,
+            stepResults
+        )) {
             string depError = $"Dependencies not satisfied for step {step.Id} (DependencyMode={step.DependencyMode}).";
             await writer.WriteAsync( new WorkflowStepStatusUpdate(
                 run.Id, step.Id, stepLabel, "Failed", DateTime.UtcNow, depError ), ct );
-            return StepExecutionResult.Fail( step.Id, depError );
+            return StepExecutionResult.Fail(
+                step.Id,
+                depError
+            );
         }
 
         // Evaluate control flow
@@ -239,7 +288,9 @@ public sealed class WorkflowExecutor(
         if (!shouldExecute) {
             if (logger.IsEnabled( LogLevel.Debug )) {
                 logger.LogDebug( "Step {StepId} skipped by control flow ({ControlStatement}).",
-                    step.Id.ToString( ), step.ControlStatement.ToString( ) );
+                    step.Id.ToString( ),
+                    step.ControlStatement.ToString( )
+                );
             }
             await writer.WriteAsync( new WorkflowStepStatusUpdate(
                 run.Id, step.Id, stepLabel, "Skipped", DateTime.UtcNow, null ), ct );
@@ -247,21 +298,42 @@ public sealed class WorkflowExecutor(
         }
 
         // Resolve agent for this step
-        RegisteredConnection? agent = await ResolveAgentForStepAsync( step, task, ct );
+        RegisteredConnection? agent = await ResolveAgentForStepAsync(
+            step,
+            task,
+            ct
+        );
         if (agent is null) {
-            string agentError = $"No agent available for step {step.Id} (task '{task.Name}', tags=[{string.Join( ", ", task.TargetTags )}]).";
+            string agentError =
+                $"No agent available for step {step.Id} " +
+                $"(task '{task.Name}', tags=[{string.Join( ", ", task.TargetTags )}]).";
             await writer.WriteAsync( new WorkflowStepStatusUpdate(
                 run.Id, step.Id, stepLabel, "Failed", DateTime.UtcNow, agentError ), ct );
-            return StepExecutionResult.Fail( step.Id, agentError );
+            return StepExecutionResult.Fail(
+                step.Id,
+                agentError
+            );
         }
 
         // Handle While/Do loops
         if (step.ControlStatement is ControlStatement.While or ControlStatement.Do) {
-            return await ExecuteLoopStepAsync( step, task, agent, run, predecessorJobs, ct );
+            return await ExecuteLoopStepAsync(
+                step,
+                task,
+                agent,
+                run,
+                predecessorJobs,
+                ct
+            );
         }
 
         // Execute the step's task
-        WerkrJob job = await jobExecutionService.ExecuteOnAgentAsync( task, agent, run.Id, ct );
+        WerkrJob job = await jobExecutionService.ExecuteOnAgentAsync(
+            task,
+            agent,
+            run.Id,
+            ct
+        );
 
         // Record branch taken for If/ElseIf chains
         if (step.ControlStatement is ControlStatement.If or ControlStatement.ElseIf) {
@@ -270,15 +342,22 @@ public sealed class WorkflowExecutor(
 
         if (logger.IsEnabled( LogLevel.Debug )) {
             logger.LogDebug( "Step {StepId} executed: Success={Success}, JobId={JobId}.",
-                step.Id.ToString( ), job.Success.ToString( ), job.Id.ToString( ) );
+                step.Id.ToString( ),
+                job.Success.ToString( ),
+                job.Id.ToString( )
+            );
         }
 
         string completionStatus = job.Success ? "Completed" : "Failed";
         await writer.WriteAsync( new WorkflowStepStatusUpdate(
             run.Id, step.Id, stepLabel, completionStatus, DateTime.UtcNow,
-            job.Success ? null : "Job execution failed" ), ct );
+            job.Success ? null : "Job execution failed" ), ct
+        );
 
-        return StepExecutionResult.Ok( step.Id, job );
+        return StepExecutionResult.Ok(
+            step.Id,
+            job
+        );
     }
 
     /// <summary>Executes a While or Do loop step.</summary>
@@ -309,7 +388,12 @@ public sealed class WorkflowExecutor(
                 }
             }
 
-            lastJob = await jobExecutionService.ExecuteOnAgentAsync( task, agent, run.Id, ct );
+            lastJob = await jobExecutionService.ExecuteOnAgentAsync(
+                task,
+                agent,
+                run.Id,
+                ct
+            );
             iterations++;
 
             if (!lastJob.Success) {
@@ -319,18 +403,24 @@ public sealed class WorkflowExecutor(
 
         if (iterations >= step.MaxIterations) {
             logger.LogWarning( "Step {StepId} reached MaxIterations ({Max}).",
-                step.Id.ToString( ), step.MaxIterations.ToString( ) );
+                step.Id.ToString( ),
+                step.MaxIterations.ToString( )
+            );
         }
 
         return lastJob is not null
-            ? StepExecutionResult.Ok( step.Id, lastJob )
+            ? StepExecutionResult.Ok(
+                step.Id,
+                lastJob
+            )
             : StepExecutionResult.Skipped( step.Id );
     }
 
     /// <summary>Checks whether dependencies are satisfied based on DependencyMode.</summary>
     private static bool CheckDependencies(
         WorkflowStep step,
-        Dictionary<long, WerkrJob> stepResults ) {
+        Dictionary<long, WerkrJob> stepResults
+    ) {
 
         if (step.Dependencies.Count == 0) {
             return true; // Root step — no dependencies
@@ -351,7 +441,8 @@ public sealed class WorkflowExecutor(
     private bool EvaluateControlFlow(
         WorkflowStep step,
         List<WerkrJob> predecessorJobs,
-        Dictionary<long, bool> branchTaken ) {
+        Dictionary<long, bool> branchTaken
+    ) {
 
         switch (step.ControlStatement) {
             case ControlStatement.Sequential:
@@ -366,7 +457,10 @@ public sealed class WorkflowExecutor(
             case ControlStatement.ElseIf: {
                     // Check if any prior If/ElseIf in the chain was taken
                     bool priorTaken = step.Dependencies.Any( d =>
-                    branchTaken.TryGetValue( d.DependsOnStepId, out bool taken ) && taken );
+                    branchTaken.TryGetValue(
+                        d.DependsOnStepId,
+                        out bool taken
+                    ) && taken );
                     if (priorTaken) {
                         branchTaken[step.Id] = false;
                         return false;
@@ -380,7 +474,10 @@ public sealed class WorkflowExecutor(
             case ControlStatement.Else: {
                     // Execute only if no prior If/ElseIf in the chain was taken
                     bool anyPriorTaken = step.Dependencies.Any( d =>
-                    branchTaken.TryGetValue( d.DependsOnStepId, out bool taken ) && taken );
+                    branchTaken.TryGetValue(
+                        d.DependsOnStepId,
+                        out bool taken
+                    ) && taken );
                     return !anyPriorTaken;
                 }
 
@@ -400,15 +497,23 @@ public sealed class WorkflowExecutor(
 
         if (step.AgentConnectionIdOverride.HasValue) {
             RegisteredConnection? overrideAgent = await dbContext.RegisteredConnections
-                .FirstOrDefaultAsync( c => c.Id == step.AgentConnectionIdOverride.Value, ct );
+                .FirstOrDefaultAsync(
+                    c => c.Id == step.AgentConnectionIdOverride.Value,
+                    ct
+                );
             if (overrideAgent is null) {
                 logger.LogWarning( "AgentConnectionIdOverride {AgentId} not found for step {StepId}.",
-                    step.AgentConnectionIdOverride.Value.ToString( ), step.Id.ToString( ) );
+                    step.AgentConnectionIdOverride.Value.ToString( ),
+                    step.Id.ToString( )
+                );
             }
             return overrideAgent;
         }
 
-        return await agentResolver.ResolveAsync( task.TargetTags, ct );
+        return await agentResolver.ResolveAsync(
+            task.TargetTags,
+            ct
+        );
     }
 
     /// <summary>Result of executing a single workflow step.</summary>
@@ -417,15 +522,40 @@ public sealed class WorkflowExecutor(
         WerkrJob? Job,
         bool Failed,
         bool WasSkipped,
-        string? ErrorMessage ) {
+        string? ErrorMessage
+    ) {
 
-        public static StepExecutionResult Ok( long stepId, WerkrJob job ) =>
-            new( stepId, job, Failed: false, WasSkipped: false, ErrorMessage: null );
+        public static StepExecutionResult Ok(
+            long stepId,
+            WerkrJob job
+        ) =>
+            new(
+                stepId,
+                job,
+                Failed: false,
+                WasSkipped: false,
+                ErrorMessage: null
+            );
 
         public static StepExecutionResult Skipped( long stepId ) =>
-            new( stepId, Job: null, Failed: false, WasSkipped: true, ErrorMessage: null );
+            new(
+                stepId,
+                Job: null,
+                Failed: false,
+                WasSkipped: true,
+                ErrorMessage: null
+            );
 
-        public static StepExecutionResult Fail( long stepId, string errorMessage ) =>
-            new( stepId, Job: null, Failed: true, WasSkipped: false, ErrorMessage: errorMessage );
+        public static StepExecutionResult Fail(
+            long stepId,
+            string errorMessage
+        ) =>
+            new(
+                stepId,
+                Job: null,
+                Failed: true,
+                WasSkipped: false,
+                ErrorMessage: errorMessage
+            );
     }
 }

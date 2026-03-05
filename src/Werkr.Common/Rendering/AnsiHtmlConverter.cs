@@ -10,11 +10,9 @@ namespace Werkr.Common.Rendering;
 /// Unsupported sequences are stripped. All text content is HTML-encoded to prevent XSS.
 /// </summary>
 public static partial class AnsiHtmlConverter {
-    /// <summary>Regex matching ANSI CSI SGR sequences: ESC [ (params) m.</summary>
     [GeneratedRegex( @"\x1b\[([0-9;]*)m" )]
     private static partial Regex SgrPattern( );
 
-    /// <summary>Standard 4-bit foreground color codes (30–37, 90–97) to CSS color strings.</summary>
     private static readonly Dictionary<int, string> s_fgColors = new( ) {
         [30] = "#000",      // Black
         [31] = "#c00",      // Red
@@ -34,7 +32,6 @@ public static partial class AnsiHtmlConverter {
         [97] = "#fff",      // Bright White
     };
 
-    /// <summary>Standard 4-bit background color codes (40–47, 100–107) to CSS color strings.</summary>
     private static readonly Dictionary<int, string> s_bgColors = new( ) {
         [40] = "#000",
         [41] = "#c00",
@@ -55,11 +52,15 @@ public static partial class AnsiHtmlConverter {
     };
 
     /// <summary>
-    /// Converts a string containing ANSI SGR escape sequences to safe HTML.
-    /// Text content is HTML-encoded; color/bold sequences become inline style spans.
+    /// Converts a string containing ANSI SGR escape sequences into HTML
+    /// with inline <c>style</c> attributes for the standard 16-color palette,
+    /// bold, and reset.
     /// </summary>
-    /// <param name="input">Raw text potentially containing ANSI escape sequences.</param>
-    /// <returns>HTML string safe for rendering via <c>MarkupString</c>.</returns>
+    /// <param name="input">The ANSI-encoded string to convert.</param>
+    /// <returns>
+    /// HTML string with <c>&lt;span&gt;</c> elements for styled regions,
+    /// or an empty string if <paramref name="input"/> is null/empty.
+    /// </returns>
     public static string Convert( string input ) {
         if (string.IsNullOrEmpty( input )) {
             return string.Empty;
@@ -82,7 +83,11 @@ public static partial class AnsiHtmlConverter {
             if (match.Index > lastIndex) {
                 string text = input[lastIndex..match.Index];
                 if (!spanOpen && (currentFg is not null || currentBg is not null || currentBold)) {
-                    _ = sb.Append( BuildSpanOpen( currentFg, currentBg, currentBold ) );
+                    _ = sb.Append( BuildSpanOpen(
+                        currentFg,
+                        currentBg,
+                        currentBold
+                    ) );
                     spanOpen = true;
                 }
                 _ = sb.Append( WebUtility.HtmlEncode( text ) );
@@ -94,7 +99,12 @@ public static partial class AnsiHtmlConverter {
             string paramStr = match.Groups[1].Value;
             int[] codes = string.IsNullOrEmpty( paramStr )
                 ? [0]
-                : [.. paramStr.Split( ';' ).Select( s => int.TryParse( s, out int v ) ? v : 0 )];
+                : [.. paramStr.Split( ';' ).Select(
+                    s => int.TryParse(
+                        s,
+                        out int v
+                    ) ? v : 0
+                )];
 
             foreach (int code in codes) {
                 if (code == 0) {
@@ -112,10 +122,16 @@ public static partial class AnsiHtmlConverter {
                 } else if (code == 22) {
                     if (spanOpen) { _ = sb.Append( "</span>" ); spanOpen = false; }
                     currentBold = false;
-                } else if (s_fgColors.TryGetValue( code, out string? fg )) {
+                } else if (s_fgColors.TryGetValue(
+                    code,
+                    out string? fg
+                )) {
                     if (spanOpen) { _ = sb.Append( "</span>" ); spanOpen = false; }
                     currentFg = fg;
-                } else if (s_bgColors.TryGetValue( code, out string? bg )) {
+                } else if (s_bgColors.TryGetValue(
+                    code,
+                    out string? bg
+                )) {
                     if (spanOpen) { _ = sb.Append( "</span>" ); spanOpen = false; }
                     currentBg = bg;
                 } else if (code == 39) {
@@ -135,7 +151,11 @@ public static partial class AnsiHtmlConverter {
         if (lastIndex < input.Length) {
             string remaining = input[lastIndex..];
             if (!spanOpen && (currentFg is not null || currentBg is not null || currentBold)) {
-                _ = sb.Append( BuildSpanOpen( currentFg, currentBg, currentBold ) );
+                _ = sb.Append( BuildSpanOpen(
+                    currentFg,
+                    currentBg,
+                    currentBold
+                ) );
                 spanOpen = true;
             }
             _ = sb.Append( WebUtility.HtmlEncode( remaining ) );
@@ -149,19 +169,26 @@ public static partial class AnsiHtmlConverter {
     }
 
     /// <summary>
-    /// Strips all ANSI escape sequences from the input, returning plain text.
+    /// Removes all ANSI SGR escape sequences from the input, returning plain text.
     /// </summary>
-    /// <param name="input">Raw text potentially containing ANSI escape sequences.</param>
-    /// <returns>Plain text with all ANSI sequences removed.</returns>
+    /// <param name="input">The string to strip.</param>
+    /// <returns>The input with all ANSI escape sequences removed.</returns>
     public static string Strip( string input ) {
-        return string.IsNullOrEmpty( input ) || !input.Contains( '\x1b' ) ? input : SgrPattern( ).Replace( input, string.Empty );
+        if (string.IsNullOrEmpty( input ) || !input.Contains( '\x1b' )) {
+            return input;
+        }
+
+        return SgrPattern( ).Replace(
+            input,
+            string.Empty
+        );
     }
 
     /// <summary>
-    /// Maps a <see cref="ConsoleColor"/> value to its ANSI SGR foreground escape sequence.
+    /// Returns the ANSI SGR foreground escape sequence for the specified <see cref="ConsoleColor"/>.
     /// </summary>
-    /// <param name="color">The console color.</param>
-    /// <returns>The ANSI escape sequence string (e.g., <c>\x1b[31m</c> for Red).</returns>
+    /// <param name="color">The console color to convert.</param>
+    /// <returns>The ANSI escape string (e.g. <c>\x1b[31m</c>), or empty for unsupported values.</returns>
     public static string ConsoleColorToAnsi( ConsoleColor color ) =>
         color switch {
             ConsoleColor.Black => "\x1b[30m",
@@ -184,10 +211,10 @@ public static partial class AnsiHtmlConverter {
         };
 
     /// <summary>
-    /// Maps a <see cref="ConsoleColor"/> value to its ANSI SGR background escape sequence.
+    /// Returns the ANSI SGR background escape sequence for the specified <see cref="ConsoleColor"/>.
     /// </summary>
-    /// <param name="color">The console color.</param>
-    /// <returns>The ANSI escape sequence string (e.g., <c>\x1b[41m</c> for Red bg).</returns>
+    /// <param name="color">The console color to convert.</param>
+    /// <returns>The ANSI background escape string (e.g. <c>\x1b[41m</c>), or empty for unsupported values.</returns>
     public static string ConsoleColorToBgAnsi( ConsoleColor color ) =>
         color switch {
             ConsoleColor.Black => "\x1b[40m",
@@ -209,10 +236,14 @@ public static partial class AnsiHtmlConverter {
             _ => string.Empty,
         };
 
-    /// <summary>The ANSI reset sequence.</summary>
+    /// <summary>The ANSI SGR reset sequence (<c>\x1b[0m</c>) that clears all formatting.</summary>
     public const string AnsiReset = "\x1b[0m";
 
-    private static string BuildSpanOpen( string? fg, string? bg, bool bold ) {
+    private static string BuildSpanOpen(
+        string? fg,
+        string? bg,
+        bool bold
+    ) {
         StringBuilder style = new( );
         if (fg is not null) {
             _ = style.Append( $"color:{fg};" );

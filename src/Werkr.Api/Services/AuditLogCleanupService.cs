@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-
 using Werkr.Data;
 
 namespace Werkr.Api.Services;
@@ -14,8 +13,17 @@ public sealed partial class AuditLogCleanupService(
     IOptions<AuditLogOptions> options,
     ILogger<AuditLogCleanupService> logger
 ) : BackgroundService {
+    /// <summary>
+    /// The factory used to create scoped service providers for resolving database contexts.
+    /// </summary>
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+    /// <summary>
+    /// Snapshot of the audit log cleanup configuration options captured at service creation time.
+    /// </summary>
     private readonly AuditLogOptions _options = options.Value;
+    /// <summary>
+    /// Logger instance used by the source-generated log methods in this partial class.
+    /// </summary>
     private readonly ILogger<AuditLogCleanupService> _logger = logger;
 
     /// <inheritdoc />
@@ -34,6 +42,9 @@ public sealed partial class AuditLogCleanupService(
         }
     }
 
+    /// <summary>
+    /// Performs a single audit log cleanup pass by deleting all <see cref="Werkr.Data.Entities.Schedule.ScheduleAuditLog"/> records whose <c>CreatedUtc</c> is older than the configured retention period.
+    /// </summary>
     private async Task CleanupAsync( CancellationToken ct ) {
         using IServiceScope scope = _scopeFactory.CreateScope( );
         WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );

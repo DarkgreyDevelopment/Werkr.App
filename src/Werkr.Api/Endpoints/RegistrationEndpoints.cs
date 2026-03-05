@@ -8,10 +8,13 @@ namespace Werkr.Api.Endpoints;
 internal static class RegistrationEndpoints {
     /// <summary>Maps <c>POST /api/registration/generate</c>.</summary>
     public static WebApplication MapRegistrationEndpoints( this WebApplication app ) {
-        _ = app.MapPost( "/api/registration/generate", async (
-            RegistrationGenerateRequest request,
-            RegistrationService registrationService,
-            CancellationToken ct ) => {
+        _ = app.MapPost(
+            "/api/registration/generate",
+            async (
+                RegistrationGenerateRequest request,
+                RegistrationService registrationService,
+                CancellationToken ct
+            ) => {
                 int? expirationMinutes = request.ExpirationMinutes;
                 TimeSpan? expiration = expirationMinutes switch {
                     null => null,

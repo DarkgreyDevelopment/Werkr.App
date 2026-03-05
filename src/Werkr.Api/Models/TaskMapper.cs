@@ -1,5 +1,4 @@
 using System.Text.Json;
-
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Tasks;
@@ -12,6 +11,9 @@ namespace Werkr.Api.Models;
 /// </summary>
 internal static class TaskMapper {
 
+    /// <summary>
+    /// Maps action sub-type names (case-insensitive) to their corresponding parameter deserialization types. Used during validation to ensure <c>ActionParameters</c> JSON can be correctly deserialized for the given <c>ActionSubType</c>.
+    /// </summary>
     private static readonly Dictionary<string, Type> s_actionParameterTypes =
         new( StringComparer.OrdinalIgnoreCase ) {
             ["CopyFile"] = typeof( CopyFileParameters ),
@@ -27,6 +29,9 @@ internal static class TaskMapper {
             ["StopProcess"] = typeof( StopProcessParameters ),
         };
 
+    /// <summary>
+    /// Shared <see cref="JsonSerializerOptions"/> configured for case-insensitive property name matching during action parameter deserialization.
+    /// </summary>
     private static readonly JsonSerializerOptions s_jsonOptions = new( ) {
         PropertyNameCaseInsensitive = true,
     };
@@ -127,7 +132,8 @@ internal static class TaskMapper {
     private static void ValidateActionFields(
         string actionType,
         string? actionSubType,
-        string? actionParameters ) {
+        string? actionParameters
+    ) {
 
         bool isActionTask = string.Equals(
             actionType,

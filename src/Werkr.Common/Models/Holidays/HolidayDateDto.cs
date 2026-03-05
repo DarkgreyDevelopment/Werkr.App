@@ -1,6 +1,9 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Full holiday date.</summary>
+/// <summary>
+/// Materialised holiday date record including the rule that generated it
+/// and the observance-adjusted date.
+/// </summary>
 public sealed record HolidayDateDto(
     long Id,
     Guid HolidayCalendarId,
@@ -11,4 +14,5 @@ public sealed record HolidayDateDto(
     string? WindowEnd,
     string? WindowTimeZoneId,
     bool IsManual,
-    long? GeneratedByRuleId );
+    long? GeneratedByRuleId
+);

@@ -28,14 +28,19 @@ public static class ConfigurationBuilderExtensions {
     /// <returns>The configuration builder for chaining.</returns>
     public static IConfigurationBuilder AddWerkrConfigPath(
         this IConfigurationBuilder builder,
-        string registrySubKey = "" ) {
+        string registrySubKey = ""
+    ) {
         // Windows: read from HKLM\SOFTWARE\Werkr\{subKey}
         _ = builder.AddWerkrRegistry( registrySubKey );
 
         // Linux / Docker: read from WERKR_CONFIG_PATH env var
         string? configPath = Environment.GetEnvironmentVariable( "WERKR_CONFIG_PATH" );
         if (!string.IsNullOrEmpty( configPath )) {
-            _ = builder.AddJsonFile( configPath, optional: true, reloadOnChange: true );
+            _ = builder.AddJsonFile(
+                configPath,
+                optional: true,
+                reloadOnChange: true
+            );
         }
         return builder;
     }

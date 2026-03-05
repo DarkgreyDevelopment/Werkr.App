@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Werkr.Common;
-
 using Werkr.Data.Identity.Entities;
 
 namespace Werkr.Data.Identity.Extensions;
@@ -21,7 +20,8 @@ public static class IdentityExtensions {
     public static IdentityBuilder AddWerkrIdentity(
         this IServiceCollection services,
         DatabaseProvider provider,
-        string connectionString ) {
+        string connectionString
+    ) {
         // Register provider-specific identity DbContext with forwarding to base type.
         // EF Core requires a distinct type per provider so each set of migrations gets
         // its own ModelSnapshot — same pattern as WerkrDbContextExtensions.

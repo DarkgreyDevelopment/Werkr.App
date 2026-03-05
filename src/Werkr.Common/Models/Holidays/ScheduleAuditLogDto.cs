@@ -1,6 +1,9 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Full audit log record.</summary>
+/// <summary>
+/// Audit log record documenting a suppressed schedule occurrence
+/// and the holiday that caused the suppression.
+/// </summary>
 public sealed record ScheduleAuditLogDto(
     long Id,
     Guid ScheduleId,
@@ -8,4 +11,5 @@ public sealed record ScheduleAuditLogDto(
     string CalendarName,
     string HolidayName,
     string Mode,
-    DateTime CreatedUtc );
+    DateTime CreatedUtc
+);

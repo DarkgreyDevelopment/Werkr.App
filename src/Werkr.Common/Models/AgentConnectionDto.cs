@@ -18,4 +18,5 @@ public sealed record AgentConnectionDto(
     string Status,
     DateTime? LastSeen,
     DateTime RegisteredAt,
-    string[] Tags );
+    string[] Tags
+);

@@ -1,6 +1,5 @@
 using Grpc.Core;
 using Microsoft.Extensions.Options;
-
 using Werkr.Agent.Operators;
 using Werkr.Agent.Protos;
 using Werkr.Common.Configuration;
@@ -13,7 +12,7 @@ namespace Werkr.Agent.Services;
 
 /// <summary>
 /// gRPC service implementation for PowerShell operations.
-/// Authenticates via <c>BearerTokenInterceptor</c>, decrypts <see cref="EncryptedEnvelope"/>
+/// Authenticates via <see cref="Interceptors.BearerTokenInterceptor"/>, decrypts <see cref="EncryptedEnvelope"/>
 /// requests, streams encrypted output back in envelopes.
 /// </summary>
 /// <remarks>Creates a new <see cref="PwshService"/>.</remarks>
@@ -31,7 +30,8 @@ public class PwshService(
     public override async Task RunCommand(
         EncryptedEnvelope request,
         IServerStreamWriter<EncryptedEnvelope> responseStream,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         ValidatePowerShellEnabled( );
         RegisteredConnection connection = GetConnection( context );
@@ -50,7 +50,8 @@ public class PwshService(
     public override async Task RunScript(
         EncryptedEnvelope request,
         IServerStreamWriter<EncryptedEnvelope> responseStream,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         ValidatePowerShellEnabled( );
         RegisteredConnection connection = GetConnection( context );
@@ -69,7 +70,8 @@ public class PwshService(
     public override async Task RunScriptWithArgs(
         EncryptedEnvelope request,
         IServerStreamWriter<EncryptedEnvelope> responseStream,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         ValidatePowerShellEnabled( );
         RegisteredConnection connection = GetConnection( context );

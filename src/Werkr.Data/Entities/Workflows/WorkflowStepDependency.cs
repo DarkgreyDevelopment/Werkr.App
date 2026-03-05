@@ -8,6 +8,7 @@ namespace Werkr.Data.Entities.Workflows;
 /// </summary>
 [Table( "workflow_step_dependencies" )]
 public class WorkflowStepDependency {
+
     /// <summary>The step that has the dependency (the dependent).</summary>
     public long StepId { get; set; }
 

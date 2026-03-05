@@ -12,4 +12,5 @@ public sealed record JobDto(
     DateTime? EndTime,
     Guid? AgentConnectionId,
     string? Output,
-    string? OutputPath );
+    string? OutputPath
+);

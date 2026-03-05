@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Entities.Schedule;
 
@@ -10,6 +9,7 @@ namespace Werkr.Data.Calendar.Validation;
 /// Invoked programmatically via <see cref="Validate"/> during rule creation and updates.
 /// </summary>
 public static class HolidayRuleValidator {
+
     /// <summary>
     /// Validates the <paramref name="rule"/> and returns <see cref="ValidationResult.Success"/>
     /// if valid, or a <see cref="ValidationResult"/> describing the first violation.

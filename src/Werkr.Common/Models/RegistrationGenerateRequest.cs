@@ -9,4 +9,5 @@ public sealed record RegistrationGenerateRequest(
     string ConnectionName,
     string Password,
     int? ExpirationMinutes,
-    string[]? Tags = null );
+    string[]? Tags = null
+);

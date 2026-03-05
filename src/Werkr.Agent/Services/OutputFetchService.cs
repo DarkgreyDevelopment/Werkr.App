@@ -1,6 +1,5 @@
 using Grpc.Core;
 using Microsoft.Extensions.Options;
-
 using Werkr.Common.Configuration;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
@@ -26,9 +25,11 @@ public sealed class OutputFetchService(
     /// <summary>
     /// Reads the full contents of a job's output log from the Agent's local disk.
     /// </summary>
+    /// <returns>The encrypted envelope containing the job output or an error.</returns>
     public override async Task<EncryptedEnvelope> GetJobOutput(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
@@ -34,17 +34,27 @@ public sealed class AgentConnectionManager(
     /// <returns>A tuple of the <see cref="GrpcChannel"/> and the <see cref="RegisteredConnection"/>.</returns>
     public async Task<(GrpcChannel Channel, RegisteredConnection Connection)> GetChannelAsync(
         Guid agentConnectionId,
-        CancellationToken cancellationToken = default ) {
+        CancellationToken cancellationToken = default
+    ) {
 
         // Try cache first
-        if (_channels.TryGetValue( agentConnectionId, out GrpcChannel? cached ) &&
+        if (_channels.TryGetValue(
+            agentConnectionId,
+            out GrpcChannel? cached
+        ) &&
             cached.State != ConnectivityState.Shutdown) {
             // Still need the connection record for credentials
-            RegisteredConnection cachedConn = await ResolveConnectionAsync( agentConnectionId, cancellationToken );
+            RegisteredConnection cachedConn = await ResolveConnectionAsync(
+                agentConnectionId,
+                cancellationToken
+            );
             return (cached, cachedConn);
         }
 
-        RegisteredConnection connection = await ResolveConnectionAsync( agentConnectionId, cancellationToken );
+        RegisteredConnection connection = await ResolveConnectionAsync(
+            agentConnectionId,
+            cancellationToken
+        );
 
         GrpcChannel channel = GrpcChannel.ForAddress( connection.RemoteUrl, new GrpcChannelOptions {
             HttpHandler = CreateHttpHandler( )
@@ -58,7 +68,9 @@ public sealed class AgentConnectionManager(
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
                 "Created gRPC channel to Agent {AgentId} at {Url}.",
-                agentConnectionId.ToString( ), connection.RemoteUrl );
+                agentConnectionId.ToString( ),
+                connection.RemoteUrl
+            );
         }
 
         return (channel, connection);
@@ -76,7 +88,8 @@ public sealed class AgentConnectionManager(
         RegisteredConnection connection,
         Guid? callId = null,
         CancellationToken cancellationToken = default,
-        TimeSpan? timeout = null ) {
+        TimeSpan? timeout = null
+    ) {
 
         Metadata metadata = new( ) {
             { "authorization", $"Bearer {connection.OutboundApiKey}" },
@@ -90,7 +103,8 @@ public sealed class AgentConnectionManager(
         return new CallOptions(
             headers: metadata,
             deadline: deadline,
-            cancellationToken: cancellationToken );
+            cancellationToken: cancellationToken
+        );
     }
 
     /// <summary>
@@ -99,10 +113,16 @@ public sealed class AgentConnectionManager(
     /// </summary>
     /// <param name="agentConnectionId">The connection ID to remove.</param>
     public void RemoveChannel( Guid agentConnectionId ) {
-        if (_channels.TryRemove( agentConnectionId, out GrpcChannel? channel )) {
+        if (_channels.TryRemove(
+            agentConnectionId,
+            out GrpcChannel? channel
+        )) {
             channel.Dispose( );
             if (logger.IsEnabled( LogLevel.Information )) {
-                logger.LogInformation( "Removed gRPC channel for Agent {AgentId}.", agentConnectionId.ToString( ) );
+                logger.LogInformation(
+                    "Removed gRPC channel for Agent {AgentId}.",
+                    agentConnectionId.ToString( )
+                );
             }
         }
     }
@@ -127,14 +147,18 @@ public sealed class AgentConnectionManager(
 
     private async Task<RegisteredConnection> ResolveConnectionAsync(
         Guid agentConnectionId,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
 
         using IServiceScope scope = scopeFactory.CreateScope( );
         WerkrDbContext dbContext = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
 
         RegisteredConnection? connection = await dbContext.RegisteredConnections
             .AsNoTracking( )
-            .FirstOrDefaultAsync( c => c.Id == agentConnectionId && c.IsServer, cancellationToken );
+            .FirstOrDefaultAsync(
+                c => c.Id == agentConnectionId && c.IsServer,
+                cancellationToken
+            );
 
         return connection is null || connection.Status == ConnectionStatus.Revoked
             ? throw new InvalidOperationException(

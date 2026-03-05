@@ -1,6 +1,6 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Create-rule request.</summary>
+/// <summary>Request body for adding a new holiday rule to a calendar (fixed date).</summary>
 public sealed record HolidayRuleCreateRequest(
     string Name,
     string RuleType,
@@ -13,4 +13,5 @@ public sealed record HolidayRuleCreateRequest(
     string? WindowTimeZoneId,
     string ObservanceRule,
     int? YearStart,
-    int? YearEnd );
+    int? YearEnd
+);

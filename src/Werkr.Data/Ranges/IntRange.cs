@@ -3,7 +3,7 @@ namespace Werkr.Data.Ranges;
 /// <summary>
 /// Represents a contiguous range of integers. Used for formatting
 /// day-of-month lists and other numeric sequences into human-readable descriptions
-/// (e.g., "1–5, 15, 20–25").
+/// (e.g., "1-5, 15, 20-25").
 /// </summary>
 public class IntRange : IRange<int> {
     private const long DefaultStartValue = (long)int.MinValue - 1;

@@ -5,6 +5,7 @@ namespace Werkr.Data.Entities.Interfaces;
 /// </summary>
 /// <typeparam name="T">The type of the primary key.</typeparam>
 public interface IKey<T> {
+
     /// <summary>Primary key.</summary>
     T Id { get; set; }
 }

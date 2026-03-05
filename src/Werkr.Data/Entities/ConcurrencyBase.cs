@@ -7,6 +7,7 @@ namespace Werkr.Data.Entities;
 /// All entities that need optimistic concurrency should inherit from this.
 /// </summary>
 public abstract class ConcurrencyBase {
+
     /// <summary>Timestamp when the entity was first created (UTC).</summary>
     [Required]
     public DateTime Created { get; set; }

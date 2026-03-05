@@ -7,6 +7,7 @@ namespace Werkr.Data.Calendar.Models;
 /// Composite model that aggregates all schedule-related entities into a single in-memory view.
 /// </summary>
 public class Schedule {
+
     /// <summary>The core schedule entity.</summary>
     public required DbSchedule DbSchedule { get; set; }
 
