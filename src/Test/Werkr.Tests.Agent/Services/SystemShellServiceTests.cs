@@ -14,7 +14,10 @@ using Werkr.Tests.Agent.Helpers;
 namespace Werkr.Tests.Agent.Services;
 
 /// <summary>
-/// Unit tests for the <see cref="SystemShellService"/> gRPC service. Validates that a valid encrypted <see cref="ShellRequest"/> produces encrypted <see cref="GrpcLogMsg"/> output, that the service rejects requests when the system shell is disabled (<see cref="StatusCode.Unimplemented"/>), and that a missing <see cref="RegisteredConnection"/> results in <see cref="StatusCode.Internal"/>.
+/// Unit tests for the <see cref="SystemShellService"/> gRPC service. Validates that a valid encrypted
+/// <see cref="ShellRequest"/> produces encrypted <see cref="GrpcLogMsg"/> output, that the service rejects
+/// requests when the system shell is disabled (<see cref="StatusCode.Unimplemented"/>), and that a missing
+/// <see cref="RegisteredConnection"/> results in <see cref="StatusCode.Internal"/>.
 /// </summary>
 [TestClass]
 public class SystemShellServiceTests {
@@ -24,7 +27,8 @@ public class SystemShellServiceTests {
     public TestContext TestContext { get; set; } = null!;
 
     /// <summary>
-    /// Sends a valid encrypted command, verifies the service writes encrypted output, and asserts the decrypted stream contains the expected shell output.
+    /// Sends a valid encrypted command, verifies the service writes encrypted output, and asserts the
+    /// decrypted stream contains the expected shell output.
     /// </summary>
     [TestMethod]
     public async Task RunCommand_ValidEncryptedRequest_WritesEncryptedOutput( ) {
@@ -55,7 +59,8 @@ public class SystemShellServiceTests {
     }
 
     /// <summary>
-    /// Verifies that invoking <see cref="SystemShellService.RunCommand"/> when the system shell is disabled throws an <see cref="RpcException"/> with <see cref="StatusCode.Unimplemented"/>.
+    /// Verifies that invoking <see cref="SystemShellService.RunCommand"/> when the system shell is disabled
+    /// throws an <see cref="RpcException"/> with <see cref="StatusCode.Unimplemented"/>.
     /// </summary>
     [TestMethod]
     public async Task RunCommand_WhenSystemShellDisabled_ThrowsUnimplemented( ) {
@@ -82,7 +87,9 @@ public class SystemShellServiceTests {
     }
 
     /// <summary>
-    /// Verifies that calling <see cref="SystemShellService.RunCommand"/> without a <see cref="RegisteredConnection"/> in the <see cref="ServerCallContext"/> user state throws an <see cref="RpcException"/> with <see cref="StatusCode.Internal"/>.
+    /// Verifies that calling <see cref="SystemShellService.RunCommand"/> without a
+    /// <see cref="RegisteredConnection"/> in the <see cref="ServerCallContext"/> user state throws an
+    /// <see cref="RpcException"/> with <see cref="StatusCode.Internal"/>.
     /// </summary>
     [TestMethod]
     public async Task RunCommand_MissingConnection_ThrowsInternal( ) {

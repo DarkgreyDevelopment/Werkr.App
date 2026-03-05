@@ -119,16 +119,7 @@ public class IntRangeTests {
     /// </summary>
     [TestMethod]
     public void ToString_MultipleRanges_ReturnsCommaSeparated( ) {
-        IntRange[] ranges = [new(
-            1,
-            3
-        ), new(
-            10,
-            10
-        ), new(
-            7,
-            9
-        )];
+        IntRange[] ranges = [new( 1, 3 ), new( 10, 10 ), new( 7, 9 )];
         string result = IntRange.ToString( ranges );
         Assert.AreEqual(
             "1 - 3, 7 - 9, 10",
