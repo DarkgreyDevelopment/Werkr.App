@@ -18,7 +18,7 @@ namespace Werkr.Tests.Server.Identity;
 [TestClass]
 public class IdentityFlowTests {
     /// <summary>
-    /// Verifies that a user with the <see cref="ChangePassword"/> flag set to <see langword="true"/> is redirected to
+    /// Verifies that a user with the <see cref="WerkrUser.ChangePassword"/> flag set to <see langword="true"/> is redirected to
     /// the "/account/change-password" page when the <see cref="WerkrCookieAuthEvents"/> validates the cookie
     /// principal, regardless of the originally requested path.
     /// </summary>
@@ -37,7 +37,7 @@ public class IdentityFlowTests {
     }
 
     /// <summary>
-    /// Verifies that a user with the <see cref="ChangePassword"/> flag set to <see langword="true"/> who attempts to
+    /// Verifies that a user with the <see cref="WerkrUser.ChangePassword"/> flag set to <see langword="true"/> who attempts to
     /// navigate to a page other than "/account/change-password" (e.g., "/agents") is still redirected to the change
     /// password page and that the cookie is marked for renewal.
     /// </summary>
@@ -58,7 +58,7 @@ public class IdentityFlowTests {
 
     /// <summary>
     /// Verifies that a successful password change via <see cref="UserManager.ChangePasswordAsync"/> allows the <see
-    /// cref="ChangePassword"/> flag on the <see cref="WerkrUser"/> to be cleared, confirming that the forced password
+    /// cref="WerkrUser.ChangePassword"/> flag on the <see cref="WerkrUser"/> to be cleared, confirming that the forced password
     /// reset workflow can complete end-to-end.
     /// </summary>
     [TestMethod]
@@ -195,8 +195,8 @@ public class IdentityFlowTests {
     }
 
     /// <summary>
-    /// Verifies that a user with <see cref="Requires2FA"/> set to <see langword="true"/> but <see
-    /// cref="TwoFactorEnabled"/> set to <see langword="false"/> is redirected to "/account/manage/mfa?required=true"
+    /// Verifies that a user with <see cref="WerkrUser.Requires2FA"/> set to <see langword="true"/> but <see
+    /// cref="IdentityUser.TwoFactorEnabled"/> set to <see langword="false"/> is redirected to "/account/manage/mfa?required=true"
     /// during cookie principal validation, enforcing the admin MFA enrollment policy.
     /// </summary>
     [TestMethod]
