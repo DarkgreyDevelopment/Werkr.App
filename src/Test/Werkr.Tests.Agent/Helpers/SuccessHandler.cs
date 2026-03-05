@@ -7,7 +7,7 @@ using Werkr.Core.Operators;
 namespace Werkr.Tests.Agent.Helpers;
 
 /// <summary>
-/// Fake action handler that always succeeds. Used by <see cref="ActionOperatorTests"/>.
+/// Fake action handler that always succeeds. Used by <see cref="Werkr.Tests.Agent.Operators.ActionOperatorTests"/>.
 /// </summary>
 internal sealed class SuccessHandler : IActionHandler {
 

@@ -117,7 +117,7 @@ public class BundleExpirationServiceTests {
     }
 
     /// <summary>
-    /// Verifies that a non-pending bundle (e.g., <see cref="Completed"/>) is not modified by the expiration service.
+    /// Verifies that a non-pending bundle (e.g., <see cref="RegistrationStatus.Completed"/>) is not modified by the expiration service.
     /// </summary>
     [TestMethod]
     public async Task ExecuteAsync_NonPendingBundles_NotModified( ) {

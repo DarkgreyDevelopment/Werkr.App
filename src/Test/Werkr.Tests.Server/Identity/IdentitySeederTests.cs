@@ -96,9 +96,9 @@ public class IdentitySeederTests {
 
     /// <summary>
     /// Verifies that <see cref="IdentitySeeder.SeedAsync"/> creates a default admin user with the email
-    /// "admin@werkr.local", display name "Default Admin", and the appropriate flags set: <see cref="Enabled"/> = <see
-    /// langword="true"/>, <see cref="ChangePassword"/> = <see langword="true"/>, <see cref="Requires2FA"/> = <see
-    /// langword="true"/>, and <see cref="EmailConfirmed"/> = <see langword="true"/>.
+    /// "admin@werkr.local", display name "Default Admin", and the appropriate flags set: <see cref="WerkrUser.Enabled"/> = <see
+    /// langword="true"/>, <see cref="WerkrUser.ChangePassword"/> = <see langword="true"/>, <see cref="WerkrUser.Requires2FA"/> = <see
+    /// langword="true"/>, and <see cref="WerkrUser.EmailConfirmed"/> = <see langword="true"/>.
     /// </summary>
     [TestMethod]
     public async Task SeedAsync_CreatesDefaultAdminUser( ) {
