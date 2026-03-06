@@ -7,4 +7,5 @@ public sealed record WorkflowRunDetailDto(
     DateTime StartTime,
     DateTime? EndTime,
     string Status,
-    IReadOnlyList<JobDto> Jobs );
+    IReadOnlyList<JobDto> Jobs
+);

@@ -1,5 +1,4 @@
 using System.Text.Json;
-
 using Werkr.Common.Models.Actions;
 
 namespace Werkr.Tests.Agent.Helpers;
@@ -10,6 +9,9 @@ namespace Werkr.Tests.Agent.Helpers;
 /// </summary>
 internal static class TestActionDescriptor {
 
+    /// <summary>
+    /// Shared <see cref="JsonSerializerOptions"/> configured with camelCase property naming.
+    /// </summary>
     private static readonly JsonSerializerOptions s_options = new( ) {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
@@ -19,12 +21,18 @@ internal static class TestActionDescriptor {
     /// Shared by all handler tests to avoid creating per-call serializer options.
     /// </summary>
     public static JsonElement Serialize<T>( T value ) =>
-        JsonSerializer.SerializeToElement( value, s_options );
+        JsonSerializer.SerializeToElement(
+            value,
+            s_options
+        );
 
     /// <summary>
     /// Creates an <see cref="ActionDescriptor"/> with serialized parameters.
     /// </summary>
-    public static ActionDescriptor Create<T>( string action, T parameters ) =>
+    public static ActionDescriptor Create<T>(
+        string action,
+        T parameters
+    ) =>
         new( ) {
             Action = action,
             Parameters = Serialize( parameters ),

@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 
 using Grpc.Core;
 
@@ -26,13 +26,24 @@ public static class GrpcOutputReader {
     public static async IAsyncEnumerable<OperatorOutput> ReadAsync(
         IAsyncStreamReader<EncryptedEnvelope> responseStream,
         byte[] sharedKey,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default ) {
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    ) {
 
-        ArgumentNullException.ThrowIfNull( sharedKey, nameof( sharedKey ) );
+        ArgumentNullException.ThrowIfNull(
+            sharedKey,
+            nameof( sharedKey )
+        );
 
         await foreach (EncryptedEnvelope envelope in responseStream.ReadAllAsync( cancellationToken )) {
-            GrpcLogMsg msg = PayloadEncryptor.DecryptFromEnvelope<GrpcLogMsg>( envelope, sharedKey );
-            yield return new OperatorOutput( msg.LogLevel, msg.Message, msg.Timestamp );
+            GrpcLogMsg msg = PayloadEncryptor.DecryptFromEnvelope<GrpcLogMsg>(
+                envelope,
+                sharedKey
+            );
+            yield return new OperatorOutput(
+                msg.LogLevel,
+                msg.Message,
+                msg.Timestamp
+            );
         }
     }
 }

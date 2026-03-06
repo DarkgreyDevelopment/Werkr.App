@@ -1,5 +1,4 @@
 using System.Security.Claims;
-
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
 using Werkr.Data.Identity.Entities;
@@ -24,22 +23,23 @@ public static class AuthEndpoints {
             ApiKeyService apiKeyService,
             JwtTokenService tokenService,
             IPermissionService permissionService,
-            CancellationToken ct ) => {
-                if (string.IsNullOrWhiteSpace( request.ApiKey )) {
-                    return Results.BadRequest( new { message = "API key is required." } );
-                }
+            CancellationToken ct
+        ) => {
+            if (string.IsNullOrWhiteSpace( request.ApiKey )) {
+                return Results.BadRequest( new { message = "API key is required." } );
+            }
 
-                ApiKey? apiKey = await apiKeyService.ValidateAsync( request.ApiKey, ct );
-                if (apiKey is null) {
-                    return Results.Unauthorized( );
-                }
+            ApiKey? apiKey = await apiKeyService.ValidateAsync( request.ApiKey, ct );
+            if (apiKey is null) {
+                return Results.Unauthorized( );
+            }
 
-                IReadOnlyList<Permission> permissions =
+            IReadOnlyList<Permission> permissions =
                     await permissionService.GetPermissionsForRoleAsync( apiKey.Role, ct );
-                string token = tokenService.GenerateToken( apiKey, permissions );
-                DateTime expiresUtc = DateTime.UtcNow.AddMinutes( 15 );
-                return Results.Ok( new TokenResponse( token, expiresUtc ) );
-            } )
+            string token = tokenService.GenerateToken( apiKey, permissions );
+            DateTime expiresUtc = DateTime.UtcNow.AddMinutes( 15 );
+            return Results.Ok( new TokenResponse( token, expiresUtc ) );
+        } )
         .WithName( "ExchangeApiKeyForToken" )
         .WithTags( "Auth" )
         .AllowAnonymous( );
@@ -50,37 +50,42 @@ public static class AuthEndpoints {
             ApiKeyCreateRequest request,
             ApiKeyService apiKeyService,
             ClaimsPrincipal user,
-            CancellationToken ct ) => {
-                string? userId = user.FindFirst( ClaimTypes.NameIdentifier )?.Value;
-                if (string.IsNullOrWhiteSpace( userId )) {
-                    return Results.Unauthorized( );
-                }
+            CancellationToken ct
+        ) => {
+            string? userId = user.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+            if (string.IsNullOrWhiteSpace( userId )) {
+                return Results.Unauthorized( );
+            }
 
-                string? userRole = user.FindFirst( ClaimTypes.Role )?.Value;
-                if (string.IsNullOrWhiteSpace( userRole )) {
-                    return Results.Forbid( );
-                }
+            string? userRole = user.FindFirst( ClaimTypes.Role )?.Value;
+            if (string.IsNullOrWhiteSpace( userRole )) {
+                return Results.Forbid( );
+            }
 
-                (ApiKey apiKey, string rawKey) = await apiKeyService.CreateAsync(
-                    request.Name, userRole, userId, request.ExpiresUtc, ct );
+            (ApiKey apiKey, string rawKey) = await apiKeyService.CreateAsync(
+                request.Name, userRole, userId, request.ExpiresUtc, ct
+            );
 
-                return Results.Created( $"/api/auth/keys/{apiKey.Id}", new ApiKeyCreateResponse(
+            return Results.Created( $"/api/auth/keys/{apiKey.Id}", new ApiKeyCreateResponse(
                     apiKey.Id, apiKey.Name, rawKey, apiKey.KeyPrefix, apiKey.Role,
-                    apiKey.CreatedUtc, apiKey.ExpiresUtc ) );
-            } )
+                    apiKey.CreatedUtc, apiKey.ExpiresUtc
+                ) );
+        } )
         .WithName( "CreateApiKey" )
         .WithTags( "Auth" )
         .RequireAuthorization( Policies.IsAdmin );
 
         _ = app.MapGet( "/api/auth/keys", async (
             ApiKeyService apiKeyService,
-            CancellationToken ct ) => {
-                IReadOnlyList<ApiKey> keys = await apiKeyService.GetAllAsync( ct );
-                List<ApiKeyDto> dtos = [.. keys.Select( k => new ApiKeyDto(
+            CancellationToken ct
+        ) => {
+            IReadOnlyList<ApiKey> keys = await apiKeyService.GetAllAsync( ct );
+            List<ApiKeyDto> dtos = [.. keys.Select( k => new ApiKeyDto(
                     k.Id, k.Name, k.KeyPrefix, k.Role, k.CreatedByUserId,
-                    k.CreatedUtc, k.ExpiresUtc, k.IsRevoked, k.LastUsedUtc ) )];
-                return Results.Ok( dtos );
-            } )
+                    k.CreatedUtc, k.ExpiresUtc, k.IsRevoked, k.LastUsedUtc
+                ) )];
+            return Results.Ok( dtos );
+        } )
         .WithName( "ListApiKeys" )
         .WithTags( "Auth" )
         .RequireAuthorization( Policies.IsAdmin );
@@ -88,10 +93,11 @@ public static class AuthEndpoints {
         _ = app.MapDelete( "/api/auth/keys/{id}", async (
             Guid id,
             ApiKeyService apiKeyService,
-            CancellationToken ct ) => {
-                bool revoked = await apiKeyService.RevokeAsync( id, ct );
-                return revoked ? Results.NoContent( ) : Results.NotFound( );
-            } )
+            CancellationToken ct
+        ) => {
+            bool revoked = await apiKeyService.RevokeAsync( id, ct );
+            return revoked ? Results.NoContent( ) : Results.NotFound( );
+        } )
         .WithName( "RevokeApiKey" )
         .WithTags( "Auth" )
         .RequireAuthorization( Policies.IsAdmin );

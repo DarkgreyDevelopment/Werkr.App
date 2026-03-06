@@ -9,10 +9,13 @@ namespace Werkr.Agent.Operators;
 /// instead of single-line or raw <c>FormatEntryData</c> type names.
 /// </summary>
 /// <remarks>
-/// All setter properties are no-ops — the headless agent has no real console.
+/// All setter properties are no-ops - the headless agent has no real console.
 /// Input methods throw <see cref="NotSupportedException"/> (non-interactive).
 /// </remarks>
 public sealed class WerkrPSHostRawUserInterface : PSHostRawUserInterface {
+    /// <summary>
+    /// The virtual buffer size reported to PowerShell for output formatting.
+    /// </summary>
     private readonly Size _bufferSize;
 
     /// <summary>Creates a new <see cref="WerkrPSHostRawUserInterface"/> with the specified buffer width.</summary>

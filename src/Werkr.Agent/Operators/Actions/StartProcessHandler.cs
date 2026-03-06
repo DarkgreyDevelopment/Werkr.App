@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Channels;
-
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -10,12 +9,18 @@ using Werkr.Core.Security;
 namespace Werkr.Agent.Operators.Actions;
 
 /// <summary>
-/// Handles the <c>StartProcess</c> action — starts an external process.
+/// Handles the <c>StartProcess</c> action - starts an external process.
 /// Optionally waits for the process to exit with an optional timeout.
 /// </summary>
 public sealed class StartProcessHandler : IActionHandler {
 
+    /// <summary>
+    /// Resolves and validates file paths against the agent's allowed-path allowlist.
+    /// </summary>
     private readonly IFilePathResolver _resolver;
+    /// <summary>
+    /// Logger for recording execution errors for this handler.
+    /// </summary>
     private readonly ILogger<StartProcessHandler> _logger;
 
     /// <summary>Creates a new <see cref="StartProcessHandler"/>.</summary>
@@ -31,7 +36,8 @@ public sealed class StartProcessHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
         try {
             StartProcessParameters p = parameters.Deserialize<StartProcessParameters>( ActionJson.SerializerOptions )
                 ?? throw new ArgumentException( "Failed to deserialize StartProcess parameters." );
@@ -127,8 +133,14 @@ public sealed class StartProcessHandler : IActionHandler {
         }
     }
 
+    /// <summary>
+    /// Waits for a process to exit within a specified timeout period.
+    /// Uses linked cancellation tokens to combine the caller's cancellation with the timeout.
+    /// </summary>
+    /// <returns><see langword="true"/> if the process exited within the timeout; <see langword="false"/> if the timeout elapsed.</returns>
     private static async Task<bool> WaitForExitWithTimeout(
-        Process process, int timeoutMs, CancellationToken cancellationToken ) {
+        Process process, int timeoutMs, CancellationToken cancellationToken
+    ) {
         using CancellationTokenSource timeoutCts = new( timeoutMs );
         using CancellationTokenSource linkedCts =
             CancellationTokenSource.CreateLinkedTokenSource( cancellationToken, timeoutCts.Token );

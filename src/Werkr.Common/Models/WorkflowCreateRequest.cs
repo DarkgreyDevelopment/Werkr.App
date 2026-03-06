@@ -5,4 +5,5 @@ public sealed record WorkflowCreateRequest(
     string Name,
     string? Description = null,
     bool Enabled = true,
-    Guid? ScheduleId = null );
+    Guid? ScheduleId = null
+);

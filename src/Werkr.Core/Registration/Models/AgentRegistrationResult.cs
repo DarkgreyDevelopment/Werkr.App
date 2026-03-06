@@ -1,4 +1,4 @@
-namespace Werkr.Core.Registration.Models;
+﻿namespace Werkr.Core.Registration.Models;
 
 /// <summary>
 /// Result returned to the Agent after a registration attempt completes.
@@ -11,4 +11,5 @@ public sealed record AgentRegistrationResult(
     bool Success,
     string? ApiKey,
     byte[]? SharedKey,
-    string? ErrorMessage );
+    string? ErrorMessage
+);

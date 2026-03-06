@@ -14,6 +14,9 @@ public sealed record StartProcessParameters {
     /// <summary>Whether to wait for the process to exit before completing.</summary>
     public bool WaitForExit { get; init; }
 
-    /// <summary>Timeout in milliseconds when <see cref="WaitForExit"/> is true. Null means wait indefinitely.</summary>
+    /// <summary>
+    /// Timeout in milliseconds when <see cref="WaitForExit"/> is true.
+    /// Null means wait indefinitely.
+    /// </summary>
     public int? TimeoutMs { get; init; }
 }

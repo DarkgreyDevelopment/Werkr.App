@@ -12,7 +12,7 @@ public interface IPermissionService {
     /// <param name="roles">The role names to check.</param>
     /// <param name="permission">The permission to verify.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns><c>true</c> if at least one role has the permission; otherwise <c>false</c>.</returns>
+    /// <returns><see langword="true"/> if at least one role has the permission; otherwise <see langword="false"/>.</returns>
     Task<bool> HasPermissionAsync( IEnumerable<string> roles, Permission permission, CancellationToken ct = default );
 
     /// <summary>

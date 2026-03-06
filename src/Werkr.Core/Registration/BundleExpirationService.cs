@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -29,17 +29,26 @@ public class BundleExpirationService(
     /// <inheritdoc/>
     protected override async Task ExecuteAsync( CancellationToken stoppingToken ) {
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "BundleExpirationService started. Checking every {Interval}.", _interval );
+            logger.LogInformation(
+                "BundleExpirationService started. Checking every {Interval}.",
+                _interval
+            );
         }
 
         while (!stoppingToken.IsCancellationRequested) {
             try {
                 await ExpireStaleBundlesAsync( stoppingToken );
             } catch (Exception ex) when (ex is not OperationCanceledException) {
-                logger.LogError( ex, "Error in BundleExpirationService." );
+                logger.LogError(
+                    ex,
+                    "Error in BundleExpirationService."
+                );
             }
 
-            await Task.Delay( _interval, stoppingToken );
+            await Task.Delay(
+                _interval,
+                stoppingToken
+            );
         }
     }
 
@@ -64,7 +73,10 @@ public class BundleExpirationService(
         _ = await dbContext.SaveChangesAsync( ct );
 
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "Expired {Count} stale registration bundle(s).", staleBundles.Count );
+            logger.LogInformation(
+                "Expired {Count} stale registration bundle(s).",
+                staleBundles.Count
+            );
         }
     }
 }

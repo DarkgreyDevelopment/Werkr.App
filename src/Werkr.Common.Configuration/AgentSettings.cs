@@ -2,7 +2,6 @@ namespace Werkr.Common.Configuration;
 
 /// <summary>
 /// Configuration DTO for agent-specific settings.
-/// Compatible with the options pattern (<c>IOptions&lt;T&gt;</c>).
 /// </summary>
 public sealed class AgentSettings {
     /// <summary>Configuration section name.</summary>

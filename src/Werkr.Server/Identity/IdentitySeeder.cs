@@ -1,8 +1,6 @@
 using System.Security.Cryptography;
-
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Common.Auth;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
@@ -62,7 +60,8 @@ public static class IdentitySeeder {
 
         // Seed default admin if no admin exists
         IList<WerkrUser> admins = await userManager.GetUsersInRoleAsync(
-            DefaultRoles.Admin.ToString( ) );
+            DefaultRoles.Admin.ToString()
+        );
 
         if (admins.Count == 0) {
             string generatedPassword = GenerateDefaultAdminPassword( );
@@ -111,16 +110,21 @@ public static class IdentitySeeder {
                     .CreateLogger( "Werkr.Identity.Seeder" );
                 foreach (IdentityError error in result.Errors) {
                     logger.LogError( "Failed to create default admin: {Code} — {Description}",
-                        error.Code, error.Description );
+                        error.Code, error.Description
+                    );
                 }
             }
         }
 
     }
 
+    /// <summary>
+    /// Ensures that every <see cref="Permission"/> defined in <see cref="s_defaultPermissions"/> for each <see cref="DefaultRoles"/> entry has a corresponding <see cref="RolePermission"/> row in the database. Missing mappings are inserted; existing ones are left untouched.
+    /// </summary>
     private static async Task SeedPermissionsAsync(
         RoleManager<IdentityRole> roleManager,
-        WerkrIdentityDbContext dbContext ) {
+        WerkrIdentityDbContext dbContext
+    ) {
         foreach ((DefaultRoles defaultRole, Permission[] permissions) in s_defaultPermissions) {
             IdentityRole? role = await roleManager.FindByNameAsync( defaultRole.ToString( ) );
             if (role is null) {
@@ -143,6 +147,9 @@ public static class IdentitySeeder {
         _ = await dbContext.SaveChangesAsync( );
     }
 
+    /// <summary>
+    /// Generates a cryptographically random 24-character password that satisfies typical ASP.NET Core Identity password-complexity rules. The password is guaranteed to contain at least one uppercase letter, one lowercase letter, one digit, and one symbol before the remaining characters are filled from the full character set and Fisher-Yates shuffled.
+    /// </summary>
     private static string GenerateDefaultAdminPassword( ) {
         const string Upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         const string Lower = "abcdefghijklmnopqrstuvwxyz";

@@ -15,7 +15,8 @@ public sealed class PermissionAuthorizationHandler( IPermissionService permissio
     /// <inheritdoc/>
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
-        PermissionRequirement requirement ) {
+        PermissionRequirement requirement
+    ) {
         if (context.User.Identity?.IsAuthenticated != true) {
             return;
         }

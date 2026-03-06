@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +30,8 @@ public sealed class JobExecutionService(
     AgentResolver agentResolver,
     JobOutputWriter outputWriter,
     SuccessCriteriaEvaluator criteriaEvaluator,
-    ILogger<JobExecutionService> logger ) {
+    ILogger<JobExecutionService> logger
+) {
 
     /// <summary>
     /// Executes a task by ID: resolves an agent, creates a job record,
@@ -41,12 +42,21 @@ public sealed class JobExecutionService(
     /// <returns>The finalized <see cref="WerkrJob"/> record.</returns>
     /// <exception cref="KeyNotFoundException">Task not found.</exception>
     /// <exception cref="InvalidOperationException">No matching agent available.</exception>
-    public async Task<WerkrJob> ExecuteAsync( long taskId, CancellationToken ct = default ) {
+    public async Task<WerkrJob> ExecuteAsync(
+        long taskId,
+        CancellationToken ct = default
+    ) {
         // Load the task
-        WerkrTask task = await dbContext.Tasks.AsNoTracking( ).FirstOrDefaultAsync( t => t.Id == taskId, ct )
+        WerkrTask task = await dbContext.Tasks.AsNoTracking( ).FirstOrDefaultAsync(
+            t => t.Id == taskId,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Task with Id={taskId} was not found." );
 
-        return await ExecuteAsync( task, ct );
+        return await ExecuteAsync(
+            task,
+            ct
+        );
     }
 
     /// <summary>
@@ -57,13 +67,24 @@ public sealed class JobExecutionService(
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The finalized <see cref="WerkrJob"/> record.</returns>
     /// <exception cref="InvalidOperationException">No matching agent available.</exception>
-    public async Task<WerkrJob> ExecuteAsync( WerkrTask task, CancellationToken ct = default ) {
+    public async Task<WerkrJob> ExecuteAsync(
+        WerkrTask task,
+        CancellationToken ct = default
+    ) {
         // Resolve agent
-        RegisteredConnection agent = await agentResolver.ResolveAsync( task.TargetTags, ct )
+        RegisteredConnection agent = await agentResolver.ResolveAsync(
+            task.TargetTags,
+            ct
+        )
             ?? throw new InvalidOperationException(
                 $"No connected agent found matching tags [{string.Join( ", ", task.TargetTags )}]." );
 
-        return await ExecuteOnAgentAsync( task, agent, workflowRunId: null, ct );
+        return await ExecuteOnAgentAsync(
+            task,
+            agent,
+            workflowRunId: null,
+            ct
+        );
     }
 
     /// <summary>
@@ -81,7 +102,8 @@ public sealed class JobExecutionService(
         WerkrTask task,
         RegisteredConnection agent,
         Guid? workflowRunId,
-        CancellationToken ct = default ) {
+        CancellationToken ct = default
+    ) {
         // Create the job record immediately (in-flight visibility)
         WerkrJob job = new( ) {
             TaskId = task.Id,
@@ -89,7 +111,8 @@ public sealed class JobExecutionService(
             StartTime = DateTime.UtcNow,
             AgentConnectionId = agent.Id,
             WorkflowRunId = workflowRunId,
-            OutputPath = $"{Guid.Empty}.log", // placeholder until Id is generated
+            OutputPath = $"{Guid.Empty}.log",
+            // placeholder until Id is generated
         };
         _ = dbContext.Jobs.Add( job );
         _ = await dbContext.SaveChangesAsync( ct );
@@ -100,13 +123,20 @@ public sealed class JobExecutionService(
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
                 "Executing task {TaskId} '{TaskName}' as job {JobId} on agent {AgentId}.",
-                task.Id.ToString( ), task.Name, job.Id.ToString( ), agent.Id.ToString( ) );
+                task.Id.ToString( ),
+                task.Name,
+                job.Id.ToString( ),
+                agent.Id.ToString( )
+            );
         }
 
         // Set up timeout
         int timeoutMinutes = (int) ( task.TimeoutMinutes ?? 30 );
         using CancellationTokenSource timeoutCts = new( TimeSpan.FromMinutes( timeoutMinutes ) );
-        using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource( ct, timeoutCts.Token );
+        using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            ct,
+            timeoutCts.Token
+        );
 
         Stopwatch stopwatch = Stopwatch.StartNew( );
         List<OperatorOutput> collectedOutput = [];
@@ -116,12 +146,20 @@ public sealed class JobExecutionService(
 
         try {
             // Map TaskActionType to OperatorType and dispatch
-            IAsyncEnumerable<OperatorOutput> outputStream = DispatchTask( task, agent.Id, linkedCts.Token );
+            IAsyncEnumerable<OperatorOutput> outputStream = DispatchTask(
+                task,
+                agent.Id,
+                linkedCts.Token
+            );
 
             // Consume output stream, writing each line to disk incrementally
             await foreach (OperatorOutput output in outputStream.WithCancellation( linkedCts.Token )) {
                 collectedOutput.Add( output );
-                await outputWriter.WriteLineAsync( job.Id, output, CancellationToken.None );
+                await outputWriter.WriteLineAsync(
+                    job.Id,
+                    output,
+                    CancellationToken.None
+                );
             }
 
             // Try to extract exit code from output (convention: last line with "ExitCode: N")
@@ -130,19 +168,35 @@ public sealed class JobExecutionService(
             errorCategory = ErrorCategory.Timeout;
             executionException = new TimeoutException(
                 $"Job {job.Id} timed out after {timeoutMinutes} minutes." );
-            logger.LogWarning( "Job {JobId} timed out after {Timeout} minutes.", job.Id.ToString( ), timeoutMinutes.ToString( ) );
+            logger.LogWarning(
+                "Job {JobId} timed out after {Timeout} minutes.",
+                job.Id.ToString( ),
+                timeoutMinutes.ToString( )
+            );
         } catch (CommandDispatcherException cde) {
             errorCategory = MapDispatchFailure( cde.Reason );
             executionException = cde;
-            logger.LogError( cde, "Job {JobId} dispatch failed: {Reason}.", job.Id.ToString( ), cde.Reason.ToString( ) );
+            logger.LogError(
+                cde,
+                "Job {JobId} dispatch failed: {Reason}.",
+                job.Id.ToString( ),
+                cde.Reason.ToString( )
+            );
         } catch (OperationCanceledException ex) when (ct.IsCancellationRequested) {
             errorCategory = ErrorCategory.Unknown;
             executionException = ex;
-            logger.LogWarning( "Job {JobId} was cancelled.", job.Id.ToString( ) );
+            logger.LogWarning(
+                "Job {JobId} was cancelled.",
+                job.Id.ToString( )
+            );
         } catch (Exception ex) {
             errorCategory = ErrorCategory.ScriptError;
             executionException = ex;
-            logger.LogError( ex, "Job {JobId} failed with unexpected error.", job.Id.ToString( ) );
+            logger.LogError(
+                ex,
+                "Job {JobId} failed with unexpected error.",
+                job.Id.ToString( )
+            );
         }
 
         stopwatch.Stop( );
@@ -152,7 +206,10 @@ public sealed class JobExecutionService(
             task.ActionType, task.SuccessCriteria, exitCode, collectedOutput, executionException );
 
         // Get tail preview
-        string? tailPreview = await outputWriter.GetTailPreviewAsync( job.Id, CancellationToken.None );
+        string? tailPreview = await outputWriter.GetTailPreviewAsync(
+            job.Id,
+            CancellationToken.None
+        );
 
         // Finalize the job record
         job.EndTime = DateTime.UtcNow;
@@ -166,9 +223,15 @@ public sealed class JobExecutionService(
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
-                "Job {JobId} completed: Success={Success}, ExitCode={ExitCode}, Runtime={Runtime:F1}s, ErrorCategory={ErrorCategory}.",
-                job.Id.ToString( ), success.ToString( ), exitCode?.ToString( ) ?? "null",
-                stopwatch.Elapsed.TotalSeconds, errorCategory.ToString( ) );
+                "Job {JobId} completed: Success={Success}, " +
+                "ExitCode={ExitCode}, Runtime={Runtime:F1}s, " +
+                "ErrorCategory={ErrorCategory}.",
+                job.Id.ToString( ),
+                success.ToString( ),
+                exitCode?.ToString( ) ?? "null",
+                stopwatch.Elapsed.TotalSeconds,
+                errorCategory.ToString( )
+            );
         }
 
         return job;
@@ -181,7 +244,11 @@ public sealed class JobExecutionService(
     /// <param name="limit">Maximum number of jobs to return.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A list of jobs for the specified task.</returns>
-    public async Task<IReadOnlyList<WerkrJob>> GetJobHistoryAsync( long taskId, int limit = 50, CancellationToken ct = default ) =>
+    public async Task<IReadOnlyList<WerkrJob>> GetJobHistoryAsync(
+        long taskId,
+        int limit = 50,
+        CancellationToken ct = default
+    ) =>
         await dbContext.Jobs.AsNoTracking( )
             .Include( j => j.Task )
             .Include( j => j.AgentConnection )
@@ -194,7 +261,8 @@ public sealed class JobExecutionService(
     /// Retrieves recent jobs across all tasks, ordered by most recent first.
     /// Supports optional filtering by success status and date range.
     /// </summary>
-    /// <param name="success">Optional filter — <c>true</c> for successful, <c>false</c> for failed, <c>null</c> for all.</param>
+    /// <param name="success">Optional filter — <c>true</c> for successful, <c>false</c> for failed, <c>null</c> for
+    /// all.</param>
     /// <param name="since">Optional start of date/time window (UTC).</param>
     /// <param name="until">Optional end of date/time window (UTC).</param>
     /// <param name="limit">Maximum number of jobs to return.</param>
@@ -205,7 +273,8 @@ public sealed class JobExecutionService(
         DateTime? since = null,
         DateTime? until = null,
         int limit = 50,
-        CancellationToken ct = default ) {
+        CancellationToken ct = default
+    ) {
         IQueryable<WerkrJob> query = dbContext.Jobs.AsNoTracking( )
             .Include( j => j.Task )
             .Include( j => j.AgentConnection );
@@ -234,8 +303,14 @@ public sealed class JobExecutionService(
     /// <param name="jobId">The job identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The job, or null if not found.</returns>
-    public async Task<WerkrJob?> GetJobAsync( Guid jobId, CancellationToken ct = default ) =>
-        await dbContext.Jobs.AsNoTracking( ).FirstOrDefaultAsync( j => j.Id == jobId, ct );
+    public async Task<WerkrJob?> GetJobAsync(
+        Guid jobId,
+        CancellationToken ct = default
+    ) =>
+        await dbContext.Jobs.AsNoTracking( ).FirstOrDefaultAsync(
+            j => j.Id == jobId,
+            ct
+        );
 
     /// <summary>
     /// Retrieves the full output for a job from disk.
@@ -243,8 +318,14 @@ public sealed class JobExecutionService(
     /// <param name="jobId">The job identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The full output text, or null if the file does not exist.</returns>
-    public async Task<string?> GetJobOutputAsync( Guid jobId, CancellationToken ct = default ) =>
-        await outputWriter.ReadFullOutputAsync( jobId, ct );
+    public async Task<string?> GetJobOutputAsync(
+        Guid jobId,
+        CancellationToken ct = default
+    ) =>
+        await outputWriter.ReadFullOutputAsync(
+            jobId,
+            ct
+        );
 
     /// <summary>
     /// Maps a <see cref="TaskActionType"/> to an <see cref="OperatorType"/>
@@ -255,24 +336,60 @@ public sealed class JobExecutionService(
 
         return task.ActionType switch {
             TaskActionType.PowerShellCommand =>
-                commandDispatcher.ExecuteCommandAsync( agentConnectionId, OperatorType.PowerShell, task.Content, ct ),
+                commandDispatcher.ExecuteCommandAsync(
+                    agentConnectionId,
+                    OperatorType.PowerShell,
+                    task.Content,
+                    ct
+                ),
 
             TaskActionType.PowerShellScript =>
                 task.Arguments is { Length: > 0 }
-                    ? commandDispatcher.ExecuteScriptAsync( agentConnectionId, OperatorType.PowerShell, task.Content, task.Arguments, ct )
-                    : commandDispatcher.ExecuteScriptAsync( agentConnectionId, OperatorType.PowerShell, task.Content, null, ct ),
+                    ? commandDispatcher.ExecuteScriptAsync(
+                        agentConnectionId,
+                        OperatorType.PowerShell,
+                        task.Content,
+                        task.Arguments,
+                        ct
+                    )
+                    : commandDispatcher.ExecuteScriptAsync(
+                        agentConnectionId,
+                        OperatorType.PowerShell,
+                        task.Content,
+                        null,
+                        ct
+                    ),
 
             TaskActionType.ShellCommand =>
-                commandDispatcher.ExecuteCommandAsync( agentConnectionId, OperatorType.SystemShell, task.Content, ct ),
+                commandDispatcher.ExecuteCommandAsync(
+                    agentConnectionId,
+                    OperatorType.SystemShell,
+                    task.Content,
+                    ct
+                ),
 
             TaskActionType.ShellScript =>
                 task.Arguments is { Length: > 0 }
-                    ? commandDispatcher.ExecuteScriptAsync( agentConnectionId, OperatorType.SystemShell, task.Content, task.Arguments, ct )
-                    : commandDispatcher.ExecuteScriptAsync( agentConnectionId, OperatorType.SystemShell, task.Content, null, ct ),
+                    ? commandDispatcher.ExecuteScriptAsync(
+                        agentConnectionId,
+                        OperatorType.SystemShell,
+                        task.Content,
+                        task.Arguments,
+                        ct
+                    )
+                    : commandDispatcher.ExecuteScriptAsync(
+                        agentConnectionId,
+                        OperatorType.SystemShell,
+                        task.Content,
+                        null,
+                        ct
+                    ),
 
             TaskActionType.Action =>
                 commandDispatcher.ExecuteActionAsync( agentConnectionId,
-                    CreateActionDescriptor( task ), ct ),
+                    CreateActionDescriptor( task ),
+                    ct
+                ),
 
             _ => throw new InvalidOperationException( $"Unsupported action type: {task.ActionType}." )
         };
@@ -281,7 +398,10 @@ public sealed class JobExecutionService(
     private static ActionDescriptor CreateActionDescriptor( WerkrTask task ) {
         using JsonDocument parsedParameters = JsonDocument.Parse( task.ActionParameters ?? "{}" );
         return new ActionDescriptor {
-            Action = task.ActionSubType ?? throw new InvalidOperationException( "ActionSubType is required for Action tasks." ),
+            Action = task.ActionSubType
+                ?? throw new InvalidOperationException(
+                    "ActionSubType is required for Action tasks."
+                ),
             Parameters = parsedParameters.RootElement.Clone( ),
         };
     }
@@ -306,14 +426,23 @@ public sealed class JobExecutionService(
     /// </summary>
     private static int? ExtractExitCode( List<OperatorOutput> output ) {
         // Look for exit code in reverse order (most likely in last few lines)
-        for (int i = output.Count - 1; i >= Math.Max( 0, output.Count - 10 ); i--) {
+        for (int i = output.Count - 1; i >= Math.Max(
+            0,
+            output.Count - 10
+        ); i--) {
             string message = output[i].Message;
 
             // Pattern: "Process exited with code 0" or "exited with code 123"
-            int idx = message.LastIndexOf( "exited with code ", StringComparison.OrdinalIgnoreCase );
+            int idx = message.LastIndexOf(
+                "exited with code ",
+                StringComparison.OrdinalIgnoreCase
+            );
             if (idx >= 0) {
                 string codeStr = message[( idx + "exited with code ".Length )..].Trim( );
-                if (int.TryParse( codeStr, out int code )) {
+                if (int.TryParse(
+                    codeStr,
+                    out int code
+                )) {
                     return code;
                 }
             }

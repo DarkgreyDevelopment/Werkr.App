@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using Werkr.Data;
@@ -12,17 +12,26 @@ namespace Werkr.Core.Workflows;
 /// </summary>
 /// <param name="dbContext">Database context.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowService> logger ) {
+public sealed class WorkflowService(
+    WerkrDbContext dbContext,
+    ILogger<WorkflowService> logger
+) {
 
     /// <summary>Creates a new workflow.</summary>
     /// <param name="workflow">The workflow to create.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The created workflow with generated Id.</returns>
     /// <exception cref="InvalidOperationException">Workflow name is not unique.</exception>
-    public async Task<Workflow> CreateAsync( Workflow workflow, CancellationToken ct = default ) {
+    public async Task<Workflow> CreateAsync(
+        Workflow workflow,
+        CancellationToken ct = default
+    ) {
         ValidateWorkflow( workflow );
 
-        bool nameExists = await dbContext.Workflows.AnyAsync( w => w.Name == workflow.Name, ct );
+        bool nameExists = await dbContext.Workflows.AnyAsync(
+            w => w.Name == workflow.Name,
+            ct
+        );
         if (nameExists) {
             throw new InvalidOperationException( $"A workflow with name '{workflow.Name}' already exists." );
         }
@@ -32,7 +41,9 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Created workflow {WorkflowId} '{WorkflowName}'.",
-                workflow.Id.ToString( ), workflow.Name );
+                workflow.Id.ToString( ),
+                workflow.Name
+            );
         }
 
         return workflow;
@@ -44,10 +55,16 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <returns>The updated workflow.</returns>
     /// <exception cref="KeyNotFoundException">Workflow not found.</exception>
     /// <exception cref="InvalidOperationException">Workflow name is not unique.</exception>
-    public async Task<Workflow> UpdateAsync( Workflow workflow, CancellationToken ct = default ) {
+    public async Task<Workflow> UpdateAsync(
+        Workflow workflow,
+        CancellationToken ct = default
+    ) {
         ValidateWorkflow( workflow );
 
-        Workflow existing = await dbContext.Workflows.FirstOrDefaultAsync( w => w.Id == workflow.Id, ct )
+        Workflow existing = await dbContext.Workflows.FirstOrDefaultAsync(
+            w => w.Id == workflow.Id,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Workflow with Id={workflow.Id} was not found." );
 
         bool nameConflict = await dbContext.Workflows.AnyAsync(
@@ -65,7 +82,9 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Updated workflow {WorkflowId} '{WorkflowName}'.",
-                existing.Id.ToString( ), existing.Name );
+                existing.Id.ToString( ),
+                existing.Name
+            );
         }
 
         return existing;
@@ -75,8 +94,14 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <param name="workflowId">The workflow identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Workflow not found.</exception>
-    public async Task DeleteAsync( long workflowId, CancellationToken ct = default ) {
-        Workflow existing = await dbContext.Workflows.FirstOrDefaultAsync( w => w.Id == workflowId, ct )
+    public async Task DeleteAsync(
+        long workflowId,
+        CancellationToken ct = default
+    ) {
+        Workflow existing = await dbContext.Workflows.FirstOrDefaultAsync(
+            w => w.Id == workflowId,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Workflow with Id={workflowId} was not found." );
 
         _ = dbContext.Workflows.Remove( existing );
@@ -84,7 +109,9 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Deleted workflow {WorkflowId} '{WorkflowName}'.",
-                workflowId.ToString( ), existing.Name );
+                workflowId.ToString( ),
+                existing.Name
+            );
         }
     }
 
@@ -92,7 +119,10 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <param name="workflowId">The workflow identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The workflow, or null if not found.</returns>
-    public async Task<Workflow?> GetByIdAsync( long workflowId, CancellationToken ct = default ) =>
+    public async Task<Workflow?> GetByIdAsync(
+        long workflowId,
+        CancellationToken ct = default
+    ) =>
         await dbContext.Workflows
             .Include( w => w.Steps )
                 .ThenInclude( s => s.Dependencies )
@@ -100,7 +130,10 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
                 .ThenInclude( s => s.Task )
             .Include( w => w.Schedule )
             .AsNoTracking( )
-            .FirstOrDefaultAsync( w => w.Id == workflowId, ct );
+            .FirstOrDefaultAsync(
+                w => w.Id == workflowId,
+                ct
+            );
 
     /// <summary>Retrieves all workflows with steps.</summary>
     /// <param name="ct">Cancellation token.</param>
@@ -121,8 +154,15 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <param name="step">The step to add.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Workflow not found.</exception>
-    public async Task<WorkflowStep> AddStepAsync( long workflowId, WorkflowStep step, CancellationToken ct = default ) {
-        bool exists = await dbContext.Workflows.AnyAsync( w => w.Id == workflowId, ct );
+    public async Task<WorkflowStep> AddStepAsync(
+        long workflowId,
+        WorkflowStep step,
+        CancellationToken ct = default
+    ) {
+        bool exists = await dbContext.Workflows.AnyAsync(
+            w => w.Id == workflowId,
+            ct
+        );
         if (!exists) {
             throw new KeyNotFoundException( $"Workflow with Id={workflowId} was not found." );
         }
@@ -133,7 +173,9 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Added step {StepId} to workflow {WorkflowId}.",
-                step.Id.ToString( ), workflowId.ToString( ) );
+                step.Id.ToString( ),
+                workflowId.ToString( )
+            );
         }
 
         return step;
@@ -143,8 +185,14 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <param name="stepId">The step identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Step not found.</exception>
-    public async Task RemoveStepAsync( long stepId, CancellationToken ct = default ) {
-        WorkflowStep step = await dbContext.WorkflowSteps.FirstOrDefaultAsync( s => s.Id == stepId, ct )
+    public async Task RemoveStepAsync(
+        long stepId,
+        CancellationToken ct = default
+    ) {
+        WorkflowStep step = await dbContext.WorkflowSteps.FirstOrDefaultAsync(
+            s => s.Id == stepId,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"WorkflowStep with Id={stepId} was not found." );
 
         _ = dbContext.WorkflowSteps.Remove( step );
@@ -152,7 +200,9 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Removed step {StepId} from workflow {WorkflowId}.",
-                stepId.ToString( ), step.WorkflowId.ToString( ) );
+                stepId.ToString( ),
+                step.WorkflowId.ToString( )
+            );
         }
     }
 
@@ -160,8 +210,14 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <param name="step">The step with updated values.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Step not found.</exception>
-    public async Task<WorkflowStep> UpdateStepAsync( WorkflowStep step, CancellationToken ct = default ) {
-        WorkflowStep existing = await dbContext.WorkflowSteps.FirstOrDefaultAsync( s => s.Id == step.Id, ct )
+    public async Task<WorkflowStep> UpdateStepAsync(
+        WorkflowStep step,
+        CancellationToken ct = default
+    ) {
+        WorkflowStep existing = await dbContext.WorkflowSteps.FirstOrDefaultAsync(
+            s => s.Id == step.Id,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"WorkflowStep with Id={step.Id} was not found." );
 
         existing.TaskId = step.TaskId;
@@ -182,23 +238,36 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Step not found.</exception>
     /// <exception cref="InvalidOperationException">Dependency already exists or self-reference.</exception>
-    public async Task AddStepDependencyAsync( long stepId, long dependsOnStepId, CancellationToken ct = default ) {
+    public async Task AddStepDependencyAsync(
+        long stepId,
+        long dependsOnStepId,
+        CancellationToken ct = default
+    ) {
         if (stepId == dependsOnStepId) {
             throw new InvalidOperationException( "A step cannot depend on itself." );
         }
 
-        bool stepExists = await dbContext.WorkflowSteps.AnyAsync( s => s.Id == stepId, ct );
+        bool stepExists = await dbContext.WorkflowSteps.AnyAsync(
+            s => s.Id == stepId,
+            ct
+        );
         if (!stepExists) {
             throw new KeyNotFoundException( $"WorkflowStep with Id={stepId} was not found." );
         }
 
-        bool depExists = await dbContext.WorkflowSteps.AnyAsync( s => s.Id == dependsOnStepId, ct );
+        bool depExists = await dbContext.WorkflowSteps.AnyAsync(
+            s => s.Id == dependsOnStepId,
+            ct
+        );
         if (!depExists) {
             throw new KeyNotFoundException( $"WorkflowStep with Id={dependsOnStepId} was not found." );
         }
 
         bool alreadyExists = await dbContext.WorkflowStepDependencies
-            .AnyAsync( d => d.StepId == stepId && d.DependsOnStepId == dependsOnStepId, ct );
+            .AnyAsync(
+                d => d.StepId == stepId && d.DependsOnStepId == dependsOnStepId,
+                ct
+            );
         if (alreadyExists) {
             throw new InvalidOperationException(
                 $"Dependency from step {stepId} on step {dependsOnStepId} already exists." );
@@ -213,7 +282,9 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
 
         if (logger.IsEnabled( LogLevel.Debug )) {
             logger.LogDebug( "Added dependency: step {StepId} depends on step {DepStepId}.",
-                stepId.ToString( ), dependsOnStepId.ToString( ) );
+                stepId.ToString( ),
+                dependsOnStepId.ToString( )
+            );
         }
     }
 
@@ -222,9 +293,16 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <param name="dependsOnStepId">The predecessor step.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Dependency not found.</exception>
-    public async Task RemoveStepDependencyAsync( long stepId, long dependsOnStepId, CancellationToken ct = default ) {
+    public async Task RemoveStepDependencyAsync(
+        long stepId,
+        long dependsOnStepId,
+        CancellationToken ct = default
+    ) {
         WorkflowStepDependency dep = await dbContext.WorkflowStepDependencies
-            .FirstOrDefaultAsync( d => d.StepId == stepId && d.DependsOnStepId == dependsOnStepId, ct )
+            .FirstOrDefaultAsync(
+                d => d.StepId == stepId && d.DependsOnStepId == dependsOnStepId,
+                ct
+            )
             ?? throw new KeyNotFoundException(
                 $"Dependency from step {stepId} on step {dependsOnStepId} was not found." );
 
@@ -241,15 +319,25 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
     /// <returns>Topologically sorted steps, ties broken by <see cref="WorkflowStep.Order"/>.</returns>
     /// <exception cref="KeyNotFoundException">Workflow not found.</exception>
     /// <exception cref="InvalidOperationException">Cycle detected or control flow validation failed.</exception>
-    public async Task<IReadOnlyList<WorkflowStep>> ValidateDagAsync( long workflowId, CancellationToken ct = default ) {
+    public async Task<IReadOnlyList<WorkflowStep>> ValidateDagAsync(
+        long workflowId,
+        CancellationToken ct = default
+    ) {
         List<WorkflowStep> steps = await dbContext.WorkflowSteps
             .Include( s => s.Dependencies )
             .Where( s => s.WorkflowId == workflowId )
             .ToListAsync( ct );
 
         if (steps.Count == 0) {
-            bool workflowExists = await dbContext.Workflows.AnyAsync( w => w.Id == workflowId, ct );
-            return !workflowExists ? throw new KeyNotFoundException( $"Workflow with Id={workflowId} was not found." ) : [];
+            bool workflowExists = await dbContext.Workflows.AnyAsync(
+                w => w.Id == workflowId,
+                ct
+            );
+            return !workflowExists
+                ? throw new KeyNotFoundException(
+                    $"Workflow with Id={workflowId} was not found."
+                )
+                : [];
         }
 
         // Build adjacency list and in-degree map
@@ -276,7 +364,10 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
         PriorityQueue<long, int> queue = new( );
         foreach (KeyValuePair<long, int> kvp in inDegree) {
             if (kvp.Value == 0) {
-                queue.Enqueue( kvp.Key, stepMap[kvp.Key].Order );
+                queue.Enqueue(
+                    kvp.Key,
+                    stepMap[kvp.Key].Order
+                );
             }
         }
 
@@ -288,7 +379,10 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
             foreach (long dependent in adjacency[current]) {
                 inDegree[dependent]--;
                 if (inDegree[dependent] == 0) {
-                    queue.Enqueue( dependent, stepMap[dependent].Order );
+                    queue.Enqueue(
+                        dependent,
+                        stepMap[dependent].Order
+                    );
                 }
             }
         }
@@ -325,8 +419,14 @@ public sealed class WorkflowService( WerkrDbContext dbContext, ILogger<WorkflowS
         }
 
         Dictionary<long, WorkflowStep> stepMap = steps.ToDictionary( s => s.Id );
-        Dictionary<long, int> inDegree = steps.ToDictionary( s => s.Id, _ => 0 );
-        Dictionary<long, List<long>> adjacency = steps.ToDictionary( s => s.Id, _ => new List<long>( ) );
+        Dictionary<long, int> inDegree = steps.ToDictionary(
+            s => s.Id,
+            _ => 0
+        );
+        Dictionary<long, List<long>> adjacency = steps.ToDictionary(
+            s => s.Id,
+            _ => new List<long>( )
+        );
 
         foreach (WorkflowStep step in steps) {
             foreach (WorkflowStepDependency dep in step.Dependencies) {

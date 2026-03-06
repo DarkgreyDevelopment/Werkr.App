@@ -15,11 +15,14 @@ namespace Werkr.Api.Endpoints;
 internal static class JobEndpoints {
     /// <summary>Maps job history, list, detail, and output endpoints.</summary>
     public static WebApplication MapJobEndpoints( this WebApplication app ) {
-        _ = app.MapGet( "/api/tasks/{taskId}/jobs", async (
-            long taskId,
-            int? limit,
-            JobExecutionService jobExecutionService,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/tasks/{taskId}/jobs",
+            async (
+                long taskId,
+                int? limit,
+                JobExecutionService jobExecutionService,
+                CancellationToken ct
+            ) => {
                 int effectiveLimit = Math.Clamp( limit ?? 50, 1, 500 );
                 IReadOnlyList<WerkrJob> jobs = await jobExecutionService.GetJobHistoryAsync( taskId, effectiveLimit, ct );
                 List<JobListDto> dtos = [.. jobs.Select( TaskMapper.ToJobListDto )];
@@ -28,13 +31,16 @@ internal static class JobEndpoints {
         .WithName( "GetJobHistory" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/jobs", async (
-            bool? success,
-            DateTime? since,
-            DateTime? until,
-            int? limit,
-            JobExecutionService jobExecutionService,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/jobs",
+            async (
+                bool? success,
+                DateTime? since,
+                DateTime? until,
+                int? limit,
+                JobExecutionService jobExecutionService,
+                CancellationToken ct
+            ) => {
                 int effectiveLimit = Math.Clamp( limit ?? 50, 1, 500 );
                 IReadOnlyList<WerkrJob> jobs = await jobExecutionService.GetRecentJobsAsync(
                     success, since, until, effectiveLimit, ct );
@@ -47,19 +53,23 @@ internal static class JobEndpoints {
         _ = app.MapGet( "/api/jobs/{id}", async (
             Guid id,
             JobExecutionService jobExecutionService,
-            CancellationToken ct ) => {
-                WerkrJob? job = await jobExecutionService.GetJobAsync( id, ct );
-                return job is null ? Results.NotFound( ) : Results.Ok( TaskMapper.ToJobDto( job ) );
-            } )
+            CancellationToken ct
+        ) => {
+            WerkrJob? job = await jobExecutionService.GetJobAsync( id, ct );
+            return job is null ? Results.NotFound( ) : Results.Ok( TaskMapper.ToJobDto( job ) );
+        } )
         .WithName( "GetJob" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/jobs/{id}/output", async (
-            Guid id,
-            JobExecutionService jobExecutionService,
-            WerkrDbContext dbContext,
-            AgentConnectionManager connectionManager,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/jobs/{id}/output",
+            async (
+                Guid id,
+                JobExecutionService jobExecutionService,
+                WerkrDbContext dbContext,
+                AgentConnectionManager connectionManager,
+                CancellationToken ct
+            ) => {
                 // Try local file first (for API-local execution or cached output)
                 string? output = await jobExecutionService.GetJobOutputAsync( id, ct );
                 if (output is not null) {
@@ -95,7 +105,9 @@ internal static class JobEndpoints {
                         AgentConnectionManager.CreateCallOptions(
                             connection,
                             timeout: TimeSpan.FromSeconds( 30 ),
-                            cancellationToken: ct ) );
+                            cancellationToken: ct
+                        )
+                    );
 
                     GetJobOutputResponse grpcResponse = PayloadEncryptor.DecryptFromEnvelope<GetJobOutputResponse>(
                         responseEnvelope, connection.SharedKey );

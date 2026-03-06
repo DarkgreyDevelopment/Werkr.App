@@ -3,7 +3,6 @@ using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Security;
 using System.Threading.Channels;
-
 using Werkr.Common.Rendering;
 using Werkr.Core.Communication;
 
@@ -12,14 +11,20 @@ namespace Werkr.Agent.Operators;
 /// <summary>
 /// Routes PowerShell host UI output (<c>Write-Host</c>, <c>Format-Table</c>, etc.)
 /// into the operator's <see cref="ChannelWriter{T}"/> for streaming.
-/// This is the single output path for all PowerShell output — stream
+/// This is the single output path for all PowerShell output - stream
 /// <c>DataAdded</c> handlers are not used.
 /// </summary>
 /// <remarks>
 /// Non-interactive: all input/prompt methods throw <see cref="NotSupportedException"/>.
 /// </remarks>
 public sealed class WerkrPSHostUserInterface : PSHostUserInterface {
+    /// <summary>
+    /// The channel writer to which all PowerShell output is written as <see cref="OperatorOutput"/> messages.
+    /// </summary>
     private readonly ChannelWriter<OperatorOutput> _writer;
+    /// <summary>
+    /// The raw user interface providing buffer dimensions and virtual console properties.
+    /// </summary>
     private readonly WerkrPSHostRawUserInterface _rawUI;
 
     /// <summary>Creates a new <see cref="WerkrPSHostUserInterface"/>.</summary>
@@ -30,7 +35,9 @@ public sealed class WerkrPSHostUserInterface : PSHostUserInterface {
         _rawUI = new WerkrPSHostRawUserInterface( bufferWidth );
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// The raw user interface providing buffer dimensions and virtual console properties.
+    /// </summary>
     public override PSHostRawUserInterface RawUI => _rawUI;
 
     /// <inheritdoc/>
@@ -38,7 +45,11 @@ public sealed class WerkrPSHostUserInterface : PSHostUserInterface {
         => _writer.TryWrite( OperatorOutput.Create( "Information", value ) );
 
     /// <inheritdoc/>
-    public override void Write( ConsoleColor foregroundColor, ConsoleColor backgroundColor, string value ) {
+    public override void Write(
+        ConsoleColor foregroundColor,
+        ConsoleColor backgroundColor,
+        string value
+    ) {
         string fgAnsi = AnsiHtmlConverter.ConsoleColorToAnsi( foregroundColor );
         string bgAnsi = AnsiHtmlConverter.ConsoleColorToBgAnsi( backgroundColor );
         string encoded = $"{fgAnsi}{bgAnsi}{value}{AnsiHtmlConverter.AnsiReset}";

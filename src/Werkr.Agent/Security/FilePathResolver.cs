@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-
 using Werkr.Core.Security;
 
 namespace Werkr.Agent.Security;

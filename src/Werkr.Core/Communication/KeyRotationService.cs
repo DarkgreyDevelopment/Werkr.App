@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 
 using Google.Protobuf;
 
@@ -41,17 +41,24 @@ public class KeyRotationService(
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
                 "KeyRotationService started. Rotation interval: {Interval}.",
-                _rotationInterval );
+                _rotationInterval
+            );
         }
 
         while (!stoppingToken.IsCancellationRequested) {
             // Wait first, then rotate — gives the system time to stabilize after startup
-            await Task.Delay( _rotationInterval, stoppingToken );
+            await Task.Delay(
+                _rotationInterval,
+                stoppingToken
+            );
 
             try {
                 await RotateAllAgentsAsync( stoppingToken );
             } catch (Exception ex) when (ex is not OperationCanceledException) {
-                logger.LogError( ex, "Error in KeyRotationService sweep." );
+                logger.LogError(
+                    ex,
+                    "Error in KeyRotationService sweep."
+                );
             }
         }
     }
@@ -69,12 +76,19 @@ public class KeyRotationService(
         }
 
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "Starting key rotation for {Count} agents.", agents.Count );
+            logger.LogInformation(
+                "Starting key rotation for {Count} agents.",
+                agents.Count
+            );
         }
 
         foreach (RegisteredConnection agent in agents) {
             ct.ThrowIfCancellationRequested( );
-            _ = await RotateAgentKeyAsync( agent, dbContext, ct );
+            _ = await RotateAgentKeyAsync(
+                agent,
+                dbContext,
+                ct
+            );
         }
     }
 
@@ -85,22 +99,39 @@ public class KeyRotationService(
     /// <param name="agentId">The connection ID of the agent to rotate.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>True if the rotation succeeded; false otherwise.</returns>
-    public async Task<bool> RotateSingleAgentAsync( Guid agentId, CancellationToken ct ) {
+    public async Task<bool> RotateSingleAgentAsync(
+        Guid agentId,
+        CancellationToken ct
+    ) {
         using IServiceScope scope = scopeFactory.CreateScope( );
         WerkrDbContext dbContext = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
 
         RegisteredConnection? agent = await dbContext.RegisteredConnections
-            .FirstOrDefaultAsync( c => c.Id == agentId && c.IsServer && c.Status == ConnectionStatus.Connected, ct );
+            .FirstOrDefaultAsync(
+                c => c.Id == agentId && c.IsServer && c.Status == ConnectionStatus.Connected,
+                ct
+            );
 
         if (agent is null) {
-            logger.LogWarning( "Agent {AgentId} not found or not connected for key rotation.", agentId );
+            logger.LogWarning(
+                "Agent {AgentId} not found or not connected for key rotation.",
+                agentId
+            );
             return false;
         }
 
-        return await RotateAgentKeyAsync( agent, dbContext, ct );
+        return await RotateAgentKeyAsync(
+            agent,
+            dbContext,
+            ct
+        );
     }
 
-    internal async Task<bool> RotateAgentKeyAsync( RegisteredConnection agent, WerkrDbContext dbContext, CancellationToken ct ) {
+    internal async Task<bool> RotateAgentKeyAsync(
+        RegisteredConnection agent,
+        WerkrDbContext dbContext,
+        CancellationToken ct
+    ) {
         try {
             // 1. Generate new 256-bit AES key and key ID
             byte[] newKey = EncryptionProvider.GenerateRandomBytes( EncryptionProvider.AesGcmKeySize );
@@ -109,11 +140,20 @@ public class KeyRotationService(
             // 2. RSA-encrypt the new key with the Agent's public key
             using RSA rsa = RSA.Create( );
             rsa.ImportParameters( agent.RemotePublicKey );
-            byte[] rsaEncryptedNewKey = rsa.Encrypt( newKey, RSAEncryptionPadding.OaepSHA256 );
+            byte[] rsaEncryptedNewKey = rsa.Encrypt(
+                newKey,
+                RSAEncryptionPadding.OaepSHA256
+            );
 
             // 3. Send RotateSharedKey RPC via the existing encrypted channel
-            (GrpcChannel channel, RegisteredConnection resolved) =
-                await connectionManager.GetChannelAsync( agent.Id, ct );
+            (
+                GrpcChannel channel,
+                RegisteredConnection resolved
+            ) =
+                await connectionManager.GetChannelAsync(
+                    agent.Id,
+                    ct
+                );
 
             string currentKeyId = resolved.ActiveKeyId ?? resolved.Id.ToString( );
 
@@ -128,10 +168,14 @@ public class KeyRotationService(
             CallOptions callOptions = AgentConnectionManager.CreateCallOptions(
                 resolved,
                 timeout: TimeSpan.FromSeconds( 30 ),
-                cancellationToken: ct );
+                cancellationToken: ct
+            );
 
             ConnectionManagement.ConnectionManagementClient client = new( channel );
-            EncryptedEnvelope responseEnvelope = await client.RotateSharedKeyAsync( envelope, callOptions );
+            EncryptedEnvelope responseEnvelope = await client.RotateSharedKeyAsync(
+                envelope,
+                callOptions
+            );
 
             // 4. The agent responds with the NEW key, so decrypt with the new key
             RotateSharedKeyResponse response = PayloadEncryptor.DecryptFromEnvelope<RotateSharedKeyResponse>(
@@ -140,7 +184,10 @@ public class KeyRotationService(
             if (!response.Success) {
                 logger.LogWarning(
                     "Agent {AgentId} ({Name}) rejected key rotation. ActiveKeyId={ActiveKeyId}.",
-                    agent.Id, agent.ConnectionName, response.ActiveKeyId );
+                    agent.Id,
+                    agent.ConnectionName,
+                    response.ActiveKeyId
+                );
                 return false;
             }
 
@@ -157,24 +204,34 @@ public class KeyRotationService(
             if (logger.IsEnabled( LogLevel.Information )) {
                 logger.LogInformation(
                     "Key rotation succeeded for Agent {AgentId} ({Name}). NewKeyId={NewKeyId}.",
-                    agent.Id, agent.ConnectionName, newKeyId );
+                    agent.Id,
+                    agent.ConnectionName,
+                    newKeyId
+                );
             }
 
             return true;
         } catch (RpcException ex) {
             logger.LogWarning( ex,
                 "Key rotation RPC failed for Agent {AgentId} ({Name}). Status={Status}.",
-                agent.Id, agent.ConnectionName, ex.StatusCode );
+                agent.Id,
+                agent.ConnectionName,
+                ex.StatusCode
+            );
             return false;
         } catch (CryptographicException ex) {
             logger.LogError( ex,
                 "Key rotation cryptographic failure for Agent {AgentId} ({Name}).",
-                agent.Id, agent.ConnectionName );
+                agent.Id,
+                agent.ConnectionName
+            );
             return false;
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             logger.LogError( ex,
                 "Unexpected error during key rotation for Agent {AgentId} ({Name}).",
-                agent.Id, agent.ConnectionName );
+                agent.Id,
+                agent.ConnectionName
+            );
             return false;
         }
     }

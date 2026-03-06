@@ -5,10 +5,16 @@ namespace Werkr.Server.Identity;
 /// <summary>
 /// Delegating handler that attaches a self-minted JWT bearer token to
 /// outgoing API requests from the Blazor Server. The Server is the sole
-/// JWT issuer and trusts itself — no HTTP round-trip is needed (Decision A1).
+/// JWT issuer and trusts itself - no HTTP round-trip is needed (Decision A1).
 /// </summary>
 public sealed class AuthForwardingHandler : DelegatingHandler {
+    /// <summary>
+    /// The <see cref="JwtTokenService"/> used to mint short-lived service JWTs containing full admin-level permissions.
+    /// </summary>
     private readonly JwtTokenService _tokenService;
+    /// <summary>
+    /// Logger for diagnostic messages about outgoing authenticated requests.
+    /// </summary>
     private readonly ILogger<AuthForwardingHandler> _logger;
 
     /// <summary>
@@ -16,14 +22,16 @@ public sealed class AuthForwardingHandler : DelegatingHandler {
     /// </summary>
     public AuthForwardingHandler(
         JwtTokenService tokenService,
-        ILogger<AuthForwardingHandler> logger ) {
+        ILogger<AuthForwardingHandler> logger
+    ) {
         _tokenService = tokenService;
         _logger = logger;
     }
 
     /// <inheritdoc/>
     protected override Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request, CancellationToken cancellationToken ) {
+        HttpRequestMessage request, CancellationToken cancellationToken
+    ) {
         string token = _tokenService.GenerateServiceToken( );
         request.Headers.Authorization = new AuthenticationHeaderValue( "Bearer", token );
 

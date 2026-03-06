@@ -10,4 +10,5 @@ public sealed record ApiKeyDto(
     DateTime CreatedUtc,
     DateTime? ExpiresUtc,
     bool IsRevoked,
-    DateTime? LastUsedUtc );
+    DateTime? LastUsedUtc
+);

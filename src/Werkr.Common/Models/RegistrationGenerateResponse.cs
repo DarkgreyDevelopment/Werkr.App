@@ -7,4 +7,5 @@ namespace Werkr.Common.Models;
 public sealed record RegistrationGenerateResponse(
     bool Success,
     string? EncryptedBundle,
-    string? Message );
+    string? Message
+);

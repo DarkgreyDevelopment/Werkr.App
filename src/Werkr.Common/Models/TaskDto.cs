@@ -17,4 +17,5 @@ public sealed record TaskDto(
     Guid? ScheduleId,
     long? WorkflowId,
     string? ActionSubType = null,
-    string? ActionParameters = null );
+    string? ActionParameters = null
+);

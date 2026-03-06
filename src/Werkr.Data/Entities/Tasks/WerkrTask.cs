@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Werkr.Data.Entities.Interfaces;
 using Werkr.Data.Entities.Workflows;
 
@@ -11,7 +10,8 @@ namespace Werkr.Data.Entities.Tasks;
 /// </summary>
 [Table( "tasks" )]
 public class WerkrTask : ConcurrencyBase, IKey<long> {
-    /// <summary>Unique identifier.</summary>
+
+    /// <summary>Database-generated primary key.</summary>
     [Key]
     [DatabaseGenerated( DatabaseGeneratedOption.Identity )]
     public long Id { get; set; }
@@ -40,7 +40,7 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
 
     /// <summary>
     /// Optional arguments for script-type tasks.
-    /// Passed to <c>ExecuteScriptAsync</c> when <see cref="ActionType"/>
+    /// Passed to ExecuteScriptAsync when <see cref="ActionType"/>
     /// is <see cref="TaskActionType.PowerShellScript"/> or <see cref="TaskActionType.ShellScript"/>.
     /// Stored as a JSON column.
     /// </summary>
@@ -48,7 +48,7 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
 
     /// <summary>
     /// Tags for agent targeting. An agent is selected when any of its
-    /// <c>Tags</c> matches any of these target tags (case-insensitive).
+    /// <see cref="Registration.RegisteredConnection.Tags"/> matches any of these target tags (case-insensitive).
     /// Stored as a JSON column.
     /// </summary>
     public string[] TargetTags { get; set; } = [];
@@ -58,12 +58,12 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
 
     /// <summary>
     /// Maximum minutes the task may run before being cancelled.
-    /// Null defaults to 30 minutes in <c>JobExecutionService</c>.
+    /// Null defaults to 30 minutes in JobExecutionService.
     /// </summary>
     public long? TimeoutMinutes { get; set; }
 
     /// <summary>
-    /// Agent schedule-sync interval in minutes. Randomized between 30–60
+    /// Agent schedule-sync interval in minutes. Randomized between 30-60
     /// at task creation time and fixed thereafter.
     /// </summary>
     public int SyncIntervalMinutes { get; set; }
@@ -86,7 +86,7 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
     /// <summary>
     /// JSON-serialized parameters for the built-in action.
     /// Required when <see cref="ActionType"/> is <see cref="TaskActionType.Action"/>;
-    /// must be null otherwise. No max length — <c>WriteContent</c> payloads may be large.
+    /// must be null otherwise. No max length - <c>WriteContent</c> payloads may be large.
     /// </summary>
     public string? ActionParameters { get; set; }
 

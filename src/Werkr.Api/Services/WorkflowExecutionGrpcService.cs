@@ -1,7 +1,5 @@
 using Grpc.Core;
-
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Core.Workflows;
@@ -32,7 +30,8 @@ public sealed class WorkflowExecutionGrpcService(
     /// </summary>
     public override async Task<EncryptedEnvelope> RequestWorkflowRun(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
@@ -100,6 +99,9 @@ public sealed class WorkflowExecutionGrpcService(
         }
     }
 
+    /// <summary>
+    /// Extracts the authenticated <see cref="RegisteredConnection"/> from the gRPC call context's user state.
+    /// </summary>
     private static RegisteredConnection GetConnection( ServerCallContext context ) {
         return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
             ? connection

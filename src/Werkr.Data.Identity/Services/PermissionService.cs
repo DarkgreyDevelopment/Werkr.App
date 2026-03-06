@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Common.Auth;
 using Werkr.Data.Identity.Entities;
 
@@ -17,7 +16,8 @@ public sealed class PermissionService( WerkrIdentityDbContext dbContext, RoleMan
     public async Task<bool> HasPermissionAsync(
         IEnumerable<string> roles,
         Permission permission,
-        CancellationToken ct = default ) {
+        CancellationToken ct = default
+    ) {
         List<string> roleIds = await GetRoleIdsAsync( roles, ct );
         return roleIds.Count != 0 && await dbContext.RolePermissions
             .AnyAsync( rp => roleIds.Contains( rp.RoleId ) && rp.Permission == permission, ct );
@@ -26,7 +26,8 @@ public sealed class PermissionService( WerkrIdentityDbContext dbContext, RoleMan
     /// <inheritdoc/>
     public async Task<IReadOnlySet<Permission>> GetPermissionsAsync(
         IEnumerable<string> roles,
-        CancellationToken ct = default ) {
+        CancellationToken ct = default
+    ) {
         List<string> roleIds = await GetRoleIdsAsync( roles, ct );
         if (roleIds.Count == 0) {
             return new HashSet<Permission>( );
@@ -44,7 +45,8 @@ public sealed class PermissionService( WerkrIdentityDbContext dbContext, RoleMan
     /// <inheritdoc/>
     public async Task<IReadOnlyList<Permission>> GetPermissionsForRoleAsync(
         string roleName,
-        CancellationToken ct = default ) {
+        CancellationToken ct = default
+    ) {
         IdentityRole? role = await roleManager.FindByNameAsync( roleName );
         if (role is null) {
             return [];
@@ -59,6 +61,9 @@ public sealed class PermissionService( WerkrIdentityDbContext dbContext, RoleMan
         return permissions;
     }
 
+    /// <summary>
+    /// Resolves a collection of role names to their corresponding identity role ID values by querying the <see cref="RoleManager{TRole}"/>.
+    /// </summary>
     private async Task<List<string>> GetRoleIdsAsync( IEnumerable<string> roleNames, CancellationToken ct ) {
         List<string> roleIds = [];
         foreach (string roleName in roleNames) {

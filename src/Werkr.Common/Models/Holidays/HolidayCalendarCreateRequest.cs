@@ -1,6 +1,7 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Create-calendar request.</summary>
+/// <summary>Request body for creating a new holiday calendar.</summary>
 public sealed record HolidayCalendarCreateRequest(
     string Name,
-    string Description );
+    string Description
+);

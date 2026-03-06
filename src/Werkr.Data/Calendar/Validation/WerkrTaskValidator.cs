@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-
 using Werkr.Data.Entities.Tasks;
 
 namespace Werkr.Data.Calendar.Validation;
@@ -9,6 +8,7 @@ namespace Werkr.Data.Calendar.Validation;
 /// Invoked programmatically via <see cref="Validate"/> during task creation and updates.
 /// </summary>
 public static class WerkrTaskValidator {
+
     /// <summary>
     /// Validates the <paramref name="task"/> and returns a <see cref="ValidationResult"/>
     /// or <see cref="ValidationResult.Success"/> if valid.

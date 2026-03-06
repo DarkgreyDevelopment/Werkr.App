@@ -1,4 +1,4 @@
-namespace Werkr.Core.Cryptography.KeyInfo;
+﻿namespace Werkr.Core.Cryptography.KeyInfo;
 
 /// <summary>
 /// Holds nonce, tag, and order information for a single AES-GCM encrypted chunk.
@@ -21,17 +21,23 @@ public class AesGcmDecryptionNote {
     /// <param name="tag">The 16-byte authentication tag.</param>
     /// <param name="order">The chunk order index.</param>
     /// <exception cref="ArgumentException">Thrown when nonce or tag lengths are invalid.</exception>
-    public AesGcmDecryptionNote( byte[] nonce, byte[] tag, int order ) {
+    public AesGcmDecryptionNote(
+        byte[] nonce,
+        byte[] tag,
+        int order
+    ) {
         if (nonce.Length != EncryptionProvider.AesGcmNonceSize) {
             throw new ArgumentException(
                 $"Nonce must be {EncryptionProvider.AesGcmNonceSize} bytes, got {nonce.Length}.",
-                nameof( nonce ) );
+                nameof( nonce )
+            );
         }
 
         if (tag.Length != EncryptionProvider.AesGcmTagSize) {
             throw new ArgumentException(
                 $"Tag must be {EncryptionProvider.AesGcmTagSize} bytes, got {tag.Length}.",
-                nameof( tag ) );
+                nameof( tag )
+            );
         }
 
         Nonce = nonce;

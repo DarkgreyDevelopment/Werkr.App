@@ -8,4 +8,5 @@ public sealed record WorkflowStepCreateRequest(
     string? ConditionExpression = null,
     int MaxIterations = 100,
     Guid? AgentConnectionIdOverride = null,
-    string DependencyMode = "All" );
+    string DependencyMode = "All"
+);

@@ -4,20 +4,42 @@ using System.Text.Json;
 namespace Werkr.Tests.Integration;
 
 /// <summary>
-/// Integration tests for workflow CRUD, workflow steps, step dependencies,
-/// task CRUD with tags, job query endpoints, schedule recurrence types,
-/// and agent/diagnostics health endpoints.
-/// All tests share the <see cref="AppHostFixture"/> instance.
+/// Integration tests for Workflow, Task, Job, and Schedule endpoints along with Agent and Diagnostics health checks.
+/// Organized into regions covering CRUD operations, dependency management, query endpoints,
+/// recurrence types, and health/diagnostics.
+/// <para>
+/// All tests share the <see cref="AppHostFixture"/> instance and use the
+/// pre-authenticated API client.
+/// </para>
 /// </summary>
 [TestClass]
 public class WorkflowIntegrationTests {
+
+    /// <summary>
+    /// Gets or sets the MSTest <see cref="TestContext"/> for the current test execution, providing access to test
+    /// metadata and a <see cref="CancellationToken"/> for cooperative cancellation.
+    /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
+    /// <summary>
+    /// Gets the shared <see cref="JsonSerializerOptions"/> configured with web defaults from <see
+    /// cref="AppHostFixture.JsonOptions"/> for JSON serialization and deserialization.
+    /// </summary>
     private static JsonSerializerOptions JsonOptions => AppHostFixture.JsonOptions;
+
+    /// <summary>
+    /// Gets the pre-configured, authenticated <see cref="HttpClient"/> from <see cref="AppHostFixture.ApiClient"/> for
+    /// sending HTTP requests to the <c>Werkr.Api</c>.
+    /// </summary>
     private static HttpClient Api => AppHostFixture.ApiClient;
 
     #region Workflow CRUD
 
+    /// <summary>
+    /// Verifies the full CRUD lifecycle for workflows. Creates a new workflow named "IntTest_Workflow", reads it back
+    /// and asserts the name matches, updates the name and description, verifies the workflow appears in the list,
+    /// deletes the workflow, and confirms a subsequent GET returns <see cref="HttpStatusCode.NotFound"/>.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task WorkflowCrud_CreateReadUpdateDelete( ) {
@@ -84,6 +106,11 @@ public class WorkflowIntegrationTests {
 
     #region Workflow Steps & Dependencies
 
+    /// <summary>
+    /// Verifies that workflow steps can be added and linked with dependencies. Creates a workflow and two ShellCommand
+    /// tasks, adds each as a step in order, creates a dependency from step 2 to step 1, and asserts the workflow
+    /// reports exactly 2 steps. Cleans up the workflow after verification.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task WorkflowSteps_AddAndLinkWithDependency( ) {
@@ -197,6 +224,11 @@ public class WorkflowIntegrationTests {
 
     #region Task CRUD with Tags
 
+    /// <summary>
+    /// Verifies the full task CRUD lifecycle with target tags. Creates a ShellCommand task with three tags, asserts
+    /// the tags persisted, updates the task (changing tags to a single tag), verifies the update, deletes the task,
+    /// and confirms a subsequent GET returns <see cref="HttpStatusCode.NotFound"/>.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task TaskCrud_CreateWithTagsUpdateAndDelete( ) {
@@ -260,6 +292,10 @@ public class WorkflowIntegrationTests {
 
     #region Job Query Endpoints
 
+    /// <summary>
+    /// Verifies that the <c>GET /api/jobs</c> endpoint returns a JSON array. Also tests the date-range query filter
+    /// (<c>?since=…&amp;until=…</c>) for a historical range, expecting no results.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task JobListEndpoint_ReturnsFilterableResults( ) {
@@ -282,6 +318,9 @@ public class WorkflowIntegrationTests {
             "No jobs should exist in the 2020 date range." );
     }
 
+    /// <summary>
+    /// Verifies that requesting a non-existent job by a random GUID returns <see cref="HttpStatusCode.NotFound"/>.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task GetJobById_ForNonExistentJob_ReturnsNotFound( ) {
@@ -296,6 +335,11 @@ public class WorkflowIntegrationTests {
 
     #region Schedule Recurrence Types
 
+    /// <summary>
+    /// Verifies that creating a weekly schedule with Monday, Wednesday, and Friday recurrence persists correctly.
+    /// Creates the schedule, reads it back, and asserts the <c>weeklyRecurrence.weekInterval</c> is 1 and the
+    /// <c>daysOfWeek</c> flags value equals 21 (Monday=1 | Wednesday=4 | Friday=16).
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task WeeklySchedule_CreatesAndReturnsCorrectRecurrence( ) {
@@ -340,6 +384,9 @@ public class WorkflowIntegrationTests {
 
     #region Agent Health & Diagnostics
 
+    /// <summary>
+    /// Verifies that the <c>GET /api/agents/health</c> endpoint returns HTTP 200 OK and a JSON array.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task AgentHealthEndpoint_ReturnsSuccessfully( ) {
@@ -353,6 +400,10 @@ public class WorkflowIntegrationTests {
             "Agent health should return a JSON array." );
     }
 
+    /// <summary>
+    /// Verifies that the <c>GET /api/diagnostics/health</c> endpoint returns HTTP 200 OK with a JSON array containing
+    /// at least one database health entry.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task DiagnosticsHealthEndpoint_ReturnsDatabaseStatus( ) {

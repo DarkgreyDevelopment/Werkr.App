@@ -1,11 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
-
 using Grpc.Core;
 using Grpc.Core.Interceptors;
-
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Common.Models;
 using Werkr.Core.Cryptography;
 using Werkr.Data;
@@ -33,11 +30,18 @@ public class BearerTokenInterceptor(
         UnaryServerMethod<TRequest, TResponse> continuation
     ) {
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "Received gRPC call to {Method} from {Peer}", context.Method, context.Peer );
+            logger.LogInformation(
+                "Received gRPC call to {Method} from {Peer}",
+                context.Method,
+                context.Peer
+            );
         }
 
         await ValidateAndAttachConnectionAsync( context );
-        return await continuation( request, context );
+        return await continuation(
+            request,
+            context
+        );
     }
 
     /// <inheritdoc/>
@@ -49,22 +53,53 @@ public class BearerTokenInterceptor(
     ) {
 
         await ValidateAndAttachConnectionAsync( context );
-        await continuation( request, responseStream, context );
+        await continuation(
+            request,
+            responseStream,
+            context
+        );
     }
 
+    /// <summary>
+    /// Performs the core authentication logic shared by all
+    /// intercepted call types: extracts and validates the
+    /// bearer token, resolves the connection from the database,
+    /// performs constant-time token comparison, updates the
+    /// <c>LastSeen</c> timestamp, and stores the validated
+    /// connection and call ID in
+    /// <paramref name="context"/>.<c>UserState</c>.
+    /// </summary>
     private async Task ValidateAndAttachConnectionAsync( ServerCallContext context ) {
         // Extract authorization header
         string? authHeader = context.RequestHeaders.GetValue( "authorization" );
-        if (string.IsNullOrEmpty( authHeader ) || !authHeader.StartsWith( "Bearer ", StringComparison.OrdinalIgnoreCase )) {
-            throw new RpcException( new Status( StatusCode.Unauthenticated, "Missing authentication credentials." ) );
+        if (string.IsNullOrEmpty( authHeader ) ||
+            !authHeader.StartsWith(
+                "Bearer ",
+                StringComparison.OrdinalIgnoreCase
+            )) {
+            throw new RpcException(
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "Missing authentication credentials."
+                )
+            );
         }
 
         string token = authHeader["Bearer ".Length..];
 
         // Extract connection ID header
         string? connectionIdStr = context.RequestHeaders.GetValue( "x-werkr-connection-id" );
-        if (string.IsNullOrEmpty( connectionIdStr ) || !Guid.TryParse( connectionIdStr, out Guid connectionId )) {
-            throw new RpcException( new Status( StatusCode.Unauthenticated, "Missing authentication credentials." ) );
+        if (string.IsNullOrEmpty( connectionIdStr ) ||
+            !Guid.TryParse(
+                connectionIdStr,
+                out Guid connectionId
+            )) {
+            throw new RpcException(
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "Missing authentication credentials."
+                )
+            );
         }
 
         // Resolve connection from database
@@ -75,7 +110,12 @@ public class BearerTokenInterceptor(
             .FirstOrDefaultAsync( c => c.Id == connectionId && !c.IsServer );
 
         if (connection is null || connection.Status == ConnectionStatus.Revoked) {
-            throw new RpcException( new Status( StatusCode.Unauthenticated, "Connection not found or revoked." ) );
+            throw new RpcException(
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "Connection not found or revoked."
+                )
+            );
         }
 
         // Constant-time token comparison
@@ -83,8 +123,16 @@ public class BearerTokenInterceptor(
         byte[] receivedBytes = Encoding.UTF8.GetBytes( tokenHash );
         byte[] storedBytes = Encoding.UTF8.GetBytes( connection.InboundApiKeyHash );
 
-        if (!CryptographicOperations.FixedTimeEquals( receivedBytes, storedBytes )) {
-            throw new RpcException( new Status( StatusCode.Unauthenticated, "Invalid bearer token." ) );
+        if (!CryptographicOperations.FixedTimeEquals(
+            receivedBytes,
+            storedBytes
+        )) {
+            throw new RpcException(
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "Invalid bearer token."
+                )
+            );
         }
 
         // Debounced LastSeen update (only write if null or older than 60 seconds)

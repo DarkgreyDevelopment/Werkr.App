@@ -1,4 +1,5 @@
 using Grpc.Core;
+using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
@@ -28,27 +29,38 @@ internal static class AgentEndpoints {
 
     // ── Agent CRUD ──
 
+    /// <summary>
+    /// Registers CRUD and status-management endpoints for agent connections.
+    /// </summary>
     private static void MapAgentCrud( WebApplication app ) {
-        _ = app.MapGet( "/api/agents", async ( WerkrDbContext dbContext, CancellationToken ct ) => {
-            List<RegisteredConnection> connections = await dbContext.RegisteredConnections
-                .Where( c => c.IsServer )
-                .OrderByDescending( c => c.Created )
-                .ToListAsync( ct );
+        _ = app.MapGet(
+            "/api/agents",
+            async (
+                WerkrDbContext dbContext,
+                CancellationToken ct
+            ) => {
+                List<RegisteredConnection> connections = await dbContext.RegisteredConnections
+                    .Where(c => c.IsServer)
+                    .OrderByDescending(c => c.Created)
+                    .ToListAsync(ct);
 
-            List<AgentListDto> agents = [.. connections.Select( c => new AgentListDto(
-                c.Id, c.ConnectionName, c.RemoteUrl, c.Status.ToString( ),
-                c.LastSeen, c.Created ) )];
+                List<AgentListDto> agents = [.. connections.Select( c => new AgentListDto(
+                    c.Id, c.ConnectionName, c.RemoteUrl, c.Status.ToString( ),
+                    c.LastSeen, c.Created ) )];
 
-            return Results.Ok( agents );
-        } )
+                return Results.Ok( agents );
+            } )
         .WithName( "GetAgents" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/agents/{id}", async (
-            Guid id,
-            WerkrDbContext dbContext,
-            AgentConnectionManager connectionManager,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/agents/{id}",
+            async (
+                Guid id,
+                WerkrDbContext dbContext,
+                AgentConnectionManager connectionManager,
+                CancellationToken ct
+            ) => {
                 RegisteredConnection? connection = await dbContext.RegisteredConnections
                     .AsNoTracking( )
                     .FirstOrDefaultAsync( c => c.Id == id && c.IsServer, ct );
@@ -62,7 +74,7 @@ internal static class AgentEndpoints {
 
                 if (connection.Status == ConnectionStatus.Connected) {
                     try {
-                        (Grpc.Net.Client.GrpcChannel channel, RegisteredConnection resolvedConnection)
+                        (GrpcChannel channel, RegisteredConnection resolvedConnection)
                             = await connectionManager.GetChannelAsync( id, ct );
 
                         string keyId = resolvedConnection.ActiveKeyId ?? resolvedConnection.Id.ToString( );
@@ -76,7 +88,8 @@ internal static class AgentEndpoints {
                             AgentConnectionManager.CreateCallOptions(
                                 resolvedConnection,
                                 timeout: TimeSpan.FromSeconds( 5 ),
-                                cancellationToken: ct ) );
+                                cancellationToken: ct)
+                            );
 
                         // Agent is reachable and shared key is valid
                         HeartbeatResponse _ = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
@@ -105,19 +118,23 @@ internal static class AgentEndpoints {
                     connection.Created,
                     connection.LastSeen,
                     powerShellAvailable,
-                    systemShellAvailable );
+                    systemShellAvailable
+                );
 
                 return Results.Ok( dto );
             } )
         .WithName( "GetAgentDetail" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPut( "/api/agents/{id}", async (
-            Guid id,
-            UpdateAgentRequest request,
-            WerkrDbContext dbContext,
-            AgentConnectionManager connectionManager,
-            CancellationToken ct ) => {
+        _ = app.MapPut(
+            "/api/agents/{id}",
+            async (
+                Guid id,
+                UpdateAgentRequest request,
+                WerkrDbContext dbContext,
+                AgentConnectionManager connectionManager,
+                CancellationToken ct
+            ) => {
                 if (string.IsNullOrWhiteSpace( request.ConnectionName )
                     && string.IsNullOrWhiteSpace( request.RemoteUrl )) {
                     return Results.BadRequest( "At least one of ConnectionName or RemoteUrl must be provided." );
@@ -160,11 +177,14 @@ internal static class AgentEndpoints {
         .WithName( "UpdateAgent" )
         .RequireAuthorization( Policies.CanUpdate );
 
-        _ = app.MapPost( "/api/agents/{id}/revoke", async (
-            Guid id,
-            WerkrDbContext dbContext,
-            AgentConnectionManager connectionManager,
-            CancellationToken ct ) => {
+        _ = app.MapPost(
+            "/api/agents/{id}/revoke",
+            async (
+                Guid id,
+                WerkrDbContext dbContext,
+                AgentConnectionManager connectionManager,
+                CancellationToken ct
+            ) => {
                 RegisteredConnection? connection = await dbContext.RegisteredConnections
                     .FirstOrDefaultAsync( c => c.Id == id, ct );
 
@@ -180,12 +200,19 @@ internal static class AgentEndpoints {
         .WithName( "RevokeAgent" )
         .RequireAuthorization( Policies.IsAdmin );
 
-        _ = app.MapPut( "/api/agents/{id}/status", async (
-            Guid id,
-            UpdateAgentStatusRequest request,
-            WerkrDbContext dbContext,
-            CancellationToken ct ) => {
-                if (!Enum.TryParse<ConnectionStatus>( request.Status, ignoreCase: true, out ConnectionStatus newStatus )) {
+        _ = app.MapPut(
+            "/api/agents/{id}/status",
+            async (
+                Guid id,
+                UpdateAgentStatusRequest request,
+                WerkrDbContext dbContext,
+                CancellationToken ct
+            ) => {
+                if (!Enum.TryParse<ConnectionStatus>(
+                    request.Status,
+                    ignoreCase: true,
+                    out ConnectionStatus newStatus
+                )) {
                     return Results.BadRequest( new { message = $"Invalid status: {request.Status}" } );
                 }
 
@@ -213,11 +240,17 @@ internal static class AgentEndpoints {
 
     // ── Agent Health ──
 
+    /// <summary>
+    /// Registers the aggregate agent health endpoint that probes all registered agents via gRPC heartbeat.
+    /// </summary>
     private static void MapAgentHealth( WebApplication app ) {
-        _ = app.MapGet( "/api/agents/health", async (
-            WerkrDbContext dbContext,
-            AgentConnectionManager connectionManager,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/agents/health",
+            async (
+                WerkrDbContext dbContext,
+                AgentConnectionManager connectionManager,
+                CancellationToken ct
+            ) => {
                 List<RegisteredConnection> connections = await dbContext.RegisteredConnections
                     .AsNoTracking( )
                     .Where( c => c.IsServer )
@@ -247,11 +280,17 @@ internal static class AgentEndpoints {
 
     // ── Agent Activity ──
 
+    /// <summary>
+    /// Registers the agent activity timeline endpoint.
+    /// </summary>
     private static void MapAgentActivity( WebApplication app ) {
-        _ = app.MapGet( "/api/agents/activity", async (
-            int? count,
-            WerkrDbContext dbContext,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/agents/activity",
+            async (
+                int? count,
+                WerkrDbContext dbContext,
+                CancellationToken ct
+            ) => {
                 int effectiveCount = Math.Clamp( count ?? 10, 1, 100 );
 
                 List<RegisteredConnection> connections = await dbContext.RegisteredConnections
@@ -299,12 +338,18 @@ internal static class AgentEndpoints {
 
     // ── Agent Execute ──
 
+    /// <summary>
+    /// Registers the command execution endpoint for dispatching commands to a specific agent.
+    /// </summary>
     private static void MapAgentExecute( WebApplication app ) {
-        _ = app.MapPost( "/api/agents/{agentId}/execute", async (
-            Guid agentId,
-            ExecuteCommandRequest request,
-            CommandDispatcher commandDispatcher,
-            CancellationToken ct ) => {
+        _ = app.MapPost(
+            "/api/agents/{agentId}/execute",
+            async (
+                Guid agentId,
+                ExecuteCommandRequest request,
+                CommandDispatcher commandDispatcher,
+                CancellationToken ct
+            ) => {
                 using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource( ct );
                 if (request.TimeoutMinutes > 0) {
                     cts.CancelAfter( TimeSpan.FromMinutes( request.TimeoutMinutes ) );
@@ -326,10 +371,16 @@ internal static class AgentEndpoints {
 
     // ── Agent Tags ──
 
+    /// <summary>
+    /// Registers tag management endpoints for agents and tasks.
+    /// </summary>
     private static void MapAgentTags( WebApplication app ) {
-        _ = app.MapGet( "/api/tags", async (
-            WerkrDbContext dbContext,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/tags",
+            async (
+                WerkrDbContext dbContext,
+                CancellationToken ct
+            ) => {
                 // Aggregate all unique tags across registered agents and tasks
                 List<string[]> agentTags = await dbContext.RegisteredConnections
                     .AsNoTracking( )
@@ -355,10 +406,13 @@ internal static class AgentEndpoints {
         .WithName( "GetAllTags" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/agents/{id}/tags", async (
-            Guid id,
-            WerkrDbContext dbContext,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/agents/{id}/tags",
+            async (
+                Guid id,
+                WerkrDbContext dbContext,
+                CancellationToken ct
+            ) => {
                 RegisteredConnection? connection = await dbContext.RegisteredConnections
                     .AsNoTracking( )
                     .FirstOrDefaultAsync( c => c.Id == id && c.IsServer, ct );
@@ -367,11 +421,14 @@ internal static class AgentEndpoints {
         .WithName( "GetAgentTags" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPut( "/api/agents/{id}/tags", async (
-            Guid id,
-            UpdateAgentTagsRequest request,
-            WerkrDbContext dbContext,
-            CancellationToken ct ) => {
+        _ = app.MapPut(
+            "/api/agents/{id}/tags",
+            async (
+                Guid id,
+                UpdateAgentTagsRequest request,
+                WerkrDbContext dbContext,
+                CancellationToken ct
+            ) => {
                 RegisteredConnection? connection = await dbContext.RegisteredConnections
                     .FirstOrDefaultAsync( c => c.Id == id && c.IsServer, ct );
                 if (connection is null) {
@@ -388,10 +445,16 @@ internal static class AgentEndpoints {
 
     // ── Agent Connections (read-only metadata for Server UI) ──
 
+    /// <summary>
+    /// Registers connection-centric agent listing endpoints.
+    /// </summary>
     private static void MapAgentConnections( WebApplication app ) {
-        _ = app.MapGet( "/api/agents/connections", async (
-            WerkrDbContext dbContext,
-            CancellationToken ct ) => {
+        _ = app.MapGet(
+            "/api/agents/connections",
+            async (
+                WerkrDbContext dbContext,
+                CancellationToken ct
+            ) => {
                 List<RegisteredConnection> connections = await dbContext.RegisteredConnections
                     .AsNoTracking( )
                     .Where( c => c.IsServer )
@@ -410,48 +473,57 @@ internal static class AgentEndpoints {
         _ = app.MapGet( "/api/agents/connections/{id}", async (
             Guid id,
             WerkrDbContext dbContext,
-            CancellationToken ct ) => {
-                RegisteredConnection? connection = await dbContext.RegisteredConnections
+            CancellationToken ct
+        ) => {
+            RegisteredConnection? connection = await dbContext.RegisteredConnections
                     .AsNoTracking( )
                     .FirstOrDefaultAsync( c => c.Id == id && c.IsServer, ct );
 
-                if (connection is null) {
-                    return Results.NotFound( );
-                }
+            if (connection is null) {
+                return Results.NotFound( );
+            }
 
-                AgentConnectionDto dto = new(
+            AgentConnectionDto dto = new(
                     connection.Id, connection.ConnectionName, connection.RemoteUrl,
                     connection.Status.ToString( ), connection.LastSeen, connection.Created,
                     connection.Tags );
 
-                return Results.Ok( dto );
-            } )
+            return Results.Ok( dto );
+        } )
         .WithName( "GetAgentConnection" )
         .RequireAuthorization( Policies.CanRead );
     }
 
     // ── Key Rotation ──
 
+    /// <summary>
+    /// Registers the endpoint for triggering on-demand cryptographic key rotation for a single agent.
+    /// </summary>
     private static void MapAgentKeyRotation( WebApplication app ) {
         _ = app.MapPost( "/api/agents/{id}/rotate-key", async (
             Guid id,
             KeyRotationService keyRotationService,
-            CancellationToken ct ) => {
-                bool success = await keyRotationService.RotateSingleAgentAsync( id, ct );
-                return success
-                    ? Results.Ok( new { message = "Key rotation completed successfully." } )
-                    : Results.UnprocessableEntity( new { message = "Key rotation failed. Agent may be unreachable or not connected." } );
-            } )
+            CancellationToken ct
+        ) => {
+            bool success = await keyRotationService.RotateSingleAgentAsync( id, ct );
+            return success
+                ? Results.Ok( new { message = "Key rotation completed successfully." } )
+                : Results.UnprocessableEntity( new { message = "Key rotation failed. Agent may be unreachable or not connected." } );
+        } )
         .WithName( "RotateAgentKey" )
         .RequireAuthorization( Policies.IsAdmin );
     }
 
     // ── Helper ──
 
+    /// <summary>
+    /// Builds a health DTO for a single agent by sending a gRPC heartbeat probe and evaluating the response.
+    /// </summary>
     private static async Task<AgentHealthDto> BuildHealthAsync(
         RegisteredConnection connection,
         AgentConnectionManager connectionManager,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
         // Skip Revoked agents entirely — they should never reconnect without explicit admin action.
         if (connection.Status == ConnectionStatus.Revoked) {
             return new AgentHealthDto(
@@ -461,11 +533,12 @@ internal static class AgentEndpoints {
                 null,
                 null,
                 connection.LastSeen,
-                DateTime.UtcNow );
+                DateTime.UtcNow
+            );
         }
 
         try {
-            (Grpc.Net.Client.GrpcChannel channel, RegisteredConnection resolvedConnection)
+            (GrpcChannel channel, RegisteredConnection resolvedConnection)
                 = await connectionManager.GetChannelAsync( connection.Id, cancellationToken );
 
             string keyId = resolvedConnection.ActiveKeyId ?? resolvedConnection.Id.ToString( );

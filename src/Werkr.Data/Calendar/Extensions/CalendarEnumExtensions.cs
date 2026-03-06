@@ -1,5 +1,4 @@
 using System.Globalization;
-
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Collections;
 using Werkr.Data.Ranges;
@@ -14,10 +13,11 @@ public static class CalendarEnumExtensions {
 
     #region DaysOfWeek / DayOfWeek
 
-    /// <summary>
-    /// Configurable week start day for ordering operations.
-    /// </summary>
     // TODO: inject via IOptions<CalendarSettings>
+
+    /// <summary>
+    /// Gets or sets the day that is considered the start of the week when ordering <see cref="DayOfWeek"/> collections. Defaults to <see cref="DayOfWeek.Monday"/>.
+    /// </summary>
     public static DayOfWeek WeekStartDay { get; set; } = DayOfWeek.Monday;
 
     /// <summary>
@@ -39,7 +39,7 @@ public static class CalendarEnumExtensions {
 
     /// <summary>
     /// Returns the next <see cref="DayOfWeek"/> in the list after <paramref name="startDay"/> (exclusive).
-    /// Returns <c>null</c> if the next day would be the <see cref="WeekStartDay"/>.
+    /// Returns <see langword="null"/> if the next day would be the <see cref="WeekStartDay"/>.
     /// </summary>
     public static DayOfWeek? GetNextDayInWeek( this List<DayOfWeek> daysOfWeek, DayOfWeek startDay ) {
         List<DayOfWeek> result = daysOfWeek.GetRemainingDaysInWeek( startDay, true );
@@ -52,7 +52,7 @@ public static class CalendarEnumExtensions {
     /// </summary>
     /// <param name="daysOfWeek">The candidate days to filter.</param>
     /// <param name="startDay">The reference start day.</param>
-    /// <param name="exclusive">If <c>true</c>, excludes the start day itself.</param>
+    /// <param name="exclusive">If <see langword="true"/>, excludes the start day itself.</param>
     public static List<DayOfWeek> GetRemainingDaysInWeek( this List<DayOfWeek> daysOfWeek, DayOfWeek startDay, bool exclusive = false ) {
         List<DayOfWeek> result = [];
         List<DayOfWeek> remainingWeekDays = startDay.GetDaysInWeekFromStartDay( exclusive );
@@ -70,7 +70,7 @@ public static class CalendarEnumExtensions {
     /// based on the configured <see cref="WeekStartDay"/>.
     /// </summary>
     /// <param name="startDay">The day to start from.</param>
-    /// <param name="exclusive">If <c>true</c>, excludes the start day itself.</param>
+    /// <param name="exclusive">If <see langword="true"/>, excludes the start day itself.</param>
     public static List<DayOfWeek> GetDaysInWeekFromStartDay( this DayOfWeek startDay, bool exclusive = false ) {
         List<DayOfWeek> result = [];
         List<DayOfWeek> weekOfDays = GetWeekOfDays( );
@@ -123,8 +123,8 @@ public static class CalendarEnumExtensions {
     /// </summary>
     /// <param name="daysOfWeek">The flags to format.</param>
     /// <param name="abbreviated">
-    /// When <c>true</c>, uses abbreviations (e.g., "Mon").
-    /// When <c>false</c>, uses full names (e.g., "Monday").
+    /// When <see langword="true"/>, uses abbreviations (e.g., "Mon").
+    /// When <see langword="false"/>, uses full names (e.g., "Monday").
     /// </param>
     public static string ToString( this DaysOfWeek daysOfWeek, bool abbreviated = false )
         => RangeOfDays.ToString( RangeOfDays.GetContiguousRanges( daysOfWeek ), abbreviated );
@@ -140,8 +140,8 @@ public static class CalendarEnumExtensions {
     /// </summary>
     /// <param name="day">The day to format.</param>
     /// <param name="abbreviated">
-    /// When <c>true</c>, returns the abbreviated name (e.g., "Mon").
-    /// When <c>false</c>, returns the full name (e.g., "Monday").
+    /// When <see langword="true"/>, returns the abbreviated name (e.g., "Mon").
+    /// When <see langword="false"/>, returns the full name (e.g., "Monday").
     /// </param>
     public static string ToString( this DayOfWeek day, bool abbreviated )
         => abbreviated
@@ -150,28 +150,27 @@ public static class CalendarEnumExtensions {
 
     #endregion DaysOfWeek / DayOfWeek
 
-
     #region MonthsOfYear / Month
 
     /// <summary>
     /// Filters to months after the given <paramref name="startMonth"/>.
     /// </summary>
-    /// <param name="months">The candidate month integers (1–12).</param>
+    /// <param name="months">The candidate month integers (1-12).</param>
     /// <param name="startMonth">The reference month number.</param>
-    /// <param name="exclusive">If <c>true</c>, excludes the start month itself.</param>
+    /// <param name="exclusive">If <see langword="true"/>, excludes the start month itself.</param>
     public static int[] GetRemainingMonthsInYear( this int[] months, int startMonth, bool exclusive = false ) =>
         exclusive
             ? [.. months.Where( month => month > startMonth )]
             : [.. months.Where( month => month >= startMonth )];
 
     /// <summary>
-    /// Converts <see cref="MonthsOfYear"/> flags into their integer counterparts (1–12).
+    /// Converts a list of <see cref="Month"/> values into their integer counterparts (1-12).
     /// </summary>
     public static int[] GetIntMonths( this MonthsOfYear monthsOfYear )
         => [.. GetIntMonths( monthsOfYear.GetMonths( ) )];
 
     /// <summary>
-    /// Converts a list of <see cref="Month"/> values into their integer counterparts (1–12).
+    /// Converts a list of <see cref="Month"/> values into their integer counterparts (1-12).
     /// </summary>
     public static int[] GetIntMonths( this List<Month> monthsOfYear )
         => [.. monthsOfYear.Select( month => (int)month )];
@@ -226,8 +225,8 @@ public static class CalendarEnumExtensions {
     /// </summary>
     /// <param name="monthsOfYear">The flags to format.</param>
     /// <param name="abbreviated">
-    /// When <c>true</c>, uses abbreviations (e.g., "Jan").
-    /// When <c>false</c>, uses full names (e.g., "January").
+    /// When <see langword="true"/>, uses abbreviations (e.g., "Jan").
+    /// When <see langword="false"/>, uses full names (e.g., "January").
     /// </param>
     public static string ToString( this MonthsOfYear monthsOfYear, bool abbreviated = false )
         => RangeOfMonths.ToString( RangeOfMonths.GetContiguousRanges( monthsOfYear ), abbreviated );
@@ -243,8 +242,8 @@ public static class CalendarEnumExtensions {
     /// </summary>
     /// <param name="month">The month to format.</param>
     /// <param name="abbreviated">
-    /// When <c>true</c>, returns the abbreviated name (e.g., "Jan").
-    /// When <c>false</c>, returns the full name (e.g., "January").
+    /// When <see langword="true"/>, returns the abbreviated name (e.g., "Jan").
+    /// When <see langword="false"/>, returns the full name (e.g., "January").
     /// </param>
     public static string ToString( this Month month, bool abbreviated )
         => abbreviated
@@ -252,14 +251,13 @@ public static class CalendarEnumExtensions {
             : DateTimeFormatInfo.CurrentInfo.GetMonthName( (int)month );
 
     /// <summary>
-    /// Converts a 1-based month number (1–12) to the corresponding <see cref="Month"/> enum name string.
+    /// Converts a 1-based month number (1-12) to the corresponding culture-invariant month name string.
     /// </summary>
     /// <param name="month">The month number (1 = January, 12 = December).</param>
     public static string GetMonthNameFromMonthNum( this int month )
         => DateTimeFormatInfo.CurrentInfo.GetMonthName( month );
 
     #endregion MonthsOfYear / Month
-
 
     #region WeekNumberWithinMonth
 
@@ -282,8 +280,8 @@ public static class CalendarEnumExtensions {
     /// </summary>
     /// <param name="weekNums">The flags to format.</param>
     /// <param name="abbreviated">
-    /// When <c>true</c>, uses numeric representation (e.g., "1").
-    /// When <c>false</c>, uses ordinal names (e.g., "First").
+    /// When <see langword="true"/>, uses numeric representation (e.g., "1").
+    /// When <see langword="false"/>, uses ordinal names (e.g., "First").
     /// </param>
     public static string ToString( this WeekNumberWithinMonth weekNums, bool abbreviated = false )
         => RangeOfWeekNums.ToString( RangeOfWeekNums.GetContiguousRanges( weekNums ), abbreviated );

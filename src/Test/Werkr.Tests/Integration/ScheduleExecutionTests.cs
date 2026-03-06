@@ -15,16 +15,36 @@ namespace Werkr.Tests.Integration;
 /// </summary>
 [TestClass]
 public class ScheduleExecutionTests {
+
+    /// <summary>
+    /// Gets or sets the MSTest <see cref="TestContext"/> for the current test execution, providing access to test
+    /// metadata and a <see cref="CancellationToken"/> for cooperative cancellation.
+    /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
+    /// <summary>
+    /// Gets the shared <see cref="JsonSerializerOptions"/> configured with web defaults from <see
+    /// cref="AppHostFixture.JsonOptions"/> for JSON serialization and deserialization.
+    /// </summary>
     private static JsonSerializerOptions JsonOptions => AppHostFixture.JsonOptions;
+
+    /// <summary>
+    /// Gets the pre-configured, authenticated <see cref="HttpClient"/> from <see cref="AppHostFixture.ApiClient"/> for
+    /// sending HTTP requests to the <c>Werkr.Api</c>.
+    /// </summary>
     private static HttpClient Api => AppHostFixture.ApiClient;
 
     #region Test Infrastructure
 
+    /// <summary>
+    /// Creates a daily-recurrence schedule via <c>POST /api/schedules</c> and returns the deserialized JSON response.
+    /// The schedule is configured with the specified start date, time, day interval, and a 60-minute task timeout.
+    /// Asserts that the creation returns <see cref="HttpStatusCode.Created"/>.
+    /// </summary>
     private static async Task<JsonElement> CreateDailyScheduleAsync(
         string name, string date, string time, int dayInterval,
-        CancellationToken ct ) {
+        CancellationToken ct
+    ) {
         var request = new {
             name,
             stopTaskAfterMinutes = 60L,
@@ -40,6 +60,11 @@ public class ScheduleExecutionTests {
         return await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
     }
 
+    /// <summary>
+    /// Creates a task via <c>POST /api/tasks</c> and returns the deserialized JSON response. The task is configured as
+    /// a ShellCommand with the specified name, script content, target tags, and optional schedule link. Asserts that
+    /// the creation returns <see cref="HttpStatusCode.Created"/>.
+    /// </summary>
     private static async Task<JsonElement> CreateTaskAsync(
         string name, string content, string[] targetTags,
         Guid? scheduleId, CancellationToken ct ) {
@@ -64,6 +89,12 @@ public class ScheduleExecutionTests {
 
     #endregion Test Infrastructure
 
+    /// <summary>
+    /// Verifies that creating a daily schedule persists all fields correctly and that retrieving the schedule by ID
+    /// and via the schedule list both return the expected data. Creates a daily schedule with a 1-day interval
+    /// starting 2026-06-15 at 09:00 UTC, then reads it back and checks the name, <c>dailyRecurrence.dayInterval</c>,
+    /// start date, and start time. Also validates the schedule appears in the list endpoint.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task ScheduleCreation_PersistsAndReturnsCorrectData( ) {
@@ -98,6 +129,11 @@ public class ScheduleExecutionTests {
             "Schedule list should contain at least one schedule." );
     }
 
+    /// <summary>
+    /// Verifies that a task linked to a daily schedule produces the expected occurrence preview. Creates a daily
+    /// schedule (1-day interval) and a task linked to it, then requests occurrences for a 7-day window and asserts
+    /// that exactly 7 occurrences are returned, each separated by exactly 1 day.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task TaskLinkedToSchedule_OccurrencePreviewReturnsExpectedDates( ) {
@@ -137,6 +173,11 @@ public class ScheduleExecutionTests {
         }
     }
 
+    /// <summary>
+    /// Verifies that updating a schedule persists the new values and triggers the invalidation path. Creates a daily
+    /// schedule, then issues a PUT to change the name, timeout, day interval, and start date/time. After a brief
+    /// delay, it retrieves the schedule and asserts the updated values are reflected.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task ScheduleUpdate_PersistsChangesAndTriggersInvalidationPath( ) {
@@ -181,6 +222,11 @@ public class ScheduleExecutionTests {
         StringAssert.StartsWith( startDt.GetProperty( "time" ).GetString( )!, "10:00" );
     }
 
+    /// <summary>
+    /// Verifies that deleting a schedule removes it and subsequent GET requests return <see
+    /// cref="HttpStatusCode.NotFound"/>. Creates a daily schedule, confirms it exists via GET, issues a DELETE, and
+    /// then asserts the second GET returns NotFound.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task ScheduleDelete_RemovesScheduleAndReturnsNotFoundAfter( ) {
@@ -202,6 +248,11 @@ public class ScheduleExecutionTests {
         Assert.AreEqual( HttpStatusCode.NotFound, notFoundResponse.StatusCode );
     }
 
+    /// <summary>
+    /// Verifies that attempting an ad-hoc task run when no agent is connected returns <see
+    /// cref="HttpStatusCode.Conflict"/> (HTTP 409). Creates a task with a non-existent agent tag, issues a POST to
+    /// <c>/api/tasks/{id}/run</c>, and asserts the response body contains "No connected agent".
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task AdHocTaskRun_WithoutConnectedAgent_ReturnsConflict( ) {
@@ -223,6 +274,10 @@ public class ScheduleExecutionTests {
             "Conflict response should describe that no matching agent was found." );
     }
 
+    /// <summary>
+    /// Verifies that a newly created task has no job execution history. Creates a task, queries its job history via
+    /// <c>GET /api/tasks/{id}/jobs</c>, and asserts the returned JSON array is empty.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task JobHistory_ForNewTask_ReturnsEmptyList( ) {

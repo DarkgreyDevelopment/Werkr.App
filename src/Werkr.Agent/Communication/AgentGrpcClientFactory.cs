@@ -1,8 +1,6 @@
 using Grpc.Core;
 using Grpc.Net.Client;
-
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
 using Werkr.Data;
@@ -23,8 +21,17 @@ public sealed class AgentGrpcClientFactory(
     IServiceScopeFactory scopeFactory,
     ILogger<AgentGrpcClientFactory> logger
 ) : IDisposable {
+    /// <summary>
+    /// The shared gRPC channel to the Werkr server. Lazily initialized on first use.
+    /// </summary>
     private GrpcChannel? _channel;
+    /// <summary>
+    /// The resolved registered connection record containing the server URL, API keys, and shared encryption key.
+    /// </summary>
     private RegisteredConnection? _connection;
+    /// <summary>
+    /// Semaphore ensuring only one thread initializes the channel and connection at a time.
+    /// </summary>
     private readonly SemaphoreSlim _initLock = new( 1, 1 );
 
     /// <summary>
@@ -64,7 +71,9 @@ public sealed class AgentGrpcClientFactory(
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A configured gRPC client.</returns>
-    public async Task<WorkflowExecution.WorkflowExecutionClient> CreateWorkflowExecutionClientAsync( CancellationToken ct = default ) {
+    public async Task<WorkflowExecution.WorkflowExecutionClient> CreateWorkflowExecutionClientAsync(
+        CancellationToken ct = default
+    ) {
         await EnsureInitializedAsync( ct );
         return new WorkflowExecution.WorkflowExecutionClient( _channel );
     }
@@ -83,7 +92,9 @@ public sealed class AgentGrpcClientFactory(
         TimeSpan? timeout = null ) {
 
         if (_connection is null) {
-            throw new InvalidOperationException( "AgentGrpcClientFactory has not been initialized. Call any Create*Client method first." );
+            throw new InvalidOperationException(
+                "AgentGrpcClientFactory has not been initialized. Call any Create*Client method first."
+            );
         }
 
         Metadata metadata = new( ) {
@@ -162,14 +173,20 @@ public sealed class AgentGrpcClientFactory(
     /// Thread-safe via <see cref="SemaphoreSlim"/>.
     /// </summary>
     private async Task EnsureInitializedAsync( CancellationToken ct ) {
-        if (_channel is not null && _connection is not null && _channel.State != ConnectivityState.Shutdown) {
+        if (_channel is not null &&
+            _connection is not null &&
+            _channel.State != ConnectivityState.Shutdown
+        ) {
             return;
         }
 
         await _initLock.WaitAsync( ct );
         try {
             // Double-check after acquiring lock
-            if (_channel is not null && _connection is not null && _channel.State != ConnectivityState.Shutdown) {
+            if (_channel is not null &&
+                _connection is not null &&
+                _channel.State != ConnectivityState.Shutdown
+            ) {
                 return;
             }
 
@@ -208,7 +225,7 @@ public sealed class AgentGrpcClientFactory(
 
     /// <summary>
     /// Creates an <see cref="HttpMessageHandler"/> for gRPC channels.
-    /// All connections use TLS — ALPN negotiates HTTP/2 automatically.
+    /// All connections use TLS - ALPN negotiates HTTP/2 automatically.
     /// </summary>
     private static SocketsHttpHandler CreateHttpHandler( ) => new( ) {
         EnableMultipleHttp2Connections = true,

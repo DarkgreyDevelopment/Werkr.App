@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 
 namespace Werkr.Core.Cryptography.KeyInfo;
 
@@ -28,13 +28,25 @@ public class RSAKeyPair {
     /// <param name="privateKey">The RSA private key parameters (includes private components).</param>
     /// <param name="keySize">The key size in bits. Must be at least 2048 and divisible by 8.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when key size is invalid.</exception>
-    public RSAKeyPair( RSAParameters publicKey, RSAParameters privateKey, int keySize = 4096 ) {
+    public RSAKeyPair(
+        RSAParameters publicKey,
+        RSAParameters privateKey,
+        int keySize = 4096
+    ) {
         if (keySize < 2048) {
-            throw new ArgumentOutOfRangeException( nameof( keySize ), keySize, "RSA key size must be at least 2048 bits." );
+            throw new ArgumentOutOfRangeException(
+                nameof( keySize ),
+                keySize,
+                "RSA key size must be at least 2048 bits."
+            );
         }
 
         if (keySize % 8 != 0) {
-            throw new ArgumentOutOfRangeException( nameof( keySize ), keySize, "RSA key size must be divisible by 8." );
+            throw new ArgumentOutOfRangeException(
+                nameof( keySize ),
+                keySize,
+                "RSA key size must be divisible by 8."
+            );
         }
 
         PublicKey = publicKey;

@@ -1,4 +1,4 @@
-namespace Werkr.Core.Security;
+﻿namespace Werkr.Core.Security;
 
 /// <summary>
 /// Resolves and validates file-system paths against the configured allowlist.
@@ -33,5 +33,8 @@ public interface IFilePathResolver {
     /// </summary>
     /// <param name="source">The source path.</param>
     /// <param name="destination">The destination path.</param>
-    void ValidateSourceDestination( string source, string destination );
+    void ValidateSourceDestination(
+        string source,
+        string destination
+    );
 }

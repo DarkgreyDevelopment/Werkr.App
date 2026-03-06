@@ -6,7 +6,7 @@ namespace Werkr.Common.Configuration.Registry;
 /// An <see cref="IConfigurationSource"/> that reads settings from the Windows
 /// Registry under <c>HKLM\SOFTWARE\Werkr\{SubKey}</c>.
 /// <para>
-/// On non-Windows platforms this source is a no-op — it returns an empty provider.
+/// On non-Windows platforms this source is a no-op - it returns an empty provider.
 /// </para>
 /// </summary>
 public sealed class RegistryConfigurationSource : IConfigurationSource {

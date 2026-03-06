@@ -2,7 +2,6 @@ namespace Werkr.Common.Configuration;
 
 /// <summary>
 /// Configuration for file-based job output storage.
-/// Compatible with the options pattern (<c>IOptions&lt;T&gt;</c>).
 /// </summary>
 public sealed class JobOutputOptions {
     /// <summary>Configuration section name.</summary>

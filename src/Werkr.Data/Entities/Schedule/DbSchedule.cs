@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Werkr.Data.Entities.Interfaces;
 
 namespace Werkr.Data.Entities.Schedule;
@@ -10,7 +9,8 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "schedules" )]
 public class DbSchedule : ConcurrencyBase, IKey<Guid> {
-    /// <summary>Unique identifier.</summary>
+
+    /// <summary>Database-generated primary key.</summary>
     [Key]
     [DatabaseGenerated( DatabaseGeneratedOption.Identity )]
     public Guid Id { get; set; }

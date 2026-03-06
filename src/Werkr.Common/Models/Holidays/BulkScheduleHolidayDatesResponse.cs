@@ -1,5 +1,6 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Batched holiday dates response.</summary>
+/// <summary>Response containing batched holiday dates computed for multiple schedules.</summary>
 public sealed record BulkScheduleHolidayDatesResponse(
-    IReadOnlyList<ScheduleHolidayDatesResponse> Results );
+    IReadOnlyList<ScheduleHolidayDatesResponse> Results
+);

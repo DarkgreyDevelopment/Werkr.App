@@ -1,13 +1,12 @@
 using System.Diagnostics;
 using System.Threading.Channels;
-
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
 
 namespace Werkr.Agent.Operators;
 
 /// <summary>
-/// System shell operator — executes cmd.exe (Windows) or /bin/bash (Linux/macOS) commands and scripts.
+/// System shell operator - executes cmd.exe (Windows) or /bin/bash (Linux/macOS) commands and scripts.
 /// Captures stdout/stderr via <see cref="BoundedChannelOptions"/> with backpressure support.
 /// Returns a <see cref="ShellOperatorResult"/> after execution completes.
 /// </summary>
@@ -19,7 +18,10 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
     public bool IsAvailable => OperatingSystem.IsWindows( ) || OperatingSystem.IsLinux( ) || OperatingSystem.IsMacOS( );
 
     /// <inheritdoc/>
-    public OperatorExecution RunCommand( string command, CancellationToken cancellationToken = default ) {
+    public OperatorExecution RunCommand(
+        string command,
+        CancellationToken cancellationToken = default
+    ) {
         Guid callId = Guid.NewGuid( );
         Channel<OperatorOutput> channel = Channel.CreateBounded<OperatorOutput>(
             new BoundedChannelOptions( 10_000 ) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false } );
@@ -30,7 +32,10 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
     }
 
     /// <inheritdoc/>
-    public OperatorExecution RunScript( string scriptPath, CancellationToken cancellationToken = default ) {
+    public OperatorExecution RunScript(
+        string scriptPath,
+        CancellationToken cancellationToken = default
+    ) {
         if (!File.Exists( scriptPath )) {
             Guid errorCallId = Guid.NewGuid( );
             Channel<OperatorOutput> errorChannel = Channel.CreateBounded<OperatorOutput>(
@@ -46,7 +51,11 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
     }
 
     /// <inheritdoc/>
-    public OperatorExecution RunScriptWithArgs( string scriptPath, IEnumerable<string> args, CancellationToken cancellationToken = default ) {
+    public OperatorExecution RunScriptWithArgs(
+        string scriptPath,
+        IEnumerable<string> args,
+        CancellationToken cancellationToken = default
+    ) {
         if (!File.Exists( scriptPath )) {
             Guid errorCallId = Guid.NewGuid( );
             Channel<OperatorOutput> errorChannel = Channel.CreateBounded<OperatorOutput>(
@@ -62,12 +71,17 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
         return RunCommand( command, cancellationToken );
     }
 
+    /// <summary>
+    /// Core execution loop that spawns the native shell process, captures stdout/stderr via data-received events,
+    /// waits for exit, and writes the final exit code to the result.
+    /// </summary>
     private async Task ExecuteCommandInternal(
         string command,
         Guid callId,
         ChannelWriter<OperatorOutput> writer,
         TaskCompletionSource<IOperatorResult> resultTcs,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
 
         try {
             await writer.WriteAsync( OperatorOutput.Create( "Debug", $"Begin CallId: {callId}" ), cancellationToken );
@@ -148,7 +162,15 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
         }
     }
 
-    private static async Task WriteErrorAndComplete( ChannelWriter<OperatorOutput> writer, Guid callId, string message ) {
+    /// <summary>
+    /// Writes a standardized error sequence (debug begin marker, error message, debug end marker)
+    /// to the channel writer and then completes the channel. Used for early failures such as missing script files.
+    /// </summary>
+    private static async Task WriteErrorAndComplete(
+        ChannelWriter<OperatorOutput> writer,
+        Guid callId,
+        string message
+    ) {
         await writer.WriteAsync( OperatorOutput.Create( "Debug", $"Begin CallId: {callId}" ) );
         await writer.WriteAsync( OperatorOutput.Create( "Error", message ) );
         await writer.WriteAsync( OperatorOutput.Create( "Debug", $"End CallId: {callId}" ) );

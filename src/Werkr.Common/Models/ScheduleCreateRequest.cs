@@ -9,4 +9,5 @@ public sealed record ScheduleCreateRequest(
     DailyRecurrenceDto? DailyRecurrence,
     WeeklyRecurrenceDto? WeeklyRecurrence,
     MonthlyRecurrenceDto? MonthlyRecurrence,
-    RepeatOptionsDto? RepeatOptions );
+    RepeatOptionsDto? RepeatOptions
+);

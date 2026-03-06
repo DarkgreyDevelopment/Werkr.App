@@ -1,5 +1,4 @@
 using Grpc.Core;
-
 using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
@@ -39,7 +38,8 @@ public sealed class ScheduleSyncGrpcService(
     /// </summary>
     public override async Task<EncryptedEnvelope> GetAssignedSchedules(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
@@ -262,7 +262,8 @@ public sealed class ScheduleSyncGrpcService(
     /// </summary>
     public override async Task<EncryptedEnvelope> GetBulkScheduleHolidayDates(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
@@ -316,7 +317,8 @@ public sealed class ScheduleSyncGrpcService(
     /// </summary>
     public override async Task<EncryptedEnvelope> SubmitAuditLog(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
@@ -352,6 +354,9 @@ public sealed class ScheduleSyncGrpcService(
         return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
     }
 
+    /// <summary>
+    /// Extracts the <see cref="RegisteredConnection"/> from the gRPC call context's <c>UserState</c> dictionary, where it was placed by the <see cref="Interceptors.AgentBearerTokenInterceptor"/> during authentication.
+    /// </summary>
     private static RegisteredConnection GetConnection( ServerCallContext context ) {
         return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
             ? connection

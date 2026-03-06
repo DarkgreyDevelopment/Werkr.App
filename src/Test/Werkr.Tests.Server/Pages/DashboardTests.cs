@@ -3,11 +3,15 @@ using Werkr.Common.Models;
 namespace Werkr.Tests.Server.Pages;
 
 /// <summary>
-/// Tests for the Dashboard (Home.razor) functionality — agent count, status breakdown,
-/// system info, quick actions visibility, and activity feed (§3.12.4).
+/// Tests for the Dashboard (Home.razor) functionality - agent count, status breakdown,
+/// system info, quick actions visibility, and activity feed.
 /// </summary>
 [TestClass]
 public class DashboardTests {
+    /// <summary>
+    /// Verifies that a list of <see cref="AgentListDto"/> records accurately represents the total agent count
+    /// displayed on the dashboard.
+    /// </summary>
     [TestMethod]
     public void Dashboard_AgentListDto_CountsCorrectly( ) {
         List<AgentListDto> agents = [
@@ -19,6 +23,10 @@ public class DashboardTests {
         Assert.HasCount( 3, agents, "Dashboard should show total agent count." );
     }
 
+    /// <summary>
+    /// Verifies that the dashboard status breakdown correctly categorizes agents into "Connected", "Disconnected", and
+    /// "Revoked" groups using case-insensitive string comparison, and that the counts match the expected distribution.
+    /// </summary>
     [TestMethod]
     public void Dashboard_StatusBreakdown_CategorisesCorrectly( ) {
         List<AgentListDto> agents = [
@@ -40,6 +48,10 @@ public class DashboardTests {
         Assert.AreEqual( 1, revoked, "Revoked count mismatch." );
     }
 
+    /// <summary>
+    /// Verifies that the server uptime computation produces a correctly formatted string (e.g., "2h 15m") and that the
+    /// computed <see cref="TimeSpan"/> exceeds 120 minutes when the start time is 2 hours and 15 minutes in the past.
+    /// </summary>
     [TestMethod]
     public void Dashboard_SystemInfo_ComputesUptime( ) {
         DateTime startTime = DateTime.UtcNow.AddHours( -2 ).AddMinutes( -15 );
@@ -53,6 +65,10 @@ public class DashboardTests {
         Assert.IsGreaterThan( 120, uptime.TotalMinutes, "Uptime should be > 120 minutes." );
     }
 
+    /// <summary>
+    /// Verifies that a user with the "Admin" role sees all dashboard quick actions: Register Agent, Operator Console,
+    /// Manage Users, and View Settings.
+    /// </summary>
     [TestMethod]
     public void Dashboard_QuickActions_AdminSeesAll( ) {
         // Simulate the role-checking logic used by AuthorizeView
@@ -69,6 +85,10 @@ public class DashboardTests {
         Assert.IsTrue( canViewSettings, "Admin should see View Settings." );
     }
 
+    /// <summary>
+    /// Verifies that a user with only the "Operator" role sees just the Operator Console quick action and does not see
+    /// admin-only actions like Register Agent, Manage Users, or View Settings.
+    /// </summary>
     [TestMethod]
     public void Dashboard_QuickActions_OperatorSeesSubset( ) {
         List<string> operatorRoles = ["Operator"];
@@ -84,6 +104,10 @@ public class DashboardTests {
         Assert.IsFalse( canViewSettings, "Operator should NOT see View Settings." );
     }
 
+    /// <summary>
+    /// Verifies that the activity feed sorts <see cref="AgentActivityDto"/> records by <see cref="OccurredAtUtc"/> in
+    /// descending order, placing the most recent event first and the oldest event last.
+    /// </summary>
     [TestMethod]
     public void Dashboard_ActivityFeed_SortsByDescendingTime( ) {
         Guid agentId = Guid.NewGuid( );
@@ -104,6 +128,10 @@ public class DashboardTests {
             "Oldest event should be last." );
     }
 
+    /// <summary>
+    /// Verifies that an <see cref="AgentHealthDto"/> for an unreachable agent has a status of "Unreachable" and <see
+    /// langword="null"/> values for both <see cref="PowerShellAvailable"/> and <see cref="SystemShellAvailable"/>.
+    /// </summary>
     [TestMethod]
     public void Dashboard_HealthDto_UnreachableAgent_HasNullAvailability( ) {
         AgentHealthDto unreachable = new(
@@ -113,7 +141,8 @@ public class DashboardTests {
             null,
             null,
             null,
-            DateTime.UtcNow );
+            DateTime.UtcNow
+        );
 
         Assert.AreEqual( "Unreachable", unreachable.Status );
         Assert.IsNull( unreachable.PowerShellAvailable,
@@ -122,6 +151,10 @@ public class DashboardTests {
             "Unreachable agent should have null SystemShell availability." );
     }
 
+    /// <summary>
+    /// Verifies that when all <see cref="DatabaseHealthDto"/> entries report <see cref="IsConnected"/> as <see
+    /// langword="true"/>, the overall database health is considered healthy.
+    /// </summary>
     [TestMethod]
     public void Dashboard_DatabaseHealth_AllConnected_ReportsHealthy( ) {
         List<DatabaseHealthDto> diagnostics = [
@@ -134,6 +167,10 @@ public class DashboardTests {
         Assert.IsTrue( healthy, "All databases connected should report healthy." );
     }
 
+    /// <summary>
+    /// Verifies that when at least one <see cref="DatabaseHealthDto"/> entry reports <see cref="IsConnected"/> as <see
+    /// langword="false"/>, the overall database health is considered unhealthy.
+    /// </summary>
     [TestMethod]
     public void Dashboard_DatabaseHealth_OneDisconnected_ReportsUnhealthy( ) {
         List<DatabaseHealthDto> diagnostics = [

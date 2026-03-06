@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Werkr.Data.Calendar.Enums;
 
 namespace Werkr.Data.Entities.Schedule;
@@ -14,6 +13,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "monthly_recurrence" )]
 public class MonthlyRecurrence : ConcurrencyBase {
+
     /// <summary>Foreign key to the parent schedule.</summary>
     [Key]
     public Guid ScheduleId { get; set; }

@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -40,10 +40,17 @@ public sealed class CommandDispatcher(
         Guid agentConnectionId,
         OperatorType operatorType,
         string command,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default ) {
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    ) {
 
-        (Grpc.Net.Client.GrpcChannel channel, RegisteredConnection connection) =
-            await ResolveChannelAsync( agentConnectionId, cancellationToken );
+        (
+            Grpc.Net.Client.GrpcChannel channel,
+            RegisteredConnection connection
+        ) =
+            await ResolveChannelAsync(
+                agentConnectionId,
+                cancellationToken
+            );
 
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
         EncryptedEnvelope envelope = EncryptRequest(
@@ -56,7 +63,10 @@ public sealed class CommandDispatcher(
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
                 "Dispatching {OperatorType} command to Agent {AgentId}, CallId {CallId}.",
-                operatorType.ToString( ), agentConnectionId.ToString( ), callId.ToString( ) );
+                operatorType.ToString( ),
+                agentConnectionId.ToString( ),
+                callId.ToString( )
+            );
         }
 
         AsyncServerStreamingCall<EncryptedEnvelope> call;
@@ -64,12 +74,18 @@ public sealed class CommandDispatcher(
         switch (operatorType) {
             case OperatorType.PowerShell:
                 Pwsh.PwshClient pwshClient = new( channel );
-                call = pwshClient.RunCommand( envelope, callOptions );
+                call = pwshClient.RunCommand(
+                    envelope,
+                    callOptions
+                );
                 break;
 
             case OperatorType.SystemShell:
                 SystemShell.SystemShellClient shellClient = new( channel );
-                call = shellClient.RunCommand( envelope, callOptions );
+                call = shellClient.RunCommand(
+                    envelope,
+                    callOptions
+                );
                 break;
 
             default:
@@ -89,7 +105,10 @@ public sealed class CommandDispatcher(
                     try {
                         moved = await enumerator.MoveNextAsync( );
                     } catch (Exception ex) {
-                        throw TranslateException( ex, agentConnectionId );
+                        throw TranslateException(
+                            ex,
+                            agentConnectionId
+                        );
                     }
                     if (!moved) {
                         break;
@@ -117,10 +136,17 @@ public sealed class CommandDispatcher(
         OperatorType operatorType,
         string scriptPath,
         IEnumerable<string>? args,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default ) {
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    ) {
 
-        (Grpc.Net.Client.GrpcChannel channel, RegisteredConnection connection) =
-            await ResolveChannelAsync( agentConnectionId, cancellationToken );
+        (
+            Grpc.Net.Client.GrpcChannel channel,
+            RegisteredConnection connection
+        ) =
+            await ResolveChannelAsync(
+                agentConnectionId,
+                cancellationToken
+            );
 
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
         Guid callId = Guid.NewGuid( );
@@ -130,7 +156,10 @@ public sealed class CommandDispatcher(
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
                 "Dispatching {OperatorType} script to Agent {AgentId}, CallId {CallId}.",
-                operatorType.ToString( ), agentConnectionId.ToString( ), callId.ToString( ) );
+                operatorType.ToString( ),
+                agentConnectionId.ToString( ),
+                callId.ToString( )
+            );
         }
 
         AsyncServerStreamingCall<EncryptedEnvelope> call;
@@ -145,11 +174,17 @@ public sealed class CommandDispatcher(
             switch (operatorType) {
                 case OperatorType.PowerShell:
                     call = new Pwsh.PwshClient( channel )
-                        .RunScriptWithArgs( envelope, callOptions );
+                        .RunScriptWithArgs(
+                            envelope,
+                            callOptions
+                        );
                     break;
                 case OperatorType.SystemShell:
                     call = new SystemShell.SystemShellClient( channel )
-                        .RunScriptWithArgs( envelope, callOptions );
+                        .RunScriptWithArgs(
+                            envelope,
+                            callOptions
+                        );
                     break;
                 default:
                     yield return OperatorOutput.Create(
@@ -163,11 +198,17 @@ public sealed class CommandDispatcher(
             switch (operatorType) {
                 case OperatorType.PowerShell:
                     call = new Pwsh.PwshClient( channel )
-                        .RunScript( envelope, callOptions );
+                        .RunScript(
+                            envelope,
+                            callOptions
+                        );
                     break;
                 case OperatorType.SystemShell:
                     call = new SystemShell.SystemShellClient( channel )
-                        .RunScript( envelope, callOptions );
+                        .RunScript(
+                            envelope,
+                            callOptions
+                        );
                     break;
                 default:
                     yield return OperatorOutput.Create(
@@ -187,7 +228,10 @@ public sealed class CommandDispatcher(
                     try {
                         moved = await enumerator.MoveNextAsync( );
                     } catch (Exception ex) {
-                        throw TranslateException( ex, agentConnectionId );
+                        throw TranslateException(
+                            ex,
+                            agentConnectionId
+                        );
                     }
                     if (!moved) {
                         break;
@@ -211,10 +255,17 @@ public sealed class CommandDispatcher(
     public async IAsyncEnumerable<OperatorOutput> ExecuteActionAsync(
         Guid agentConnectionId,
         ActionDescriptor descriptor,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default ) {
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    ) {
 
-        (Grpc.Net.Client.GrpcChannel channel, RegisteredConnection connection) =
-            await ResolveChannelAsync( agentConnectionId, cancellationToken );
+        (
+            Grpc.Net.Client.GrpcChannel channel,
+            RegisteredConnection connection
+        ) =
+            await ResolveChannelAsync(
+                agentConnectionId,
+                cancellationToken
+            );
 
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
 
@@ -233,11 +284,17 @@ public sealed class CommandDispatcher(
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
                 "Dispatching Action '{ActionName}' to Agent {AgentId}, CallId {CallId}.",
-                descriptor.Action, agentConnectionId.ToString( ), callId.ToString( ) );
+                descriptor.Action,
+                agentConnectionId.ToString( ),
+                callId.ToString( )
+            );
         }
 
         Werkr.Agent.Protos.Action.ActionClient actionClient = new( channel );
-        using AsyncServerStreamingCall<EncryptedEnvelope> call = actionClient.RunAction( envelope, callOptions );
+        using AsyncServerStreamingCall<EncryptedEnvelope> call = actionClient.RunAction(
+            envelope,
+            callOptions
+        );
 
         IAsyncEnumerable<OperatorOutput> stream = GrpcOutputReader.ReadAsync(
             call.ResponseStream, connection.SharedKey, cancellationToken );
@@ -249,7 +306,10 @@ public sealed class CommandDispatcher(
                 try {
                     moved = await enumerator.MoveNextAsync( );
                 } catch (Exception ex) {
-                    throw TranslateException( ex, agentConnectionId );
+                    throw TranslateException(
+                        ex,
+                        agentConnectionId
+                    );
                 }
                 if (!moved) {
                     break;
@@ -267,26 +327,44 @@ public sealed class CommandDispatcher(
     /// into <see cref="CommandDispatcherException"/>.
     /// </summary>
     private async Task<(Grpc.Net.Client.GrpcChannel Channel, RegisteredConnection Connection)>
-        ResolveChannelAsync( Guid agentConnectionId, CancellationToken cancellationToken ) {
+        ResolveChannelAsync(
+            Guid agentConnectionId,
+            CancellationToken cancellationToken
+        ) {
         try {
-            return await connectionManager.GetChannelAsync( agentConnectionId, cancellationToken );
+            return await connectionManager.GetChannelAsync(
+                agentConnectionId,
+                cancellationToken
+            );
         } catch (InvalidOperationException ex) when (
-            ex.Message.Contains( "not found", StringComparison.OrdinalIgnoreCase )) {
+            ex.Message.Contains(
+                "not found",
+                StringComparison.OrdinalIgnoreCase
+            )) {
             throw new CommandDispatcherException(
                 CommandDispatchFailure.AgentNotFound,
                 $"Agent connection '{agentConnectionId}' was not found.",
-                agentConnectionId, ex );
+                agentConnectionId,
+                ex
+            );
         } catch (InvalidOperationException ex) when (
-            ex.Message.Contains( "revoked", StringComparison.OrdinalIgnoreCase )) {
+            ex.Message.Contains(
+                "revoked",
+                StringComparison.OrdinalIgnoreCase
+            )) {
             throw new CommandDispatcherException(
                 CommandDispatchFailure.AgentRevoked,
                 $"Agent connection '{agentConnectionId}' has been revoked.",
-                agentConnectionId, ex );
+                agentConnectionId,
+                ex
+            );
         } catch (InvalidOperationException ex) {
             throw new CommandDispatcherException(
                 CommandDispatchFailure.AgentNotFound,
                 ex.Message,
-                agentConnectionId, ex );
+                agentConnectionId,
+                ex
+            );
         }
     }
 
@@ -298,44 +376,63 @@ public sealed class CommandDispatcher(
         T message, byte[] sharedKey, string keyId, Guid agentConnectionId )
         where T : Google.Protobuf.IMessage<T> {
         try {
-            return PayloadEncryptor.EncryptToEnvelope( message, sharedKey, keyId );
+            return PayloadEncryptor.EncryptToEnvelope(
+                message,
+                sharedKey,
+                keyId
+            );
         } catch (CryptographicException ex) {
             throw new CommandDispatcherException(
                 CommandDispatchFailure.EncryptionError,
                 "Failed to encrypt the command payload.",
-                agentConnectionId, ex );
+                agentConnectionId,
+                ex
+            );
         }
     }
 
     /// <summary>
     /// Translates raw exceptions into <see cref="CommandDispatcherException"/>.
     /// </summary>
-    private static CommandDispatcherException TranslateException( Exception ex, Guid agentConnectionId ) =>
+    private static CommandDispatcherException TranslateException(
+        Exception ex,
+        Guid agentConnectionId
+    ) =>
         ex switch {
             CommandDispatcherException cde => cde,
             RpcException rpc when rpc.StatusCode == StatusCode.Unavailable =>
                 new CommandDispatcherException(
                     CommandDispatchFailure.AgentUnreachable,
                     $"Agent '{agentConnectionId}' is unreachable.",
-                    agentConnectionId, rpc ),
+                    agentConnectionId,
+                    rpc
+                ),
             RpcException rpc =>
                 new CommandDispatcherException(
                     CommandDispatchFailure.AgentUnreachable,
                     $"gRPC error communicating with agent '{agentConnectionId}': {rpc.Status.Detail}",
-                    agentConnectionId, rpc ),
+                    agentConnectionId,
+                    rpc
+                ),
             AuthenticationException auth =>
                 new CommandDispatcherException(
                     CommandDispatchFailure.TlsError,
                     "TLS authentication failed while connecting to the agent.",
-                    agentConnectionId, auth ),
+                    agentConnectionId,
+                    auth
+                ),
             CryptographicException crypto =>
                 new CommandDispatcherException(
                     CommandDispatchFailure.EncryptionError,
                     "Payload decryption failed.",
-                    agentConnectionId, crypto ),
+                    agentConnectionId,
+                    crypto
+                ),
             _ => new CommandDispatcherException(
                     CommandDispatchFailure.Unknown,
                     ex.Message,
-                    agentConnectionId, ex )
+                    agentConnectionId,
+                    ex
+                )
         };
 }

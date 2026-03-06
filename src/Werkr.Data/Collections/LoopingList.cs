@@ -12,7 +12,7 @@ namespace Werkr.Data.Collections;
 /// <see cref="ICollection{T}"/>, and <see cref="IEnumerable{T}"/>.
 /// </para>
 /// <para>
-/// When used in a <c>foreach</c> loop, it will <b>not</b> automatically break —
+/// When used in a <see langword="foreach"/> loop, it will <b>not</b> automatically break -
 /// consumers must manually break to exit the loop.
 /// </para>
 /// <list type="bullet">
@@ -110,10 +110,7 @@ public class LoopingList<T> : IEnumerable<T>, ICollection<T>, IList<T> {
 
     #region IEnumerable<T>
 
-    /// <summary>
-    /// Returns an enumerator that loops continuously through the list.
-    /// <para>Consumers <b>must</b> break manually to avoid infinite iteration.</para>
-    /// </summary>
+    /// <inheritdoc/>
     public IEnumerator<T> GetEnumerator( ) {
         while (true) {
             yield return _items[CurrentIndex];
@@ -121,7 +118,6 @@ public class LoopingList<T> : IEnumerable<T>, ICollection<T>, IList<T> {
         }
     }
 
-    /// <inheritdoc/>
     IEnumerator IEnumerable.GetEnumerator( ) => GetEnumerator( );
 
     #endregion IEnumerable<T>

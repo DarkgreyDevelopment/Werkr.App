@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Management.Automation.Host;
 using System.Threading.Channels;
-
 using Werkr.Core.Communication;
 
 namespace Werkr.Agent.Operators;
@@ -17,7 +16,13 @@ namespace Werkr.Agent.Operators;
 /// throw <see cref="NotSupportedException"/>.
 /// </remarks>
 public sealed class WerkrPSHost : PSHost {
+    /// <summary>
+    /// Unique identifier for this host instance, generated at construction time.
+    /// </summary>
     private readonly Guid _instanceId = Guid.NewGuid( );
+    /// <summary>
+    /// The user interface implementation that routes PowerShell output to the operator output channel.
+    /// </summary>
     private readonly WerkrPSHostUserInterface _ui;
 
     /// <summary>Creates a new <see cref="WerkrPSHost"/>.</summary>

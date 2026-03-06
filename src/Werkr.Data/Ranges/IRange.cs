@@ -5,6 +5,7 @@ namespace Werkr.Data.Ranges;
 /// </summary>
 /// <typeparam name="T">The value type of the range bounds.</typeparam>
 public interface IRange<T> where T : struct {
+
     /// <summary>The start of the range.</summary>
     T Start { get; }
 

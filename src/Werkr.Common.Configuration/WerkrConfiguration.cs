@@ -2,7 +2,6 @@ namespace Werkr.Common.Configuration;
 
 /// <summary>
 /// Central configuration settings for the Werkr application.
-/// Compatible with the options pattern (<c>IOptions&lt;T&gt;</c>).
 /// </summary>
 public sealed class WerkrConfiguration {
     /// <summary>Configuration section name.</summary>

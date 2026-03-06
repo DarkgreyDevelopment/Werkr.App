@@ -26,7 +26,18 @@ namespace Werkr.Tests;
 /// </summary>
 [TestClass]
 public static class AppHostFixture {
+    /// <summary>
+    /// The PostgreSQL Testcontainer instance used as the backing database for the <c>Werkr.Api</c>
+    /// application during integration tests. Initialized in <see cref="InitializeAsync"/> and
+    /// disposed in <see cref="CleanupAsync"/>.
+    /// </summary>
     private static PostgreSqlContainer? s_postgres;
+
+    /// <summary>
+    /// The <c>WebApplicationFactory</c> that bootstraps the <c>Werkr.Api</c> application in-memory
+    /// with overridden services and configuration. Initialized in <see cref="InitializeAsync"/> and
+    /// disposed in <see cref="CleanupAsync"/>.
+    /// </summary>
     private static WebApplicationFactory<Program>? s_factory;
 
     /// <summary>Pre-built JSON options matching the API's camelCase convention.</summary>
@@ -35,6 +46,14 @@ public static class AppHostFixture {
     /// <summary>Authenticated HttpClient targeting the API. Carries an admin JWT.</summary>
     public static HttpClient ApiClient { get; private set; } = null!;
 
+    /// <summary>
+    /// Performs one-time assembly-level initialization for all integration tests. Starts a PostgreSQL
+    /// Testcontainer, configures a <c>WebApplicationFactory</c> for the <c>Werkr.Api</c> application
+    /// with the container's connection string, applies EF Core migrations for both the main
+    /// <see cref="WerkrDbContext"/> and the <see cref="WerkrIdentityDbContext"/>, seeds default roles
+    /// and permissions, and creates an authenticated <see cref="HttpClient"/> with an admin JWT bearer
+    /// token.
+    /// </summary>
     [AssemblyInitialize]
     public static async Task InitializeAsync( TestContext testContext ) {
         CancellationToken ct = testContext.CancellationToken;
@@ -120,6 +139,11 @@ public static class AppHostFixture {
         ApiClient = apiClient;
     }
 
+    /// <summary>
+    /// Performs one-time assembly-level cleanup after all integration tests have completed. Disposes
+    /// the authenticated <see cref="ApiClient"/>, the <c>WebApplicationFactory</c>, and the PostgreSQL
+    /// Testcontainer to release all allocated resources.
+    /// </summary>
     [AssemblyCleanup]
     public static async Task CleanupAsync( ) {
         ApiClient?.Dispose( );

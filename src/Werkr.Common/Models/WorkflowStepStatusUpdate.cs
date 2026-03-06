@@ -7,4 +7,5 @@ public sealed record WorkflowStepStatusUpdate(
     string StepName,
     string Status,
     DateTime Timestamp,
-    string? ErrorMessage );
+    string? ErrorMessage
+);

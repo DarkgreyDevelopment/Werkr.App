@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Threading.Channels;
 
 using Werkr.Core.Communication;
@@ -37,5 +37,6 @@ public interface IActionHandler {
     Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken = default );
+        CancellationToken cancellationToken = default
+    );
 }

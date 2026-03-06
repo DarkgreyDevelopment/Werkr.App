@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +15,10 @@ namespace Werkr.Core.Tasks;
 /// </summary>
 /// <param name="dbContext">Database context.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class TaskService( WerkrDbContext dbContext, ILogger<TaskService> logger ) {
+public sealed class TaskService(
+    WerkrDbContext dbContext,
+    ILogger<TaskService> logger
+) {
 
     /// <summary>
     /// Creates a new task with randomized <see cref="WerkrTask.SyncIntervalMinutes"/>.
@@ -24,18 +27,27 @@ public sealed class TaskService( WerkrDbContext dbContext, ILogger<TaskService> 
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The created task with its generated Id.</returns>
     /// <exception cref="ValidationException">Thrown when the task fails validation.</exception>
-    public async Task<WerkrTask> CreateAsync( WerkrTask task, CancellationToken ct = default ) {
+    public async Task<WerkrTask> CreateAsync(
+        WerkrTask task,
+        CancellationToken ct = default
+    ) {
         Validate( task );
 
         // Randomize sync interval between 30–60 minutes
-        task.SyncIntervalMinutes = RandomNumberGenerator.GetInt32( 30, 61 );
+        task.SyncIntervalMinutes = RandomNumberGenerator.GetInt32(
+            30,
+            61
+        );
 
         _ = dbContext.Tasks.Add( task );
         _ = await dbContext.SaveChangesAsync( ct );
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Created task {TaskId} '{TaskName}' (SyncInterval={Interval}m).",
-                task.Id.ToString( ), task.Name, task.SyncIntervalMinutes.ToString( ) );
+                task.Id.ToString( ),
+                task.Name,
+                task.SyncIntervalMinutes.ToString( )
+            );
         }
 
         return task;
@@ -47,7 +59,10 @@ public sealed class TaskService( WerkrDbContext dbContext, ILogger<TaskService> 
     /// <param name="workflowId">If specified, only returns tasks belonging to this workflow.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A read-only list of tasks.</returns>
-    public async Task<IReadOnlyList<WerkrTask>> GetAllAsync( long? workflowId = null, CancellationToken ct = default ) {
+    public async Task<IReadOnlyList<WerkrTask>> GetAllAsync(
+        long? workflowId = null,
+        CancellationToken ct = default
+    ) {
         IQueryable<WerkrTask> query = dbContext.Tasks.AsNoTracking( );
 
         if (workflowId.HasValue) {
@@ -63,8 +78,14 @@ public sealed class TaskService( WerkrDbContext dbContext, ILogger<TaskService> 
     /// <param name="id">The task identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The task, or null if not found.</returns>
-    public async Task<WerkrTask?> GetByIdAsync( long id, CancellationToken ct = default ) =>
-        await dbContext.Tasks.AsNoTracking( ).FirstOrDefaultAsync( t => t.Id == id, ct );
+    public async Task<WerkrTask?> GetByIdAsync(
+        long id,
+        CancellationToken ct = default
+    ) =>
+        await dbContext.Tasks.AsNoTracking( ).FirstOrDefaultAsync(
+            t => t.Id == id,
+            ct
+        );
 
     /// <summary>
     /// Updates an existing task.
@@ -74,10 +95,16 @@ public sealed class TaskService( WerkrDbContext dbContext, ILogger<TaskService> 
     /// <returns>The updated task.</returns>
     /// <exception cref="KeyNotFoundException">Thrown when the task ID does not exist.</exception>
     /// <exception cref="ValidationException">Thrown when the task fails validation.</exception>
-    public async Task<WerkrTask> UpdateAsync( WerkrTask task, CancellationToken ct = default ) {
+    public async Task<WerkrTask> UpdateAsync(
+        WerkrTask task,
+        CancellationToken ct = default
+    ) {
         Validate( task );
 
-        WerkrTask? existing = await dbContext.Tasks.FirstOrDefaultAsync( t => t.Id == task.Id, ct )
+        WerkrTask? existing = await dbContext.Tasks.FirstOrDefaultAsync(
+            t => t.Id == task.Id,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Task with Id={task.Id} was not found." );
 
         existing.Name = task.Name;
@@ -97,7 +124,11 @@ public sealed class TaskService( WerkrDbContext dbContext, ILogger<TaskService> 
         _ = await dbContext.SaveChangesAsync( ct );
 
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "Updated task {TaskId} '{TaskName}'.", existing.Id.ToString( ), existing.Name );
+            logger.LogInformation(
+                "Updated task {TaskId} '{TaskName}'.",
+                existing.Id.ToString( ),
+                existing.Name
+            );
         }
 
         return existing;
@@ -109,15 +140,25 @@ public sealed class TaskService( WerkrDbContext dbContext, ILogger<TaskService> 
     /// <param name="id">The task identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Thrown when the task ID does not exist.</exception>
-    public async Task DeleteAsync( long id, CancellationToken ct = default ) {
-        WerkrTask? existing = await dbContext.Tasks.FirstOrDefaultAsync( t => t.Id == id, ct )
+    public async Task DeleteAsync(
+        long id,
+        CancellationToken ct = default
+    ) {
+        WerkrTask? existing = await dbContext.Tasks.FirstOrDefaultAsync(
+            t => t.Id == id,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Task with Id={id} was not found." );
 
         _ = dbContext.Tasks.Remove( existing );
         _ = await dbContext.SaveChangesAsync( ct );
 
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "Deleted task {TaskId} '{TaskName}'.", id.ToString( ), existing.Name );
+            logger.LogInformation(
+                "Deleted task {TaskId} '{TaskName}'.",
+                id.ToString( ),
+                existing.Name
+            );
         }
     }
 
@@ -128,15 +169,26 @@ public sealed class TaskService( WerkrDbContext dbContext, ILogger<TaskService> 
     /// <param name="enabled">The new enabled state.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Thrown when the task ID does not exist.</exception>
-    public async Task SetEnabledAsync( long id, bool enabled, CancellationToken ct = default ) {
-        WerkrTask? existing = await dbContext.Tasks.FirstOrDefaultAsync( t => t.Id == id, ct )
+    public async Task SetEnabledAsync(
+        long id,
+        bool enabled,
+        CancellationToken ct = default
+    ) {
+        WerkrTask? existing = await dbContext.Tasks.FirstOrDefaultAsync(
+            t => t.Id == id,
+            ct
+        )
             ?? throw new KeyNotFoundException( $"Task with Id={id} was not found." );
 
         existing.Enabled = enabled;
         _ = await dbContext.SaveChangesAsync( ct );
 
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "Task {TaskId} enabled={Enabled}.", id.ToString( ), enabled.ToString( ) );
+            logger.LogInformation(
+                "Task {TaskId} enabled={Enabled}.",
+                id.ToString( ),
+                enabled.ToString( )
+            );
         }
     }
 

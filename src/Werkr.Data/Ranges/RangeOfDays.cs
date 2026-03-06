@@ -5,7 +5,7 @@ namespace Werkr.Data.Ranges;
 
 /// <summary>
 /// Produces contiguous range descriptions for <see cref="DaysOfWeek"/> flags
-/// (e.g., "Mon–Wed, Fri").
+/// (e.g., "Mon-Wed, Fri").
 /// </summary>
 public class RangeOfDays : IRange<DayOfWeek> {
 
@@ -34,8 +34,8 @@ public class RangeOfDays : IRange<DayOfWeek> {
     /// Formats this range as a string using either abbreviated or full day names.
     /// </summary>
     /// <param name="abbreviated">
-    /// When <c>true</c>, uses abbreviations (e.g., "Mon").
-    /// When <c>false</c>, uses full names (e.g., "Monday").
+    /// When <see langword="true"/>, uses abbreviations (e.g., "Mon").
+    /// When <see langword="false"/>, uses full names (e.g., "Monday").
     /// </param>
     public string ToString( bool abbreviated = false ) =>
         _start == _end

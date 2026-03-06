@@ -9,13 +9,32 @@ namespace Werkr.Tests.Integration;
 /// </summary>
 [TestClass]
 public class HolidayCalendarIntegrationTests {
+
+    /// <summary>
+    /// Gets or sets the MSTest <see cref="TestContext"/> for the current test execution,
+    /// providing access to test metadata and a <see cref="CancellationToken"/> for cooperative cancellation.
+    /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
+    /// <summary>
+    /// Gets the shared <see cref="JsonSerializerOptions"/> configured with web defaults from
+    /// <see cref="AppHostFixture.JsonOptions"/> for JSON serialization and deserialization.
+    /// </summary>
     private static JsonSerializerOptions JsonOptions => AppHostFixture.JsonOptions;
+
+    /// <summary>
+    /// Gets the pre-configured, authenticated <see cref="HttpClient"/> from
+    /// <see cref="AppHostFixture.ApiClient"/> for sending HTTP requests to the
+    /// <c>Werkr.Api</c>.
+    /// </summary>
     private static HttpClient Api => AppHostFixture.ApiClient;
 
     #region Helpers
 
+    /// <summary>
+    /// Creates a holiday calendar via <c>POST /api/holiday-calendars</c> and returns the
+    /// deserialized JSON response. Asserts that the response status is <see cref="HttpStatusCode.Created"/>.
+    /// </summary>
     private static async Task<JsonElement> CreateCalendarAsync(
         string name, string description, CancellationToken ct ) {
         var request = new { name, description };
@@ -26,6 +45,12 @@ public class HolidayCalendarIntegrationTests {
         return await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
     }
 
+    /// <summary>
+    /// Creates a daily-recurrence schedule via <c>POST /api/schedules</c> and returns its
+    /// unique identifier as a string. The schedule is configured to start on 2026-06-15 at
+    /// 09:00 UTC with a 1-day interval and a 60-minute task timeout. Asserts that the
+    /// creation returns <see cref="HttpStatusCode.Created"/>.
+    /// </summary>
     private static async Task<string> CreateDailyScheduleAndReturnIdAsync(
         string name, CancellationToken ct ) {
         var request = new {
@@ -41,6 +66,9 @@ public class HolidayCalendarIntegrationTests {
         return json.GetProperty( "id" ).GetString( )!;
     }
 
+    /// <summary>
+    /// Extracts the "id" property from a <see cref="JsonElement"/> as a non-null string.
+    /// </summary>
     private static string GetId( JsonElement element ) =>
         element.GetProperty( "id" ).GetString( )!;
 
@@ -48,6 +76,12 @@ public class HolidayCalendarIntegrationTests {
 
     // ── CRUD ───────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that creating a holiday calendar round-trips correctly. Creates a calendar
+    /// named "IntTest_CRUD" via the API, retrieves it by ID, and asserts the name matches.
+    /// Validates that the calendar ID is a non-empty string and that the GET request returns
+    /// HTTP 200 OK.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CreateCalendar_RoundTrips( ) {
@@ -64,6 +98,12 @@ public class HolidayCalendarIntegrationTests {
         Assert.AreEqual( "IntTest_CRUD", fetched.GetProperty( "name" ).GetString( ) );
     }
 
+    /// <summary>
+    /// Verifies that attempting to delete a system calendar returns a non-success status code
+    /// (neither OK nor NoContent). Lists all calendars, finds one marked as a system calendar,
+    /// and issues a DELETE request. The test is marked <see cref="Assert.Inconclusive"/> if no
+    /// system calendar exists (e.g., the seeder has not run).
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task DeleteSystemCalendar_Returns403( ) {
@@ -94,6 +134,13 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Clone ──────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that cloning a system calendar creates an editable copy. Finds a system
+    /// calendar, issues a POST to its <c>/clone</c> endpoint with a new name, and asserts
+    /// that the cloned calendar has <c>isSystemCalendar</c> set to <see langword="false"/>
+    /// and the expected name. The test is marked <see cref="Assert.Inconclusive"/> if no
+    /// system calendar exists.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CloneSystemCalendar_CreatesEditableCopy( ) {
@@ -124,6 +171,11 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Rules ──────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that adding a rule to a calendar invalidates the cache and the rule is
+    /// persisted. Creates a calendar, adds a FixedDate rule for July 4 with no observance
+    /// adjustment, then retrieves the rules and asserts exactly one rule exists.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task AddRule_InvalidatesCache( ) {
@@ -156,6 +208,11 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Manual Dates ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that adding a single manual date to a calendar persists correctly.
+    /// Creates a calendar, adds a manual date entry for 2026-03-15 named "Company Holiday",
+    /// retrieves the dates list, and asserts exactly one date entry exists.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task AddManualDate_Persists( ) {
@@ -183,6 +240,12 @@ public class HolidayCalendarIntegrationTests {
         Assert.HasCount( 1, dates );
     }
 
+    /// <summary>
+    /// Verifies that bulk-adding multiple manual dates to a calendar persists all entries.
+    /// Creates a calendar, sends three dates (March 1, June 1, September 1 of 2026) via
+    /// the <c>/dates/bulk</c> endpoint, and asserts that the response status is
+    /// <see cref="HttpStatusCode.Created"/>.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task BulkAddManualDates_PersistsAll( ) {
@@ -206,6 +269,11 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Rule Preview ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that previewing a FixedDate holiday rule with <c>SaturdayToFriday_SundayTa July oMonday</c>
+    /// observance returns the correct number of dates for the specified year range. Posts
+    /// 4 rule preview for 2025-2027 and asserts that exactly 3 dates are returned (one per year).
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task PreviewRule_ReturnsCorrectDates( ) {
@@ -230,6 +298,12 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Schedule Attachment ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies the full attach-get-detach lifecycle for scheduling a holiday calendar on a schedule.
+    /// Creates a calendar and a daily schedule, attaches the calendar in Blocklist mode via PUT,
+    /// retrieves the attachment and asserts the mode is "Blocklist", detaches the calendar via DELETE,
+    /// and verifies the GET response returns <see cref="HttpStatusCode.NoContent"/> after detachment.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task AttachCalendar_GetAttachment_Detach( ) {
@@ -269,6 +343,12 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Calendar Preview (full calendar) ───────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that the calendar preview endpoint returns computed holiday dates for a given year range.
+    /// Retrieves a system calendar, requests a preview for the year 2026, and asserts that at least 10
+    /// holiday dates are returned. The test is marked <see cref="Assert.Inconclusive"/> if no system
+    /// calendar exists.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task CalendarPreview_ReturnsDatesForYearRange( ) {
@@ -301,6 +381,10 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Audit Log ──────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that the audit log for a newly created schedule is empty. Creates a daily schedule,
+    /// queries the audit log for the past 30 days, and asserts that no audit records are returned.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task AuditLog_EmptyForNewSchedule( ) {
@@ -322,6 +406,12 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Federal Reserve — Columbus Day (H13) ───────────────────────────────────
 
+    /// <summary>
+    /// Verifies that the Federal Reserve system calendar does not include Columbus Day (enforcing
+    /// Decision H13). Retrieves the Federal Reserve calendar by its well-known ID, fetches its rules,
+    /// asserts that exactly 10 rules exist, and confirms none of them contain "Columbus" in the name.
+    /// The test is marked <see cref="Assert.Inconclusive"/> if the Federal Reserve calendar is not found.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task FedReserveCalendar_DoesNotIncludeColumbusDay( ) {
@@ -357,6 +447,12 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Audit Log with data ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that submitting an audit log entry persists the record and can be retrieved. Creates
+    /// a calendar and schedule, attaches the calendar in Blocklist mode, posts an audit log entry with
+    /// a holiday name and reason, then retrieves the audit log for a 2-day window and asserts exactly
+    /// one record exists with the expected holiday name.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task SubmitAuditLog_PersistsAndRetrievesRecords( ) {
@@ -398,6 +494,13 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Occurrence Filtering ───────────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that Blocklist mode suppresses holiday dates from the occurrence preview. Creates a
+    /// calendar with a July 4 FixedDate rule, creates a daily schedule starting July 1, attaches the
+    /// calendar in Blocklist mode, and requests an occurrence preview through July 7. Asserts that
+    /// July 4 does not appear in the occurrences array and, if a "suppressed" property is present, that
+    /// it contains at least one entry.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task OccurrencePreview_BlocklistMode_SuppressesHolidays( ) {
@@ -461,6 +564,12 @@ public class HolidayCalendarIntegrationTests {
         }
     }
 
+    /// <summary>
+    /// Verifies that Allowlist mode keeps only holiday dates in the occurrence preview. Creates a
+    /// calendar with a July 4 FixedDate rule, creates a daily schedule starting July 1, attaches the
+    /// calendar in Allowlist mode, and requests an occurrence preview through July 7. Asserts that
+    /// exactly one occurrence is returned and that it falls on July 4.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task OccurrencePreview_AllowlistMode_KeepsOnlyHolidays( ) {
@@ -520,6 +629,12 @@ public class HolidayCalendarIntegrationTests {
 
     // ── Rule Mutation Invalidation ─────────────────────────────────────────────
 
+    /// <summary>
+    /// Verifies that mutating a calendar rule invalidates the cache so subsequent previews reflect the
+    /// updated rule. Creates a calendar with a New Year's Day rule (Jan 1), previews to confirm one date,
+    /// updates the rule to March 15, previews again, and asserts the result now shows the March 15 date
+    /// instead of January 1.
+    /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task RuleMutation_InvalidatesCacheOnNextPreview( ) {

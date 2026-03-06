@@ -1,4 +1,4 @@
-using Werkr.Data.Calendar.Enums;
+﻿using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Extensions;
 using Werkr.Data.Calendar.Models;
 using Werkr.Data.Collections;
@@ -20,8 +20,12 @@ public static class ScheduleCalculator {
     /// Calculates the occurrences of this schedule starting from the <see cref="StartDateTimeInfo"/> until the
     /// <paramref name="endOfWindow"/> DateTime (or the occurrences reach the schedule Expiration.UtcTime).
     /// </summary>
-    /// <returns>An ordered read-only list containing all of the DateTimes that the schedule should run within the window.</returns>
-    public static IReadOnlyList<DateTime> CalculateOccurrences( Schedule schedule, DateTime endOfWindow ) {
+    /// <returns>An ordered read-only list containing all of the DateTimes that the schedule should run within the
+    /// window.</returns>
+    public static IReadOnlyList<DateTime> CalculateOccurrences(
+        Schedule schedule,
+        DateTime endOfWindow
+    ) {
         HashSet<DateTime> result = [];
 
         if (endOfWindow.Kind != DateTimeKind.Utc) {
@@ -88,10 +92,19 @@ public static class ScheduleCalculator {
     /// <param name="schedule">The schedule composite model.</param>
     /// <param name="endOfWindow">End of the preview window.</param>
     /// <returns>An ordered read-only list of occurrence times as <see cref="DateTimeOffset"/> (UTC).</returns>
-    public static IReadOnlyList<DateTimeOffset> CalculateOccurrences( Schedule schedule, DateTimeOffset endOfWindow ) {
-        IReadOnlyList<DateTime> utcOccurrences = CalculateOccurrences( schedule, endOfWindow.UtcDateTime );
+    public static IReadOnlyList<DateTimeOffset> CalculateOccurrences(
+        Schedule schedule,
+        DateTimeOffset endOfWindow
+    ) {
+        IReadOnlyList<DateTime> utcOccurrences = CalculateOccurrences(
+            schedule,
+            endOfWindow.UtcDateTime
+        );
         return utcOccurrences
-            .Select( dt => new DateTimeOffset( dt, TimeSpan.Zero ) )
+            .Select( dt => new DateTimeOffset(
+                dt,
+                TimeSpan.Zero
+            ) )
             .ToList( )
             .AsReadOnly( );
     }
@@ -103,30 +116,43 @@ public static class ScheduleCalculator {
     /// <param name="schedule">The schedule composite model.</param>
     /// <param name="endOfWindow">End of the preview window (UTC).</param>
     /// <param name="holidayDates">Pre-materialized holiday dates to filter against, or null for no filtering.</param>
-    /// <param name="mode">Blocklist (suppress matches) or Allowlist (keep only matches), or null for no filtering.</param>
+    /// <param name="mode">Blocklist (suppress matches) or Allowlist (keep only matches), or null for no
+    /// filtering.</param>
     /// <returns>A <see cref="ScheduleOccurrenceResult"/> with both kept and suppressed occurrences.</returns>
     public static ScheduleOccurrenceResult CalculateOccurrences(
         Schedule schedule,
         DateTime endOfWindow,
         IReadOnlyList<HolidayDate>? holidayDates,
-        HolidayCalendarMode? mode ) {
+        HolidayCalendarMode? mode
+    ) {
 
-        IReadOnlyList<DateTime> rawOccurrences = CalculateOccurrences( schedule, endOfWindow );
+        IReadOnlyList<DateTime> rawOccurrences = CalculateOccurrences(
+            schedule,
+            endOfWindow
+        );
 
         if (holidayDates is null || !holidayDates.Any( ) || mode is null) {
-            return new ScheduleOccurrenceResult( rawOccurrences, [] );
+            return new ScheduleOccurrenceResult(
+                rawOccurrences,
+                []
+            );
         }
 
         List<DateTime> kept = [];
         List<SuppressedOccurrence> suppressed = [];
 
         foreach (DateTime occ in rawOccurrences) {
-            HolidayDate? matchingHoliday = holidayDates.FirstOrDefault( h => IsOccurrenceOnHoliday( occ, h ) );
+            HolidayDate? matchingHoliday = holidayDates.FirstOrDefault( h => IsOccurrenceOnHoliday(
+                occ,
+                h
+            ) );
 
             if (mode == HolidayCalendarMode.Blocklist) {
                 if (matchingHoliday is not null) {
                     suppressed.Add( new SuppressedOccurrence( occ, matchingHoliday.Name,
-                        $"Blocked by {matchingHoliday.Name}" ) );
+                        $"Blocked by {matchingHoliday.Name}"
+                    )
+                    );
                 } else {
                     kept.Add( occ );
                 }
@@ -135,19 +161,28 @@ public static class ScheduleCalculator {
                     kept.Add( occ );
                 } else {
                     suppressed.Add( new SuppressedOccurrence( occ, string.Empty,
-                        "Not on an allowed holiday" ) );
+                        "Not on an allowed holiday"
+                    )
+                    );
                 }
             }
         }
 
-        return new ScheduleOccurrenceResult( kept.AsReadOnly( ), suppressed.AsReadOnly( ) );
+        return new ScheduleOccurrenceResult(
+            kept.AsReadOnly( ),
+            suppressed.AsReadOnly( )
+        );
     }
 
     /// <summary>
     /// Checks whether a UTC occurrence falls on a holiday date, respecting optional time windows.
     /// </summary>
-    internal static bool IsOccurrenceOnHoliday( DateTime utcOccurrence, HolidayDate holiday ) {
-        if (holiday.WindowStart is null || holiday.WindowEnd is null || string.IsNullOrEmpty( holiday.WindowTimeZoneId )) {
+    internal static bool IsOccurrenceOnHoliday(
+        DateTime utcOccurrence,
+        HolidayDate holiday
+    ) {
+        if (holiday.WindowStart is null || holiday.WindowEnd is null ||
+            string.IsNullOrEmpty( holiday.WindowTimeZoneId )) {
             // Full-day holiday: compare DateOnly
             DateOnly occDate = DateOnly.FromDateTime( utcOccurrence );
             return occDate == holiday.Date;
@@ -155,7 +190,10 @@ public static class ScheduleCalculator {
 
         // Time-window holiday: convert UTC occurrence to holiday's timezone
         TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById( holiday.WindowTimeZoneId );
-        DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc( utcOccurrence, tz );
+        DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc(
+            utcOccurrence,
+            tz
+        );
         DateOnly localDate = DateOnly.FromDateTime( localTime );
 
         if (localDate != holiday.Date) {
@@ -172,10 +210,13 @@ public static class ScheduleCalculator {
     /// <summary>
     /// This method is used for three purposes:
     /// <list type="number">
-    /// <item><description>Checking the <paramref name="expiration"/> UtcTime and exiting early if the <paramref name="occurrence"/>
+    /// <item><description>Checking the <paramref name="expiration"/> UtcTime and exiting early if the
+    /// <paramref name="occurrence"/>
     /// is past the Expiration time. (returns true)</description></item>
-    /// <item><description>Adding the non-expired <paramref name="occurrence"/> to the <paramref name="result"/> list.</description></item>
-    /// <item><description>Calculating any repeat occurrences and repeating the loop if there are repeat occurrences.</description></item>
+    /// <item><description>Adding the non-expired <paramref name="occurrence"/> to the <paramref name="result"/>
+    /// list.</description></item>
+    /// <item><description>Calculating any repeat occurrences and repeating the loop if there are repeat
+    /// occurrences.</description></item>
     /// </list>
     /// Under normal operation this method will return false to indicate that the caller should continue processing.
     /// </summary>
@@ -202,14 +243,21 @@ public static class ScheduleCalculator {
         do {
             // Check whether the occurrence is past the Expiration time.
             // Exit early and return true so that the caller can return the result list and stop processing.
-            if (IsExpired( expiration, occurrence, endOfWindow )) { return true; }
+            if (IsExpired(
+                expiration,
+                occurrence,
+                endOfWindow
+            )) { return true; }
 
             // Add the non-expired occurrence to the result list.
             _ = result.Add( occurrence );
 
             if (maxRepeat > 0) {
                 // Calculate any repeat occurrences.
-                occurrence = CalculateRepeatOccurrences( occurrence, repeatOptions! );
+                occurrence = CalculateRepeatOccurrences(
+                    occurrence,
+                    repeatOptions!
+                );
             }
             count++;
         } while (count <= maxRepeat);
@@ -225,7 +273,11 @@ public static class ScheduleCalculator {
         ScheduleRepeatOptions repeatOptions
     ) => occurrence.AddMinutes( repeatOptions.RepeatIntervalMinutes );
 
-    internal static TimeSpan GetWindowTimeSpan( DateTime startTime, DateTime endOfWindow, ExpirationDateTimeInfo? expiration ) {
+    internal static TimeSpan GetWindowTimeSpan(
+        DateTime startTime,
+        DateTime endOfWindow,
+        ExpirationDateTimeInfo? expiration
+    ) {
         if (startTime.Kind != DateTimeKind.Utc) {
             throw new InvalidOperationException( "The startTime DateTime must be in UTC." );
         } else if (endOfWindow.Kind != DateTimeKind.Utc) {
@@ -238,7 +290,11 @@ public static class ScheduleCalculator {
         return endOfPeriod - startTime;
     }
 
-    internal static bool IsExpired( ExpirationDateTimeInfo? expiration, DateTime occurrence, DateTime endOfWindow ) =>
+    internal static bool IsExpired(
+        ExpirationDateTimeInfo? expiration,
+        DateTime occurrence,
+        DateTime endOfWindow
+    ) =>
         (expiration != null && occurrence >= expiration?.UtcTime) || occurrence >= endOfWindow;
 
     #endregion Repeat, Expiration, and Flow Control
@@ -260,7 +316,11 @@ public static class ScheduleCalculator {
     ) {
         if (dailyRecurrence.DayInterval <= 0) { return; }
         DateTime translatedTime = startDt.TzTime;
-        TimeSpan windowPeriod = GetWindowTimeSpan( startDt.UtcTime, endOfWindow, expiration );
+        TimeSpan windowPeriod = GetWindowTimeSpan(
+            startDt.UtcTime,
+            endOfWindow,
+            expiration
+        );
 
         for (int i = 0; i < windowPeriod.Days; i++) {
             translatedTime = translatedTime.AddDays( dailyRecurrence.DayInterval );
@@ -296,13 +356,21 @@ public static class ScheduleCalculator {
         WeeklyRecurrence weeklyRecurrence
     ) {
         if (weeklyRecurrence.WeekInterval <= 0) { return; }
-        TimeSpan windowPeriod = GetWindowTimeSpan( startDt.UtcTime, endOfWindow, expiration );
+        TimeSpan windowPeriod = GetWindowTimeSpan(
+            startDt.UtcTime,
+            endOfWindow,
+            expiration
+        );
         List<DayOfWeek> recurrenceDays = weeklyRecurrence.DaysOfWeek.GetDaysOfWeek( );
         LoopingList<DayOfWeek> loopingWeek = [.. CalendarEnumExtensions.GetWeekOfDays( )];
 
         DateTime translatedTime = startDt.TzTime;
 
-        int firstWeekEnds = CalculateWeeklyOccurrences_GetDayDifference( loopingWeek, translatedTime.DayOfWeek, loopingWeek[0] );
+        int firstWeekEnds = CalculateWeeklyOccurrences_GetDayDifference(
+            loopingWeek,
+            translatedTime.DayOfWeek,
+            loopingWeek[0]
+        );
 
         int weekNum = 0;
         int weekDayCount = 0;
@@ -310,7 +378,11 @@ public static class ScheduleCalculator {
             translatedTime = translatedTime.AddDays( 1 );
             DateTime utcTime = startDt.ConvertToUtc( translatedTime );
 
-            if (IsExpired( expiration, utcTime, endOfWindow )) { return; }
+            if (IsExpired(
+                expiration,
+                utcTime,
+                endOfWindow
+            )) { return; }
 
             if (recurrenceDays.Contains( translatedTime.DayOfWeek ) && (weekNum % weeklyRecurrence.WeekInterval == 0)) {
                 if (AddToResultAndCalculateRepeatOccurrences(
@@ -420,7 +492,10 @@ public static class ScheduleCalculator {
         int occurrenceYear = occurrence.Year;
         int occurrenceMonth = occurrence.Month;
         int[] dayNumbers = monthlyRecurrence.DayNumbers!;
-        Array.Sort( dayNumbers, CompareNumbers );
+        Array.Sort(
+            dayNumbers,
+            CompareNumbers
+        );
 
         if (CalculateMonthlyOccurrences_DayNumbersWithinMonth_EndOfFirstMonth(
             startDt,
@@ -435,7 +510,10 @@ public static class ScheduleCalculator {
             occurrenceMonth
         )) { return; }
 
-        int[] remainingRecurrenceMonths = recurrenceMonths.GetRemainingMonthsInYear( occurrenceMonth, true );
+        int[] remainingRecurrenceMonths = recurrenceMonths.GetRemainingMonthsInYear(
+            occurrenceMonth,
+            true
+        );
         if (remainingRecurrenceMonths.Length == 0) {
             remainingRecurrenceMonths = recurrenceMonths;
             occurrenceYear++;
@@ -473,7 +551,11 @@ public static class ScheduleCalculator {
     ) {
         if (recurrenceMonths.Contains( occurrenceMonth )) {
             // Finish out the first month
-            foreach (int day in CalculateMonthlyOccurrencesDayNumbersWithinMonth( occurrenceYear, occurrenceMonth, dayNumbers )) {
+            foreach (int day in CalculateMonthlyOccurrencesDayNumbersWithinMonth(
+                occurrenceYear,
+                occurrenceMonth,
+                dayNumbers
+            )) {
                 if (day <= occurrenceDay) { continue; }
                 DateTime occurrence = startDt.ConvertToUtc(
                     new DateTime(
@@ -502,7 +584,8 @@ public static class ScheduleCalculator {
     }
 
     /// <summary>
-    /// Calculates the monthly recurrences from after the first complete month until the end of the window or expiration.
+    /// Calculates the monthly recurrences from after the first complete month until the end of the window or
+    /// expiration.
     /// </summary>
     internal static void CalculateMonthlyOccurrences_DayNumbersWithinMonth_RemainingWindow(
         DateTime occurrence,
@@ -518,7 +601,11 @@ public static class ScheduleCalculator {
     ) {
         do {
             foreach (int month in remainingRecurrenceMonths) {
-                foreach (int day in CalculateMonthlyOccurrencesDayNumbersWithinMonth( occurrenceYear, month, dayNumbers )) {
+                foreach (int day in CalculateMonthlyOccurrencesDayNumbersWithinMonth(
+                    occurrenceYear,
+                    month,
+                    dayNumbers
+                )) {
                     occurrence = startDt.ConvertToUtc(
                         new DateTime(
                             year: occurrenceYear,
@@ -554,7 +641,11 @@ public static class ScheduleCalculator {
     ) {
         List<int> result = [];
         foreach (int dayNum in dayNums) {
-            result.Add( CalculateMonthlyOccurrences_DayNumbersWithinMonth( year, month, dayNum ) );
+            result.Add( CalculateMonthlyOccurrences_DayNumbersWithinMonth(
+                year,
+                month,
+                dayNum
+            ) );
         }
         return [.. result
             .Distinct( )
@@ -565,13 +656,17 @@ public static class ScheduleCalculator {
     /// <summary>
     /// Converts negative day numbers into their positive counterparts.
     /// </summary>
-    /// <returns>The positive integer corresponding to the negative day of month, or 0 if the date does not correspond to a day within the month.</returns>
+    /// <returns>The positive integer corresponding to the negative day of month, or 0 if the date does not correspond
+    /// to a day within the month.</returns>
     internal static int CalculateMonthlyOccurrences_DayNumbersWithinMonth(
         int year,
         int month,
         int day
     ) {
-        int daysInMonth = DateTime.DaysInMonth( year, month );
+        int daysInMonth = DateTime.DaysInMonth(
+            year,
+            month
+        );
         return day >= 0
             ? day <= daysInMonth
                 ? day
@@ -581,7 +676,10 @@ public static class ScheduleCalculator {
                 : 0;
     }
 
-    internal static int CompareNumbers( int x, int y ) =>
+    internal static int CompareNumbers(
+        int x,
+        int y
+    ) =>
         x > 0 && y > 0  // Both numbers are positive
             ? x.CompareTo( y )
             : x > 0 && y < 0 // x is positive, y is negative
@@ -632,7 +730,10 @@ public static class ScheduleCalculator {
             occurrenceMonth
         )) { return; }
 
-        int[] remainingRecurrenceMonths = recurrenceMonths.GetRemainingMonthsInYear( occurrenceMonth, true );
+        int[] remainingRecurrenceMonths = recurrenceMonths.GetRemainingMonthsInYear(
+            occurrenceMonth,
+            true
+        );
         if (remainingRecurrenceMonths.Length == 0) {
             remainingRecurrenceMonths = recurrenceMonths;
             occurrenceYear++;
@@ -675,16 +776,38 @@ public static class ScheduleCalculator {
         int occurrenceMonth
     ) {
         if (recurrenceMonths.Contains( occurrenceMonth )) {
-            int daysInMonth = DateTime.DaysInMonth( occurrenceYear, occurrenceMonth );
-            DateTime occurrenceMonthStart = new( occurrenceYear, occurrenceMonth, 1 );
+            int daysInMonth = DateTime.DaysInMonth(
+                occurrenceYear,
+                occurrenceMonth
+            );
+            DateTime occurrenceMonthStart = new(
+                occurrenceYear,
+                occurrenceMonth,
+                1
+            );
             List<DayOfWeek> daysInFirstWeek = occurrenceMonthStart.DayOfWeek.GetDaysInWeekFromStartDay( );
-            List<DayOfWeek> daysInLastWeek = CalculateMonthlyOccurrences_WeekAndDay_GetDaysInLastWeekOfMonth( weekOfDays, daysInMonth, daysInFirstWeek.Count );
-            List<DayOfWeek> remainingDaysOfWeek = daysOfWeek.GetRemainingDaysInWeek( occurrenceMonthStart.DayOfWeek, true );
+            List<DayOfWeek> daysInLastWeek = CalculateMonthlyOccurrences_WeekAndDay_GetDaysInLastWeekOfMonth(
+                weekOfDays,
+                daysInMonth,
+                daysInFirstWeek.Count
+            );
+            List<DayOfWeek> remainingDaysOfWeek = daysOfWeek.GetRemainingDaysInWeek(
+                occurrenceMonthStart.DayOfWeek,
+                true
+            );
 
-            int weekCount = CalculateMonthlyOccurrences_WeekAndDay_GetWeekCount( daysInMonth, daysInFirstWeek.Count, daysInLastWeek.Count );
+            int weekCount = CalculateMonthlyOccurrences_WeekAndDay_GetWeekCount(
+                daysInMonth,
+                daysInFirstWeek.Count,
+                daysInLastWeek.Count
+            );
 
             int currentWeek = Convert.ToInt32( Math.Floor( (decimal) occurrence.Day / 7 ) );
-            int[] remainingWeekNumbers = [.. weekNumbers.Where( weekNum => ( weekNum >= currentWeek ) && ( weekNum <= weekCount ) )];
+            int[] remainingWeekNumbers = [
+                .. weekNumbers.Where(
+                    weekNum => ( weekNum >= currentWeek ) && ( weekNum <= weekCount )
+                )
+            ];
 
             if (CalculateMonthlyOccurrences_WeekAndDay_RemainingMonth(
                 occurrence,
@@ -708,7 +831,8 @@ public static class ScheduleCalculator {
     }
 
     /// <summary>
-    /// Calculates the monthly recurrences from after the first complete month until the end of the window or expiration.
+    /// Calculates the monthly recurrences from after the first complete month until the end of the window or
+    /// expiration.
     /// </summary>
     internal static void CalculateMonthlyOccurrences_WeekAndDay_RemainingWindow(
         DateTime occurrence,
@@ -727,11 +851,26 @@ public static class ScheduleCalculator {
     ) {
         do {
             foreach (int month in remainingRecurrenceMonths) {
-                int daysInMonth = DateTime.DaysInMonth( occurrenceYear, month );
-                DateTime occurrenceMonthStart = new( occurrenceYear, month, 1 );
+                int daysInMonth = DateTime.DaysInMonth(
+                    occurrenceYear,
+                    month
+                );
+                DateTime occurrenceMonthStart = new(
+                    occurrenceYear,
+                    month,
+                    1
+                );
                 List<DayOfWeek> daysInFirstWeek = occurrenceMonthStart.DayOfWeek.GetDaysInWeekFromStartDay( );
-                List<DayOfWeek> daysInLastWeek = CalculateMonthlyOccurrences_WeekAndDay_GetDaysInLastWeekOfMonth( weekOfDays, daysInMonth, daysInFirstWeek.Count );
-                int weekCount = CalculateMonthlyOccurrences_WeekAndDay_GetWeekCount( daysInMonth, daysInFirstWeek.Count, daysInLastWeek.Count );
+                List<DayOfWeek> daysInLastWeek = CalculateMonthlyOccurrences_WeekAndDay_GetDaysInLastWeekOfMonth(
+                    weekOfDays,
+                    daysInMonth,
+                    daysInFirstWeek.Count
+                );
+                int weekCount = CalculateMonthlyOccurrences_WeekAndDay_GetWeekCount(
+                    daysInMonth,
+                    daysInFirstWeek.Count,
+                    daysInLastWeek.Count
+                );
                 if (CalculateMonthlyOccurrences_WeekAndDay_RemainingMonth(
                     occurrence,
                     startDt,
@@ -818,10 +957,20 @@ public static class ScheduleCalculator {
                 }
 
                 // Guard against invalid day numbers (formula can exceed days-in-month for partial first/last weeks).
-                int maxDay = DateTime.DaysInMonth( occurrenceYear, occurrenceMonth );
+                int maxDay = DateTime.DaysInMonth(
+                    occurrenceYear,
+                    occurrenceMonth
+                );
                 if (dayNum < 1 || dayNum > maxDay) { continue; }
 
-                occurrence = new DateOnly( occurrenceYear, occurrenceMonth, dayNum ).ToDateTime( startTime, DateTimeKind.Utc );
+                occurrence = new DateOnly(
+                    occurrenceYear,
+                    occurrenceMonth,
+                    dayNum
+                ).ToDateTime(
+                    startTime,
+                    DateTimeKind.Utc
+                );
 
                 // Add the occurrence to the result list and calculate any repeat occurrences.
                 // Exit early if the occurrence is past the Expiration time.

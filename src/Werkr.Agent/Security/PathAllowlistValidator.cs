@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Options;
-
 using Werkr.Common.Models;
 using Werkr.Core.Security;
 
@@ -12,7 +11,7 @@ namespace Werkr.Agent.Security;
 /// When enforcement is enabled, paths outside all allowed prefixes are rejected.
 /// </summary>
 /// <remarks>
-/// Uses <see cref="IOptionsMonitor{T}"/> for hot-reload support — if the
+/// Uses <see cref="IOptionsMonitor{T}"/> for hot-reload support - if the
 /// configuration changes at runtime, the validator picks up the new values
 /// on the next call without requiring a restart.
 /// </remarks>
@@ -25,7 +24,8 @@ public sealed class PathAllowlistValidator : IPathAllowlistValidator {
     /// <summary>Creates a new <see cref="PathAllowlistValidator"/>.</summary>
     public PathAllowlistValidator(
         IOptionsMonitor<AllowedPathsConfiguration> options,
-        ILogger<PathAllowlistValidator> logger ) {
+        ILogger<PathAllowlistValidator> logger
+    ) {
         _options = options;
         _logger = logger;
         _comparison = RuntimeInformation.IsOSPlatform( OSPlatform.Windows )

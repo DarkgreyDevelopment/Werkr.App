@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-
 using Werkr.Data.Entities.Schedule;
 
 namespace Werkr.Data.Calendar.Validation;
@@ -9,6 +8,7 @@ namespace Werkr.Data.Calendar.Validation;
 /// Invoked programmatically via <see cref="Validate"/> during schedule validation.
 /// </summary>
 public static class MonthlyRecurrenceValidator {
+
     /// <summary>
     /// Validates the <paramref name="recurrence"/> and returns a <see cref="ValidationResult"/>
     /// or <see cref="ValidationResult.Success"/> if valid.

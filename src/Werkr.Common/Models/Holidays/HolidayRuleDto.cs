@@ -1,6 +1,6 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Full holiday rule.</summary>
+/// <summary>Full representation of a holiday rule including its type.</summary>
 public sealed record HolidayRuleDto(
     long Id,
     Guid HolidayCalendarId,
@@ -15,4 +15,5 @@ public sealed record HolidayRuleDto(
     string? WindowTimeZoneId,
     string ObservanceRule,
     int? YearStart,
-    int? YearEnd );
+    int? YearEnd
+);

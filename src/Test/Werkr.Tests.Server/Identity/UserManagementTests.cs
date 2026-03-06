@@ -1,12 +1,10 @@
 using System.Security.Claims;
-
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 using Werkr.Data.Identity.Roles;
@@ -16,16 +14,32 @@ namespace Werkr.Tests.Server.Identity;
 
 /// <summary>
 /// Tests for user management operations: CRUD, role management,
-/// disable/enable, last-admin protection, and forced password reset (§3.12.3).
+/// disable/enable, last-admin protection, and forced password reset.
 /// </summary>
 [TestClass]
 public class UserManagementTests {
+    /// <summary>
+    /// Gets or sets the MSTest <see cref="TestContext"/> used for cancellation token access and test run metadata.
+    /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
+    /// <summary>
+    /// The fully configured <see cref="ServiceProvider"/> containing Identity and EF Core services.
+    /// </summary>
     private ServiceProvider _provider = null!;
+    /// <summary>
+    /// The <see cref="UserManager"/> instance used to create and manage <see cref="WerkrUser"/> entities.
+    /// </summary>
     private UserManager<WerkrUser> _userManager = null!;
+    /// <summary>
+    /// The <see cref="RoleManager"/> instance used to manage identity roles.
+    /// </summary>
     private RoleManager<IdentityRole> _roleManager = null!;
 
+    /// <summary>
+    /// Initializes a fresh in-memory database, registers Identity services, creates the <see cref="DefaultRoles"/> in
+    /// the role store, and resolves the <see cref="UserManager"/> and <see cref="RoleManager"/> before each test.
+    /// </summary>
     [TestInitialize]
     public void TestInit( ) {
         ServiceCollection services = new( );
@@ -35,7 +49,8 @@ public class UserManagementTests {
             options.UseInMemoryDatabase( dbName ) );
 
         _ = services.AddIdentity<WerkrUser, IdentityRole>(
-            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions )
+            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions
+        )
             .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
             .AddDefaultTokenProviders( );
 
@@ -51,11 +66,18 @@ public class UserManagementTests {
         }
     }
 
+    /// <summary>
+    /// Disposes the <see cref="ServiceProvider"/> and all scoped services after each test.
+    /// </summary>
     [TestCleanup]
     public void TestCleanup( ) {
         _provider.Dispose( );
     }
 
+    /// <summary>
+    /// Verifies that an admin can list all users and that the count matches the number of users created, confirming
+    /// full visibility.
+    /// </summary>
     [TestMethod]
     public async Task UserList_AdminCanSeeAllUsers( ) {
         _ = await CreateUserAsync( "user1@local", "User 1" );
@@ -67,6 +89,10 @@ public class UserManagementTests {
         Assert.HasCount( 3, users, "Admin should see all users." );
     }
 
+    /// <summary>
+    /// Verifies that creating a new <see cref="WerkrUser"/> with valid input succeeds and that the user can be
+    /// assigned to multiple roles (Operator and Viewer) simultaneously.
+    /// </summary>
     [TestMethod]
     public async Task CreateUser_ValidInput_CreatesUserWithRoles( ) {
         WerkrUser newUser = new( ) {
@@ -90,6 +116,10 @@ public class UserManagementTests {
         Assert.Contains( "Viewer", roles );
     }
 
+    /// <summary>
+    /// Verifies that attempting to create a user with an email that already exists fails, returning an unsuccessful
+    /// <see cref="IdentityResult"/> with error descriptions.
+    /// </summary>
     [TestMethod]
     public async Task CreateUser_DuplicateEmail_Fails( ) {
         _ = await CreateUserAsync( "dupe@local", "Original" );
@@ -108,6 +138,11 @@ public class UserManagementTests {
             "Identity errors should indicate duplicate." );
     }
 
+    /// <summary>
+    /// Verifies that when a user is assigned the Admin role and does not have <see cref="Requires2FA"/> set, the
+    /// application logic automatically sets <see cref="Requires2FA"/> to <see langword="true"/> to enforce the admin
+    /// MFA enrollment policy.
+    /// </summary>
     [TestMethod]
     public async Task CreateUser_AdminRole_AutoSetsRequires2FA( ) {
         WerkrUser user = new( ) {
@@ -136,6 +171,10 @@ public class UserManagementTests {
             "Admin role should auto-set Requires2FA = true." );
     }
 
+    /// <summary>
+    /// Verifies that a user's roles can be updated by removing an existing role (Viewer) and adding a new one
+    /// (Operator), confirming that edit operations work correctly.
+    /// </summary>
     [TestMethod]
     public async Task EditUser_UpdatesRoles( ) {
         WerkrUser user = await CreateUserAsync( "roles@local", "Roles User" );
@@ -152,6 +191,11 @@ public class UserManagementTests {
         Assert.Contains( "Operator", newRoles );
     }
 
+    /// <summary>
+    /// Verifies that the system detects when removing the Admin role from a user would leave no admin users, which
+    /// should be blocked to prevent lockout. The test confirms the detection logic reports that the sole admin would
+    /// be removed.
+    /// </summary>
     [TestMethod]
     public async Task EditUser_CannotRemoveLastAdmin( ) {
         WerkrUser admin = await CreateUserAsync( "soloadmin@local", "Solo Admin" );
@@ -168,6 +212,10 @@ public class UserManagementTests {
             "Removing the last admin should be detected and blocked." );
     }
 
+    /// <summary>
+    /// Verifies that setting a user's <see cref="Enabled"/> flag to <see langword="false"/> persists to the database,
+    /// effectively preventing the user from authenticating.
+    /// </summary>
     [TestMethod]
     public async Task DisableUser_PreventsLogin( ) {
         WerkrUser user = await CreateUserAsync( "disable-login@local", "Disabled Login" );
@@ -180,6 +228,11 @@ public class UserManagementTests {
             "User should be disabled." );
     }
 
+    /// <summary>
+    /// Verifies that when a disabled user's cookie is validated by <see cref="WerkrCookieAuthEvents"/>, the principal
+    /// is set to <see langword="null"/>, effectively invalidating the session and forcing the user to re-authenticate
+    /// (which will fail since the account is disabled).
+    /// </summary>
     [TestMethod]
     public async Task DisableUser_InvalidatesSession( ) {
         WerkrUser user = await CreateUserAsync( "disable-session@local", "Disabled Session" );
@@ -196,6 +249,10 @@ public class UserManagementTests {
             "Disabled user's session should be invalidated." );
     }
 
+    /// <summary>
+    /// Verifies that an admin can set the <see cref="ChangePassword"/> flag on a user to <see langword="true"/>, which
+    /// forces the user to change their password on next login.
+    /// </summary>
     [TestMethod]
     public async Task ForcePasswordReset_SetsFlag( ) {
         WerkrUser user = await CreateUserAsync( "force-reset@local", "Force Reset" );
@@ -214,6 +271,11 @@ public class UserManagementTests {
 
     // ── helpers ──────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Creates a <see cref="WerkrUser"/> with the specified email and display name using the shared <see
+    /// cref="_userManager"/>. The user is created with a default password, enabled state, and email confirmation
+    /// pre-set.
+    /// </summary>
     private async Task<WerkrUser> CreateUserAsync( string email, string name ) {
         WerkrUser user = new( ) {
             UserName = email,
@@ -231,10 +293,15 @@ public class UserManagementTests {
         return user;
     }
 
+    /// <summary>
+    /// Constructs a <see cref="CookieValidatePrincipalContext"/> simulating a cookie authentication validation event
+    /// for the specified request path, allowing <see cref="WerkrCookieAuthEvents"/> to be tested in isolation.
+    /// </summary>
     private static CookieValidatePrincipalContext BuildContext(
         IServiceProvider serviceProvider,
         ClaimsPrincipal principal,
-        string path ) {
+        string path
+    ) {
         DefaultHttpContext httpContext = new( ) {
             RequestServices = serviceProvider
         };
@@ -244,7 +311,8 @@ public class UserManagementTests {
         AuthenticationScheme scheme = new(
             CookieAuthenticationDefaults.AuthenticationScheme,
             CookieAuthenticationDefaults.AuthenticationScheme,
-            typeof( CookieAuthenticationHandler ) );
+            typeof(CookieAuthenticationHandler)
+        );
 
         CookieAuthenticationOptions options = new( );
         AuthenticationProperties properties = new( );
@@ -253,10 +321,15 @@ public class UserManagementTests {
         return new CookieValidatePrincipalContext( httpContext, scheme, options, ticket );
     }
 
+    /// <summary>
+    /// Builds a <see cref="ClaimsPrincipal"/> containing a single <c>NameIdentifier</c> claim with the specified user
+    /// ID, authenticated via the cookie authentication scheme.
+    /// </summary>
     private static ClaimsPrincipal BuildPrincipal( string userId ) {
         ClaimsIdentity identity = new(
             [new Claim( ClaimTypes.NameIdentifier, userId )],
-            CookieAuthenticationDefaults.AuthenticationScheme );
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
 
         return new ClaimsPrincipal( identity );
     }

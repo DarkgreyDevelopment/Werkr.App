@@ -1,4 +1,3 @@
-
 namespace Werkr.AppHost;
 
 /// <summary>Aspire AppHost orchestrator entry point.</summary>

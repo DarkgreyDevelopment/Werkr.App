@@ -6,4 +6,5 @@ public sealed record WorkflowRunDto(
     long WorkflowId,
     DateTime StartTime,
     DateTime? EndTime,
-    string Status );
+    string Status
+);

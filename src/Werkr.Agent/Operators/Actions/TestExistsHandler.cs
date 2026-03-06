@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Threading.Channels;
-
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
@@ -10,12 +9,18 @@ using Werkr.Core.Security;
 namespace Werkr.Agent.Operators.Actions;
 
 /// <summary>
-/// Handles the <c>TestExists</c> action — tests whether a file or directory exists.
+/// Handles the <c>TestExists</c> action - tests whether a file or directory exists.
 /// Uses <see cref="PathType"/> to discriminate between file, directory, or any.
 /// </summary>
 public sealed class TestExistsHandler : IActionHandler {
 
+    /// <summary>
+    /// Resolves and validates file paths against the agent's allowed-path allowlist.
+    /// </summary>
     private readonly IFilePathResolver _resolver;
+    /// <summary>
+    /// Logger for recording execution errors for this handler.
+    /// </summary>
     private readonly ILogger<TestExistsHandler> _logger;
 
     /// <summary>Creates a new <see cref="TestExistsHandler"/>.</summary>
@@ -31,7 +36,8 @@ public sealed class TestExistsHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
         try {
             TestExistsParameters p = parameters.Deserialize<TestExistsParameters>( ActionJson.SerializerOptions )
                 ?? throw new ArgumentException( "Failed to deserialize TestExists parameters." );

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-
 using Werkr.Common.Models;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
@@ -10,10 +9,14 @@ namespace Werkr.Tests.Server.Identity;
 
 /// <summary>
 /// Security-focused tests for MFA reset/regen password requirements
-/// and health endpoint timeout handling (§3.12.8).
+/// and health endpoint timeout handling.
 /// </summary>
 [TestClass]
 public class SecurityTests {
+    /// <summary>
+    /// Verifies that an MFA reset attempt with an incorrect password fails the password check and that the <see
+    /// cref="TwoFactorEnabled"/> flag remains <see langword="true"/>, preventing unauthorized MFA disablement.
+    /// </summary>
     [TestMethod]
     public async Task MfaReset_RequiresPasswordConfirmation( ) {
         _ = BuildServiceProvider( out UserManager<WerkrUser> um );
@@ -32,6 +35,11 @@ public class SecurityTests {
             "2FA should remain enabled when password check fails." );
     }
 
+    /// <summary>
+    /// Verifies that when the correct password is provided, the MFA reset flow succeeds: two-factor authentication is
+    /// disabled, the authenticator key is reset, and <see cref="GetTwoFactorEnabledAsync"/> returns <see
+    /// langword="false"/>.
+    /// </summary>
     [TestMethod]
     public async Task MfaReset_ValidPassword_ResetsAuthenticator( ) {
         _ = BuildServiceProvider( out UserManager<WerkrUser> um );
@@ -54,6 +62,10 @@ public class SecurityTests {
             "2FA should be disabled after reset." );
     }
 
+    /// <summary>
+    /// Verifies that an attempt to regenerate recovery codes with an incorrect password fails the password check and
+    /// that the existing recovery code count remains unchanged, preventing unauthorized recovery code regeneration.
+    /// </summary>
     [TestMethod]
     public async Task RecoveryCodeRegen_RequiresPasswordConfirmation( ) {
         _ = BuildServiceProvider( out UserManager<WerkrUser> um );
@@ -78,6 +90,11 @@ public class SecurityTests {
             "Recovery code count should not change without valid password." );
     }
 
+    /// <summary>
+    /// Verifies that an <see cref="AgentHealthDto"/> constructed for an unreachable agent has a status of
+    /// "Unreachable" and <see langword="null"/> values for <see cref="PowerShellAvailable"/> and <see
+    /// cref="SystemShellAvailable"/>, simulating a gRPC connection failure scenario.
+    /// </summary>
     [TestMethod]
     public void HealthEndpoint_UnreachableAgent_ReturnsUnreachableStatus( ) {
         // Simulates the BuildHealthAsync catch(RpcException) path
@@ -88,7 +105,8 @@ public class SecurityTests {
             null,
             null,
             null,
-            DateTime.UtcNow );
+            DateTime.UtcNow
+        );
 
         Assert.AreEqual( "Unreachable", unreachable.Status,
             "RpcException should result in Unreachable status." );
@@ -98,16 +116,23 @@ public class SecurityTests {
             "Unreachable agent should have null operator availability." );
     }
 
+    /// <summary>
+    /// Verifies that when a batch of health check tasks includes both completed and cancelled tasks (simulating a
+    /// total timeout scenario), only the successfully completed results are collected, and cancelled tasks are
+    /// excluded from the partial result set.
+    /// </summary>
     [TestMethod]
     public void HealthEndpoint_TotalTimeout_ReturnsPartialResults( ) {
         // Simulates the catch(OperationCanceledException) path in the health endpoint.
         // When the overall 10s timeout fires, completed tasks should be returned.
         Task<AgentHealthDto> completedTask = Task.FromResult( new AgentHealthDto(
             Guid.NewGuid( ), "Fast-Agent", "Connected", true, true,
-            DateTime.UtcNow, DateTime.UtcNow ) );
+            DateTime.UtcNow, DateTime.UtcNow
+        ));
 
         Task<AgentHealthDto> cancelledTask = Task.FromCanceled<AgentHealthDto>(
-            new CancellationToken( canceled: true ) );
+            new CancellationToken(canceled: true)
+        );
 
         List<Task<AgentHealthDto>> tasks = [completedTask, cancelledTask];
 
@@ -122,8 +147,14 @@ public class SecurityTests {
 
     // ── helpers ──────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Creates a <see cref="WerkrUser"/> with MFA enabled using the provided <see cref="UserManager"/>. The user is
+    /// created with a default password of "TestPassword123!" and has <see cref="TwoFactorEnabled"/> set to <see
+    /// langword="true"/> after creation.
+    /// </summary>
     private static async Task<WerkrUser> CreateMfaEnabledUserAsync(
-        UserManager<WerkrUser> um, string email ) {
+        UserManager<WerkrUser> um, string email
+    ) {
         WerkrUser user = new( ) {
             UserName = email,
             Email = email,
@@ -144,6 +175,11 @@ public class SecurityTests {
         return user;
     }
 
+    /// <summary>
+    /// Builds a <see cref="ServiceProvider"/> configured with an in-memory <see cref="WerkrIdentityDbContext"/>,
+    /// ASP.NET Core Identity services for <see cref="WerkrUser"/>, logging, and default token providers. Returns the
+    /// built provider and outputs the resolved <see cref="UserManager"/> for test use.
+    /// </summary>
     private static ServiceProvider BuildServiceProvider( out UserManager<WerkrUser> userManager ) {
         ServiceCollection services = new( );
         string dbName = $"SecurityTests_{Guid.NewGuid( )}";
@@ -152,7 +188,8 @@ public class SecurityTests {
             options.UseInMemoryDatabase( dbName ) );
 
         _ = services.AddIdentity<WerkrUser, IdentityRole>(
-            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions )
+            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions
+        )
             .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
             .AddDefaultTokenProviders( );
 

@@ -13,4 +13,5 @@ public sealed record AgentListDto(
     string RemoteUrl,
     string Status,
     DateTime? LastSeen,
-    DateTime RegisteredAt );
+    DateTime RegisteredAt
+);

@@ -4,8 +4,9 @@ using Werkr.Core.Security;
 namespace Werkr.Tests.Agent.Helpers;
 
 /// <summary>
-/// Creates an <see cref="IFilePathResolver"/> backed by <see cref="AllowAllPathValidator"/>
-/// for handler tests that need path resolution but not enforcement.
+/// Provides pre-built <see cref="IFilePathResolver"/> instances for tests:
+/// <see cref="AllowAll"/> (backed by <see cref="AllowAllPathValidator"/>) and
+/// <see cref="DenyAll"/> (backed by <see cref="DenyAllPathValidator"/>).
 /// </summary>
 internal static class TestFilePathResolver {
 

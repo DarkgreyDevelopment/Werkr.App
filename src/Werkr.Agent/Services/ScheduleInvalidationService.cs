@@ -1,7 +1,5 @@
 using System.Threading.Channels;
-
 using Grpc.Core;
-
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data.Entities.Registration;
@@ -16,7 +14,7 @@ namespace Werkr.Agent.Services;
 /// All RPCs use <see cref="EncryptedEnvelope"/>.
 /// </summary>
 /// <param name="invalidationChannel">
-/// Channel used to signal the <c>ScheduleEvaluatorService</c> that a
+/// Channel used to signal the <see cref="Scheduling.ScheduleEvaluatorService"/> that a
 /// schedule needs re-syncing. Writers are this service; the reader is
 /// the evaluator's background loop.
 /// </param>
@@ -30,11 +28,13 @@ public sealed class ScheduleInvalidationService(
     /// Handles a schedule invalidation push from the Server.
     /// Decrypts the envelope to <see cref="InvalidateScheduleRequest"/>, then
     /// writes the schedule ID to the shared invalidation channel so the
-    /// <c>ScheduleEvaluatorService</c> can trigger a re-sync.
+    /// <see cref="Scheduling.ScheduleEvaluatorService"/> can trigger a re-sync.
     /// </summary>
+    /// <returns>The encrypted acknowledgement envelope.</returns>
     public override async Task<EncryptedEnvelope> InvalidateSchedule(
         EncryptedEnvelope request,
-        ServerCallContext context ) {
+        ServerCallContext context
+    ) {
 
         RegisteredConnection connection = GetConnection( context );
         string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );

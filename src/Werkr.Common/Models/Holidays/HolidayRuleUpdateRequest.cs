@@ -1,6 +1,6 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Update-rule request.</summary>
+/// <summary>Request body for updating an existing holiday rule's parameters or observance settings.</summary>
 public sealed record HolidayRuleUpdateRequest(
     string Name,
     string RuleType,
@@ -13,4 +13,5 @@ public sealed record HolidayRuleUpdateRequest(
     string? WindowTimeZoneId,
     string ObservanceRule,
     int? YearStart,
-    int? YearEnd );
+    int? YearEnd
+);

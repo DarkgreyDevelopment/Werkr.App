@@ -1,8 +1,6 @@
 using Grpc.Core;
 using Grpc.Net.Client;
-
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
@@ -24,7 +22,8 @@ namespace Werkr.Api.Services;
 public sealed class ScheduleInvalidationDispatcher(
     AgentConnectionManager connectionManager,
     IServiceScopeFactory scopeFactory,
-    ILogger<ScheduleInvalidationDispatcher> logger ) {
+    ILogger<ScheduleInvalidationDispatcher> logger
+) {
 
     /// <summary>
     /// Notifies all affected agents that a schedule has been modified or deleted.

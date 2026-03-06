@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Werkr.Data.Entities.Interfaces;
 
 namespace Werkr.Data.Entities.Settings;
@@ -11,7 +10,8 @@ namespace Werkr.Data.Entities.Settings;
 /// </summary>
 [Table( "config_settings" )]
 public class ConfigurationSettings : ConcurrencyBase, IKey<Guid> {
-    /// <summary>Unique identifier.</summary>
+
+    /// <summary>Database-generated primary key.</summary>
     [Key]
     [DatabaseGenerated( DatabaseGeneratedOption.Identity )]
     public Guid Id { get; set; }
@@ -20,6 +20,7 @@ public class ConfigurationSettings : ConcurrencyBase, IKey<Guid> {
     public int DefaultKeySize { get; set; } = 4096;
 
     // ── Server identity ──────────────────────────────────────────────
+
     /// <summary>Display name shown in the Blazor UI header.</summary>
     [MaxLength( 200 )]
     public string ServerName { get; set; } = "Werkr Server";
@@ -28,6 +29,7 @@ public class ConfigurationSettings : ConcurrencyBase, IKey<Guid> {
     public bool AllowRegistration { get; set; } = true;
 
     // ── UI polling ───────────────────────────────────────────────────
+
     /// <summary>Seconds between dashboard / list auto-refresh polls.</summary>
     public int PollingIntervalSeconds { get; set; } = 30;
 

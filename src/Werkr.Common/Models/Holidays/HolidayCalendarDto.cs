@@ -1,6 +1,6 @@
 namespace Werkr.Common.Models.Holidays;
 
-/// <summary>Full holiday calendar with all rules and dates.</summary>
+/// <summary>Full representation of a holiday calendar including all associated rules and materialised dates.</summary>
 public sealed record HolidayCalendarDto(
     Guid Id,
     string Name,
@@ -9,4 +9,5 @@ public sealed record HolidayCalendarDto(
     DateTime CreatedUtc,
     DateTime UpdatedUtc,
     IReadOnlyList<HolidayRuleDto> Rules,
-    IReadOnlyList<HolidayDateDto> Dates );
+    IReadOnlyList<HolidayDateDto> Dates
+);

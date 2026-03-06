@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Entities.Schedule;
 
@@ -9,7 +8,7 @@ namespace Werkr.Data.Seeding;
 
 /// <summary>
 /// Seeds system holiday calendars (US Federal Holidays, Federal Reserve Holidays)
-/// on application startup. Idempotent — checks by name before inserting.
+/// on application startup. Idempotent - checks by name before inserting.
 /// </summary>
 public static class HolidayCalendarSeeder {
     // Deterministic GUIDs for system calendar IDs (stable across environments)

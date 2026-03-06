@@ -9,15 +9,25 @@ namespace Werkr.Server.Services;
 /// with actual reachability so all pages (not just the Dashboard) see accurate data.
 /// </summary>
 public sealed class AgentHealthMonitorService : BackgroundService {
+    /// <summary>
+    /// Factory used to create instances of the <c>"ApiService"</c> named HTTP client which has the <see cref="Identity.AuthForwardingHandler"/> in its pipeline.
+    /// </summary>
     private readonly IHttpClientFactory _httpClientFactory;
+    /// <summary>
+    /// Cached server configuration from which the polling interval is read.
+    /// </summary>
     private readonly ServerConfigCache _configCache;
+    /// <summary>
+    /// Logger for informational, warning, and debug messages.
+    /// </summary>
     private readonly ILogger<AgentHealthMonitorService> _logger;
 
     /// <summary>Initializes the health monitor.</summary>
     public AgentHealthMonitorService(
         IHttpClientFactory httpClientFactory,
         ServerConfigCache configCache,
-        ILogger<AgentHealthMonitorService> logger ) {
+        ILogger<AgentHealthMonitorService> logger
+    ) {
         _httpClientFactory = httpClientFactory;
         _configCache = configCache;
         _logger = logger;
@@ -44,12 +54,16 @@ public sealed class AgentHealthMonitorService : BackgroundService {
         }
     }
 
+    /// <summary>
+    /// Fetches the latest agent health data from <c>/api/agents/health</c> on the <c>Werkr.Api</c> and PUTs an updated status for each agent whose health result indicates a changed connection state. Unrecognised status strings are silently skipped.
+    /// </summary>
     private async Task PollAndUpdateAsync( CancellationToken ct ) {
         HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
 
         // Get live health from the API (which does real gRPC checks)
         List<AgentHealthDto>? healthResults = await client.GetFromJsonAsync<List<AgentHealthDto>>(
-            "/api/agents/health", ct );
+            "/api/agents/health", ct
+        );
 
         if (healthResults is null || healthResults.Count == 0) {
             return;
@@ -73,7 +87,8 @@ public sealed class AgentHealthMonitorService : BackgroundService {
                 using HttpResponseMessage response = await client.PutAsJsonAsync(
                     $"/api/agents/{health.AgentId}/status",
                     new UpdateAgentStatusRequest( newStatus ),
-                    ct );
+                    ct
+                );
 
                 if (!response.IsSuccessStatusCode) {
                     _logger.LogDebug( "Failed to update agent status." );

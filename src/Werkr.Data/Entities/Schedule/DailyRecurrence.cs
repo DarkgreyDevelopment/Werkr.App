@@ -8,6 +8,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "daily_recurrence" )]
 public class DailyRecurrence : ConcurrencyBase {
+
     /// <summary>Foreign key to the parent schedule.</summary>
     [Key]
     public Guid ScheduleId { get; set; }

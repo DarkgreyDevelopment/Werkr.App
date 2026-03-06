@@ -1,11 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
-
 using Grpc.Core;
 using Grpc.Core.Interceptors;
-
 using Microsoft.EntityFrameworkCore;
-
 using Werkr.Common.Models;
 using Werkr.Core.Cryptography;
 using Werkr.Data;
@@ -31,7 +28,8 @@ public class AgentBearerTokenInterceptor(
     public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
         TRequest request,
         ServerCallContext context,
-        UnaryServerMethod<TRequest, TResponse> continuation ) {
+        UnaryServerMethod<TRequest, TResponse> continuation
+    ) {
         await ValidateBearerTokenAsync( context );
         return await continuation( request, context );
     }
@@ -41,7 +39,8 @@ public class AgentBearerTokenInterceptor(
         TRequest request,
         IServerStreamWriter<TResponse> responseStream,
         ServerCallContext context,
-        ServerStreamingServerMethod<TRequest, TResponse> continuation ) {
+        ServerStreamingServerMethod<TRequest, TResponse> continuation
+    ) {
         await ValidateBearerTokenAsync( context );
         await continuation( request, responseStream, context );
     }
@@ -50,7 +49,8 @@ public class AgentBearerTokenInterceptor(
     public override async Task<TResponse> ClientStreamingServerHandler<TRequest, TResponse>(
         IAsyncStreamReader<TRequest> requestStream,
         ServerCallContext context,
-        ClientStreamingServerMethod<TRequest, TResponse> continuation ) {
+        ClientStreamingServerMethod<TRequest, TResponse> continuation
+    ) {
         await ValidateBearerTokenAsync( context );
         return await continuation( requestStream, context );
     }
@@ -60,11 +60,15 @@ public class AgentBearerTokenInterceptor(
         IAsyncStreamReader<TRequest> requestStream,
         IServerStreamWriter<TResponse> responseStream,
         ServerCallContext context,
-        DuplexStreamingServerMethod<TRequest, TResponse> continuation ) {
+        DuplexStreamingServerMethod<TRequest, TResponse> continuation
+    ) {
         await ValidateBearerTokenAsync( context );
         await continuation( requestStream, responseStream, context );
     }
 
+    /// <summary>
+    /// Validates the bearer token and connection ID metadata headers on inbound gRPC calls.
+    /// </summary>
     private async Task ValidateBearerTokenAsync( ServerCallContext context ) {
         // If no connection-id header is present, this is a user/service call — let JWT handle it.
         string? connectionIdStr = context.RequestHeaders.GetValue( "x-werkr-connection-id" );

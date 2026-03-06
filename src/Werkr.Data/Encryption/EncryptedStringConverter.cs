@@ -8,10 +8,12 @@ namespace Werkr.Data.Encryption;
 /// Uses <see cref="FieldEncryptionProvider"/> (AES-256-GCM).
 /// </summary>
 public sealed class EncryptedStringConverter : ValueConverter<string, string> {
+
     /// <summary>Creates a new converter backed by the specified encryption provider.</summary>
     /// <param name="provider">The AES-256-GCM encryption provider.</param>
     public EncryptedStringConverter( FieldEncryptionProvider provider )
         : base(
             v => provider.Encrypt( v )!,
-            v => provider.Decrypt( v )! ) { }
+            v => provider.Decrypt( v )!
+        ) { }
 }

@@ -7,6 +7,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/Dotnet.gitignore
 
+docs/api/*.yml
+.manifest
+
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
@@ -125,3 +129,7 @@ keys/
 # werkr output
 job-output/
 logs/
+
+*.dll
+*.exe
+*.pdb

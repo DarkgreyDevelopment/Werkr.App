@@ -1,5 +1,4 @@
 using System.Text;
-
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -19,7 +18,8 @@ public static class JwtValidationConfigurator {
     public static TokenValidationParameters GetParameters( IConfiguration config ) {
         string signingKey = config["Jwt:SigningKey"]
             ?? throw new InvalidOperationException(
-                "JWT signing key is not configured. Set 'Jwt:SigningKey' in appsettings.json or environment variables." );
+                "JWT signing key is not configured. Set 'Jwt:SigningKey' in appsettings.json or environment variables."
+            );
 
         return new TokenValidationParameters {
             ValidateIssuerSigningKey = true,

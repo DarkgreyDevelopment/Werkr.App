@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Werkr.Common.Models.Actions;
 
 /// <summary>
-/// Describes a built-in action to execute. A pure data record — serialization
+/// Describes a built-in action to execute. A pure data record - serialization
 /// options are handled at the handler layer via <c>ActionJson.SerializerOptions</c>
 /// (case-insensitive on deserialization at consumption). Serialization at creation
 /// uses <see cref="JsonSerializer.SerializeToElement{T}(T, JsonSerializerOptions?)"/>

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.Versioning;
 
 namespace Werkr.Core.Security;
@@ -13,7 +13,11 @@ public class MacOsSecretStore : ISecretStore {
 
     /// <inheritdoc/>
     public async Task<string?> GetSecretAsync( string key ) {
-        (int exitCode, string stdout, _) = await RunSecurityAsync(
+        (
+            int exitCode,
+            string stdout,
+            _
+        ) = await RunSecurityAsync(
             "find-generic-password",
             $"-s \"{ServiceName}\" -a \"{key}\" -w"
         ).ConfigureAwait( false );
@@ -22,14 +26,21 @@ public class MacOsSecretStore : ISecretStore {
     }
 
     /// <inheritdoc/>
-    public async Task SetSecretAsync( string key, string value ) {
+    public async Task SetSecretAsync(
+        string key,
+        string value
+    ) {
         // Delete existing entry first (ignore errors if it doesn't exist)
         _ = await RunSecurityAsync(
             "delete-generic-password",
             $"-s \"{ServiceName}\" -a \"{key}\""
         ).ConfigureAwait( false );
 
-        (int exitCode, _, string stderr) = await RunSecurityAsync(
+        (
+            int exitCode,
+            _,
+            string stderr
+        ) = await RunSecurityAsync(
             "add-generic-password",
             $"-s \"{ServiceName}\" -a \"{key}\" -w \"{value}\" -U"
         ).ConfigureAwait( false );

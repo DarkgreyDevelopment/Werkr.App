@@ -10,4 +10,5 @@ public sealed record AgentDetailDto(
     DateTime RegisteredAt,
     DateTime? LastSeen,
     bool? PowerShellAvailable,
-    bool? SystemShellAvailable );
+    bool? SystemShellAvailable
+);

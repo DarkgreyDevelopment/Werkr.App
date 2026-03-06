@@ -1,6 +1,5 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
-
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
@@ -9,7 +8,7 @@ using Werkr.Core.Operators;
 namespace Werkr.Agent.Operators;
 
 /// <summary>
-/// Built-in action operator — dispatches <see cref="ActionDescriptor"/> requests
+/// Built-in action operator - dispatches <see cref="ActionDescriptor"/> requests
 /// to the appropriate <see cref="IActionHandler"/> via a string-keyed registry.
 /// Follows the same channel-based streaming pattern as <see cref="PwshOperator"/>
 /// and <see cref="SystemShellOperator"/>.
@@ -34,8 +33,18 @@ public sealed class ActionOperator : IActionOperator {
         "StopProcess",
     ];
 
+    /// <summary>
+    /// Dictionary mapping action names (case-insensitive) to their corresponding handler instances.
+    /// </summary>
     private readonly Dictionary<string, IActionHandler> _handlers;
+    /// <summary>
+    /// Options monitor providing the current <see cref="ActionOperatorConfiguration"/>
+    /// including default timeout settings for action execution.
+    /// </summary>
     private readonly IOptionsMonitor<ActionOperatorConfiguration> _options;
+    /// <summary>
+    /// Logger for recording action execution lifecycle events and errors.
+    /// </summary>
     private readonly ILogger<ActionOperator> _logger;
 
     /// <summary>
@@ -45,7 +54,7 @@ public sealed class ActionOperator : IActionOperator {
     /// <param name="options">Configuration for action operator behavior (e.g. timeout).</param>
     /// <param name="logger">Logger for diagnostics.</param>
     /// <param name="expectedActions">
-    /// Optional list of expected action names to validate at startup. When <c>null</c>,
+    /// Optional list of expected action names to validate at startup. When <see langword="null"/>,
     /// defaults to <see cref="DefaultExpectedActions"/>. Pass an empty collection to
     /// skip validation (useful in unit tests with partial handler sets).
     /// </param>
@@ -56,7 +65,8 @@ public sealed class ActionOperator : IActionOperator {
         IEnumerable<IActionHandler> handlers,
         IOptionsMonitor<ActionOperatorConfiguration> options,
         ILogger<ActionOperator> logger,
-        IEnumerable<string>? expectedActions = null ) {
+        IEnumerable<string>? expectedActions = null
+    ) {
         _options = options;
         _logger = logger;
         _handlers = new Dictionary<string, IActionHandler>( StringComparer.OrdinalIgnoreCase );
@@ -103,11 +113,16 @@ public sealed class ActionOperator : IActionOperator {
         return new OperatorExecution( channel.Reader.ReadAllAsync( cancellationToken ), resultTcs.Task );
     }
 
+    /// <summary>
+    /// Internal execution pipeline that resolves the handler, applies timeout logic,
+    /// invokes the handler, and writes output and results to the channel and task completion source.
+    /// </summary>
     private async Task ExecuteInternal(
         ActionDescriptor descriptor,
         ChannelWriter<OperatorOutput> writer,
         TaskCompletionSource<IOperatorResult> resultTcs,
-        CancellationToken cancellationToken ) {
+        CancellationToken cancellationToken
+    ) {
 
         CancellationTokenSource? timeoutCts = null;
         CancellationTokenSource? linkedCts = null;

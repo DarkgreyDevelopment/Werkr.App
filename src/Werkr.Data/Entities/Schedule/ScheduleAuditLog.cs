@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Werkr.Data.Calendar.Enums;
 
 namespace Werkr.Data.Entities.Schedule;
@@ -11,6 +10,7 @@ namespace Werkr.Data.Entities.Schedule;
 /// </summary>
 [Table( "schedule_audit_log" )]
 public class ScheduleAuditLog {
+
     /// <summary>Auto-incrementing primary key.</summary>
     [Key]
     [DatabaseGenerated( DatabaseGeneratedOption.Identity )]

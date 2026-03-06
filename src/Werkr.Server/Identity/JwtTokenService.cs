@@ -2,7 +2,6 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-
 using Werkr.Common.Auth;
 using Werkr.Data.Identity.Entities;
 
@@ -17,10 +16,25 @@ namespace Werkr.Server.Identity;
 /// </para>
 /// </summary>
 public sealed class JwtTokenService {
+    /// <summary>
+    /// The HMAC-SHA256 symmetric signing key derived from the <c>Jwt:SigningKey</c> configuration value. Must be at least 32 characters (256 bits).
+    /// </summary>
     private readonly SymmetricSecurityKey _signingKey;
+    /// <summary>
+    /// The <c>iss</c> (issuer) claim value embedded in every generated token. Defaults to <c>"werkr-api"</c> when not configured.
+    /// </summary>
     private readonly string _issuer;
+    /// <summary>
+    /// The <c>aud</c> (audience) claim value embedded in every generated token. Defaults to <c>"werkr"</c> when not configured.
+    /// </summary>
     private readonly string _audience;
+    /// <summary>
+    /// The lifetime applied to every minted token. Defaults to 15 minutes when the <c>Jwt:TokenLifetimeMinutes</c> configuration key is absent or unparseable.
+    /// </summary>
     private readonly TimeSpan _tokenLifetime;
+    /// <summary>
+    /// Logger for recording debug-level details about generated tokens.
+    /// </summary>
     private readonly ILogger<JwtTokenService> _logger;
 
     /// <summary>
@@ -79,7 +93,8 @@ public sealed class JwtTokenService {
         if (_logger.IsEnabled( LogLevel.Debug )) {
             _logger.LogDebug( "Generated JWT for API key '{Name}' (prefix: {Prefix}), expires in {Lifetime} minutes, permissions: {Permissions}.",
                 apiKey.Name, apiKey.KeyPrefix, _tokenLifetime.TotalMinutes,
-                string.Join( ", ", permissions ) );
+                string.Join( ", ", permissions )
+            );
         }
 
         return tokenString;
@@ -88,7 +103,7 @@ public sealed class JwtTokenService {
     /// <summary>
     /// Mints a JWT for Server→API service-to-service calls.
     /// Uses a built-in service identity with full permissions.
-    /// No API key required — the Server is the token issuer and trusts itself.
+    /// No API key required - the Server is the token issuer and trusts itself.
     /// </summary>
     /// <returns>The signed JWT token string.</returns>
     public string GenerateServiceToken( ) {

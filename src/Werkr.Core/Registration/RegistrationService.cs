@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
@@ -42,9 +42,13 @@ public class RegistrationService(
         string password,
         TimeSpan? expiration,
         string[]? tags = null,
-        CancellationToken ct = default ) {
+        CancellationToken ct = default
+    ) {
 
-        (string encryptedBundle, RegistrationBundle entity) = RegistrationBundleGenerator.CreateBundle(
+        (
+            string encryptedBundle,
+            RegistrationBundle entity
+        ) = RegistrationBundleGenerator.CreateBundle(
             connectionName, serverUrl, password, expiration: expiration );
 
         // Carry tags through to completion
@@ -56,7 +60,9 @@ public class RegistrationService(
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
                 "Registration bundle created for '{ConnectionName}', expires at {ExpiresAt}.",
-                connectionName, entity.ExpiresAt );
+                connectionName,
+                entity.ExpiresAt
+            );
         }
 
         return encryptedBundle;
@@ -68,7 +74,8 @@ public class RegistrationService(
     /// creates a <see cref="RegisteredConnection"/>, and returns the encrypted credentials.
     /// </summary>
     /// <param name="bundleId">The 16-byte correlation token from the Agent's request.</param>
-    /// <param name="encryptedAgentPublicKey">The Agent's RSA public key, hybrid-encrypted with Server's public key.</param>
+    /// <param name="encryptedAgentPublicKey">The Agent's RSA public key, hybrid-encrypted with Server's public
+    /// key.</param>
     /// <param name="agentUrl">The Agent's gRPC endpoint URL.</param>
     /// <param name="agentName">Human-readable Agent name.</param>
     /// <param name="ct">Cancellation token.</param>
@@ -78,33 +85,57 @@ public class RegistrationService(
         byte[] encryptedAgentPublicKey,
         string agentUrl,
         string agentName,
-        CancellationToken ct ) {
+        CancellationToken ct
+    ) {
 
         // Look up bundle by BundleId
         RegistrationBundle? bundle = await dbContext.RegistrationBundles
-            .FirstOrDefaultAsync( b => b.BundleId == bundleId, ct );
+            .FirstOrDefaultAsync(
+                b => b.BundleId == bundleId,
+                ct
+            );
 
         if (bundle is null) {
             logger.LogWarning( "Registration attempt with unknown BundleId." );
-            return (new AgentRegistrationResult( false, null, null, "Unknown registration bundle." ), null);
+            return (new AgentRegistrationResult(
+                false,
+                null,
+                null,
+                "Unknown registration bundle."
+            ), null);
         }
 
         if (bundle.Status != RegistrationStatus.Pending) {
             logger.LogWarning( "Registration attempt on non-pending bundle {BundleId}, status: {Status}.",
-                Convert.ToHexString( bundleId ), bundle.Status );
-            return (new AgentRegistrationResult( false, null, null, $"Bundle is not pending (status: {bundle.Status})." ), null);
+                Convert.ToHexString( bundleId ),
+                bundle.Status
+            );
+            return (new AgentRegistrationResult(
+                false,
+                null,
+                null,
+                $"Bundle is not pending (status: {bundle.Status})."
+            ), null);
         }
 
         if (bundle.ExpiresAt <= DateTime.UtcNow) {
             bundle.Status = RegistrationStatus.Expired;
             _ = await dbContext.SaveChangesAsync( ct );
             logger.LogWarning( "Expired bundle used for registration attempt." );
-            return (new AgentRegistrationResult( false, null, null, "Registration bundle has expired." ), null);
+            return (new AgentRegistrationResult(
+                false,
+                null,
+                null,
+                "Registration bundle has expired."
+            ), null);
         }
 
         try {
             // Hybrid-decrypt Agent's public key
-            byte[] agentPublicKeyBytes = EncryptionProvider.HybridDecrypt( encryptedAgentPublicKey, bundle.ServerPrivateKey );
+            byte[] agentPublicKeyBytes = EncryptionProvider.HybridDecrypt(
+                encryptedAgentPublicKey,
+                bundle.ServerPrivateKey
+            );
             RSAParameters agentPublicKey = EncryptionProvider.DeserializePublicKey( agentPublicKeyBytes );
 
             // Generate bidirectional API keys: 128-char hex strings (64 random bytes each)
@@ -137,21 +168,41 @@ public class RegistrationService(
             if (logger.IsEnabled( LogLevel.Information )) {
                 logger.LogInformation(
                     "Registration completed for '{ConnectionName}' with Agent '{AgentName}' at {AgentUrl}.",
-                    bundle.ConnectionName, agentName, agentUrl );
+                    bundle.ConnectionName,
+                    agentName,
+                    agentUrl
+                );
             }
 
             // Build encrypted response payload with bidirectional keys and shared connection ID
-            RegistrationResponsePayload responsePayload = new( agentToServerKey, serverToAgentKey, sharedKey, connection.Id );
+            RegistrationResponsePayload responsePayload = new(
+                agentToServerKey,
+                serverToAgentKey,
+                sharedKey,
+                connection.Id
+            );
             byte[] responseJson = JsonSerializer.SerializeToUtf8Bytes( responsePayload );
-            byte[] encryptedResponseData = EncryptionProvider.HybridEncrypt( responseJson, agentPublicKey );
+            byte[] encryptedResponseData = EncryptionProvider.HybridEncrypt(
+                responseJson,
+                agentPublicKey
+            );
 
             AgentRegistrationResult result = new( true, agentToServerKey, sharedKey,
-                $"Registration complete. Connection '{bundle.ConnectionName}' established." );
+                $"Registration complete. Connection '{bundle.ConnectionName}' established."
+            );
 
             return (result, encryptedResponseData);
         } catch (WerkrCryptoException ex) {
-            logger.LogError( ex, "Cryptographic error during registration completion." );
-            return (new AgentRegistrationResult( false, null, null, "Registration failed: cryptographic error — " + ex.Message ), null);
+            logger.LogError(
+                ex,
+                "Cryptographic error during registration completion."
+            );
+            return (new AgentRegistrationResult(
+                false,
+                null,
+                null,
+                "Registration failed: cryptographic error — " + ex.Message
+            ), null);
         }
     }
 }

@@ -37,6 +37,10 @@ public sealed class RegistryConfigurationProvider : ConfigurationProvider {
         Data = data;
     }
 
+    /// <summary>
+    /// Opens the target registry key on Windows and recursively reads
+    /// all values and sub-keys into the provided <paramref name="data"/> dictionary.
+    /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform( "windows" )]
     private void ReadRegistryWindows( Dictionary<string, string?> data ) {
         string registryPath = string.IsNullOrEmpty( _source.SubKey )
@@ -50,14 +54,24 @@ public sealed class RegistryConfigurationProvider : ConfigurationProvider {
             return;
         }
 
-        ReadKeyRecursive( key, _source.SubKey, data );
+        ReadKeyRecursive(
+            key,
+            _source.SubKey,
+            data
+        );
     }
 
+    /// <summary>
+    /// Recursively reads all named values and child sub-keys from the
+    /// given registry key, converting the registry hierarchy into
+    /// colon-delimited configuration keys.
+    /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform( "windows" )]
     private static void ReadKeyRecursive(
         Microsoft.Win32.RegistryKey key,
         string prefix,
-        Dictionary<string, string?> data ) {
+        Dictionary<string, string?> data
+    ) {
         // Read values at this level
         foreach (string valueName in key.GetValueNames( )) {
             string configKey = string.IsNullOrEmpty( prefix )
@@ -77,7 +91,11 @@ public sealed class RegistryConfigurationProvider : ConfigurationProvider {
                 string subPrefix = string.IsNullOrEmpty( prefix )
                     ? subKeyName
                     : $"{prefix}:{subKeyName}";
-                ReadKeyRecursive( subKey, subPrefix, data );
+                ReadKeyRecursive(
+                    subKey,
+                    subPrefix,
+                    data
+                );
             }
         }
     }
