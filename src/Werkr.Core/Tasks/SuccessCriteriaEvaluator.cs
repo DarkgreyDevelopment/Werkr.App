@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 using Microsoft.Extensions.Logging;
 
 using Werkr.Core.Communication;
@@ -11,7 +13,11 @@ namespace Werkr.Core.Tasks;
 /// Custom criteria expressions are predefined string keys evaluated against the typed result.
 /// </summary>
 /// <param name="logger">Logger instance.</param>
-public sealed class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> logger ) {
+public sealed partial class SuccessCriteriaEvaluator(ILogger<SuccessCriteriaEvaluator> logger)
+{
+
+    [GeneratedRegex(@"^exitCode\s*==\s*(-?\d+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex ExitCodePattern();
 
     /// <summary>
     /// Evaluates success for a completed job.
@@ -21,7 +27,7 @@ public sealed class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> 
     /// Optional criteria expression. When null, defaults are inferred from <paramref name="actionType"/>.
     /// Supported expressions:
     /// <list type="bullet">
-    ///   <item><c>exitCode == 0</c> — exit code must be zero</item>
+    ///   <item><c>exitCode == N</c> — exit code must equal the specified integer N</item>
     ///   <item><c>pwsh.HadErrors == false</c> — PowerShell had no errors</item>
     ///   <item><c>output.contains("TEXT")</c> — output must contain the specified text</item>
     ///   <item><c>always</c> — always succeed (useful for fire-and-forget tasks)</item>
@@ -117,16 +123,15 @@ public sealed class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> 
             return true;
         }
 
-        // "exitCode == 0" — exit code must be zero
-        if (string.Equals(
-            trimmed,
-            "exitCode == 0",
-            StringComparison.OrdinalIgnoreCase
-        )) {
-            bool success = exitCode.HasValue && exitCode.Value == 0;
+        // "exitCode == N" — exit code must equal the specified integer
+        Match exitCodeMatch = ExitCodePattern().Match(trimmed);
+        if (exitCodeMatch.Success && int.TryParse(exitCodeMatch.Groups[1].Value, out int expectedCode))
+        {
+            bool success = exitCode.HasValue && exitCode.Value == expectedCode;
             if (!success && logger.IsEnabled( LogLevel.Debug )) {
                 logger.LogDebug(
-                    "Criteria 'exitCode == 0' failed: exitCode={ExitCode}.",
+                    "Criteria 'exitCode == {Expected}' failed: exitCode={Actual}.",
+                    expectedCode.ToString(),
                     exitCode?.ToString( ) ?? "null"
                 );
             }

@@ -211,9 +211,8 @@ public sealed class TaskService(
             throw new ValidationException( $"Invalid ActionType: {task.ActionType}." );
         }
 
-        if (task.TargetTags.Length == 0) {
-            throw new ValidationException( "At least one target tag is required." );
-        }
+        // Tags are optional — UI warns if empty, but execution proceeds.
+        // AgentResolver handles the case where no agents match.
 
         if (task.TimeoutMinutes.HasValue && task.TimeoutMinutes.Value <= 0) {
             throw new ValidationException( "TimeoutMinutes must be greater than zero." );

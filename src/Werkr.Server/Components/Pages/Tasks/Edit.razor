@@ -52,14 +52,21 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label" for="content">Content (command / script)</label>
-                    <InputTextArea id="content" class="form-control font-monospace" rows="5" @bind-Value="_model.Content" />
+                    @if (IsScriptType( _model.ActionType )) {
+                        <label class="form-label" for="content">Script Path</label>
+                        <InputText id="content" class="form-control font-monospace" @bind-Value="_model.Content" />
+                    } else if (_model.ActionType != "Action") {
+                        <label class="form-label" for="content">Command</label>
+                        <InputTextArea id="content" class="form-control font-monospace" rows="5" @bind-Value="_model.Content" />
+                    }
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label" for="args">Arguments (one per line)</label>
-                    <InputTextArea id="args" class="form-control font-monospace" rows="3" @bind-Value="_model.Arguments" />
-                </div>
+                @if (_model.ActionType != "Action") {
+                    <div class="mb-3">
+                        <label class="form-label">Arguments</label>
+                        <ArgumentListEditor @bind-Value="_model.Arguments" />
+                    </div>
+                }
             </div>
         </div>
 
@@ -92,9 +99,9 @@
                             }
                         </InputSelect>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="successCriteria">Success Criteria</label>
-                        <InputText id="successCriteria" class="form-control" @bind-Value="_model.SuccessCriteria" />
+                    <div class="col-md-6">
+                        <label class="form-label">Success Criteria</label>
+                        <SuccessCriteriaEditor @bind-Value="_model.SuccessCriteria" ActionType="@_model.ActionType" />
                     </div>
                 </div>
 
@@ -139,7 +146,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="mb-0">Job History</h3>
         <a href="/jobs?taskId=@Id" class="btn btn-outline-primary btn-sm">
-            <span class="bi bi-journal-text me-1" aria-hidden="true"></span> View All Logs
+            View All Logs
         </a>
     </div>
     @if ( _jobs is not null && _jobs.Count > 0 ) {
@@ -245,6 +252,9 @@
             _isSaving = false;
         }
     }
+
+    private static bool IsScriptType( string actionType ) =>
+        actionType is "PowerShellScript" or "ShellScript";
 
     private void OnTargetTagsChanged( string[] tags ) {
         _targetTags = tags;

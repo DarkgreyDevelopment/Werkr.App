@@ -207,6 +207,88 @@ public class SuccessCriteriaEvaluatorTests {
         Assert.IsFalse( result );
     }
 
+    // ── Explicit Criteria: exitCode == N (non-zero) ──
+
+    /// <summary>
+    /// Verifies that "exitCode == 1" succeeds when exit code is 1.
+    /// </summary>
+    [TestMethod]
+    public void ExitCodeCriteria_One_Succeeds()
+    {
+        bool result = _evaluator.Evaluate(
+            TaskActionType.ShellCommand,
+            "exitCode == 1",
+            exitCode: 1,
+            output: [],
+            exception: null
+        );
+        Assert.IsTrue(result);
+    }
+
+    /// <summary>
+    /// Verifies that "exitCode == 1" fails when exit code is 0.
+    /// </summary>
+    [TestMethod]
+    public void ExitCodeCriteria_One_WhenZero_Fails()
+    {
+        bool result = _evaluator.Evaluate(
+            TaskActionType.ShellCommand,
+            "exitCode == 1",
+            exitCode: 0,
+            output: [],
+            exception: null
+        );
+        Assert.IsFalse(result);
+    }
+
+    /// <summary>
+    /// Verifies that "exitCode == -1" succeeds when exit code is -1.
+    /// </summary>
+    [TestMethod]
+    public void ExitCodeCriteria_NegativeOne_Succeeds()
+    {
+        bool result = _evaluator.Evaluate(
+            TaskActionType.ShellCommand,
+            "exitCode == -1",
+            exitCode: -1,
+            output: [],
+            exception: null
+        );
+        Assert.IsTrue(result);
+    }
+
+    /// <summary>
+    /// Verifies that "exitCode == 42" succeeds when exit code is 42.
+    /// </summary>
+    [TestMethod]
+    public void ExitCodeCriteria_FortyTwo_Succeeds()
+    {
+        bool result = _evaluator.Evaluate(
+            TaskActionType.ShellCommand,
+            "exitCode == 42",
+            exitCode: 42,
+            output: [],
+            exception: null
+        );
+        Assert.IsTrue(result);
+    }
+
+    /// <summary>
+    /// Verifies that "exitCode == 42" fails when exit code is 0.
+    /// </summary>
+    [TestMethod]
+    public void ExitCodeCriteria_FortyTwo_WhenZero_Fails()
+    {
+        bool result = _evaluator.Evaluate(
+            TaskActionType.ShellCommand,
+            "exitCode == 42",
+            exitCode: 0,
+            output: [],
+            exception: null
+        );
+        Assert.IsFalse(result);
+    }
+
     // ── Explicit Criteria: pwsh.HadErrors == false ──
 
     /// <summary>

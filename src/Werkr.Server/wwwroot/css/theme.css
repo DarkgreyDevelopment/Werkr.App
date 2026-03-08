@@ -243,6 +243,101 @@ body.dark-theme .badge.bg-secondary {
     background-color: var(--grey-700) !important;
 }
 
+/* ── Light Theme — Bootstrap component overrides ──────────── */
+
+body.light-theme .alert-info {
+    --bs-alert-bg: #cff4fc;
+    --bs-alert-color: #055160;
+    --bs-alert-border-color: #9eeaf9;
+}
+
+body.light-theme .alert-danger {
+    --bs-alert-bg: #f8d7da;
+    --bs-alert-color: #842029;
+    --bs-alert-border-color: #f5c2c7;
+}
+
+body.light-theme .alert-warning {
+    --bs-alert-bg: #fff3cd;
+    --bs-alert-color: #664d03;
+    --bs-alert-border-color: #ffe69c;
+}
+
+body.light-theme .alert-success {
+    --bs-alert-bg: #d1e7dd;
+    --bs-alert-color: #0f5132;
+    --bs-alert-border-color: #badbcc;
+}
+
+body.light-theme .text-muted {
+    color: var(--text-muted-color) !important;
+}
+
+body.light-theme code {
+    color: #d63384;
+}
+
+body.light-theme .form-check-input {
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+}
+
+body.light-theme .form-check-input:checked {
+    background-color: var(--btn-primary-bg);
+    border-color: var(--btn-primary-bg);
+}
+
+body.light-theme .btn-outline-primary {
+    --bs-btn-color: #0d6efd;
+    --bs-btn-border-color: #0d6efd;
+    --bs-btn-hover-bg: #0d6efd;
+    --bs-btn-hover-border-color: #0d6efd;
+    --bs-btn-hover-color: #fff;
+}
+
+body.light-theme .btn-outline-secondary {
+    --bs-btn-color: #6c757d;
+    --bs-btn-border-color: #6c757d;
+    --bs-btn-hover-bg: #6c757d;
+    --bs-btn-hover-border-color: #6c757d;
+    --bs-btn-hover-color: #fff;
+}
+
+body.light-theme .btn-outline-danger {
+    --bs-btn-color: #dc3545;
+    --bs-btn-border-color: #dc3545;
+    --bs-btn-hover-bg: #dc3545;
+    --bs-btn-hover-border-color: #dc3545;
+    --bs-btn-hover-color: #fff;
+}
+
+body.light-theme .table-dark {
+    --bs-table-bg: #212529;
+    --bs-table-color: #fff;
+    --bs-table-border-color: #373b3e;
+}
+
+body.light-theme .badge.bg-secondary {
+    background-color: var(--badge-bg) !important;
+}
+
+body.light-theme .list-group-item {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--body-content-color);
+}
+
+body.light-theme .breadcrumb {
+    color: var(--body-content-color);
+}
+
+body.light-theme fieldset {
+    border-color: var(--card-border);
+}
+
+body.light-theme legend {
+    border-color: var(--card-border);
+}
 /* ── Theme toggle switch ──────────────────────────────────── */
 .theme-toggle {
     display: inline-flex;
@@ -255,42 +350,4 @@ body.dark-theme .badge.bg-secondary {
 .theme-toggle .icon {
     font-size: 0.9rem;
     line-height: 1;
-}
-
-.theme-toggle .switch {
-    position: relative;
-    display: inline-block;
-    width: 36px;
-    height: 18px;
-}
-
-.theme-toggle .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.theme-toggle .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: var(--green);
-    transition: .3s;
-    border-radius: 18px;
-}
-
-.theme-toggle .slider::before {
-    content: "";
-    position: absolute;
-    height: 12px;
-    width: 12px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .3s;
-    border-radius: 50%;
-}
-
-.theme-toggle .switch input:checked + .slider::before {
-    transform: translateX(18px);
 }

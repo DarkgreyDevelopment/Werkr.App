@@ -3,7 +3,6 @@
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">
-            <span class="bi bi-grid-fill" aria-hidden="true"></span>
             <span class="navbar-brand-text">Werkr</span>
         </a>
     </div>
@@ -16,28 +15,23 @@
         <AuthorizeView>
             <Authorized>
                 @* ── Dashboard group ── *@
-                <details class="nav-group px-3" open>
+                <details class="nav-group px-3">
                     <summary class="nav-group-toggle" onclick="event.stopPropagation()">
-                        <span class="bi bi-speedometer2" aria-hidden="true"></span>
                         <span class="nav-group-label">Dashboard</span>
-                        <span class="bi bi-chevron-down nav-chevron" aria-hidden="true"></span>
                     </summary>
                     <div class="nav-group-items">
                         <div class="nav-item">
                             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                                <span class="bi bi-list-check" aria-hidden="true"></span>
                                 <span class="nav-label">Task List</span>
                             </NavLink>
                         </div>
                         <div class="nav-item">
                             <NavLink class="nav-link" href="calendar">
-                                <span class="bi bi-calendar3" aria-hidden="true"></span>
                                 <span class="nav-label">Calendar</span>
                             </NavLink>
                         </div>
                         <div class="nav-item">
                             <NavLink class="nav-link" href="jobs">
-                                <span class="bi bi-clock-history" aria-hidden="true"></span>
                                 <span class="nav-label">Jobs</span>
                             </NavLink>
                         </div>
@@ -46,34 +40,28 @@
 
                 @* ── Automation group ── *@
                 <AuthorizeView Roles="Admin,Operator" Context="automationAuth">
-                    <details class="nav-group px-3" open>
+                    <details class="nav-group px-3">
                         <summary class="nav-group-toggle" onclick="event.stopPropagation()">
-                            <span class="bi bi-gear-wide-connected" aria-hidden="true"></span>
                             <span class="nav-group-label">Automation</span>
-                            <span class="bi bi-chevron-down nav-chevron" aria-hidden="true"></span>
                         </summary>
                         <div class="nav-group-items">
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="schedules">
-                                    <span class="bi bi-calendar-event" aria-hidden="true"></span>
                                     <span class="nav-label">Schedules</span>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="tasks">
-                                    <span class="bi bi-list-task" aria-hidden="true"></span>
                                     <span class="nav-label">Tasks</span>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="workflows">
-                                    <span class="bi bi-diagram-3" aria-hidden="true"></span>
                                     <span class="nav-label">Workflows</span>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="holiday-calendars">
-                                    <span class="bi bi-calendar-x" aria-hidden="true"></span>
                                     <span class="nav-label">Holiday Calendars</span>
                                 </NavLink>
                             </div>
@@ -83,40 +71,33 @@
 
                 @* ── Administration group ── *@
                 <AuthorizeView Roles="Admin" Context="adminAuth">
-                    <details class="nav-group px-3" open>
+                    <details class="nav-group px-3">
                         <summary class="nav-group-toggle" onclick="event.stopPropagation()">
-                            <span class="bi bi-shield-lock-fill" aria-hidden="true"></span>
                             <span class="nav-group-label">Administration</span>
-                            <span class="bi bi-chevron-down nav-chevron" aria-hidden="true"></span>
                         </summary>
                         <div class="nav-group-items">
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="overview">
-                                    <span class="bi bi-house-door-fill" aria-hidden="true"></span>
                                     <span class="nav-label">Overview</span>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="settings">
-                                    <span class="bi bi-gear-fill" aria-hidden="true"></span>
                                     <span class="nav-label">Settings</span>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="admin/users">
-                                    <span class="bi bi-people-fill" aria-hidden="true"></span>
                                     <span class="nav-label">Users</span>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="admin/apikeys">
-                                    <span class="bi bi-key-fill" aria-hidden="true"></span>
                                     <span class="nav-label">API Keys</span>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="agents">
-                                    <span class="bi bi-hdd-network-fill" aria-hidden="true"></span>
                                     <span class="nav-label">Agents</span>
                                 </NavLink>
                             </div>
@@ -125,22 +106,18 @@
                 </AuthorizeView>
 
                 @* ── Account group ── *@
-                <details class="nav-group px-3" open>
+                <details class="nav-group px-3">
                     <summary class="nav-group-toggle" onclick="event.stopPropagation()">
-                        <span class="bi bi-person-circle" aria-hidden="true"></span>
                         <span class="nav-group-label">Account</span>
-                        <span class="bi bi-chevron-down nav-chevron" aria-hidden="true"></span>
                     </summary>
                     <div class="nav-group-items">
                         <div class="nav-item">
                             <NavLink class="nav-link" href="account/manage">
-                                <span class="bi bi-person-fill" aria-hidden="true"></span>
                                 <span class="nav-label">My Account</span>
                             </NavLink>
                         </div>
                         <div class="nav-item">
                             <NavLink class="nav-link" href="account/logout">
-                                <span class="bi bi-box-arrow-right" aria-hidden="true"></span>
                                 <span class="nav-label">Logout</span>
                             </NavLink>
                         </div>
@@ -150,7 +127,6 @@
             <NotAuthorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="account/login">
-                        <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span>
                         <span class="nav-label">Login</span>
                     </NavLink>
                 </div>

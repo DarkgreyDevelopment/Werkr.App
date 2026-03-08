@@ -51,7 +51,7 @@
                 <dt class="col-sm-3">Agent</dt>
                 <dd class="col-sm-9">
                     @if ( _job.AgentConnectionId is not null ) {
-                        <a href="/agents/@_job.AgentConnectionId">@_job.AgentConnectionId.Value.ToString()[..8]…</a>
+                        <a href="/agents/@_job.AgentConnectionId">@( _agentName ?? _job.AgentConnectionId.Value.ToString()[..8] + "…" )</a>
                     } else {
                         <span class="text-muted">—</span>
                     }
@@ -88,6 +88,7 @@
     [Parameter] public Guid Id { get; set; }
 
     private JobDto? _job;
+    private string? _agentName;
     private string? _output;
     private string? _errorMessage;
     private bool _isLoading;
@@ -106,6 +107,14 @@
             _job = await client.GetFromJsonAsync<JobDto>( $"/api/jobs/{Id}" );
             if ( _job is null ) {
                 _errorMessage = "Job not found.";
+            } else if ( _job.AgentConnectionId is not null ) {
+                try {
+                    AgentDetailDto? agent = await client.GetFromJsonAsync<AgentDetailDto>(
+                        $"/api/agents/{_job.AgentConnectionId}" );
+                    _agentName = agent?.ConnectionName;
+                } catch {
+                    // fall back to truncated GUID display
+                }
             }
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load job: {ex.Message}";

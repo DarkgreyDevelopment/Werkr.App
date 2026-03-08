@@ -12,24 +12,35 @@
         b.classList.toggle("light-theme", !dark);
     }
 
-    // Read stored preference (default: dark)
-    const stored = window.localStorage?.getItem("theme");
-    const isDark = !stored || stored === "dark-theme";
-    applyTheme(isDark);
+    function currentIsDark() {
+        const stored = window.localStorage?.getItem("theme");
+        return !stored || stored === "dark-theme";
+    }
 
-    // Bind the toggle checkbox
-    function bindToggle(sw) {
+    // Bind the toggle checkbox — re-entrant safe
+    function bindToggle() {
+        const sw = document.getElementById("theme-toggle");
         if (!sw) return;
-        sw.checked = isDark;
-        sw.addEventListener("change", function () {
+        sw.checked = currentIsDark();
+        // Clone-replace to remove any previous listener
+        const fresh = sw.cloneNode(true);
+        sw.parentNode.replaceChild(fresh, sw);
+        fresh.addEventListener("change", function () {
             const dark = this.checked;
             applyTheme(dark);
             localStorage?.setItem("theme", dark ? "dark-theme" : "light-theme");
         });
     }
 
-    // The checkbox should already exist (static SSR)
-    bindToggle(document.getElementById("theme-toggle"));
+    // Initial page load
+    applyTheme(currentIsDark());
+    bindToggle();
+
+    // Re-apply after Blazor enhanced navigation replaces the DOM
+    document.addEventListener("blazor:enhancedload", function () {
+        applyTheme(currentIsDark());
+        bindToggle();
+    });
 
     // Sync across tabs
     window.addEventListener("storage", function (e) {
