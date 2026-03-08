@@ -100,7 +100,7 @@ public class AgentResolverTests {
         string name,
         ConnectionStatus status,
         params string[] tags
-    ){
+    ) {
         return new RegisteredConnection {
             ConnectionName = name,
             RemoteUrl = $"https://{name}.test:5100",
@@ -146,7 +146,7 @@ public class AgentResolverTests {
             "agent1",
             ConnectionStatus.Connected,
             "windows"
-        ));
+        ) );
         _ = await _dbContext.SaveChangesAsync( TestContext.CancellationToken );
 
         RegisteredConnection? result = await _resolver.ResolveAsync(
@@ -166,7 +166,7 @@ public class AgentResolverTests {
             ConnectionStatus.Connected,
             "linux",
             "docker"
-        ));
+        ) );
         _ = await _dbContext.SaveChangesAsync( TestContext.CancellationToken );
 
         RegisteredConnection? result = await _resolver.ResolveAsync(
@@ -189,7 +189,7 @@ public class AgentResolverTests {
             "agent1",
             ConnectionStatus.Connected,
             "Linux"
-        ));
+        ) );
         _ = await _dbContext.SaveChangesAsync( TestContext.CancellationToken );
 
         RegisteredConnection? result = await _resolver.ResolveAsync(
@@ -208,12 +208,12 @@ public class AgentResolverTests {
             "disconnected",
             ConnectionStatus.Disconnected,
             "linux"
-        ));
+        ) );
         _ = _dbContext.RegisteredConnections.Add( MakeConnection(
             "revoked",
             ConnectionStatus.Revoked,
             "linux"
-        ));
+        ) );
         _ = await _dbContext.SaveChangesAsync( TestContext.CancellationToken );
 
         RegisteredConnection? result = await _resolver.ResolveAsync(
@@ -232,18 +232,18 @@ public class AgentResolverTests {
             "agent1",
             ConnectionStatus.Connected,
             "linux"
-        ));
+        ) );
         _ = _dbContext.RegisteredConnections.Add( MakeConnection(
             "agent2",
             ConnectionStatus.Connected,
             "linux",
             "docker"
-        ));
+        ) );
         _ = _dbContext.RegisteredConnections.Add( MakeConnection(
             "agent3",
             ConnectionStatus.Connected,
             "windows"
-        ));
+        ) );
         _ = await _dbContext.SaveChangesAsync( TestContext.CancellationToken );
 
         IReadOnlyList<RegisteredConnection> results = await _resolver.ResolveAllAsync(
@@ -265,7 +265,7 @@ public class AgentResolverTests {
             "agent1",
             ConnectionStatus.Connected,
             "linux"
-        ));
+        ) );
         _ = await _dbContext.SaveChangesAsync( TestContext.CancellationToken );
 
         IReadOnlyList<RegisteredConnection> results = await _resolver.ResolveAllAsync(

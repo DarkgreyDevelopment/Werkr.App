@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Registration.Models;
+namespace Werkr.Core.Registration.Models;
 
 /// <summary>
 /// Result returned to the Agent after a registration attempt completes.

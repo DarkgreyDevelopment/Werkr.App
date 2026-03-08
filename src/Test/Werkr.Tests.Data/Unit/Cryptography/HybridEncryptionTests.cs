@@ -86,7 +86,7 @@ public class HybridEncryptionTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => EncryptionProvider.HybridDecrypt(
             encrypted,
             wrongKeyPair.PrivateKey
-        ));
+        ) );
     }
 
     /// <summary>
@@ -110,6 +110,6 @@ public class HybridEncryptionTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => EncryptionProvider.HybridDecrypt(
             encrypted,
             s_keyPair.PrivateKey
-        ));
+        ) );
     }
 }

@@ -1,4 +1,4 @@
-﻿using Werkr.Data.Calendar.Enums;
+using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Extensions;
 using Werkr.Data.Calendar.Models;
 using Werkr.Data.Collections;

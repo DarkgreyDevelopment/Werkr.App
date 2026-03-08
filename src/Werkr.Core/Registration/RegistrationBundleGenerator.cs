@@ -1,4 +1,4 @@
-﻿using Werkr.Core.Cryptography;
+using Werkr.Core.Cryptography;
 using Werkr.Core.Registration.Models;
 using Werkr.Data.Entities.Registration;
 

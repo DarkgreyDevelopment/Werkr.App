@@ -27,7 +27,7 @@ public class NullEncryptionTests {
             message,
             null!,
             "key-1"
-        ));
+        ) );
     }
 
     /// <summary>
@@ -47,7 +47,7 @@ public class NullEncryptionTests {
         _ = Assert.ThrowsExactly<ArgumentNullException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
             envelope,
             null!
-        ));
+        ) );
     }
 
     /// <summary>
@@ -70,7 +70,7 @@ public class NullEncryptionTests {
             "key-2",
             validKey,
             "key-1"
-        ));
+        ) );
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-﻿using Werkr.Data.Calendar.Enums;
+using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Entities.Schedule;
 
 namespace Werkr.Core.Scheduling;

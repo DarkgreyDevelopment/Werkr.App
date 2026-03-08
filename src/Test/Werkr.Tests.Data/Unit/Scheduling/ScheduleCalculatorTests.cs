@@ -270,10 +270,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_UtcDt_ReturnsSingleOccurrence( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             StartUTC,
             UtcTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -294,10 +297,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_LocalDt_ReturnsSingleOccurrence( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             StartLocal,
             LocalTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -318,10 +324,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_UnspecDt_ReturnsSingleOccurrence( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             StartUnspecified,
             DatelineTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -341,10 +350,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_P14Dt_ReturnsSingleOccurrence( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             StartPlus14,
             LineIslandsTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -364,10 +376,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_P13Dt_ReturnsSingleOccurrence( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             StartPlus13,
             SamoaTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -387,10 +402,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_P1245Dt_ReturnsSingleOccurrence( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             StartPlus1245,
             ChathamIslandsTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -410,10 +428,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_M330Dt_ReturnsSingleOccurrence( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             StartMinus330,
             NewfoundlandTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -433,10 +454,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_EndOfWindow_ReturnsEmptyEnumerable( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             EndOfWindow,
             UtcTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -452,10 +476,13 @@ public class ScheduleCalculatorTests {
     /// </summary>
     [TestMethod]
     public void CalculateOccurrences_AfterEndOfWindow_ReturnsEmptyEnumerable( ) {
-        Schedule schedule = new() { DbSchedule = TestDb(), StartDateTime = MakeStart(
+        Schedule schedule = new() {
+            DbSchedule = TestDb(),
+            StartDateTime = MakeStart(
             EndOfWindow.AddDays( 1 ),
             UtcTz
-        )};
+        )
+        };
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
             schedule,
             EndOfWindow
@@ -2588,7 +2615,7 @@ public class ScheduleCalculatorTests {
         DateTime endOfWindow,
         IReadOnlyList<DateTime> occurrences,
         int validationCount
-    ){
+    ) {
         if (schedule?.WeeklyRecurrence == null) {
             throw new ArgumentNullException(
                 nameof( schedule ),

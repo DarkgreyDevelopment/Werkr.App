@@ -319,7 +319,7 @@ public class ScheduleServiceTests {
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             schedule,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     /// <summary>
@@ -337,7 +337,7 @@ public class ScheduleServiceTests {
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             schedule,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     #endregion CreateAsync
@@ -622,7 +622,7 @@ public class ScheduleServiceTests {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.UpdateAsync(
             schedule,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     #endregion UpdateAsync
@@ -649,7 +649,7 @@ public class ScheduleServiceTests {
         Assert.IsNull( await _service.GetByIdAsync(
             id,
             TestContext.CancellationToken
-        ));
+        ) );
         Assert.HasCount(
             0,
             await _dbContext.Schedules.ToListAsync( TestContext.CancellationToken )
@@ -681,7 +681,7 @@ public class ScheduleServiceTests {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.DeleteAsync(
             Guid.NewGuid( ),
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     #endregion DeleteAsync
@@ -727,7 +727,7 @@ public class ScheduleServiceTests {
             Guid.NewGuid( ),
             DateTime.UtcNow.AddDays( 30 ),
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     #endregion PreviewOccurrencesAsync
@@ -800,7 +800,7 @@ public class ScheduleServiceTests {
         Assert.IsNull( await _service.GetByIdAsync(
             id,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     #endregion RoundTrip

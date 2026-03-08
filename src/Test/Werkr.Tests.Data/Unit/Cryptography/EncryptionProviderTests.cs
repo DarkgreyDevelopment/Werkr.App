@@ -109,7 +109,7 @@ public class EncryptionProviderTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => EncryptionProvider.RSADecrypt(
             ciphertext,
             keyPair2.PrivateKey
-        ));
+        ) );
     }
 
     // -- AES-256-GCM --
@@ -162,7 +162,7 @@ public class EncryptionProviderTests {
             key2,
             nonce,
             tag
-        ));
+        ) );
     }
 
     // -- Password-based AES-GCM --
@@ -205,7 +205,7 @@ public class EncryptionProviderTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => EncryptionProvider.AesGcmPasswordDecrypt(
             encrypted,
             "WrongPassword"
-        ));
+        ) );
     }
 
     // -- Sign / Verify --

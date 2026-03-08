@@ -239,7 +239,7 @@ public class KeyRotationTests {
             newKeyId,
             null,
             null
-        ));
+        ) );
     }
 
     /// <summary>

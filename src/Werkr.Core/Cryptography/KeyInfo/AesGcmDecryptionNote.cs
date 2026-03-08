@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Cryptography.KeyInfo;
+namespace Werkr.Core.Cryptography.KeyInfo;
 
 /// <summary>
 /// Holds nonce, tag, and order information for a single AES-GCM encrypted chunk.

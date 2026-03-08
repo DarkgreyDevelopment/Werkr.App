@@ -104,7 +104,7 @@ public class WorkflowServiceTests {
         _ = await Assert.ThrowsExactlyAsync<InvalidOperationException>( ( ) => _service.CreateAsync(
             w2,
             ct
-        ));
+        ) );
     }
 
     /// <summary>
@@ -197,7 +197,7 @@ public class WorkflowServiceTests {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.UpdateAsync(
             update,
             ct
-        ));
+        ) );
     }
 
     /// <summary>
@@ -233,7 +233,7 @@ public class WorkflowServiceTests {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.DeleteAsync(
             999,
             ct
-        ));
+        ) );
     }
 
     /// <summary>
@@ -305,7 +305,7 @@ public class WorkflowServiceTests {
             999,
             step,
             ct
-        ));
+        ) );
     }
 
     /// <summary>
@@ -424,7 +424,7 @@ public class WorkflowServiceTests {
             1,
             1,
             ct
-        ));
+        ) );
     }
 
     /// <summary>
@@ -444,7 +444,7 @@ public class WorkflowServiceTests {
             s2.Id,
             s1.Id,
             ct
-        ));
+        ) );
     }
 
     /// <summary>
@@ -530,7 +530,7 @@ public class WorkflowServiceTests {
         _ = await Assert.ThrowsExactlyAsync<InvalidOperationException>( ( ) => _service.ValidateDagAsync(
             s1.WorkflowId,
             ct
-        ));
+        ) );
     }
 
     /// <summary>
@@ -562,7 +562,7 @@ public class WorkflowServiceTests {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.ValidateDagAsync(
             999,
             ct
-        ));
+        ) );
     }
 
     /// <summary>
@@ -650,7 +650,7 @@ public class WorkflowServiceTests {
         _ = await Assert.ThrowsExactlyAsync<InvalidOperationException>( ( ) => _service.ValidateDagAsync(
             workflow.Id,
             ct
-        ));
+        ) );
     }
 
     // ── Helpers ──
@@ -687,7 +687,7 @@ public class WorkflowServiceTests {
             ct
         );
 
-        return(
+        return (
             s1,
             s2
         );

@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Cryptography.KeyInfo;
+namespace Werkr.Core.Cryptography.KeyInfo;
 
 /// <summary>
 /// Holds AES-GCM decryption data: the symmetric key and ordered chunk notes.

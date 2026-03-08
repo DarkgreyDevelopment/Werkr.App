@@ -174,11 +174,9 @@ public static partial class AnsiHtmlConverter {
     /// <param name="input">The string to strip.</param>
     /// <returns>The input with all ANSI escape sequences removed.</returns>
     public static string Strip( string input ) {
-        if (string.IsNullOrEmpty( input ) || !input.Contains( '\x1b' )) {
-            return input;
-        }
-
-        return SgrPattern( ).Replace(
+        return string.IsNullOrEmpty( input ) || !input.Contains( '\x1b' )
+            ? input
+            : SgrPattern( ).Replace(
             input,
             string.Empty
         );

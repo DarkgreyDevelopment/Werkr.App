@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Extensions;

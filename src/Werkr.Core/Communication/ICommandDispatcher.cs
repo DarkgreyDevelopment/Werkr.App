@@ -1,4 +1,4 @@
-﻿using Werkr.Common.Models;
+using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 
 namespace Werkr.Core.Communication;

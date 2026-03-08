@@ -1,4 +1,4 @@
-﻿using Werkr.Common.Models.Actions;
+using Werkr.Common.Models.Actions;
 
 namespace Werkr.Core.Operators;
 

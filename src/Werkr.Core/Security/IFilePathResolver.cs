@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Security;
+namespace Werkr.Core.Security;
 
 /// <summary>
 /// Resolves and validates file-system paths against the configured allowlist.

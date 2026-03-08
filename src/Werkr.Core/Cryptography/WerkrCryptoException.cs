@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Cryptography;
+namespace Werkr.Core.Cryptography;
 
 /// <summary>
 /// Exception type for all Werkr cryptographic operation failures.

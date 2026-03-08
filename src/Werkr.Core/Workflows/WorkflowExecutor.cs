@@ -1,4 +1,4 @@
-﻿using System.Threading.Channels;
+using System.Threading.Channels;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

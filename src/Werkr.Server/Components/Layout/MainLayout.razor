@@ -10,7 +10,7 @@
         <div class="top-row px-4">
             <AuthorizeView>
                 <Authorized Context="context">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2" style="color: var(--body-content-color);">
                         <span>@context.User.Identity?.Name</span>
                         <span class="badge bg-secondary">
                             @(context.User.IsInRole( "Admin" ) ? "Admin"

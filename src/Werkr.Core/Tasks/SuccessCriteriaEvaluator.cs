@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 
 using Werkr.Core.Communication;
 using Werkr.Data.Entities.Tasks;

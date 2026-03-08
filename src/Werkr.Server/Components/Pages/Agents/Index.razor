@@ -55,7 +55,7 @@
                             <AuthorizeView Roles="Admin,Operator" Context="consoleAuth">
                                 <a class="btn btn-outline-secondary btn-sm me-1" href="/agents/@agent.Id/console"
                                    title="Open Console">
-                                    <span class="bi bi-terminal-fill" aria-hidden="true"></span>
+                                    <span class="bi bi-terminal-fill" aria-hidden="true"></span> Console
                                 </a>
                             </AuthorizeView>
                             @if ( agent.Status != "Revoked" ) {

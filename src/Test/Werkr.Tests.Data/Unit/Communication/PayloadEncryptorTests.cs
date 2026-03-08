@@ -79,10 +79,12 @@ public class PayloadEncryptorTests {
     /// </summary>
     [TestMethod]
     public void EncryptDecryptEnvelope_LargePayload_RoundTrip( ) {
-        HeartbeatRequest original = new( ) { StatusMessage = new string(
+        HeartbeatRequest original = new( ) {
+            StatusMessage = new string(
             'A',
             100_000
-        )};
+        )
+        };
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
@@ -163,7 +165,7 @@ public class PayloadEncryptorTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
             envelope,
             wrongKey
-        ));
+        ) );
     }
 
     /// <summary>
@@ -192,7 +194,7 @@ public class PayloadEncryptorTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
             tampered,
             _sharedKey
-        ));
+        ) );
     }
 
     /// <summary>
@@ -221,7 +223,7 @@ public class PayloadEncryptorTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
             tampered,
             _sharedKey
-        ));
+        ) );
     }
 
     /// <summary>
@@ -250,7 +252,7 @@ public class PayloadEncryptorTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
             tampered,
             _sharedKey
-        ));
+        ) );
     }
 
     /// <summary>

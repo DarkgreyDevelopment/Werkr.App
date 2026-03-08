@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Scheduling;
+namespace Werkr.Core.Scheduling;
 
 /// <summary>
 /// An occurrence that was suppressed (or, in allowlist mode, not matched) by a holiday calendar filter.

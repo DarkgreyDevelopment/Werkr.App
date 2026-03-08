@@ -69,7 +69,7 @@ public class RegistrationBundlePayloadTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => RegistrationBundlePayload.FromEncryptedString(
             encrypted,
             "WrongPassword"
-        ));
+        ) );
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ public class RegistrationBundlePayloadTests {
         _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => RegistrationBundlePayload.FromEncryptedString(
             corrupted,
             "password"
-        ));
+        ) );
     }
 
     /// <summary>
@@ -94,6 +94,6 @@ public class RegistrationBundlePayloadTests {
         _ = Assert.ThrowsExactly<ArgumentException>( ( ) => RegistrationBundlePayload.FromEncryptedString(
             "",
             "password"
-        ));
+        ) );
     }
 }

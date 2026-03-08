@@ -1,4 +1,4 @@
-﻿using Werkr.Core.Communication;
+using Werkr.Core.Communication;
 
 namespace Werkr.Core.Operators;
 

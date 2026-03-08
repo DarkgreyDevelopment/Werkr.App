@@ -92,10 +92,13 @@ public class WorkflowExecutorTests {
         );
         ConditionEvaluator conditionEvaluator = new( NullLogger<ConditionEvaluator>.Instance );
 
-        IOptions<JobOutputOptions> outputOptions = Options.Create( new JobOutputOptions { OutputDirectory = Path.Combine(
+        IOptions<JobOutputOptions> outputOptions = Options.Create( new JobOutputOptions {
+            OutputDirectory = Path.Combine(
             Path.GetTempPath( ),
             $"werkr_test_{Guid.NewGuid( ):N}"
-        ), TailPreviewLength = 500, } );
+        ),
+            TailPreviewLength = 500,
+        } );
         JobOutputWriter outputWriter = new(
             outputOptions,
             NullLogger<JobOutputWriter>.Instance
@@ -1270,7 +1273,7 @@ public class WorkflowExecutorTests {
         string name,
         string[] tags,
         CancellationToken ct
-    ){
+    ) {
         RegisteredConnection agent = new( ) {
             Id = Guid.NewGuid( ),
             ConnectionName = name,
@@ -1301,7 +1304,7 @@ public class WorkflowExecutorTests {
         string[] targetTags,
         string? successCriteria,
         CancellationToken ct
-    ){
+    ) {
         WerkrTask task = new( ) {
             Name = name,
             Description = "Test",
@@ -1339,7 +1342,7 @@ public class WorkflowExecutorTests {
             workflow.Id,
             ct
         ))!;
-        return(
+        return (
             workflow,
             step
         );
@@ -1448,7 +1451,7 @@ public class WorkflowExecutorTests {
     private async Task<Workflow> SeedIfWorkflowAsync(
         string condition,
         CancellationToken ct
-    ){
+    ) {
         _ = await SeedAgentAsync( ct );
         WerkrTask task = await SeedTaskAsync( ct );
 
@@ -1506,7 +1509,7 @@ public class WorkflowExecutorTests {
             OperatorType operatorType,
             string command,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
-        ){
+        ) {
             InvokedAgentIds.Add( agentConnectionId );
             int exitCode = AgentExitCodes.GetValueOrDefault(
                 agentConnectionId,
@@ -1533,7 +1536,7 @@ public class WorkflowExecutorTests {
             string scriptPath,
             IEnumerable<string>? args,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
-        ){
+        ) {
             InvokedAgentIds.Add( agentConnectionId );
             int exitCode = AgentExitCodes.GetValueOrDefault(
                 agentConnectionId,
@@ -1558,7 +1561,7 @@ public class WorkflowExecutorTests {
             Guid agentConnectionId,
             ActionDescriptor descriptor,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
-        ){
+        ) {
             InvokedAgentIds.Add( agentConnectionId );
             int exitCode = AgentExitCodes.GetValueOrDefault(
                 agentConnectionId,

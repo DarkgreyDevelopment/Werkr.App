@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Communication;
+namespace Werkr.Core.Communication;
 
 /// <summary>
 /// Typed exception thrown by <see cref="CommandDispatcher"/> to provide

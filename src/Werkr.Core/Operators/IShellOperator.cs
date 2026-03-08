@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Operators;
+namespace Werkr.Core.Operators;
 
 /// <summary>
 /// Interface for shell-based operators (PowerShell and system shell).

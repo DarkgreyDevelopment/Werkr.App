@@ -125,7 +125,7 @@ public class AgentConnectionManagerTests {
         _ = await Assert.ThrowsExactlyAsync<InvalidOperationException>( async ( ) => await _manager.GetChannelAsync(
             conn.Id,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     /// <summary>
@@ -137,7 +137,7 @@ public class AgentConnectionManagerTests {
         _ = await Assert.ThrowsExactlyAsync<InvalidOperationException>( async ( ) => await _manager.GetChannelAsync(
             Guid.NewGuid( ),
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     /// <summary>

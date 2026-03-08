@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Registration.Models;
+namespace Werkr.Core.Registration.Models;
 
 /// <summary>
 /// Data hybrid-encrypted in the Server's gRPC response during registration.

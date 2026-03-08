@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Security;
+namespace Werkr.Core.Security;
 
 /// <summary>
 /// Cross-platform abstraction for securely storing secrets in the OS credential store.

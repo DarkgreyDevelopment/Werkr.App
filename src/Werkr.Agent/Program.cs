@@ -25,6 +25,7 @@ namespace Werkr.Agent;
 
 /// <summary>Application entry point for the Werkr Agent.</summary>
 public class Program {
+    private static readonly Random _random = new();
 
     /// <summary>Main entry point.</summary>
     /// <param name="args">Command-line arguments.</param>
@@ -163,14 +164,56 @@ public class Program {
             // Registration endpoints (localhost-only)
             _ = app.MapRegistrationEndpoints( );
 
-            _ = app.MapGet( "/", ( ) => "Werkr Agent is running. Communication is via gRPC." );
+            _ = app.MapGet( "/", GetAgentArt );
 
-            app.Run( );
+            await app.RunAsync( );
         } catch (Exception ex) {
             Log.Fatal( ex, "Werkr Agent terminated unexpectedly." );
         } finally {
-            Log.CloseAndFlush( );
+            await Log.CloseAndFlushAsync( );
         }
+    }
+
+    private static IResult GetAgentArt( ) {
+        const string asciiArt = """
+    ╔════════════════════════════════╗
+    ║ ┌────────────────────────────┐ ║
+    ║ │      ---          ---      │ ║
+    ║ │       •            •       │ ║
+╔═══║ │   ______________________   │ ║═══╗
+║   ║ └────────────────────────────┘ ║   ║
+║   ║ __        __        _          ║   ║
+║   ║ \ \      / /__ _ __| | ___ __  ║   ║
+║   ║  \ \ /\ / / _ \ '__| |/ / '__| ║   ║
+║___║   \ V  V /  __/ |  |   <| |    ║___║
+    ║    \_/\_/ \___|_|  |_|\_\_|    ║
+    ╚════════════════════════════════╝
+            |AGENT|     | gRPC|
+    ++++++++++++++++++++++++++++++++++
+""";
+
+        const string happyAsciiArt = """
+      ╔════════════════════════════════╗
+      ║ ┌────────────────────────────┐ ║
+      ║ │      ---          ---      │ ║
+      ║ │       •            •       │ ║                              ,--,
+ ╔════║ │   \____________________/   │ ║════╗                         \ /
+ ║    ║ └────────────────────────────┘ ║    ║                        {|||)<
+ ║    ║ __        __        _          ║    ║                         / \
+ ║    ║ \ \      / /__ _ __| | ___ __  ║    ║                         `--`
+ ║    ║  \ \ /\ / / _ \ '__| |/ / '__| ║    ║
+ ║____║   \ V  V /  __/ |  |   <| |    ║____║    \|/    \|/    \|/    \|/    \|/    \|/    \|/
+      ║    \_/\_/ \___|_|  |_|\_\_|    ║        --*--  --*--  --*--  --*--  --*--  --*--  --*--
+      ╚════════════════════════════════╝          |      |      |      |      |      |      |
+              |AGENT|     | gRPC|                 |      |      |      |      |      |      |
+++++++++++++++++++++++++++++++++++++++++._______._|_.__._|_.__._|_.__._|_.__._|_.__._|_.__._|_.
+""";
+        return Results.Text(
+            content: _random.Next( 0, 10 ) == 0
+                ? happyAsciiArt
+                : asciiArt,
+            contentType: "text/plain; charset=utf-8"
+        );
     }
 
     /// <summary>

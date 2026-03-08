@@ -126,7 +126,7 @@ public class TaskServiceTests {
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public class TaskServiceTests {
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     /// <summary>
@@ -154,7 +154,7 @@ public class TaskServiceTests {
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public class TaskServiceTests {
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     /// <summary>
@@ -183,7 +183,7 @@ public class TaskServiceTests {
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     // ── GetAll ──
@@ -289,7 +289,7 @@ public class TaskServiceTests {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.UpdateAsync(
             update,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     // ── Delete ──
@@ -323,7 +323,7 @@ public class TaskServiceTests {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.DeleteAsync(
             999,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 
     // ── SetEnabled ──
@@ -363,6 +363,6 @@ public class TaskServiceTests {
             999,
             false,
             TestContext.CancellationToken
-        ));
+        ) );
     }
 }

@@ -83,7 +83,7 @@
 
     @if (_recoveryCodes.Count > 0) {
         <div class="alert alert-warning mt-3">Save these codes. They will not be shown again.</div>
-        <pre class="p-3 border rounded bg-light">@string.Join(Environment.NewLine, _recoveryCodes)</pre>
+        <pre class="p-3 border rounded" style="background-color: var(--input-bg); color: var(--input-text);">@string.Join(Environment.NewLine, _recoveryCodes)</pre>
     }
 
     <div class="mt-3">

@@ -55,7 +55,7 @@
     <!-- SignalR -->
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.3" />
     <!-- PowerShell (Agent) -->
-    <PackageVersion Include="Microsoft.PowerShell.SDK" Version="7.5.4" />
+    <PackageVersion Include="Microsoft.PowerShell.SDK" Version="7.6.0-rc.1" />
     <!-- Timezone -->
     <PackageVersion Include="TimeZoneNames" Version="7.0.0" />
     <!-- WiX Installer -->

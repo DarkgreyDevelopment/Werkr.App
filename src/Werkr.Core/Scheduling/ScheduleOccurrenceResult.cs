@@ -1,4 +1,4 @@
-﻿namespace Werkr.Core.Scheduling;
+namespace Werkr.Core.Scheduling;
 
 /// <summary>
 /// Result of schedule occurrence calculation, including both kept and suppressed occurrences.
