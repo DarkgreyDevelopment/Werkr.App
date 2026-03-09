@@ -12,12 +12,13 @@ namespace Werkr.Tests.Server;
 public class ActionParameterRegistryTests {
     /// <summary>
     /// Verifies that the <see cref="ActionParameterRegistry.All"/> collection
-    /// contains exactly eleven registered <see cref="ActionFormDescriptor"/>
-    /// entries representing all supported file and process actions.
+    /// contains exactly nineteen registered <see cref="ActionFormDescriptor"/>
+    /// entries representing all supported actions.
     /// </summary>
     [TestMethod]
-    public void All_Contains_Eleven_Actions( ) {
-        Assert.HasCount( 11, ActionParameterRegistry.All );
+    public void All_Contains_Nineteen_Actions()
+    {
+        Assert.HasCount(19, ActionParameterRegistry.All);
     }
 
     /// <summary>
@@ -48,6 +49,14 @@ public class ActionParameterRegistryTests {
     [DataRow( "WriteContent" )]
     [DataRow( "StartProcess" )]
     [DataRow( "StopProcess" )]
+    [DataRow("Delay")]
+    [DataRow("GetFileInfo")]
+    [DataRow("ReadContent")]
+    [DataRow("ListDirectory")]
+    [DataRow("FindReplace")]
+    [DataRow("CompressArchive")]
+    [DataRow("ExpandArchive")]
+    [DataRow("WatchFile")]
     public void Actions_Contains_Expected_Key( string key ) {
         Assert.IsTrue(
             ActionParameterRegistry.Actions.ContainsKey( key ),
@@ -173,5 +182,86 @@ public class ActionParameterRegistryTests {
         }
         Assert.IsNotNull( enc );
         Assert.AreEqual( "utf-8", enc.DefaultValue );
+    }
+
+    /// <summary>
+    /// Verifies that the "WatchFile" action has seven fields covering
+    /// all configurable parameters for file-system monitoring.
+    /// </summary>
+    [TestMethod]
+    public void WatchFile_Has_Seven_Fields()
+    {
+        ActionFormDescriptor desc = ActionParameterRegistry.Actions["WatchFile"];
+        Assert.HasCount(7, desc.Fields);
+        Assert.AreEqual("Directory", desc.Fields[0].Name);
+        Assert.AreEqual("Pattern", desc.Fields[1].Name);
+        Assert.AreEqual("StabilitySeconds", desc.Fields[2].Name);
+        Assert.AreEqual("TimeoutSeconds", desc.Fields[3].Name);
+        Assert.AreEqual("PollIntervalMs", desc.Fields[4].Name);
+        Assert.AreEqual("Mode", desc.Fields[5].Name);
+        Assert.AreEqual("UsePolling", desc.Fields[6].Name);
+    }
+
+    /// <summary>
+    /// Verifies that the "CompressArchive" Format field only offers Zip and TarGz
+    /// (Auto is excluded because the handler rejects it for compression).
+    /// </summary>
+    [TestMethod]
+    public void CompressArchive_Format_Is_Select_Without_Auto()
+    {
+        ActionFormDescriptor desc = ActionParameterRegistry.Actions["CompressArchive"];
+        FieldDescriptor format = desc.Fields[2];
+        Assert.AreEqual("Format", format.Name);
+        Assert.AreEqual(FieldType.Select, format.Type);
+        Assert.HasCount(2, format.Options!);
+        CollectionAssert.Contains(format.Options, "Zip");
+        CollectionAssert.Contains(format.Options, "TarGz");
+        CollectionAssert.DoesNotContain(format.Options, "Auto");
+    }
+
+    /// <summary>
+    /// Verifies that the "ExpandArchive" Format field includes Auto for
+    /// extension-based format detection alongside Zip and TarGz.
+    /// </summary>
+    [TestMethod]
+    public void ExpandArchive_Format_Is_Select_With_Auto()
+    {
+        ActionFormDescriptor desc = ActionParameterRegistry.Actions["ExpandArchive"];
+        FieldDescriptor format = desc.Fields[3];
+        Assert.AreEqual("Format", format.Name);
+        Assert.AreEqual(FieldType.Select, format.Type);
+        Assert.HasCount(3, format.Options!);
+        CollectionAssert.Contains(format.Options, "Zip");
+        CollectionAssert.Contains(format.Options, "TarGz");
+        CollectionAssert.Contains(format.Options, "Auto");
+    }
+
+    /// <summary>
+    /// Verifies that the "Delay" action's Seconds field is a required Number field.
+    /// </summary>
+    [TestMethod]
+    public void Delay_Seconds_Is_Number_And_Required()
+    {
+        ActionFormDescriptor desc = ActionParameterRegistry.Actions["Delay"];
+        FieldDescriptor seconds = desc.Fields[0];
+        Assert.AreEqual("Seconds", seconds.Name);
+        Assert.AreEqual(FieldType.Number, seconds.Type);
+        Assert.IsTrue(seconds.Required);
+    }
+
+    /// <summary>
+    /// Verifies that the "FindReplace" action's Encoding field defaults to "utf-8".
+    /// </summary>
+    [TestMethod]
+    public void FindReplace_Encoding_Default_Is_Utf8()
+    {
+        ActionFormDescriptor desc = ActionParameterRegistry.Actions["FindReplace"];
+        FieldDescriptor? enc = null;
+        foreach (FieldDescriptor f in desc.Fields)
+        {
+            if (f.Name == "Encoding") { enc = f; break; }
+        }
+        Assert.IsNotNull(enc);
+        Assert.AreEqual("utf-8", enc.DefaultValue);
     }
 }

@@ -16,7 +16,4 @@ internal static class TestFilePathResolver {
     /// <summary>Gets a resolver that denies all paths.</summary>
     public static IFilePathResolver DenyAll { get; } = new FilePathResolver( new DenyAllPathValidator( ) );
 
-    /// <summary>Creates a resolver that only allows paths under the given prefixes.</summary>
-    public static IFilePathResolver AllowPrefixes( params string[] prefixes ) =>
-        new FilePathResolver( new AllowPrefixValidator( prefixes ) );
 }

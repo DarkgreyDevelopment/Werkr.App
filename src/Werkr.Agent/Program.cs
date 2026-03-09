@@ -110,6 +110,7 @@ public class Program {
             } );
 
             // Agent-specific services
+            _ = builder.Services.AddSingleton(TimeProvider.System);
             _ = builder.Services.AddSingleton<PwshOperator>( );
             _ = builder.Services.AddSingleton<SystemShellOperator>( );
             _ = builder.Services.AddSingleton<IActionOperator, ActionOperator>( );

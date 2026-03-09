@@ -117,12 +117,10 @@ public class ActionDispatchIntegrationTests {
     }
 
     /// <summary>
-    /// Verifies that all supported action sub-types (CopyFile, MoveFile, RenameFile,
-    /// DeleteFile, CreateFile, CreateDirectory, TestExists, ClearContent, WriteContent,
-    ///  StartProcess, StopProcess) can be created successfully. Each action type is
-    /// created with appropriate parameters, and the test asserts that each receives a
-    /// positive task ID and the correct <see cref="ActionSubType"/> value. All created
-    /// tasks are cleaned up after verification.
+    /// Verifies that all supported action sub-types can be created successfully.
+    /// Each action type is created with appropriate parameters, and the test asserts
+    /// that each receives a positive task ID and the correct <see cref="ActionSubType"/>
+    /// value. All created tasks are cleaned up after verification.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
@@ -142,6 +140,14 @@ public class ActionDispatchIntegrationTests {
             ("WriteContent", new { path = "/a/file.txt", content = "data" }),
             ("StartProcess", new { fileName = "echo", arguments = "hello" }),
             ("StopProcess", new { processName = "notepad" }),
+            ("Delay", new { seconds = 1.0 }),
+            ("GetFileInfo", new { path = "/a/file.txt" }),
+            ("ReadContent", new { path = "/a/file.txt" }),
+            ("ListDirectory", new { path = "/a" }),
+            ("FindReplace", new { path = "/a/file.txt", find = "old", replace = "new" }),
+            ("CompressArchive", new { source = "/a/file.txt", destination = "/a/archive.zip" }),
+            ("ExpandArchive", new { source = "/a/archive.zip", destination = "/a/out" }),
+            ("WatchFile", new { directory = "/a", pattern = "*.txt" }),
         ];
 
         List<long> createdIds = [];
@@ -466,10 +472,9 @@ public class ActionDispatchIntegrationTests {
 
     /// <summary>
     /// Verifies that attempting an ad-hoc run of an action task when no agent is connected returns
-    /// <see cref="HttpStatusCode.Conflict"/> (HTTP 409). Creates a TestExists action task with
-    /// "integration-test" target tags and issues a POST to <c>/api/tasks/{id}/run</c>. Asserts the
-    /// conflict status and that the response body contains "No connected agent", confirming the API
-    /// correctly reports the absence of a matching agent. Cleans up the task.
+    /// <see cref="HttpStatusCode.Accepted"/> (HTTP 202). The run endpoint creates a one-time schedule
+    /// and returns immediately. Creates a TestExists action task with "integration-test" target tags
+    /// and issues a POST to <c>/api/tasks/{id}/run</c>. Asserts the accepted status. Cleans up the task.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
@@ -487,12 +492,8 @@ public class ActionDispatchIntegrationTests {
         HttpResponseMessage runResponse = await Api.PostAsJsonAsync(
             $"/api/tasks/{taskId}/run", new object( ), JsonOptions, ct );
 
-        Assert.AreEqual( HttpStatusCode.Conflict, runResponse.StatusCode,
-            "Ad-hoc action run should return 409 Conflict when no agent matches the target tags." );
-
-        string body = await runResponse.Content.ReadAsStringAsync( ct );
-        StringAssert.Contains( body, "No connected agent",
-            "Conflict response should describe that no matching agent was found." );
+        Assert.AreEqual(HttpStatusCode.Accepted, runResponse.StatusCode,
+            "Ad-hoc action run should return 202 Accepted (one-time schedule created).");
 
         // Cleanup
         _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );

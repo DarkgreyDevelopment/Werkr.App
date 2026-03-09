@@ -133,7 +133,7 @@ public sealed class WorkflowExecutionService(
                     ct.ThrowIfCancellationRequested( );
 
                     StepExecutionResult result = await ExecuteStepAsync(
-                        step, workflow, workflowRunId, stepResults, branchTaken, scheduleId, ct );
+                        step, workflowRunId, stepResults, branchTaken, scheduleId, ct);
 
                     if (result.Job is not null) {
                         stepResults[result.StepId] = result.Job;
@@ -157,7 +157,7 @@ public sealed class WorkflowExecutionService(
                     ct.ThrowIfCancellationRequested( );
 
                     StepExecutionResult result = await ExecuteStepAsync(
-                        step, workflow, workflowRunId, stepResults, branchTaken, scheduleId, ct );
+                        step, workflowRunId, stepResults, branchTaken, scheduleId, ct);
 
                     if (result.Job is not null) {
                         stepResults[result.StepId] = result.Job;
@@ -194,7 +194,6 @@ public sealed class WorkflowExecutionService(
     /// <summary>Executes a single workflow step, handling control flow.</summary>
     private async Task<StepExecutionResult> ExecuteStepAsync(
         ScheduledWorkflowStepDef step,
-        ScheduledWorkflowDefinition workflow,
         Guid workflowRunId,
         Dictionary<long, StepJobResult> stepResults,
         Dictionary<long, bool> branchTaken,
@@ -321,9 +320,8 @@ public sealed class WorkflowExecutionService(
         ErrorCategory errorCategory = ErrorCategory.None;
 
         try {
-            using CancellationTokenSource timeoutCts = taskDef.TimeoutMinutes > 0
-                ? CancellationTokenSource.CreateLinkedTokenSource( ct )
-                : CancellationTokenSource.CreateLinkedTokenSource( ct );
+            using CancellationTokenSource timeoutCts =
+                CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             if (taskDef.TimeoutMinutes > 0) {
                 timeoutCts.CancelAfter( TimeSpan.FromMinutes( taskDef.TimeoutMinutes ) );
@@ -344,7 +342,8 @@ public sealed class WorkflowExecutionService(
             };
             executionException = result.Exception;
 
-            if (!result.Success && errorCategory == ErrorCategory.None) {
+            if (!result.Success)
+            {
                 errorCategory = ErrorCategory.ScriptError;
             }
         } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
@@ -408,7 +407,8 @@ public sealed class WorkflowExecutionService(
             return actionOperator.Execute( descriptor, ct );
         }
 
-        IShellOperator operator_ = actionType switch {
+        IShellOperator shellOp = actionType switch
+        {
             TaskActionType.PowerShellCommand or TaskActionType.PowerShellScript => pwshOperator,
             TaskActionType.ShellCommand or TaskActionType.ShellScript => shellOperator,
             _ => throw new NotSupportedException(
@@ -417,13 +417,13 @@ public sealed class WorkflowExecutionService(
 
         return actionType switch {
             TaskActionType.PowerShellCommand or TaskActionType.ShellCommand =>
-                operator_.RunCommand( taskDef.Content, ct ),
+                shellOp.RunCommand(taskDef.Content, ct),
 
             TaskActionType.PowerShellScript or TaskActionType.ShellScript when taskDef.Arguments.Count > 0 =>
-                operator_.RunScriptWithArgs( taskDef.Content, taskDef.Arguments, ct ),
+                shellOp.RunScriptWithArgs(taskDef.Content, taskDef.Arguments, ct),
 
             TaskActionType.PowerShellScript or TaskActionType.ShellScript =>
-                operator_.RunScript( taskDef.Content, ct ),
+                shellOp.RunScript(taskDef.Content, ct),
 
             _ => throw new NotSupportedException(
                 $"ActionType '{actionType}' is not supported for local execution." ),
@@ -507,10 +507,10 @@ public sealed class WorkflowExecutionService(
 
         return mode switch {
             DependencyMode.All =>
-                step.DependsOnStepIds.All( id => stepResults.ContainsKey( id ) ),
+                step.DependsOnStepIds.All(stepResults.ContainsKey),
             DependencyMode.Any =>
-                step.DependsOnStepIds.Any( id => stepResults.ContainsKey( id ) ),
-            _ => step.DependsOnStepIds.All( id => stepResults.ContainsKey( id ) ),
+                step.DependsOnStepIds.Any(stepResults.ContainsKey),
+            _ => step.DependsOnStepIds.All(stepResults.ContainsKey),
         };
     }
 

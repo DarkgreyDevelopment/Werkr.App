@@ -144,17 +144,22 @@ public class TaskServiceTests {
     }
 
     /// <summary>
-    /// Verifies that creating a task with no target tags throws <see cref="ValidationException"/>.
+    /// Verifies that creating a task with empty target tags succeeds.
+    /// Tags are optional — the UI warns if empty but the API allows it.
     /// </summary>
     [TestMethod]
-    public async Task Create_RequiresTargetTags( ) {
+    public async Task Create_AllowsEmptyTargetTags()
+    {
         WerkrTask task = MakeTask( );
         task.TargetTags = [];
 
-        _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
+        WerkrTask created = await _service.CreateAsync(
             task,
             TestContext.CancellationToken
-        ) );
+        );
+
+        Assert.IsNotNull(created);
+        Assert.IsEmpty(created.TargetTags);
     }
 
     /// <summary>

@@ -73,16 +73,15 @@ public class ScheduledActionTests {
     }
 
     /// <summary>
-    /// Creates an action-type task linked to an optional schedule via <c>POST /api/tasks</c> and
-    /// returns the deserialized JSON response. The task is configured with the specified action
-    /// sub-type, serialized parameters, and "integration-test" target tags. Asserts that the creation
-    /// returns <see cref="HttpStatusCode.Created"/>.
+    /// Creates an action-type task via <c>POST /api/tasks</c> and returns the deserialized JSON
+    /// response. The task is configured with the specified action sub-type, serialized parameters,
+    /// and "integration-test" target tags. Asserts that the creation returns
+    /// <see cref="HttpStatusCode.Created"/>.
     /// </summary>
     private static async Task<JsonElement> CreateActionTaskAsync(
         string name,
         string actionSubType,
         object parameters,
-        Guid? scheduleId,
         CancellationToken ct
     ) {
 
@@ -99,7 +98,6 @@ public class ScheduledActionTests {
             targetTags = new[] { "integration-test" },
             enabled = true,
             timeoutMinutes = 5L,
-            scheduleId,
             actionSubType,
             actionParameters = parametersJson,
         };
@@ -124,31 +122,20 @@ public class ScheduledActionTests {
 
     #endregion Helpers
 
-    #region Scheduled Action Task — Create and Link
+    #region Action Task — Create and Persist Fields
 
     /// <summary>
-    /// Verifies that an action task linked to a schedule persists all fields correctly. Creates a
-    /// daily schedule and a CreateFile action task linked to it, then retrieves the task by ID and
-    /// asserts that the <see cref="ActionType"/>, <see cref="ActionSubType"/>, <see cref="ScheduleId"/>,
-    /// and deserialized <see cref="ActionParameters"/> (path, content, overwrite) all match the expected 
-    /// values. Cleans up both the task and schedule after verification.
+    /// Verifies that an action task persists all fields correctly. Creates a CreateFile action
+    /// task, then retrieves the task by ID and asserts that the action type, sub-type, and
+    /// deserialized action parameters (path, content, overwrite) all match the expected values.
+    /// Cleans up the task after verification.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task ActionTaskLinkedToSchedule_PersistsAllFields( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
-        // Create a daily schedule
-        JsonElement schedule = await CreateDailyScheduleAsync(
-            "IntTest_ActionSchedule",
-            "2026-07-01",
-            "09:00:00",
-            1,
-            ct
-        );
-        string scheduleId = schedule.GetProperty( "id" ).GetString( )!;
-
-        // Create an Action task linked to the schedule
+        // Create an Action task
         JsonElement task = await CreateActionTaskAsync(
             "IntTest_ScheduledCreateFile",
             "CreateFile",
@@ -157,7 +144,6 @@ public class ScheduledActionTests {
                 content = "daily report",
                 overwrite = true,
             },
-            Guid.Parse( scheduleId ),
             ct
         );
 
@@ -174,11 +160,6 @@ public class ScheduledActionTests {
         Assert.AreEqual(
             "CreateFile",
             task.GetProperty( "actionSubType" ).GetString( )
-        );
-        Assert.AreEqual(
-            scheduleId,
-            task.GetProperty( "scheduleId" ).GetString( ),
-            "Task should be linked to the created schedule."
         );
 
         // Read back and verify all fields survived the round-trip
@@ -200,10 +181,6 @@ public class ScheduledActionTests {
             "CreateFile",
             retrieved.GetProperty( "actionSubType" ).GetString( )
         );
-        Assert.AreEqual(
-            scheduleId,
-            retrieved.GetProperty( "scheduleId" ).GetString( )
-        );
 
         string? paramsJson = retrieved.GetProperty( "actionParameters" ).GetString( );
         Assert.IsNotNull( paramsJson );
@@ -223,21 +200,17 @@ public class ScheduledActionTests {
             $"/api/tasks/{taskId}",
             ct
         );
-        _ = await Api.DeleteAsync(
-            $"/api/schedules/{scheduleId}",
-            ct
-        );
     }
 
-    #endregion Scheduled Action Task — Create and Link
+    #endregion Action Task — Create and Persist Fields
 
     #region Scheduled Action Task — Occurrence Preview
 
     /// <summary>
-    /// Verifies that the occurrence preview for a scheduled action task returns the expected dates.
-    /// Creates a schedule with a 2-day interval starting 2026-06-15 at 08:00 UTC, links a CopyFile
-    /// action task, and requests occurrences through 2026-06-25. Asserts exactly 6 occurrences are
-    /// returned and that each consecutive pair is exactly 2 days apart. Cleans up the schedule.
+    /// Verifies that the occurrence preview for a daily schedule returns the expected dates.
+    /// Creates a schedule with a 2-day interval starting 2026-06-15 at 08:00 UTC, requests
+    /// occurrences through 2026-06-25, and asserts exactly 6 occurrences are returned with
+    /// each consecutive pair exactly 2 days apart. Cleans up the schedule.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
@@ -253,18 +226,6 @@ public class ScheduledActionTests {
             ct
         );
         string scheduleId = schedule.GetProperty( "id" ).GetString( )!;
-
-        // Link an Action task
-        _ = await CreateActionTaskAsync(
-            "IntTest_ActionOccurrenceTask",
-            "CopyFile",
-            new {
-                source = "/data/src",
-                destination = "/data/dst",
-            },
-            Guid.Parse( scheduleId ),
-            ct
-        );
 
         // Query occurrence preview for a 10-day window
         string windowEnd = "2026-06-25T23:59:59Z";
@@ -315,40 +276,30 @@ public class ScheduledActionTests {
 
     #endregion Scheduled Action Task — Occurrence Preview
 
-    #region Scheduled Action Task — Update Action Fields
+    #region Action Task — Update Action Fields
 
     /// <summary>
-    /// Verifies that updating a scheduled action task's action sub-type and parameters persists the
-    /// changes correctly. Creates a daily schedule with a CreateFile action task, then issues a PUT
-    /// to change the action to WriteContent with new parameters (including an "append" flag). Asserts
-    /// that the updated response reflects the new sub-type, the schedule link is preserved, and the new
-    /// parameters are persisted. Cleans up both the task and schedule.
+    /// Verifies that updating an action task's action sub-type and parameters persists the
+    /// changes correctly. Creates a CreateFile action task, then issues a PUT to change the
+    /// action to WriteContent with new parameters (including an "append" flag). Asserts that
+    /// the updated response reflects the new sub-type and the new parameters are persisted.
+    /// Cleans up the task.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task ScheduledActionTask_UpdateActionType_PersistsChanges( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
-        JsonElement schedule = await CreateDailyScheduleAsync(
-            "IntTest_ActionUpdate",
-            "2026-08-01",
-            "10:00:00",
-            1,
-            ct
-        );
-        string scheduleId = schedule.GetProperty( "id" ).GetString( )!;
-
         JsonElement task = await CreateActionTaskAsync(
             "IntTest_ScheduledActionUpdate",
             "CreateFile",
             new { path = "/data/original.txt" },
-            Guid.Parse( scheduleId ),
             ct
         );
 
         long taskId = task.GetProperty( "id" ).GetInt64( );
 
-        // Update the task to a different action type while keeping the schedule link
+        // Update the task to a different action type
         string newParams = JsonSerializer.Serialize(
             new {
                 path = "/data/original.txt",
@@ -366,7 +317,6 @@ public class ScheduledActionTests {
             targetTags = new[] { "integration-test" },
             enabled = true,
             timeoutMinutes = 10L,
-            scheduleId = Guid.Parse( scheduleId ),
             actionSubType = "WriteContent",
             actionParameters = newParams,
         };
@@ -392,11 +342,6 @@ public class ScheduledActionTests {
             "WriteContent",
             updated.GetProperty( "actionSubType" ).GetString( )
         );
-        Assert.AreEqual(
-            scheduleId,
-            updated.GetProperty( "scheduleId" ).GetString( ),
-            "Schedule link should be preserved after update."
-        );
 
         // Verify parameters updated
         string? paramsJson = updated.GetProperty( "actionParameters" ).GetString( );
@@ -409,43 +354,27 @@ public class ScheduledActionTests {
             $"/api/tasks/{taskId}",
             ct
         );
-        _ = await Api.DeleteAsync(
-            $"/api/schedules/{scheduleId}",
-            ct
-        );
     }
 
-    #endregion Scheduled Action Task — Update Action Fields
+    #endregion Action Task — Update Action Fields
 
-    #region Multiple Action Tasks on Same Schedule
+    #region Multiple Action Tasks — All Persist Correctly
 
     /// <summary>
-    /// Verifies that multiple action tasks linked to the same schedule all persist correctly. Creates a
-    /// daily schedule and three action tasks (CreateDirectory, CreateFile, CopyFile) all linked to it.
-    /// Asserts that each task has the expected <see cref="ActionSubType"/> and that all tasks reference
-    /// the same schedule ID. Cleans up all tasks and the schedule.
+    /// Verifies that multiple action tasks with different action sub-types all persist correctly.
+    /// Creates three action tasks (CreateDirectory, CreateFile, CopyFile) and asserts that each
+    /// has the expected action sub-type. Cleans up all tasks.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task MultipleActionTasks_SameSchedule_AllPersistCorrectly( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
-        JsonElement schedule = await CreateDailyScheduleAsync(
-            "IntTest_MultiAction",
-            "2026-09-01",
-            "06:00:00",
-            1,
-            ct
-        );
-        string scheduleId = schedule.GetProperty( "id" ).GetString( )!;
-        Guid scheduleGuid = Guid.Parse( scheduleId );
-
-        // Create three different action tasks on the same schedule
+        // Create three different action tasks
         JsonElement task1 = await CreateActionTaskAsync(
             "IntTest_MultiAction_CreateDir",
             "CreateDirectory",
             new { path = "/data/daily-output" },
-            scheduleGuid,
             ct
         );
 
@@ -456,7 +385,6 @@ public class ScheduledActionTests {
                 path = "/data/daily-output/report.csv",
                 content = "header1,header2",
             },
-            scheduleGuid,
             ct
         );
 
@@ -468,7 +396,6 @@ public class ScheduledActionTests {
                 destination = "/backup/report.csv",
                 overwrite = true,
             },
-            scheduleGuid,
             ct
         );
 
@@ -476,7 +403,7 @@ public class ScheduledActionTests {
         long task2Id = task2.GetProperty( "id" ).GetInt64( );
         long task3Id = task3.GetProperty( "id" ).GetInt64( );
 
-        // Verify each task has correct action type and schedule link
+        // Verify each task has correct action sub-type
         Assert.AreEqual(
             "CreateDirectory",
             task1.GetProperty( "actionSubType" ).GetString( )
@@ -488,19 +415,6 @@ public class ScheduledActionTests {
         Assert.AreEqual(
             "CopyFile",
             task3.GetProperty( "actionSubType" ).GetString( )
-        );
-
-        Assert.AreEqual(
-            scheduleId,
-            task1.GetProperty( "scheduleId" ).GetString( )
-        );
-        Assert.AreEqual(
-            scheduleId,
-            task2.GetProperty( "scheduleId" ).GetString( )
-        );
-        Assert.AreEqual(
-            scheduleId,
-            task3.GetProperty( "scheduleId" ).GetString( )
         );
 
         // Cleanup
@@ -516,38 +430,23 @@ public class ScheduledActionTests {
             $"/api/tasks/{task3Id}",
             ct
         );
-        _ = await Api.DeleteAsync(
-            $"/api/schedules/{scheduleId}",
-            ct
-        );
     }
 
-    #endregion Multiple Action Tasks on Same Schedule
+    #endregion Multiple Action Tasks — All Persist Correctly
 
-    #region Scheduled Action Task — Unlink Schedule
+    #region Action Task — Update Preserves Action Fields
 
     /// <summary>
-    /// Verifies that removing the schedule link from an action task preserves
-    /// the task and its action fields. Creates a daily schedule with a
-    /// StartProcess action task, then updates the task with
-    /// <see cref="ScheduleId"/> set to <see langword="null"/>. Asserts that
-    /// the schedule link is null after the update and that the
-    /// <see cref="ActionSubType"/> and <see cref="ActionType"/> remain
-    /// intact. Cleans up the task and schedule.
+    /// Verifies that updating an action task's parameters preserves the task
+    /// and its action fields. Creates a StartProcess action task, then updates
+    /// it with new parameters. Asserts that the action sub-type and action type
+    /// remain intact and that the updated parameters are persisted. Cleans up
+    /// the task.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
     public async Task ScheduledActionTask_RemoveScheduleLink_TaskRemains( ) {
         CancellationToken ct = TestContext.CancellationToken;
-
-        JsonElement schedule = await CreateDailyScheduleAsync(
-            "IntTest_UnlinkSchedule",
-            "2026-10-01",
-            "12:00:00",
-            1,
-            ct
-        );
-        string scheduleId = schedule.GetProperty( "id" ).GetString( )!;
 
         JsonElement task = await CreateActionTaskAsync(
             "IntTest_UnlinkAction",
@@ -557,17 +456,12 @@ public class ScheduledActionTests {
                 arguments = "scheduled-run",
                 waitForExit = true,
             },
-            Guid.Parse( scheduleId ),
             ct
         );
 
         long taskId = task.GetProperty( "id" ).GetInt64( );
-        Assert.AreEqual(
-            scheduleId,
-            task.GetProperty( "scheduleId" ).GetString( )
-        );
 
-        // Update task to remove the schedule link
+        // Update task with new parameters
         string paramsJson = JsonSerializer.Serialize(
             new {
                 fileName = "echo",
@@ -579,13 +473,12 @@ public class ScheduledActionTests {
 
         var updateRequest = new {
             name = "IntTest_UnlinkAction",
-            description = "No longer scheduled",
+            description = "Updated parameters",
             actionType = "Action",
             content = string.Empty,
             targetTags = new[] { "integration-test" },
             enabled = true,
             timeoutMinutes = 5L,
-            scheduleId = (Guid?) null,
             actionSubType = "StartProcess",
             actionParameters = paramsJson,
         };
@@ -608,13 +501,6 @@ public class ScheduledActionTests {
                 ct
             );
 
-        // Schedule link should be removed
-        Assert.AreEqual(
-            JsonValueKind.Null,
-            updated.GetProperty( "scheduleId" ).ValueKind,
-            "Schedule link should be null after unlinking."
-        );
-
         // Action fields should be preserved
         Assert.AreEqual(
             "StartProcess",
@@ -625,18 +511,23 @@ public class ScheduledActionTests {
             updated.GetProperty( "actionType" ).GetString( )
         );
 
+        // Verify parameters were updated
+        string? updatedParamsJson = updated.GetProperty( "actionParameters" ).GetString( );
+        Assert.IsNotNull( updatedParamsJson );
+        using JsonDocument parsedParams = JsonDocument.Parse( updatedParamsJson );
+        Assert.AreEqual(
+            "manual-run",
+            parsedParams.RootElement.GetProperty( "arguments" ).GetString( )
+        );
+
         // Cleanup
         _ = await Api.DeleteAsync(
             $"/api/tasks/{taskId}",
             ct
         );
-        _ = await Api.DeleteAsync(
-            $"/api/schedules/{scheduleId}",
-            ct
-        );
     }
 
-    #endregion Scheduled Action Task — Unlink Schedule
+    #endregion Action Task — Update Preserves Action Fields
 
     #region Schedule Deletion — Action Tasks Persist
 
@@ -670,7 +561,6 @@ public class ScheduledActionTests {
                 recursive = false,
                 force = true,
             },
-            Guid.Parse( scheduleId ),
             ct
         );
 

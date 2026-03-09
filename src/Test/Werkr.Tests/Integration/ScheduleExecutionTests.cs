@@ -62,12 +62,12 @@ public class ScheduleExecutionTests {
 
     /// <summary>
     /// Creates a task via <c>POST /api/tasks</c> and returns the deserialized JSON response. The task is configured as
-    /// a ShellCommand with the specified name, script content, target tags, and optional schedule link. Asserts that
+    /// a ShellCommand with the specified name, script content, and target tags. Asserts that
     /// the creation returns <see cref="HttpStatusCode.Created"/>.
     /// </summary>
     private static async Task<JsonElement> CreateTaskAsync(
         string name, string content, string[] targetTags,
-        Guid? scheduleId, CancellationToken ct ) {
+        CancellationToken ct ) {
         var request = new {
             name,
             description = $"Integration test task: {name}",
@@ -76,7 +76,6 @@ public class ScheduleExecutionTests {
             targetTags,
             enabled = true,
             timeoutMinutes = 5L,
-            scheduleId
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
@@ -131,8 +130,8 @@ public class ScheduleExecutionTests {
 
     /// <summary>
     /// Verifies that a task linked to a daily schedule produces the expected occurrence preview. Creates a daily
-    /// schedule (1-day interval) and a task linked to it, then requests occurrences for a 7-day window and asserts
-    /// that exactly 7 occurrences are returned, each separated by exactly 1 day.
+    /// schedule (1-day interval) and a task, then requests occurrences for a 7-day window and asserts
+    /// that exactly 8 occurrences are returned, each separated by exactly 1 day.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
@@ -145,12 +144,10 @@ public class ScheduleExecutionTests {
 
         JsonElement task = await CreateTaskAsync(
             "IntTest_OccurrenceTask", "echo occurrence-test",
-            ["integration-test"], Guid.Parse( scheduleId ), ct );
+            ["integration-test"], ct );
 
         long taskId = task.GetProperty( "id" ).GetInt64( );
         Assert.IsGreaterThan( 0L, taskId, "Task ID should be a positive integer." );
-        Assert.AreEqual( scheduleId, task.GetProperty( "scheduleId" ).GetString( ),
-            "Task should be linked to the created schedule." );
 
         string windowEnd = "2026-06-22T23:59:59Z";
         HttpResponseMessage occResponse = await Api.GetAsync(
@@ -189,7 +186,7 @@ public class ScheduleExecutionTests {
 
         _ = await CreateTaskAsync(
             "IntTest_UpdateLinkedTask", "echo update-test",
-            ["integration-test"], Guid.Parse( scheduleId ), ct );
+            ["integration-test"], ct );
 
         var updateRequest = new {
             name = "IntTest_UpdatedName",
@@ -250,8 +247,9 @@ public class ScheduleExecutionTests {
 
     /// <summary>
     /// Verifies that attempting an ad-hoc task run when no agent is connected returns <see
-    /// cref="HttpStatusCode.Conflict"/> (HTTP 409). Creates a task with a non-existent agent tag, issues a POST to
-    /// <c>/api/tasks/{id}/run</c>, and asserts the response body contains "No connected agent".
+    /// cref="HttpStatusCode.Accepted"/> (HTTP 202). The run endpoint creates a one-time schedule
+    /// and returns immediately. Creates a task with a non-existent agent tag, issues a POST to
+    /// <c>/api/tasks/{id}/run</c>, and asserts the accepted response.
     /// </summary>
     [TestMethod]
     [Timeout( 60_000 )]
@@ -260,18 +258,14 @@ public class ScheduleExecutionTests {
 
         JsonElement task = await CreateTaskAsync(
             "IntTest_AdHocRun", "echo adhoc-test",
-            ["nonexistent-agent-tag-abc123"], null, ct );
+            ["nonexistent-agent-tag-abc123"], ct );
         long taskId = task.GetProperty( "id" ).GetInt64( );
 
         HttpResponseMessage runResponse = await Api.PostAsJsonAsync(
             $"/api/tasks/{taskId}/run", new object( ), JsonOptions, ct );
 
-        Assert.AreEqual( HttpStatusCode.Conflict, runResponse.StatusCode,
-            "Ad-hoc run should return 409 Conflict when no agent matches the target tags." );
-
-        string body = await runResponse.Content.ReadAsStringAsync( ct );
-        StringAssert.Contains( body, "No connected agent",
-            "Conflict response should describe that no matching agent was found." );
+        Assert.AreEqual( HttpStatusCode.Accepted, runResponse.StatusCode,
+            "Ad-hoc run should return 202 Accepted (one-time schedule created)." );
     }
 
     /// <summary>
@@ -285,7 +279,7 @@ public class ScheduleExecutionTests {
 
         JsonElement task = await CreateTaskAsync(
             "IntTest_JobHistory", "echo jobhistory-test",
-            ["integration-test"], null, ct );
+            ["integration-test"], ct );
         long taskId = task.GetProperty( "id" ).GetInt64( );
 
         HttpResponseMessage jobsResponse = await Api.GetAsync(

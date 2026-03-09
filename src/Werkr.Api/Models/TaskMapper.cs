@@ -27,6 +27,16 @@ internal static class TaskMapper {
             ["WriteContent"] = typeof( WriteContentParameters ),
             ["StartProcess"] = typeof( StartProcessParameters ),
             ["StopProcess"] = typeof( StopProcessParameters ),
+
+            // ── Phase 1 no-code actions ──────────────────────────────
+            ["Delay"] = typeof(DelayParameters),
+            ["GetFileInfo"] = typeof(GetFileInfoParameters),
+            ["ReadContent"] = typeof(ReadContentParameters),
+            ["ListDirectory"] = typeof(ListDirectoryParameters),
+            ["FindReplace"] = typeof(FindReplaceParameters),
+            ["CompressArchive"] = typeof(CompressArchiveParameters),
+            ["ExpandArchive"] = typeof(ExpandArchiveParameters),
+            ["WatchFile"] = typeof(WatchFileParameters),
         };
 
     /// <summary>

@@ -119,7 +119,7 @@ public class ActionOperatorTests {
     /// </summary>
     [TestMethod]
     public void Constructor_NullExpectedActions_UsesDefaultList( ) {
-        // With null expectedActions, it uses DefaultExpectedActions which requires 11 handlers
+        // With null expectedActions, it uses DefaultExpectedActions which requires 19 handlers
         IActionHandler[] handlers = [new SuccessHandler( "A" )];
 
         _ = Assert.ThrowsExactly<InvalidOperationException>(

@@ -31,6 +31,14 @@ public sealed class ActionOperator : IActionOperator {
         "WriteContent",
         "StartProcess",
         "StopProcess",
+        "Delay",
+        "GetFileInfo",
+        "ReadContent",
+        "ListDirectory",
+        "FindReplace",
+        "CompressArchive",
+        "ExpandArchive",
+        "WatchFile",
     ];
 
     /// <summary>
