@@ -48,8 +48,8 @@ jobs:
           # Restore with force-evaluate for linux-x64
           dotnet restore Werkr.slnx --force-evaluate
 
-          # Validate lock file changes
-          for lockfile in $(find . -name "packages.lock.json" ! -name "*.backup"); do
+          # Validate lock file changes (skip Windows-only Installer projects)
+          for lockfile in $(find . -name "packages.lock.json" ! -name "*.backup" ! -path "*/Installer/*"); do
             backup="${lockfile}.backup"
             if [ -f "$backup" ]; then
               pwsh scripts/Test-LockFileChanges.ps1 -BackupPath "$backup" -CurrentPath "$lockfile" -ToPlatform "linux-x64"
