@@ -38,7 +38,6 @@
                     <th>Name</th>
                     <th>Steps</th>
                     <th>Enabled</th>
-                    <th>Schedule</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
@@ -53,7 +52,6 @@
                                 @( w.Enabled ? "Yes" : "No" )
                             </span>
                         </td>
-                        <td>@( w.ScheduleId?.ToString()[..8] ?? "—" )</td>
                         <td class="text-end">
                             <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id">Edit</a>
                             <button class="btn btn-outline-info btn-sm me-1" @onclick="() => RunWorkflow( w.Id )" disabled="@_isRunning">

@@ -32,11 +32,6 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label" for="scheduleId">Schedule ID (optional GUID)</label>
-                <InputText id="scheduleId" class="form-control" @bind-Value="_model.ScheduleId" />
-            </div>
-
-            <div class="mb-3">
                 <ToggleSwitch @bind-Value="_model.Enabled" Label="Enabled" />
             </div>
         </div>
@@ -68,12 +63,10 @@
         _isSaving = true;
         _errorMessage = null;
         try {
-            Guid? scheduleId = Guid.TryParse( _model.ScheduleId, out Guid sid ) ? sid : null;
             WorkflowCreateRequest request = new(
                 Name: _model.Name,
                 Description: _model.Description,
-                Enabled: _model.Enabled,
-                ScheduleId: scheduleId );
+                Enabled: _model.Enabled );
 
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PostAsJsonAsync( "/api/workflows", request );
@@ -94,7 +87,6 @@
     private sealed class WorkflowFormModel {
         public string Name { get; set; } = "";
         public string? Description { get; set; }
-        public string? ScheduleId { get; set; }
         public bool Enabled { get; set; } = true;
     }
 }

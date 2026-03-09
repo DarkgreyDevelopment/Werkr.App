@@ -87,6 +87,12 @@ public class WerkrDbContext : DbContext {
     /// <summary>Schedule audit log for suppressed occurrences.</summary>
     public DbSet<ScheduleAuditLog> ScheduleAuditLogs => Set<ScheduleAuditLog>( );
 
+    /// <summary>Task-to-schedule many-to-many join table.</summary>
+    public DbSet<TaskSchedule> TaskSchedules => Set<TaskSchedule>( );
+
+    /// <summary>Workflow-to-schedule many-to-many join table.</summary>
+    public DbSet<WorkflowSchedule> WorkflowSchedules => Set<WorkflowSchedule>( );
+
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
         base.OnModelCreating( modelBuilder );
@@ -295,6 +301,36 @@ public class WerkrDbContext : DbContext {
 
             _ = entity.HasOne( e => e.Schedule )
                 .WithMany( )
+                .HasForeignKey( e => e.ScheduleId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
+        // TaskSchedule — many-to-many join between WerkrTask and DbSchedule
+        _ = modelBuilder.Entity<TaskSchedule>( entity => {
+            _ = entity.HasKey( e => new { e.TaskId, e.ScheduleId } );
+
+            _ = entity.HasOne( e => e.Task )
+                .WithMany( t => t.TaskSchedules )
+                .HasForeignKey( e => e.TaskId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.Schedule )
+                .WithMany( s => s.TaskSchedules )
+                .HasForeignKey( e => e.ScheduleId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
+        // WorkflowSchedule — many-to-many join between Workflow and DbSchedule
+        _ = modelBuilder.Entity<WorkflowSchedule>( entity => {
+            _ = entity.HasKey( e => new { e.WorkflowId, e.ScheduleId } );
+
+            _ = entity.HasOne( e => e.Workflow )
+                .WithMany( w => w.WorkflowSchedules )
+                .HasForeignKey( e => e.WorkflowId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.Schedule )
+                .WithMany( s => s.WorkflowSchedules )
                 .HasForeignKey( e => e.ScheduleId )
                 .OnDelete( DeleteBehavior.Cascade );
         } );

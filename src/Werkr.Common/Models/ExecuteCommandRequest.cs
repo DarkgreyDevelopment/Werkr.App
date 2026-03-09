@@ -1,11 +1,13 @@
 namespace Werkr.Common.Models;
 
-/// <summary>Request DTO for the command execution endpoint.</summary>
-/// <param name="OperatorType">The operator type string ("PowerShell" or "SystemShell").</param>
-/// <param name="Command">The plaintext command to execute.</param>
-/// <param name="TimeoutMinutes">Timeout in minutes. Defaults to 30.</param>
+/// <summary>Request body for the agent execute/shell command endpoint.</summary>
+/// <param name="Command">The shell command or script content to execute.</param>
+/// <param name="ActionType">
+/// Optional action type as an integer matching <c>TaskActionType</c> values:
+/// 0 = PowerShellCommand, 1 = PowerShellScript, 2 = ShellCommand, 3 = ShellScript, 4 = Action.
+/// Defaults to 2 (ShellCommand) when omitted.
+/// </param>
 public sealed record ExecuteCommandRequest(
-    string OperatorType,
     string Command,
-    int TimeoutMinutes = 30
+    int? ActionType = null
 );

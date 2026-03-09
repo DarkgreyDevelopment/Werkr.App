@@ -1,0 +1,40 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+// Bidirectional stream between agent and server for real-time output delivery.
+// Encryption is handled at the gRPC interceptor layer, not at proto level.
+// Agent pushes output lines as tasks execute; server sends subscription requests.
+service OutputStreamingService {
+  // Agent opens this stream on startup. Server sends subscription requests;
+  // agent sends output lines for subscribed tasks.
+  rpc StreamOutput (stream OutputMessage) returns (stream OutputSubscription);
+}
+
+message OutputMessage {
+  int64 task_id = 1;
+  string schedule_id = 2;
+  string job_id = 3;
+  oneof payload {
+    OutputLine line = 4;
+    OutputComplete complete = 5;
+  }
+}
+
+message OutputLine {
+  string text = 1;
+  string log_level = 2;
+  string timestamp = 3;
+}
+
+message OutputComplete {
+  int32 exit_code = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+message OutputSubscription {
+  int64 task_id = 1;
+  string schedule_id = 2;
+  bool subscribe = 3;
+}

@@ -53,12 +53,6 @@
                         Action @SortIndicator("action")
                     </th>
                     <th>Tags</th>
-                    <th style="cursor: pointer;" @onclick='() => SetSort("schedule")'>
-                        Schedule @SortIndicator("schedule")
-                    </th>
-                    <th style="cursor: pointer;" @onclick='() => SetSort("nextrun")'>
-                        Next Run @SortIndicator("nextrun")
-                    </th>
                     <th style="cursor: pointer;" @onclick='() => SetSort("workflow")'>
                         Workflow @SortIndicator("workflow")
                     </th>
@@ -112,25 +106,6 @@
                             }
                         </td>
                         <td>
-                            @if ( item.Task.ScheduleId is not null ) {
-                                <a href="/schedules/@item.Task.ScheduleId">
-                                    <i class="bi bi-clock"></i> Assigned
-                                </a>
-                            } else {
-                                <span class="text-muted">Manual</span>
-                            }
-                        </td>
-                        <td>
-                            @{ string nextRunKey = $"{item.Task.Id}"; }
-                            @if ( _nextRuns.TryGetValue( item.Task.Id, out DateTime nextRun ) ) {
-                                <small>@nextRun.ToString( "g" )</small>
-                            } else if ( item.Task.ScheduleId is null ) {
-                                <span class="text-muted">—</span>
-                            } else {
-                                <span class="text-muted">…</span>
-                            }
-                        </td>
-                        <td>
                             @if ( item.Task.WorkflowId is not null ) {
                                 <a href="/workflows/@item.Task.WorkflowId">
                                     <i class="bi bi-diagram-3"></i> #@item.Task.WorkflowId
@@ -179,7 +154,6 @@
 
 @code {
     private List<TaskListItem> _items = [];
-    private Dictionary<long, DateTime> _nextRuns = new( );
     private string? _errorMessage;
     private bool _isLoading;
     private bool _disposed;
@@ -216,12 +190,6 @@
                 "action" => _sortAscending
                     ? query.OrderBy( i => i.Task.ActionType, StringComparer.OrdinalIgnoreCase )
                     : query.OrderByDescending( i => i.Task.ActionType, StringComparer.OrdinalIgnoreCase ),
-                "schedule" => _sortAscending
-                    ? query.OrderBy( i => i.Task.ScheduleId.HasValue ).ThenBy( i => i.Task.ScheduleId )
-                    : query.OrderByDescending( i => i.Task.ScheduleId.HasValue ).ThenByDescending( i => i.Task.ScheduleId ),
-                "nextrun" => _sortAscending
-                    ? query.OrderBy( i => _nextRuns.TryGetValue( i.Task.Id, out DateTime nr ) ? nr : DateTime.MaxValue )
-                    : query.OrderByDescending( i => _nextRuns.TryGetValue( i.Task.Id, out DateTime nr ) ? nr : DateTime.MinValue ),
                 "workflow" => _sortAscending
                     ? query.OrderBy( i => i.Task.WorkflowId ?? long.MaxValue )
                     : query.OrderByDescending( i => i.Task.WorkflowId ?? long.MinValue ),
@@ -294,29 +262,6 @@
                 items.Add( new TaskListItem( task, lastJob ) );
             }
             _items = items;
-
-            // Fetch next occurrences for schedule-bound tasks
-            Dictionary<long, DateTime> nextRuns = new( );
-            IEnumerable<Guid> scheduleIds = tasks
-                .Where( t => t.ScheduleId.HasValue )
-                .Select( t => t.ScheduleId!.Value )
-                .Distinct( );
-
-            foreach ( Guid scheduleId in scheduleIds ) {
-                try {
-                    OccurrencePreviewResponse? response = await client.GetFromJsonAsync<OccurrencePreviewResponse>(
-                        $"/api/schedules/{scheduleId}/occurrences" );
-                    if ( response?.Occurrences is { Count: > 0 } ) {
-                        DateTime nextOccurrence = response.Occurrences[0];
-                        foreach ( TaskDto task in tasks.Where( t => t.ScheduleId == scheduleId ) ) {
-                            nextRuns[task.Id] = nextOccurrence;
-                        }
-                    }
-                } catch {
-                    // Skip occurrence lookup errors
-                }
-            }
-            _nextRuns = nextRuns;
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load tasks: {ex.Message}";
         } finally {
@@ -346,7 +291,6 @@
                 Enabled: !task.Enabled,
                 TimeoutMinutes: task.TimeoutMinutes,
                 SuccessCriteria: task.SuccessCriteria,
-                ScheduleId: task.ScheduleId,
                 WorkflowId: task.WorkflowId );
             HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/tasks/{task.Id}", request );
             if ( response.IsSuccessStatusCode ) {

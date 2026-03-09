@@ -116,7 +116,6 @@ public sealed class TaskService(
         existing.Enabled = task.Enabled;
         existing.TimeoutMinutes = task.TimeoutMinutes;
         existing.SuccessCriteria = task.SuccessCriteria;
-        existing.ScheduleId = task.ScheduleId;
         existing.WorkflowId = task.WorkflowId;
         existing.ActionSubType = task.ActionSubType;
         existing.ActionParameters = task.ActionParameters;

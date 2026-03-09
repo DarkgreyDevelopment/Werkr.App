@@ -11,7 +11,6 @@ public sealed record TaskCreateRequest(
     bool Enabled = true,
     long? TimeoutMinutes = null,
     string? SuccessCriteria = null,
-    Guid? ScheduleId = null,
     long? WorkflowId = null,
     string? ActionSubType = null,
     string? ActionParameters = null

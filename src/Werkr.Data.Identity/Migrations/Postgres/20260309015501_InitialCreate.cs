@@ -4,6 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 #nullable disable
 
 namespace Werkr.Data.Identity.Migrations.Postgres;
+
 /// <inheritdoc />
 public partial class InitialCreate : Migration {
     /// <inheritdoc />

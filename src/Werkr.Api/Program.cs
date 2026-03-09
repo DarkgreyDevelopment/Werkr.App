@@ -141,6 +141,12 @@ public class Program {
             // Agent connection manager (Singleton — caches gRPC channels)
             _ = builder.Services.AddSingleton<AgentConnectionManager>( );
 
+            // Job event broadcaster (Singleton — SSE fan-out for real-time push)
+            _ = builder.Services.AddSingleton<JobEventBroadcaster>( );
+
+            // Output streaming gRPC service (Singleton — receives agent output streams)
+            _ = builder.Services.AddSingleton<OutputStreamingGrpcService>( );
+
             // Agent health check background service — keeps DB status current
             _ = builder.Services.AddHostedService<Werkr.Core.Health.AgentHealthCheckService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
@@ -150,12 +156,9 @@ public class Program {
                 return new Werkr.Core.Health.AgentHealthCheckService( scopeFactory, connectionManager, logger );
             } );
 
-            // Command dispatcher (Scoped — one per request)
-            _ = builder.Services.AddScoped<CommandDispatcher>( );
-            _ = builder.Services.AddScoped<ICommandDispatcher>( sp => sp.GetRequiredService<CommandDispatcher>( ) );
-
             // Schedule service (Scoped — one per request)
             _ = builder.Services.AddScoped<ScheduleService>( );
+            _ = builder.Services.AddScoped<RunNowService>( );
 
             // Task & Job services (Scoped — one per request)
             _ = builder.Services.Configure<JobOutputOptions>(
@@ -169,8 +172,6 @@ public class Program {
             // Workflow services (Scoped — one per request)
             _ = builder.Services.AddScoped<Werkr.Core.Workflows.ConditionEvaluator>( );
             _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowService>( );
-            _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowExecutor>( );
-            _ = builder.Services.AddSingleton<Werkr.Core.Workflows.WorkflowRunTracker>( );
 
             // Schedule invalidation dispatcher (Scoped — sends push notifications to agents)
             _ = builder.Services.AddScoped<ScheduleInvalidationDispatcher>( );
@@ -220,7 +221,7 @@ public class Program {
             _ = app.MapGrpcService<RegistrationGrpcService>( );
             _ = app.MapGrpcService<ScheduleSyncGrpcService>( );
             _ = app.MapGrpcService<JobReportingGrpcService>( );
-            _ = app.MapGrpcService<WorkflowExecutionGrpcService>( );
+            _ = app.MapGrpcService<OutputStreamingGrpcService>( );
 
             // REST endpoints
             _ = app.MapStatusEndpoints( );
@@ -232,9 +233,10 @@ public class Program {
             _ = app.MapTaskEndpoints( );
             _ = app.MapJobEndpoints( );
             _ = app.MapSettingsEndpoints( );
-            _ = app.MapShellEndpoints( );
             _ = app.MapWorkflowEndpoints( );
             _ = app.MapHolidayCalendarEndpoints( );
+            _ = app.MapEventEndpoints( );
+            _ = app.MapShellEndpoints( );
 
             _ = app.MapDefaultEndpoints( );
 

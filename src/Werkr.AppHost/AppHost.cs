@@ -15,7 +15,7 @@ public class Program {
         IResourceBuilder<PostgresDatabaseResource> werkrIdentityDb = postgres.AddDatabase( "werkridentitydb" );
 
         // Agent
-        IResourceBuilder<ProjectResource> agent = builder.AddProject<Projects.Werkr_Agent>( "agent" )
+        _ = builder.AddProject<Projects.Werkr_Agent>("agent")
             .WithHttpHealthCheck( "/health" )
             .WaitFor( werkrDb );
 
@@ -29,11 +29,9 @@ public class Program {
         _ = builder.AddProject<Projects.Werkr_Server>( "server" )
             .WithExternalHttpEndpoints( )
             .WithHttpHealthCheck( "/health" )
-            .WithReference( apiService )
-            .WithReference( agent )
+            .WithReference(apiService)
             .WithReference( werkrIdentityDb )
-            .WaitFor( apiService )
-            .WaitFor( agent )
+            .WaitFor(apiService)
             .WaitFor( werkrIdentityDb );
 
         builder.Build( ).Run( );

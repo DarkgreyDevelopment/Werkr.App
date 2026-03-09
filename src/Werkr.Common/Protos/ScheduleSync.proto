@@ -56,6 +56,7 @@ message ScheduleDefinition {
   RepeatOptionsDef repeat = 12;
   bool has_holiday_calendar = 13;
   string holiday_calendar_mode = 14;
+  bool catch_up_enabled = 15;
 }
 
 message DailyRecurrenceDef {

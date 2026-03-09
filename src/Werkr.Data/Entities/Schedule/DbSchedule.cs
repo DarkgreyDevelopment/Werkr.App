@@ -43,4 +43,17 @@ public class DbSchedule : ConcurrencyBase, IKey<Guid> {
 
     /// <summary>Link to attached holiday calendar (if any).</summary>
     public ScheduleHolidayCalendar? HolidayCalendarLink { get; set; }
+
+    /// <summary>
+    /// Opt-in flag for catch-up execution. When true, the agent fires missed
+    /// occurrences for this schedule. Defaults to false for recurring schedules.
+    /// One-time "Run Now" schedules set this to true.
+    /// </summary>
+    public bool CatchUpEnabled { get; set; }
+
+    /// <summary>Navigation property for task links (many-to-many via TaskSchedule).</summary>
+    public ICollection<Werkr.Data.Entities.Tasks.TaskSchedule> TaskSchedules { get; set; } = [];
+
+    /// <summary>Navigation property for workflow links (many-to-many via WorkflowSchedule).</summary>
+    public ICollection<Werkr.Data.Entities.Workflows.WorkflowSchedule> WorkflowSchedules { get; set; } = [];
 }

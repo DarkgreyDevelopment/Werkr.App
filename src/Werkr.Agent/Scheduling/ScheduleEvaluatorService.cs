@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Microsoft.EntityFrameworkCore;
 using Werkr.Agent.Communication;
 using Werkr.Agent.Operators;
 using Werkr.Common.Models.Actions;
@@ -8,6 +9,7 @@ using Werkr.Core.Communication;
 using Werkr.Core.Operators;
 using Werkr.Core.Scheduling;
 using Werkr.Core.Tasks;
+using Werkr.Data;
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Models;
 using Werkr.Data.Entities.Schedule;
@@ -37,7 +39,10 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="pwshOperator">PowerShell operator.</param>
 /// <param name="shellOperator">System shell operator.</param>
 /// <param name="actionOperator">Built-in action operator.</param>
+/// <param name="workflowExecutionService">Service for executing workflows locally on the agent.</param>
+/// <param name="outputStreamingService">Manages real-time output streaming to the server.</param>
 /// <param name="invalidationChannel">Channel for receiving invalidation signals.</param>
+/// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
 /// <param name="logger">Logger.</param>
 public sealed class ScheduleEvaluatorService(
     AgentGrpcClientFactory clientFactory,
@@ -46,7 +51,10 @@ public sealed class ScheduleEvaluatorService(
     PwshOperator pwshOperator,
     SystemShellOperator shellOperator,
     IActionOperator actionOperator,
+    WorkflowExecutionService workflowExecutionService,
+    Werkr.Agent.Services.OutputStreamingService outputStreamingService,
     Channel<string> invalidationChannel,
+    IServiceScopeFactory serviceScopeFactory,
     ILogger<ScheduleEvaluatorService> logger
 ) : BackgroundService {
 
@@ -215,8 +223,8 @@ public sealed class ScheduleEvaluatorService(
         // ── Bulk-fetch holiday dates for holiday-enabled schedules ──
         await FetchBulkHolidayDatesAsync( response, ct );
 
-        // Rebuild fire queue
-        RebuildFireQueue( );
+        // Rebuild fire queue (includes catch-up for missed occurrences)
+        await RebuildFireQueueAsync( );
 
         // Update sync times
         DateTime now = DateTime.UtcNow;
@@ -299,56 +307,206 @@ public sealed class ScheduleEvaluatorService(
     /// <summary>
     /// Rebuilds the fire queue from current definitions.
     /// Calculates next occurrence for each task/workflow using <see cref="ScheduleCalculator"/>.
+    /// When a schedule has <see cref="DbSchedule.CatchUpEnabled"/> set, any past occurrences
+    /// that have no corresponding <see cref="WerkrJob"/> in the local database are enqueued
+    /// immediately so the agent catches up on missed executions.
     /// </summary>
-    internal void RebuildFireQueue( ) {
-        lock (_queueLock) {
-            _fireQueue.Clear( );
+    internal async Task RebuildFireQueueAsync( ) {
+        DateTime now = DateTime.UtcNow;
+        DateTime endOfWindow = now.AddHours( 24 ); // Look ahead 24 hours
 
-            DateTime now = DateTime.UtcNow;
-            DateTime endOfWindow = now.AddHours( 24 ); // Look ahead 24 hours
+        // 1. Snapshot definitions outside the queue lock so we can await DB calls.
+        List<ScheduledTaskDefinition> tasks;
+        List<ScheduledWorkflowDefinition> workflows;
+        lock (_definitionsLock) {
+            tasks = [.. _currentTasks];
+            workflows = [.. _currentWorkflows];
+        }
 
-            lock (_definitionsLock) {
-                foreach (ScheduledTaskDefinition task in _currentTasks) {
-                    if (task.Schedule is null) {
-                        continue;
-                    }
-
-                    try {
-                        Schedule schedule = MapProtoToSchedule( task.Schedule );
-                        DateTime? next = CalculateNextWithHolidays( schedule, now, endOfWindow );
-                        if (next.HasValue && next.Value != default) {
-                            _ = _fireQueue.Add( new FireQueueEntry( next.Value, task, null ) );
-                        }
-                    } catch (Exception ex) {
-                        logger.LogWarning( ex, "Failed to calculate occurrences for task {TaskId} '{TaskName}'.",
-                            task.TaskId, task.Name );
-                    }
-                }
-
-                foreach (ScheduledWorkflowDefinition workflow in _currentWorkflows) {
-                    if (workflow.Schedule is null) {
-                        continue;
-                    }
-
-                    try {
-                        Schedule schedule = MapProtoToSchedule( workflow.Schedule );
-                        DateTime? next = CalculateNextWithHolidays( schedule, now, endOfWindow );
-                        if (next.HasValue && next.Value != default) {
-                            _ = _fireQueue.Add( new FireQueueEntry( next.Value, null, workflow ) );
-                        }
-                    } catch (Exception ex) {
-                        logger.LogWarning( ex, "Failed to calculate occurrences for workflow {WorkflowId} '{WorkflowName}'.",
-                            workflow.WorkflowId, workflow.Name );
-                    }
-                }
+        // 2. Identify which schedules need catch-up and pre-fetch executed times.
+        HashSet<Guid> catchUpScheduleIds = [];
+        foreach (ScheduledTaskDefinition task in tasks) {
+            if (task.Schedule is null) {
+                continue;
             }
-
-            if (logger.IsEnabled( LogLevel.Debug )) {
-                logger.LogDebug( "Fire queue rebuilt: {Count} entries. Next fire: {NextFire}.",
-                    _fireQueue.Count,
-                    _fireQueue.Count > 0 ? _fireQueue.Min!.FireTimeUtc.ToString( "o" ) : "none" );
+            Schedule schedule = MapProtoToSchedule( task.Schedule );
+            if (schedule.DbSchedule.CatchUpEnabled && schedule.DbSchedule.Id != Guid.Empty) {
+                _ = catchUpScheduleIds.Add( schedule.DbSchedule.Id );
             }
         }
+        foreach (ScheduledWorkflowDefinition workflow in workflows) {
+            if (workflow.Schedule is null) {
+                continue;
+            }
+            Schedule schedule = MapProtoToSchedule( workflow.Schedule );
+            if (schedule.DbSchedule.CatchUpEnabled && schedule.DbSchedule.Id != Guid.Empty) {
+                _ = catchUpScheduleIds.Add( schedule.DbSchedule.Id );
+            }
+        }
+
+        Dictionary<Guid, HashSet<long>> executedTicksBySchedule = [];
+        if (catchUpScheduleIds.Count > 0) {
+            executedTicksBySchedule = await GetExecutedOccurrenceTicksAsync( catchUpScheduleIds );
+        }
+
+        // 3. Build new fire queue entries.
+        SortedSet<FireQueueEntry> newEntries = [];
+
+        foreach (ScheduledTaskDefinition task in tasks) {
+            if (task.Schedule is null) {
+                continue;
+            }
+
+            try {
+                Schedule schedule = MapProtoToSchedule( task.Schedule );
+
+                // Normal forward-looking entry
+                DateTime? next = CalculateNextWithHolidays( schedule, now, endOfWindow );
+                if (next.HasValue && next.Value != default) {
+                    _ = newEntries.Add( new FireQueueEntry( next.Value, task, null ) );
+                }
+
+                // Catch-up: enqueue missed past occurrences
+                if (schedule.DbSchedule.CatchUpEnabled && schedule.DbSchedule.Id != Guid.Empty) {
+                    _ = executedTicksBySchedule.TryGetValue( schedule.DbSchedule.Id, out HashSet<long>? executedTicks );
+                    IReadOnlyList<DateTime> missed = GetMissedOccurrences( schedule, now, executedTicks );
+                    foreach (DateTime missedTime in missed) {
+                        _ = newEntries.Add( new FireQueueEntry( missedTime, task, null ) );
+                    }
+                    if (missed.Count > 0 && logger.IsEnabled( LogLevel.Information )) {
+                        logger.LogInformation(
+                            "Catch-up: enqueued {Count} missed occurrence(s) for task {TaskId} '{TaskName}'.",
+                            missed.Count, task.TaskId, task.Name );
+                    }
+                }
+            } catch (Exception ex) {
+                logger.LogWarning( ex, "Failed to calculate occurrences for task {TaskId} '{TaskName}'.",
+                    task.TaskId, task.Name );
+            }
+        }
+
+        foreach (ScheduledWorkflowDefinition workflow in workflows) {
+            if (workflow.Schedule is null) {
+                continue;
+            }
+
+            try {
+                Schedule schedule = MapProtoToSchedule( workflow.Schedule );
+
+                // Normal forward-looking entry
+                DateTime? next = CalculateNextWithHolidays( schedule, now, endOfWindow );
+                if (next.HasValue && next.Value != default) {
+                    _ = newEntries.Add( new FireQueueEntry( next.Value, null, workflow ) );
+                }
+
+                // Catch-up: enqueue missed past occurrences
+                if (schedule.DbSchedule.CatchUpEnabled && schedule.DbSchedule.Id != Guid.Empty) {
+                    _ = executedTicksBySchedule.TryGetValue( schedule.DbSchedule.Id, out HashSet<long>? executedTicks );
+                    IReadOnlyList<DateTime> missed = GetMissedOccurrences( schedule, now, executedTicks );
+                    foreach (DateTime missedTime in missed) {
+                        _ = newEntries.Add( new FireQueueEntry( missedTime, null, workflow ) );
+                    }
+                    if (missed.Count > 0 && logger.IsEnabled( LogLevel.Information )) {
+                        logger.LogInformation(
+                            "Catch-up: enqueued {Count} missed occurrence(s) for workflow {WorkflowId} '{WorkflowName}'.",
+                            missed.Count, workflow.WorkflowId, workflow.Name );
+                    }
+                }
+            } catch (Exception ex) {
+                logger.LogWarning( ex, "Failed to calculate occurrences for workflow {WorkflowId} '{WorkflowName}'.",
+                    workflow.WorkflowId, workflow.Name );
+            }
+        }
+
+        // 4. Swap under lock
+        lock (_queueLock) {
+            _fireQueue.Clear( );
+            foreach (FireQueueEntry entry in newEntries) {
+                _ = _fireQueue.Add( entry );
+            }
+        }
+
+        if (logger.IsEnabled( LogLevel.Debug )) {
+            logger.LogDebug( "Fire queue rebuilt: {Count} entries. Next fire: {NextFire}.",
+                newEntries.Count,
+                newEntries.Count > 0 ? newEntries.Min!.FireTimeUtc.ToString( "o" ) : "none" );
+        }
+    }
+
+    /// <summary>
+    /// Queries the local database for job start times associated with the given schedule IDs.
+    /// Returns a dictionary keyed by <see cref="Guid"/> schedule ID whose values are sets of
+    /// <see cref="DateTime.Ticks"/> (truncated to the minute) so callers can quickly check
+    /// whether a computed occurrence was already executed.
+    /// </summary>
+    private async Task<Dictionary<Guid, HashSet<long>>> GetExecutedOccurrenceTicksAsync(
+        HashSet<Guid> scheduleIds
+    ) {
+        using IServiceScope scope = serviceScopeFactory.CreateScope( );
+        WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
+
+        List<WerkrJob> jobs = await db.Jobs
+            .AsNoTracking( )
+            .Where( j => j.ScheduleId.HasValue && scheduleIds.Contains( j.ScheduleId.Value ) )
+            .ToListAsync( );
+
+        Dictionary<Guid, HashSet<long>> result = [];
+        foreach (WerkrJob job in jobs) {
+            Guid sid = job.ScheduleId!.Value;
+            if (!result.TryGetValue( sid, out HashSet<long>? ticks )) {
+                ticks = [];
+                result[sid] = ticks;
+            }
+            // Truncate to minute precision so small timing differences don't cause duplicates.
+            DateTime truncated = new(
+                job.StartTime.Year,
+                job.StartTime.Month,
+                job.StartTime.Day,
+                job.StartTime.Hour,
+                job.StartTime.Minute,
+                0, DateTimeKind.Utc );
+            _ = ticks.Add( truncated.Ticks );
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Returns past occurrences of <paramref name="schedule"/> that have not been executed.
+    /// Compares all occurrences from the schedule start through <paramref name="now"/> against
+    /// the set of already-executed ticks. Any occurrence absent from the set is considered missed.
+    /// </summary>
+    private IReadOnlyList<DateTime> GetMissedOccurrences(
+        Schedule schedule,
+        DateTime now,
+        HashSet<long>? executedTicks
+    ) {
+        Guid scheduleId = schedule.DbSchedule.Id;
+        IReadOnlyList<DateTime> allPast;
+
+        if (_holidayCache.TryGetValue( scheduleId, out (HolidayCalendarMode Mode, IReadOnlyList<HolidayDate> Dates) cached )) {
+            ScheduleOccurrenceResult result = ScheduleCalculator.CalculateOccurrences(
+                schedule, now, cached.Dates, cached.Mode );
+            allPast = [.. result.Occurrences.Where( o => o <= now )];
+        } else {
+            allPast = [.. ScheduleCalculator.CalculateOccurrences( schedule, now ).Where( o => o <= now )];
+        }
+
+        if (allPast.Count == 0 || executedTicks is null) {
+            return allPast;
+        }
+
+        List<DateTime> missed = [];
+        foreach (DateTime occurrence in allPast) {
+            DateTime truncated = new(
+                occurrence.Year, occurrence.Month, occurrence.Day,
+                occurrence.Hour, occurrence.Minute, 0, DateTimeKind.Utc );
+            if (!executedTicks.Contains( truncated.Ticks )) {
+                missed.Add( occurrence );
+            }
+        }
+
+        return missed;
     }
 
     // ── Evaluation Loop ──────────────────────────────────────────────────────────
@@ -415,7 +573,7 @@ public sealed class ScheduleEvaluatorService(
                 logger.LogDebug( "Invalidation signal received. Will re-sync." );
             }
             await SyncWithBackoffAsync( ct );
-            RebuildFireQueue( );
+            await RebuildFireQueueAsync( );
         } catch (OperationCanceledException) {
             // Expected — the linked token was cancelled
         }
@@ -435,7 +593,7 @@ public sealed class ScheduleEvaluatorService(
 
         if (hadInvalidations) {
             await SyncWithBackoffAsync( ct );
-            RebuildFireQueue( );
+            await RebuildFireQueueAsync( );
         }
     }
 
@@ -463,7 +621,7 @@ public sealed class ScheduleEvaluatorService(
                 logger.LogDebug( "Periodic re-sync interval reached. Re-syncing schedules." );
             }
             await SyncWithBackoffAsync( ct );
-            RebuildFireQueue( );
+            await RebuildFireQueueAsync( );
         }
     }
 
@@ -491,7 +649,7 @@ public sealed class ScheduleEvaluatorService(
                 if (entry.Task is not null) {
                     await ExecuteTaskLocallyAsync( entry.Task, ct );
                 } else if (entry.Workflow is not null) {
-                    await DelegateWorkflowAsync( entry.Workflow, ct );
+                    await ExecuteWorkflowLocallyAsync( entry.Workflow, ct );
                 }
             } catch (Exception ex) {
                 string itemName = entry.Task?.Name ?? entry.Workflow?.Name ?? "unknown";
@@ -620,10 +778,24 @@ public sealed class ScheduleEvaluatorService(
 
             OperatorExecution execution = RunOperator( taskDef, actionType, timeoutCts.Token );
 
-            // Stream output to disk
+            // Resolve schedule ID for output streaming
+            string scheduleIdStr = taskDef.Schedule?.ScheduleId ?? "";
+
+            // Stream output to disk and output streaming service
             await foreach (OperatorOutput output in execution.Output.WithCancellation( timeoutCts.Token )) {
                 await outputWriter.WriteLineAsync( jobId, output, timeoutCts.Token );
                 collectedOutput.Add( output );
+
+                outputStreamingService.Publish( new OutputMessage {
+                    TaskId = taskDef.TaskId,
+                    ScheduleId = scheduleIdStr,
+                    JobId = jobId.ToString( ),
+                    Line = new OutputLine {
+                        Text = output.Message,
+                        LogLevel = output.LogLevel,
+                        Timestamp = output.Timestamp,
+                    },
+                } );
             }
 
             // Await the typed result
@@ -670,8 +842,31 @@ public sealed class ScheduleEvaluatorService(
         // Build tail preview for the server (matches ad-hoc job behavior)
         string? tailPreview = await outputWriter.GetTailPreviewAsync( jobId, ct );
 
-        // Report result to server
-        await ReportJobResultAsync( jobId, taskDef, startTime, endTime, success, exitCode, errorCategory, null, tailPreview, ct );
+        // Resolve schedule ID from the task definition
+        Guid? scheduleId = taskDef.Schedule is not null
+            && Guid.TryParse( taskDef.Schedule.ScheduleId, out Guid sid )
+                ? sid : null;
+
+        // Persist job locally in the agent's SQLite database
+        await PersistJobLocallyAsync( jobId, taskDef.TaskId, taskDef.Content, startTime, endTime,
+            success, exitCode, errorCategory, tailPreview, null, scheduleId, ct );
+
+        // Report result to server (includes agent-assigned job ID and schedule ID for upsert)
+        await ReportJobResultAsync( jobId, taskDef, startTime, endTime, success, exitCode, errorCategory, null, tailPreview, scheduleId, ct );
+
+        // Publish completion to output streaming service and clean up buffer
+        string completeScheduleIdStr = taskDef.Schedule?.ScheduleId ?? "";
+        outputStreamingService.Publish( new OutputMessage {
+            TaskId = taskDef.TaskId,
+            ScheduleId = completeScheduleIdStr,
+            JobId = jobId.ToString( ),
+            Complete = new OutputComplete {
+                ExitCode = exitCode,
+                Success = success,
+                ErrorMessage = executionException?.Message ?? "",
+            },
+        } );
+        outputStreamingService.ClearBuffer( taskDef.TaskId, completeScheduleIdStr );
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Job {JobId} for task '{TaskName}' completed: success={Success}, exitCode={ExitCode}, duration={Duration}.",
@@ -713,47 +908,23 @@ public sealed class ScheduleEvaluatorService(
         };
     }
 
-    // ── Workflow Delegation ──────────────────────────────────────────────────────
+    // ── Workflow Execution ─────────────────────────────────────────────────────
 
     /// <summary>
-    /// Delegates workflow execution to the Server. Only the Server can orchestrate
-    /// multi-agent workflows because it has visibility across all agents and connectivity.
+    /// Executes a workflow locally on the agent using <see cref="WorkflowExecutionService"/>.
     /// </summary>
-    private async Task DelegateWorkflowAsync( ScheduledWorkflowDefinition workflow, CancellationToken ct ) {
+    private async Task ExecuteWorkflowLocallyAsync( ScheduledWorkflowDefinition workflow, CancellationToken ct ) {
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "Delegating workflow {WorkflowId} '{WorkflowName}' to server.",
+            logger.LogInformation( "Executing workflow {WorkflowId} '{WorkflowName}' locally.",
                 workflow.WorkflowId, workflow.Name );
         }
 
         try {
-            WorkflowExecution.WorkflowExecutionClient client =
-                await clientFactory.CreateWorkflowExecutionClientAsync( ct );
-            Grpc.Core.CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
-
-            RegisteredConnectionInfo connection = await GetConnectionInfoAsync( ct );
-
-            WorkflowRunGrpcRequest innerRequest = new( ) {
-                WorkflowId = workflow.WorkflowId,
-                ConnectionId = connection.ConnectionId,
-            };
-            EncryptedEnvelope requestEnvelope = PayloadEncryptor.EncryptToEnvelope(
-                innerRequest, clientFactory.GetSharedKey( ), clientFactory.GetKeyId( ) );
-            EncryptedEnvelope responseEnvelope = await client.RequestWorkflowRunAsync(
-                requestEnvelope, callOptions );
-            WorkflowRunGrpcResponse response = PayloadEncryptor.DecryptFromEnvelope<WorkflowRunGrpcResponse>(
-                responseEnvelope, clientFactory.GetSharedKey( ) );
-
-            if (response.Accepted) {
-                if (logger.IsEnabled( LogLevel.Information )) {
-                    logger.LogInformation( "Workflow {WorkflowId} accepted. RunId={RunId}.",
-                        workflow.WorkflowId, response.WorkflowRunId );
-                }
-            } else {
-                logger.LogWarning( "Workflow {WorkflowId} rejected by server: {Message}.",
-                    workflow.WorkflowId, response.Message );
-            }
+            await workflowExecutionService.ExecuteWorkflowLocallyAsync( workflow, ct );
+        } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
+            throw; // Propagate shutdown
         } catch (Exception ex) {
-            logger.LogError( ex, "Failed to delegate workflow {WorkflowId} '{WorkflowName}' to server.",
+            logger.LogError( ex, "Failed to execute workflow {WorkflowId} '{WorkflowName}' locally.",
                 workflow.WorkflowId, workflow.Name );
         }
     }
@@ -779,6 +950,7 @@ public sealed class ScheduleEvaluatorService(
         ErrorCategory errorCategory,
         string? workflowRunId,
         string? outputPreview,
+        Guid? scheduleId,
         CancellationToken ct
     ) {
 
@@ -796,12 +968,16 @@ public sealed class ScheduleEvaluatorService(
             ExitCode = exitCode,
             ErrorCategory = (int) errorCategory,
             OutputPath = AgentJobOutputWriter.GetRelativeOutputPath( jobId ),
+            JobId = jobId.ToString( ),
         };
         if (!string.IsNullOrWhiteSpace( workflowRunId )) {
             innerRequest.WorkflowRunId = workflowRunId;
         }
         if (!string.IsNullOrWhiteSpace( outputPreview )) {
             innerRequest.OutputPreview = outputPreview;
+        }
+        if (scheduleId.HasValue) {
+            innerRequest.ScheduleId = scheduleId.Value.ToString( );
         }
 
         EncryptedEnvelope requestEnvelope = PayloadEncryptor.EncryptToEnvelope(
@@ -833,6 +1009,63 @@ public sealed class ScheduleEvaluatorService(
                 logger.LogError( ex, "Failed to report job result for task {TaskId} after {MaxRetries} attempts.",
                     taskDef.TaskId, ReportMaxRetries );
             }
+        }
+    }
+
+    // ── Local Job Persistence ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Persists a completed job to the agent's local SQLite database.
+    /// Creates a DI scope to resolve a scoped <see cref="WerkrDbContext"/>.
+    /// </summary>
+    private async Task PersistJobLocallyAsync(
+        Guid jobId,
+        long taskId,
+        string taskSnapshot,
+        DateTime startTime,
+        DateTime endTime,
+        bool success,
+        int exitCode,
+        ErrorCategory errorCategory,
+        string? outputPreview,
+        string? workflowRunId,
+        Guid? scheduleId,
+        CancellationToken ct
+    ) {
+        try {
+            await using AsyncServiceScope scope = serviceScopeFactory.CreateAsyncScope( );
+            WerkrDbContext dbContext = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
+
+            RegisteredConnectionInfo connection = await GetConnectionInfoAsync( ct );
+
+            WerkrJob job = new( ) {
+                Id = jobId,
+                TaskId = taskId,
+                TaskSnapshot = taskSnapshot,
+                RuntimeSeconds = ( endTime - startTime ).TotalSeconds,
+                StartTime = startTime,
+                EndTime = endTime,
+                Success = success,
+                AgentConnectionId = Guid.TryParse( connection.ConnectionId, out Guid connId ) ? connId : null,
+                ExitCode = exitCode,
+                ErrorCategory = errorCategory,
+                Output = outputPreview,
+                OutputPath = AgentJobOutputWriter.GetRelativeOutputPath( jobId ),
+                ScheduleId = scheduleId,
+            };
+
+            if (!string.IsNullOrWhiteSpace( workflowRunId ) && Guid.TryParse( workflowRunId, out Guid wfRunId )) {
+                job.WorkflowRunId = wfRunId;
+            }
+
+            _ = dbContext.Jobs.Add( job );
+            _ = await dbContext.SaveChangesAsync( ct );
+
+            if (logger.IsEnabled( LogLevel.Debug )) {
+                logger.LogDebug( "Persisted job {JobId} locally for task {TaskId}.", jobId, taskId );
+            }
+        } catch (Exception ex) {
+            logger.LogWarning( ex, "Failed to persist job {JobId} locally. Server report will still be attempted.", jobId );
         }
     }
 
@@ -910,6 +1143,7 @@ public sealed class ScheduleEvaluatorService(
             DbSchedule = new DbSchedule {
                 Id = Guid.TryParse( def.ScheduleId, out Guid sid ) ? sid : Guid.Empty,
                 StopTaskAfterMinutes = def.StopTaskAfterMinutes,
+                CatchUpEnabled = def.CatchUpEnabled,
             },
             StartDateTime = startDt,
             Expiration = expiration,

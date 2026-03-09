@@ -64,18 +64,21 @@ public sealed class ScheduleSyncGrpcService(
         AgentScheduleResponse response = new( );
 
         // ── Standalone tasks with schedules ──
-        List<WerkrTask> tasks = await dbContext.Tasks
+        List<TaskSchedule> taskSchedules = await dbContext.TaskSchedules
             .AsNoTracking( )
-            .Where( t => t.Enabled && t.ScheduleId != null )
+            .Include( ts => ts.Task )
+            .Include( ts => ts.Schedule )
+            .Where( ts => ts.Task!.Enabled )
             .ToListAsync( context.CancellationToken );
 
-        foreach (WerkrTask task in tasks) {
+        foreach (TaskSchedule ts in taskSchedules) {
+            WerkrTask task = ts.Task!;
             // Tag intersection (in-memory for JSON column compatibility)
             if (!task.TargetTags.Any( tag => agentTags.Contains( tag.Trim( ) ) )) {
                 continue;
             }
 
-            Schedule? schedule = await scheduleService.GetByIdAsync( task.ScheduleId!.Value, context.CancellationToken );
+            Schedule? schedule = await scheduleService.GetByIdAsync( ts.ScheduleId, context.CancellationToken );
             if (schedule is null) {
                 continue;
             }
@@ -85,16 +88,19 @@ public sealed class ScheduleSyncGrpcService(
         }
 
         // ── Workflows with schedules ──
-        List<Workflow> workflows = await dbContext.Workflows
+        List<WorkflowSchedule> workflowSchedules = await dbContext.WorkflowSchedules
             .AsNoTracking( )
-            .Include( w => w.Steps )
-                .ThenInclude( s => s.Task )
-            .Include( w => w.Steps )
-                .ThenInclude( s => s.Dependencies )
-            .Where( w => w.Enabled && w.ScheduleId != null )
+            .Include( ws => ws.Workflow )
+                .ThenInclude( w => w!.Steps )
+                    .ThenInclude( s => s.Task )
+            .Include( ws => ws.Workflow )
+                .ThenInclude( w => w!.Steps )
+                    .ThenInclude( s => s.Dependencies )
+            .Where( ws => ws.Workflow!.Enabled )
             .ToListAsync( context.CancellationToken );
 
-        foreach (Workflow workflow in workflows) {
+        foreach (WorkflowSchedule ws in workflowSchedules) {
+            Workflow workflow = ws.Workflow!;
             // Check if any task in the workflow matches the agent's tags
             bool anyMatch = workflow.Steps.Any( step =>
                 step.Task is not null &&
@@ -103,7 +109,7 @@ public sealed class ScheduleSyncGrpcService(
                 continue;
             }
 
-            Schedule? schedule = await scheduleService.GetByIdAsync( workflow.ScheduleId!.Value, context.CancellationToken );
+            Schedule? schedule = await scheduleService.GetByIdAsync( ws.ScheduleId, context.CancellationToken );
             if (schedule is null) {
                 continue;
             }
@@ -199,6 +205,9 @@ public sealed class ScheduleSyncGrpcService(
         // Holiday calendar metadata
         def.HasHolidayCalendar = schedule.HolidayCalendar is not null;
         def.HolidayCalendarMode = schedule.HolidayCalendarMode?.ToString( ) ?? string.Empty;
+
+        // Catch-up flag
+        def.CatchUpEnabled = schedule.DbSchedule.CatchUpEnabled;
 
         return def;
     }

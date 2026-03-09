@@ -36,13 +36,6 @@
                     <InputTextArea id="desc" class="form-control" rows="2" @bind-Value="_model!.Description" />
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label" for="scheduleId">Schedule ID (optional GUID)</label>
-                        <InputText id="scheduleId" class="form-control" @bind-Value="_model!.ScheduleId" />
-                    </div>
-                </div>
-
                 <div class="mb-3">
                     <ToggleSwitch @bind-Value="_model!.Enabled" Label="Enabled" />
                 </div>
@@ -295,7 +288,6 @@
             _model = new WorkflowFormModel {
                 Name = _workflow.Name,
                 Description = _workflow.Description,
-                ScheduleId = _workflow.ScheduleId?.ToString( ),
                 Enabled = _workflow.Enabled,
             };
             _runs = await client.GetFromJsonAsync<List<WorkflowRunDto>>( $"/api/workflows/{Id}/runs" );
@@ -313,12 +305,10 @@
         _errorMessage = null;
         _successMessage = null;
         try {
-            Guid? scheduleId = Guid.TryParse( _model.ScheduleId, out Guid sid ) ? sid : null;
             WorkflowUpdateRequest request = new(
                 Name: _model.Name,
                 Description: _model.Description,
-                Enabled: _model.Enabled,
-                ScheduleId: scheduleId );
+                Enabled: _model.Enabled );
 
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/workflows/{Id}", request );
@@ -432,7 +422,6 @@
     private sealed class WorkflowFormModel {
         public string Name { get; set; } = "";
         public string? Description { get; set; }
-        public string? ScheduleId { get; set; }
         public bool Enabled { get; set; } = true;
     }
 

@@ -67,15 +67,14 @@ public sealed class AgentGrpcClientFactory(
     }
 
     /// <summary>
-    /// Creates a <see cref="WorkflowExecution.WorkflowExecutionClient"/> for requesting workflow execution on the Server.
+    /// Creates an <see cref="OutputStreamingService.OutputStreamingServiceClient"/> for
+    /// pushing real-time output to the Server.
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A configured gRPC client.</returns>
-    public async Task<WorkflowExecution.WorkflowExecutionClient> CreateWorkflowExecutionClientAsync(
-        CancellationToken ct = default
-    ) {
+    public async Task<OutputStreamingService.OutputStreamingServiceClient> CreateOutputStreamingClientAsync( CancellationToken ct = default ) {
         await EnsureInitializedAsync( ct );
-        return new WorkflowExecution.WorkflowExecutionClient( _channel );
+        return new OutputStreamingService.OutputStreamingServiceClient( _channel );
     }
 
     /// <summary>

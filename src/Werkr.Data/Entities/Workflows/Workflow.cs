@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Werkr.Data.Entities.Interfaces;
-using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Tasks;
 
 namespace Werkr.Data.Entities.Workflows;
@@ -29,13 +28,6 @@ public class Workflow : ConcurrencyBase, IKey<long> {
     /// <summary>Whether the workflow is enabled.</summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>Foreign key to schedule for automated workflow execution.</summary>
-    public Guid? ScheduleId { get; set; }
-
-    /// <summary>Navigation to the schedule.</summary>
-    [ForeignKey( nameof( ScheduleId ) )]
-    public DbSchedule? Schedule { get; set; }
-
     /// <summary>Navigation property for workflow steps.</summary>
     public ICollection<WorkflowStep> Steps { get; set; } = [];
 
@@ -44,4 +36,7 @@ public class Workflow : ConcurrencyBase, IKey<long> {
 
     /// <summary>Navigation property for workflow runs.</summary>
     public ICollection<WorkflowRun> Runs { get; set; } = [];
+
+    /// <summary>Navigation property for schedule links (many-to-many via WorkflowSchedule).</summary>
+    public ICollection<WorkflowSchedule> WorkflowSchedules { get; set; } = [];
 }

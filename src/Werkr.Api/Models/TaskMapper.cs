@@ -50,7 +50,6 @@ internal static class TaskMapper {
             Enabled = request.Enabled,
             TimeoutMinutes = request.TimeoutMinutes,
             SuccessCriteria = request.SuccessCriteria,
-            ScheduleId = request.ScheduleId,
             WorkflowId = request.WorkflowId,
             ActionSubType = request.ActionSubType,
             ActionParameters = request.ActionParameters,
@@ -72,7 +71,6 @@ internal static class TaskMapper {
             Enabled = request.Enabled,
             TimeoutMinutes = request.TimeoutMinutes,
             SuccessCriteria = request.SuccessCriteria,
-            ScheduleId = request.ScheduleId,
             WorkflowId = request.WorkflowId,
             ActionSubType = request.ActionSubType,
             ActionParameters = request.ActionParameters,
@@ -95,7 +93,6 @@ internal static class TaskMapper {
             SuccessCriteria: task.SuccessCriteria,
             EffectiveSuccessCriteria: SuccessCriteriaEvaluator.DescribeEffectiveCriteria(
                 task.ActionType, task.SuccessCriteria ),
-            ScheduleId: task.ScheduleId,
             WorkflowId: task.WorkflowId,
             ActionSubType: task.ActionSubType,
             ActionParameters: task.ActionParameters );

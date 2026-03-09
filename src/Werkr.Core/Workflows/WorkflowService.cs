@@ -76,7 +76,6 @@ public sealed class WorkflowService(
         existing.Name = workflow.Name;
         existing.Description = workflow.Description;
         existing.Enabled = workflow.Enabled;
-        existing.ScheduleId = workflow.ScheduleId;
 
         _ = await dbContext.SaveChangesAsync( ct );
 
@@ -128,7 +127,8 @@ public sealed class WorkflowService(
                 .ThenInclude( s => s.Dependencies )
             .Include( w => w.Steps )
                 .ThenInclude( s => s.Task )
-            .Include( w => w.Schedule )
+            .Include( w => w.WorkflowSchedules )
+                .ThenInclude( ws => ws.Schedule )
             .AsNoTracking( )
             .FirstOrDefaultAsync(
                 w => w.Id == workflowId,
@@ -144,7 +144,8 @@ public sealed class WorkflowService(
                 .ThenInclude( s => s.Dependencies )
             .Include( w => w.Steps )
                 .ThenInclude( s => s.Task )
-            .Include( w => w.Schedule )
+            .Include( w => w.WorkflowSchedules )
+                .ThenInclude( ws => ws.Schedule )
             .AsNoTracking( )
             .OrderBy( w => w.Name )
             .ToListAsync( ct );
