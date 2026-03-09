@@ -39,9 +39,10 @@ public sealed class ScheduleInvalidationDispatcher(
         WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
 
         // Find tasks referencing this schedule to get their TargetTags
-        List<WerkrTask> affectedTasks = await db.Tasks
+        List<WerkrTask> affectedTasks = await db.TaskSchedules
             .AsNoTracking( )
-            .Where( t => t.ScheduleId == scheduleId )
+            .Where( ts => ts.ScheduleId == scheduleId )
+            .Select( ts => ts.Task! )
             .ToListAsync( ct );
 
         if (affectedTasks.Count == 0) {

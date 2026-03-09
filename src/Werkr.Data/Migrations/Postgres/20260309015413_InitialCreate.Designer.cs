@@ -12,7 +12,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Postgres
 {
     [DbContext(typeof(PostgresWerkrDbContext))]
-    [Migration("20260308033431_InitialCreate")]
+    [Migration("20260309015413_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -259,6 +259,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<bool>("CatchUpEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("catch_up_enabled");
 
                     b.Property<string>("Created")
                         .IsRequired()
@@ -736,6 +740,34 @@ namespace Werkr.Data.Migrations.Postgres
                     b.ToTable("weekly_recurrence", "werkr");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>
+                {
+                    b.Property<long>("TaskId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("task_id");
+
+                    b.Property<Guid>("ScheduleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("schedule_id");
+
+                    b.Property<string>("CreatedAtUtc")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<bool>("IsOneTime")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_one_time");
+
+                    b.HasKey("TaskId", "ScheduleId")
+                        .HasName("pk_task_schedules");
+
+                    b.HasIndex("ScheduleId")
+                        .HasDatabaseName("ix_task_schedules_schedule_id");
+
+                    b.ToTable("task_schedules", "werkr");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -784,6 +816,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("double precision")
                         .HasColumnName("runtime_seconds");
 
+                    b.Property<Guid?>("ScheduleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("schedule_id");
+
                     b.Property<string>("StartTime")
                         .IsRequired()
                         .HasColumnType("text")
@@ -817,6 +853,9 @@ namespace Werkr.Data.Migrations.Postgres
 
                     b.HasIndex("AgentConnectionId")
                         .HasDatabaseName("ix_jobs_agent_connection_id");
+
+                    b.HasIndex("ScheduleId")
+                        .HasDatabaseName("ix_jobs_schedule_id");
 
                     b.HasIndex("TaskId")
                         .HasDatabaseName("ix_jobs_task_id");
@@ -875,6 +914,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("enabled");
 
+                    b.Property<bool>("IsEphemeral")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_ephemeral");
+
                     b.Property<string>("LastUpdated")
                         .IsRequired()
                         .HasColumnType("text")
@@ -885,10 +928,6 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
-
-                    b.Property<Guid?>("ScheduleId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("schedule_id");
 
                     b.Property<string>("SuccessCriteria")
                         .HasMaxLength(500)
@@ -961,10 +1000,6 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
 
-                    b.Property<Guid?>("ScheduleId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("schedule_id");
-
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("integer")
@@ -972,9 +1007,6 @@ namespace Werkr.Data.Migrations.Postgres
 
                     b.HasKey("Id")
                         .HasName("pk_workflows");
-
-                    b.HasIndex("ScheduleId")
-                        .HasDatabaseName("ix_workflows_schedule_id");
 
                     b.ToTable("workflows", "werkr");
                 });
@@ -1026,6 +1058,34 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasDatabaseName("ix_workflow_runs_workflow_id");
 
                     b.ToTable("workflow_runs", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowSchedule", b =>
+                {
+                    b.Property<long>("WorkflowId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("workflow_id");
+
+                    b.Property<Guid>("ScheduleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("schedule_id");
+
+                    b.Property<string>("CreatedAtUtc")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<bool>("IsOneTime")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_one_time");
+
+                    b.HasKey("WorkflowId", "ScheduleId")
+                        .HasName("pk_workflow_schedules");
+
+                    b.HasIndex("ScheduleId")
+                        .HasDatabaseName("ix_workflow_schedules_schedule_id");
+
+                    b.ToTable("workflow_schedules", "werkr");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStep", b =>
@@ -1258,12 +1318,38 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Schedule");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
+                        .WithMany("TaskSchedules")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_schedules_schedules_schedule_id");
+
+                    b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
+                        .WithMany("TaskSchedules")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_schedules_tasks_task_id");
+
+                    b.Navigation("Schedule");
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrJob", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "AgentConnection")
                         .WithMany()
                         .HasForeignKey("AgentConnectionId")
                         .HasConstraintName("fk_jobs_registered_connections_agent_connection_id");
+
+                    b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
+                        .HasConstraintName("fk_jobs_schedules_schedule_id");
 
                     b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
                         .WithMany()
@@ -1278,6 +1364,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasConstraintName("fk_jobs_workflow_runs_workflow_run_id");
 
                     b.Navigation("AgentConnection");
+
+                    b.Navigation("Schedule");
 
                     b.Navigation("Task");
 
@@ -1294,16 +1382,6 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Workflow");
                 });
 
-            modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
-                {
-                    b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
-                        .WithMany()
-                        .HasForeignKey("ScheduleId")
-                        .HasConstraintName("fk_workflows_schedules_schedule_id");
-
-                    b.Navigation("Schedule");
-                });
-
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRun", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
@@ -1312,6 +1390,27 @@ namespace Werkr.Data.Migrations.Postgres
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_workflow_runs_workflows_workflow_id");
+
+                    b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowSchedule", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
+                        .WithMany("WorkflowSchedules")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_schedules_schedules_schedule_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
+                        .WithMany("WorkflowSchedules")
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_schedules_workflows_workflow_id");
+
+                    b.Navigation("Schedule");
 
                     b.Navigation("Workflow");
                 });
@@ -1379,7 +1478,11 @@ namespace Werkr.Data.Migrations.Postgres
 
                     b.Navigation("StartDateTime");
 
+                    b.Navigation("TaskSchedules");
+
                     b.Navigation("WeeklyRecurrence");
+
+                    b.Navigation("WorkflowSchedules");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.HolidayCalendar", b =>
@@ -1396,6 +1499,11 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("GeneratedDates");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrTask", b =>
+                {
+                    b.Navigation("TaskSchedules");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
                 {
                     b.Navigation("Runs");
@@ -1403,6 +1511,8 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Steps");
 
                     b.Navigation("Tasks");
+
+                    b.Navigation("WorkflowSchedules");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRun", b =>

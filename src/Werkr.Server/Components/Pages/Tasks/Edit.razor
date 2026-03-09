@@ -91,15 +91,6 @@
 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label class="form-label" for="scheduleId">Schedule</label>
-                        <InputSelect id="scheduleId" class="form-select" @bind-Value="_model.ScheduleId">
-                            <option value="">None</option>
-                            @foreach ( ScheduleDto s in _schedules ) {
-                                <option value="@s.Id">@s.Name</option>
-                            }
-                        </InputSelect>
-                    </div>
-                    <div class="col-md-6">
                         <label class="form-label">Success Criteria</label>
                         <SuccessCriteriaEditor @bind-Value="_model.SuccessCriteria" ActionType="@_model.ActionType" />
                     </div>
@@ -190,7 +181,6 @@
 
     private TaskFormModel? _model;
     private List<JobListDto>? _jobs;
-    private List<ScheduleDto> _schedules = [];
     private List<WorkflowDto> _workflows = [];
     private int? _syncIntervalMinutes;
     private string? _errorMessage;
@@ -209,8 +199,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
 
-            // Load schedules for dropdown
-            _schedules = await client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" ) ?? [];
+            // Load workflows for dropdown
             _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" ) ?? [];
 
             TaskDto? dto = await client.GetFromJsonAsync<TaskDto>( $"/api/tasks/{Id}" );
@@ -273,7 +262,6 @@
         public bool Enabled { get; set; } = true;
         public long? TimeoutMinutes { get; set; }
         public string? SuccessCriteria { get; set; }
-        public string? ScheduleId { get; set; }
         public string? WorkflowId { get; set; }
         public string ActionSubType { get; set; } = "";
         public string? ActionParameters { get; set; }
@@ -289,7 +277,6 @@
                 Enabled = dto.Enabled,
                 TimeoutMinutes = dto.TimeoutMinutes,
                 SuccessCriteria = dto.SuccessCriteria,
-                ScheduleId = dto.ScheduleId?.ToString( ),
                 WorkflowId = dto.WorkflowId?.ToString( ),
                 ActionSubType = dto.ActionSubType ?? "",
                 ActionParameters = dto.ActionParameters,
@@ -305,7 +292,6 @@
                 ? []
                 : TargetTags.Split( ',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries );
 
-            Guid? scheduleId = Guid.TryParse( ScheduleId, out Guid sid ) ? sid : null;
             long? workflowId = long.TryParse( WorkflowId, out long wid ) ? wid : null;
 
             return new TaskUpdateRequest(
@@ -318,7 +304,6 @@
                 Enabled: Enabled,
                 TimeoutMinutes: TimeoutMinutes,
                 SuccessCriteria: SuccessCriteria,
-                ScheduleId: scheduleId,
                 WorkflowId: workflowId,
                 ActionSubType: string.IsNullOrWhiteSpace( ActionSubType ) ? null : ActionSubType,
                 ActionParameters: string.IsNullOrWhiteSpace( ActionParameters ) ? null : ActionParameters );

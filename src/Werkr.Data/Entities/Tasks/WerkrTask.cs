@@ -28,9 +28,6 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
     /// <summary>The type of action this task performs.</summary>
     public TaskActionType ActionType { get; set; }
 
-    /// <summary>Foreign key to the schedule, if scheduled.</summary>
-    public Guid? ScheduleId { get; set; }
-
     /// <summary>Foreign key to the parent workflow, if part of one.</summary>
     public long? WorkflowId { get; set; }
 
@@ -55,6 +52,12 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
 
     /// <summary>Whether this task is enabled for scheduled execution.</summary>
     public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// Indicates this task was created for a single ad-hoc execution
+    /// (e.g. console command) and should not appear in the normal task list.
+    /// </summary>
+    public bool IsEphemeral { get; set; }
 
     /// <summary>
     /// Maximum minutes the task may run before being cancelled.
@@ -93,4 +96,7 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
     /// <summary>Navigation property for parent workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow? Workflow { get; set; }
+
+    /// <summary>Navigation property for schedule links (many-to-many via TaskSchedule).</summary>
+    public ICollection<TaskSchedule> TaskSchedules { get; set; } = [];
 }

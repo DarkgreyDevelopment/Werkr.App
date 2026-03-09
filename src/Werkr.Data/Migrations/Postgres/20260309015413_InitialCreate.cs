@@ -4,6 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 #nullable disable
 
 namespace Werkr.Data.Migrations.Postgres;
+
 /// <inheritdoc />
 public partial class InitialCreate : Migration {
     /// <inheritdoc />
@@ -85,12 +86,30 @@ public partial class InitialCreate : Migration {
                 id = table.Column<Guid>( type: "uuid", nullable: false ),
                 name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
                 stop_task_after_minutes = table.Column<long>( type: "bigint", nullable: false ),
+                catch_up_enabled = table.Column<bool>( type: "boolean", nullable: false ),
                 created = table.Column<string>( type: "text", nullable: false ),
                 last_updated = table.Column<string>( type: "text", nullable: false ),
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
                 _ = table.PrimaryKey( "pk_schedules", x => x.id );
+            } );
+
+        _ = migrationBuilder.CreateTable(
+            name: "workflows",
+            schema: "werkr",
+            columns: table => new {
+                id = table.Column<long>( type: "bigint", nullable: false )
+                    .Annotation( "Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn ),
+                name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
+                description = table.Column<string>( type: "character varying(2000)", maxLength: 2000, nullable: false ),
+                enabled = table.Column<bool>( type: "boolean", nullable: false ),
+                created = table.Column<string>( type: "text", nullable: false ),
+                last_updated = table.Column<string>( type: "text", nullable: false ),
+                version = table.Column<int>( type: "integer", nullable: false )
+            },
+            constraints: table => {
+                _ = table.PrimaryKey( "pk_workflows", x => x.id );
             } );
 
         _ = migrationBuilder.CreateTable(
@@ -310,63 +329,6 @@ public partial class InitialCreate : Migration {
             } );
 
         _ = migrationBuilder.CreateTable(
-            name: "workflows",
-            schema: "werkr",
-            columns: table => new {
-                id = table.Column<long>( type: "bigint", nullable: false )
-                    .Annotation( "Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn ),
-                name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
-                description = table.Column<string>( type: "character varying(2000)", maxLength: 2000, nullable: false ),
-                enabled = table.Column<bool>( type: "boolean", nullable: false ),
-                schedule_id = table.Column<Guid>( type: "uuid", nullable: true ),
-                created = table.Column<string>( type: "text", nullable: false ),
-                last_updated = table.Column<string>( type: "text", nullable: false ),
-                version = table.Column<int>( type: "integer", nullable: false )
-            },
-            constraints: table => {
-                _ = table.PrimaryKey( "pk_workflows", x => x.id );
-                _ = table.ForeignKey(
-                    name: "fk_workflows_schedules_schedule_id",
-                    column: x => x.schedule_id,
-                    principalSchema: "werkr",
-                    principalTable: "schedules",
-                    principalColumn: "id" );
-            } );
-
-        _ = migrationBuilder.CreateTable(
-            name: "holiday_dates",
-            schema: "werkr",
-            columns: table => new {
-                id = table.Column<long>( type: "bigint", nullable: false )
-                    .Annotation( "Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn ),
-                holiday_calendar_id = table.Column<Guid>( type: "uuid", nullable: false ),
-                holiday_rule_id = table.Column<long>( type: "bigint", nullable: true ),
-                date = table.Column<DateOnly>( type: "date", nullable: false ),
-                name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
-                year = table.Column<int>( type: "integer", nullable: false ),
-                window_start = table.Column<TimeOnly>( type: "time without time zone", nullable: true ),
-                window_end = table.Column<TimeOnly>( type: "time without time zone", nullable: true ),
-                window_time_zone_id = table.Column<string>( type: "character varying(128)", maxLength: 128, nullable: true )
-            },
-            constraints: table => {
-                _ = table.PrimaryKey( "pk_holiday_dates", x => x.id );
-                _ = table.ForeignKey(
-                    name: "fk_holiday_dates_holiday_calendars_holiday_calendar_id",
-                    column: x => x.holiday_calendar_id,
-                    principalSchema: "werkr",
-                    principalTable: "holiday_calendars",
-                    principalColumn: "id",
-                    onDelete: ReferentialAction.Cascade );
-                _ = table.ForeignKey(
-                    name: "fk_holiday_dates_holiday_rules_holiday_rule_id",
-                    column: x => x.holiday_rule_id,
-                    principalSchema: "werkr",
-                    principalTable: "holiday_rules",
-                    principalColumn: "id",
-                    onDelete: ReferentialAction.SetNull );
-            } );
-
-        _ = migrationBuilder.CreateTable(
             name: "tasks",
             schema: "werkr",
             columns: table => new {
@@ -375,12 +337,12 @@ public partial class InitialCreate : Migration {
                 name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
                 description = table.Column<string>( type: "character varying(2000)", maxLength: 2000, nullable: false ),
                 action_type = table.Column<string>( type: "text", nullable: false ),
-                schedule_id = table.Column<Guid>( type: "uuid", nullable: true ),
                 workflow_id = table.Column<long>( type: "bigint", nullable: true ),
                 content = table.Column<string>( type: "character varying(8000)", maxLength: 8000, nullable: false ),
                 arguments = table.Column<string>( type: "text", nullable: true ),
                 target_tags = table.Column<string>( type: "text", nullable: false ),
                 enabled = table.Column<bool>( type: "boolean", nullable: false ),
+                is_ephemeral = table.Column<bool>( type: "boolean", nullable: false ),
                 timeout_minutes = table.Column<long>( type: "bigint", nullable: true ),
                 sync_interval_minutes = table.Column<int>( type: "integer", nullable: false ),
                 success_criteria = table.Column<string>( type: "character varying(500)", maxLength: 500, nullable: true ),
@@ -420,6 +382,93 @@ public partial class InitialCreate : Migration {
                     column: x => x.workflow_id,
                     principalSchema: "werkr",
                     principalTable: "workflows",
+                    principalColumn: "id",
+                    onDelete: ReferentialAction.Cascade );
+            } );
+
+        _ = migrationBuilder.CreateTable(
+            name: "workflow_schedules",
+            schema: "werkr",
+            columns: table => new {
+                workflow_id = table.Column<long>( type: "bigint", nullable: false ),
+                schedule_id = table.Column<Guid>( type: "uuid", nullable: false ),
+                created_at_utc = table.Column<string>( type: "text", nullable: false ),
+                is_one_time = table.Column<bool>( type: "boolean", nullable: false )
+            },
+            constraints: table => {
+                _ = table.PrimaryKey( "pk_workflow_schedules", x => new { x.workflow_id, x.schedule_id } );
+                _ = table.ForeignKey(
+                    name: "fk_workflow_schedules_schedules_schedule_id",
+                    column: x => x.schedule_id,
+                    principalSchema: "werkr",
+                    principalTable: "schedules",
+                    principalColumn: "id",
+                    onDelete: ReferentialAction.Cascade );
+                _ = table.ForeignKey(
+                    name: "fk_workflow_schedules_workflows_workflow_id",
+                    column: x => x.workflow_id,
+                    principalSchema: "werkr",
+                    principalTable: "workflows",
+                    principalColumn: "id",
+                    onDelete: ReferentialAction.Cascade );
+            } );
+
+        _ = migrationBuilder.CreateTable(
+            name: "holiday_dates",
+            schema: "werkr",
+            columns: table => new {
+                id = table.Column<long>( type: "bigint", nullable: false )
+                    .Annotation( "Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn ),
+                holiday_calendar_id = table.Column<Guid>( type: "uuid", nullable: false ),
+                holiday_rule_id = table.Column<long>( type: "bigint", nullable: true ),
+                date = table.Column<DateOnly>( type: "date", nullable: false ),
+                name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
+                year = table.Column<int>( type: "integer", nullable: false ),
+                window_start = table.Column<TimeOnly>( type: "time without time zone", nullable: true ),
+                window_end = table.Column<TimeOnly>( type: "time without time zone", nullable: true ),
+                window_time_zone_id = table.Column<string>( type: "character varying(128)", maxLength: 128, nullable: true )
+            },
+            constraints: table => {
+                _ = table.PrimaryKey( "pk_holiday_dates", x => x.id );
+                _ = table.ForeignKey(
+                    name: "fk_holiday_dates_holiday_calendars_holiday_calendar_id",
+                    column: x => x.holiday_calendar_id,
+                    principalSchema: "werkr",
+                    principalTable: "holiday_calendars",
+                    principalColumn: "id",
+                    onDelete: ReferentialAction.Cascade );
+                _ = table.ForeignKey(
+                    name: "fk_holiday_dates_holiday_rules_holiday_rule_id",
+                    column: x => x.holiday_rule_id,
+                    principalSchema: "werkr",
+                    principalTable: "holiday_rules",
+                    principalColumn: "id",
+                    onDelete: ReferentialAction.SetNull );
+            } );
+
+        _ = migrationBuilder.CreateTable(
+            name: "task_schedules",
+            schema: "werkr",
+            columns: table => new {
+                task_id = table.Column<long>( type: "bigint", nullable: false ),
+                schedule_id = table.Column<Guid>( type: "uuid", nullable: false ),
+                created_at_utc = table.Column<string>( type: "text", nullable: false ),
+                is_one_time = table.Column<bool>( type: "boolean", nullable: false )
+            },
+            constraints: table => {
+                _ = table.PrimaryKey( "pk_task_schedules", x => new { x.task_id, x.schedule_id } );
+                _ = table.ForeignKey(
+                    name: "fk_task_schedules_schedules_schedule_id",
+                    column: x => x.schedule_id,
+                    principalSchema: "werkr",
+                    principalTable: "schedules",
+                    principalColumn: "id",
+                    onDelete: ReferentialAction.Cascade );
+                _ = table.ForeignKey(
+                    name: "fk_task_schedules_tasks_task_id",
+                    column: x => x.task_id,
+                    principalSchema: "werkr",
+                    principalTable: "tasks",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
             } );
@@ -483,6 +532,7 @@ public partial class InitialCreate : Migration {
                 output = table.Column<string>( type: "character varying(2000)", maxLength: 2000, nullable: true ),
                 output_path = table.Column<string>( type: "character varying(512)", maxLength: 512, nullable: true ),
                 workflow_run_id = table.Column<Guid>( type: "uuid", nullable: true ),
+                schedule_id = table.Column<Guid>( type: "uuid", nullable: true ),
                 created = table.Column<string>( type: "text", nullable: false ),
                 last_updated = table.Column<string>( type: "text", nullable: false ),
                 version = table.Column<int>( type: "integer", nullable: false )
@@ -494,6 +544,12 @@ public partial class InitialCreate : Migration {
                     column: x => x.agent_connection_id,
                     principalSchema: "werkr",
                     principalTable: "registered_connections",
+                    principalColumn: "id" );
+                _ = table.ForeignKey(
+                    name: "fk_jobs_schedules_schedule_id",
+                    column: x => x.schedule_id,
+                    principalSchema: "werkr",
+                    principalTable: "schedules",
                     principalColumn: "id" );
                 _ = table.ForeignKey(
                     name: "fk_jobs_tasks_task_id",
@@ -568,6 +624,12 @@ public partial class InitialCreate : Migration {
             column: "agent_connection_id" );
 
         _ = migrationBuilder.CreateIndex(
+            name: "ix_jobs_schedule_id",
+            schema: "werkr",
+            table: "jobs",
+            column: "schedule_id" );
+
+        _ = migrationBuilder.CreateIndex(
             name: "ix_jobs_task_id",
             schema: "werkr",
             table: "jobs",
@@ -618,6 +680,12 @@ public partial class InitialCreate : Migration {
             unique: true );
 
         _ = migrationBuilder.CreateIndex(
+            name: "ix_task_schedules_schedule_id",
+            schema: "werkr",
+            table: "task_schedules",
+            column: "schedule_id" );
+
+        _ = migrationBuilder.CreateIndex(
             name: "ix_tasks_workflow_id",
             schema: "werkr",
             table: "tasks",
@@ -628,6 +696,12 @@ public partial class InitialCreate : Migration {
             schema: "werkr",
             table: "workflow_runs",
             column: "workflow_id" );
+
+        _ = migrationBuilder.CreateIndex(
+            name: "ix_workflow_schedules_schedule_id",
+            schema: "werkr",
+            table: "workflow_schedules",
+            column: "schedule_id" );
 
         _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_step_dependencies_depends_on_step_id",
@@ -652,12 +726,6 @@ public partial class InitialCreate : Migration {
             schema: "werkr",
             table: "workflow_steps",
             column: "workflow_id" );
-
-        _ = migrationBuilder.CreateIndex(
-            name: "ix_workflows_schedule_id",
-            schema: "werkr",
-            table: "workflows",
-            column: "schedule_id" );
     }
 
     /// <inheritdoc />
@@ -703,7 +771,15 @@ public partial class InitialCreate : Migration {
             schema: "werkr" );
 
         _ = migrationBuilder.DropTable(
+            name: "task_schedules",
+            schema: "werkr" );
+
+        _ = migrationBuilder.DropTable(
             name: "weekly_recurrence",
+            schema: "werkr" );
+
+        _ = migrationBuilder.DropTable(
+            name: "workflow_schedules",
             schema: "werkr" );
 
         _ = migrationBuilder.DropTable(
@@ -716,6 +792,10 @@ public partial class InitialCreate : Migration {
 
         _ = migrationBuilder.DropTable(
             name: "workflow_runs",
+            schema: "werkr" );
+
+        _ = migrationBuilder.DropTable(
+            name: "schedules",
             schema: "werkr" );
 
         _ = migrationBuilder.DropTable(
@@ -736,10 +816,6 @@ public partial class InitialCreate : Migration {
 
         _ = migrationBuilder.DropTable(
             name: "workflows",
-            schema: "werkr" );
-
-        _ = migrationBuilder.DropTable(
-            name: "schedules",
             schema: "werkr" );
     }
 }

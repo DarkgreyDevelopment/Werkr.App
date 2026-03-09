@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 #nullable disable
 
 namespace Werkr.Data.Identity.Migrations.Sqlite;
+
 /// <inheritdoc />
 public partial class InitialCreate : Migration {
     /// <inheritdoc />

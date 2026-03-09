@@ -124,6 +124,11 @@ public class Program {
                 builder.Configuration.GetSection( JobOutputOptions.SectionName ) );
             _ = builder.Services.AddSingleton<AgentJobOutputWriter>( );
             _ = builder.Services.AddSingleton<SuccessCriteriaEvaluator>( );
+            _ = builder.Services.AddSingleton<Werkr.Core.Workflows.ConditionEvaluator>( sp =>
+                new Werkr.Core.Workflows.ConditionEvaluator(
+                    sp.GetRequiredService<ILoggerFactory>( ).CreateLogger<Werkr.Core.Workflows.ConditionEvaluator>( ) ) );
+            _ = builder.Services.AddSingleton<WorkflowExecutionService>( );
+            _ = builder.Services.AddSingleton<OutputStreamingService>( );
             _ = builder.Services.AddSingleton( Channel.CreateUnbounded<string>(
                 new UnboundedChannelOptions { SingleReader = true } ) );
             _ = builder.Services.AddHostedService<ScheduleEvaluatorService>( );
@@ -151,9 +156,6 @@ public class Program {
             }
 
             // Map gRPC services
-            _ = app.MapGrpcService<PwshService>( );
-            _ = app.MapGrpcService<SystemShellService>( );
-            _ = app.MapGrpcService<ActionService>( );
             _ = app.MapGrpcService<OutputFetchService>( );
             _ = app.MapGrpcService<ScheduleInvalidationService>( );
             _ = app.MapGrpcService<ConnectionManagementService>( );
@@ -165,6 +167,10 @@ public class Program {
             _ = app.MapRegistrationEndpoints( );
 
             _ = app.MapGet( "/", GetAgentArt );
+
+            // Start the output streaming service (opens persistent gRPC stream to server)
+            OutputStreamingService outputStreaming = app.Services.GetRequiredService<OutputStreamingService>( );
+            outputStreaming.Start( app.Lifetime.ApplicationStopping );
 
             await app.RunAsync( );
         } catch (Exception ex) {

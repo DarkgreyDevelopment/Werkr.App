@@ -1,6 +1,4 @@
-﻿@using System.Reflection
-
-<div class="top-row ps-3 navbar navbar-dark">
+﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">
             <span class="navbar-brand-text">Werkr</span>
@@ -133,19 +131,16 @@
             </NotAuthorized>
         </AuthorizeView>
     </nav>
+</div>
 
-    @* ── Sidebar footer ── *@
-    <div class="sidebar-footer">
-        <div class="theme-toggle d-flex align-items-center gap-2">
-            <span class="theme-icon" aria-hidden="true">&#9728;</span>
-            <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" role="switch" id="theme-toggle" />
-            </div>
-            <span class="theme-icon" aria-hidden="true">&#9790;</span>
-            <span class="theme-label">Theme</span>
+@* ── Sidebar footer ── *@
+<div class="sidebar-footer">
+    <div class="theme-toggle d-flex align-items-center gap-2">
+        <span class="theme-icon" aria-hidden="true">&#9728;</span>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="theme-toggle" />
         </div>
-        <div class="version-text">
-            Werkr @(Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "dev")
-        </div>
+        <span class="theme-icon" aria-hidden="true">&#9790;</span>
+        <span class="theme-label">Theme</span>
     </div>
 </div>

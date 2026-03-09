@@ -1,13 +1,17 @@
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
+using Werkr.Api.Services;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
+
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
+using Werkr.Core.Scheduling;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
+using Werkr.Data.Entities.Tasks;
 
 // KeyRotationService used for POST /api/agents/{id}/rotate-key
 
@@ -340,6 +344,9 @@ internal static class AgentEndpoints {
 
     /// <summary>
     /// Registers the command execution endpoint for dispatching commands to a specific agent.
+    /// Creates an ephemeral task and a one-time schedule so the agent picks it up
+    /// through the normal schedule engine.  Returns 202 Accepted with the task and
+    /// schedule IDs for subsequent polling.
     /// </summary>
     private static void MapAgentExecute( WebApplication app ) {
         _ = app.MapPost(
@@ -347,23 +354,32 @@ internal static class AgentEndpoints {
             async (
                 Guid agentId,
                 ExecuteCommandRequest request,
-                CommandDispatcher commandDispatcher,
+                RunNowService runNowService,
+                ScheduleInvalidationDispatcher invalidationDispatcher,
+                WerkrDbContext dbContext,
                 CancellationToken ct
             ) => {
-                using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource( ct );
-                if (request.TimeoutMinutes > 0) {
-                    cts.CancelAfter( TimeSpan.FromMinutes( request.TimeoutMinutes ) );
-                }
+                TaskActionType actionType = request.ActionType.HasValue
+                    ? (TaskActionType) request.ActionType.Value
+                    : TaskActionType.ShellCommand;
 
-                OperatorType operatorType = Enum.Parse<OperatorType>( request.OperatorType, ignoreCase: true );
-                List<OperatorOutputLine> results = [];
+                // Look up the agent's tags so the ephemeral task routes to this agent
+                string[]? agentTags = await dbContext.RegisteredConnections
+                    .AsNoTracking( )
+                    .Where( c => c.Id == agentId && c.IsServer )
+                    .Select( c => c.Tags )
+                    .FirstOrDefaultAsync( ct );
 
-                await foreach (OperatorOutput output in commandDispatcher.ExecuteCommandAsync(
-                    agentId, operatorType, request.Command, cts.Token )) {
-                    results.Add( new OperatorOutputLine( output.LogLevel, output.Message, output.Timestamp ) );
-                }
+                (long taskId, Guid scheduleId) = await runNowService.CreateEphemeralTaskAsync(
+                    request.Command, actionType, agentTags, ct );
 
-                return Results.Ok( new ExecuteCommandResponse( true, results ) );
+                await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
+
+                return Results.Accepted( value: new {
+                    taskId,
+                    scheduleId,
+                    message = "Ephemeral task created. Execution will begin on the next agent sync.",
+                } );
             } )
         .WithName( "ExecuteCommand" )
         .RequireAuthorization( Policies.CanExecute );

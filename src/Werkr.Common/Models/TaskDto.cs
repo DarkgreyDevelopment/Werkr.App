@@ -14,7 +14,6 @@ public sealed record TaskDto(
     int SyncIntervalMinutes,
     string? SuccessCriteria,
     string EffectiveSuccessCriteria,
-    Guid? ScheduleId,
     long? WorkflowId,
     string? ActionSubType = null,
     string? ActionParameters = null

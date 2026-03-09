@@ -13,11 +13,10 @@ namespace Werkr.Core.Tasks;
 /// Custom criteria expressions are predefined string keys evaluated against the typed result.
 /// </summary>
 /// <param name="logger">Logger instance.</param>
-public sealed partial class SuccessCriteriaEvaluator(ILogger<SuccessCriteriaEvaluator> logger)
-{
+public sealed partial class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEvaluator> logger ) {
 
-    [GeneratedRegex(@"^exitCode\s*==\s*(-?\d+)$", RegexOptions.IgnoreCase)]
-    private static partial Regex ExitCodePattern();
+    [GeneratedRegex( @"^exitCode\s*==\s*(-?\d+)$", RegexOptions.IgnoreCase )]
+    private static partial Regex ExitCodePattern( );
 
     /// <summary>
     /// Evaluates success for a completed job.
@@ -125,13 +124,12 @@ public sealed partial class SuccessCriteriaEvaluator(ILogger<SuccessCriteriaEval
 
         // "exitCode == N" — exit code must equal the specified integer
         Match exitCodeMatch = ExitCodePattern().Match(trimmed);
-        if (exitCodeMatch.Success && int.TryParse(exitCodeMatch.Groups[1].Value, out int expectedCode))
-        {
+        if (exitCodeMatch.Success && int.TryParse( exitCodeMatch.Groups[1].Value, out int expectedCode )) {
             bool success = exitCode.HasValue && exitCode.Value == expectedCode;
             if (!success && logger.IsEnabled( LogLevel.Debug )) {
                 logger.LogDebug(
                     "Criteria 'exitCode == {Expected}' failed: exitCode={Actual}.",
-                    expectedCode.ToString(),
+                    expectedCode.ToString( ),
                     exitCode?.ToString( ) ?? "null"
                 );
             }

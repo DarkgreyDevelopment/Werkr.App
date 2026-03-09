@@ -1,7 +1,8 @@
 using Werkr.Api.Models;
+using Werkr.Api.Services;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
-using Werkr.Core.Communication;
+using Werkr.Core.Scheduling;
 using Werkr.Core.Tasks;
 using Werkr.Data.Entities.Tasks;
 
@@ -105,27 +106,37 @@ internal static class TaskEndpoints {
         .WithName( "SetTaskEnabled" )
         .RequireAuthorization( Policies.CanUpdate );
 
+        // ── Run Now: creates a one-time schedule and invalidates agents ──
         _ = app.MapPost( "/api/tasks/{id}/run", async (
             long id,
             TaskRunRequest? request,
-            JobExecutionService jobExecutionService,
+            RunNowService runNowService,
+            ScheduleInvalidationDispatcher invalidationDispatcher,
             CancellationToken ct
         ) => {
             try {
-                WerkrJob job = await jobExecutionService.ExecuteAsync( id, ct );
-                return Results.Ok( TaskMapper.ToJobDto( job ) );
+                Guid scheduleId = await runNowService.CreateTaskRunNowAsync( id, ct );
+                await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
+                return Results.Accepted( $"/api/tasks/{id}/latest-job",
+                    new { scheduleId, message = "One-time schedule created. Execution will begin on the next agent sync." } );
             } catch (KeyNotFoundException) {
-                return Results.NotFound( new { message = $"Task with Id={id} was not found." } );
-            } catch (InvalidOperationException ex) {
-                return Results.Conflict( new { message = ex.Message } );
-            } catch (CommandDispatcherException ex) {
-                return Results.Json(
-                    new { message = ex.UserMessage },
-                    statusCode: 502 );
+                return Results.NotFound( );
             }
         } )
         .WithName( "RunTask" )
         .RequireAuthorization( Policies.CanExecute );
+
+        // ── Latest Job: convenience endpoint for polling after Run Now ──
+        _ = app.MapGet( "/api/tasks/{id}/latest-job", async (
+            long id,
+            JobExecutionService jobService,
+            CancellationToken ct
+        ) => {
+            IReadOnlyList<WerkrJob> jobs = await jobService.GetJobHistoryAsync( id, limit: 1, ct );
+            return jobs.Count == 0 ? Results.NotFound( ) : Results.Ok( jobs[0] );
+        } )
+        .WithName( "GetLatestJobForTask" )
+        .RequireAuthorization( Policies.CanRead );
 
         return app;
     }

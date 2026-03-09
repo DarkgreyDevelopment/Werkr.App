@@ -36,6 +36,10 @@ message JobResultRequest {
   string workflow_run_id = 11;
   // Tail preview of the output (last N lines) for quick display without fetching the full log.
   string output_preview = 12;
+  // Agent-assigned job ID. When present, the server upserts using this ID.
+  string job_id = 13;
+  // Schedule ID that triggered this job execution.
+  string schedule_id = 14;
 }
 
 message JobResultResponse {

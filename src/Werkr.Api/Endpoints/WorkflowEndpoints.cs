@@ -1,8 +1,14 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Werkr.Api.Models;
+using Werkr.Api.Services;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
+using Werkr.Core.Communication;
+using Werkr.Core.Scheduling;
 using Werkr.Core.Workflows;
+using Werkr.Data;
 using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Api.Endpoints;
@@ -274,7 +280,8 @@ internal static class WorkflowEndpoints {
         _ = app.MapPost( "/api/workflows/{id}/run", async (
             long id,
             WorkflowService workflowService,
-            WorkflowExecutor workflowExecutor,
+            RunNowService runNowService,
+            ScheduleInvalidationDispatcher invalidationDispatcher,
             CancellationToken ct
         ) => {
             Workflow? workflow = await workflowService.GetByIdAsync( id, ct );
@@ -286,8 +293,10 @@ internal static class WorkflowEndpoints {
                 return Results.BadRequest( new { message = "Workflow is disabled." } );
             }
 
-            WorkflowRun run = await workflowExecutor.ExecuteAsync( workflow, ct );
-            return Results.Ok( WorkflowMapper.ToRunDto( run ) );
+            Guid scheduleId = await runNowService.CreateWorkflowRunNowAsync( id, ct );
+            await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
+            return Results.Accepted( $"/api/workflows/{id}/runs",
+                new { scheduleId, message = "One-time schedule created. Execution will begin on the next agent sync." } );
         } )
         .WithName( "RunWorkflow" )
         .RequireAuthorization( Policies.CanExecute );
@@ -295,11 +304,14 @@ internal static class WorkflowEndpoints {
         _ = app.MapGet( "/api/workflows/{id}/runs", async (
             long id,
             int? limit,
-            WorkflowExecutor workflowExecutor,
+            WerkrDbContext dbContext,
             CancellationToken ct
         ) => {
-            IReadOnlyList<WorkflowRun> runs = await workflowExecutor.GetRunsAsync(
-                    id, limit ?? 50, ct );
+            IReadOnlyList<WorkflowRun> runs = await dbContext.WorkflowRuns.AsNoTracking( )
+                .Where( r => r.WorkflowId == id )
+                .OrderByDescending( r => r.StartTime )
+                .Take( limit ?? 50 )
+                .ToListAsync( ct );
             List<WorkflowRunDto> dtos = [.. runs.Select( WorkflowMapper.ToRunDto )];
             return Results.Ok( dtos );
         } )
@@ -308,10 +320,12 @@ internal static class WorkflowEndpoints {
 
         _ = app.MapGet( "/api/workflows/runs/{runId}", async (
             Guid runId,
-            WorkflowExecutor workflowExecutor,
+            WerkrDbContext dbContext,
             CancellationToken ct
         ) => {
-            WorkflowRun? run = await workflowExecutor.GetRunAsync( runId, ct );
+            WorkflowRun? run = await dbContext.WorkflowRuns.AsNoTracking( )
+                .Include( r => r.Jobs )
+                .FirstOrDefaultAsync( r => r.Id == runId, ct );
             return run is null
                 ? Results.NotFound( )
                 : Results.Ok( WorkflowMapper.ToRunDetailDto( run ) );
@@ -319,16 +333,49 @@ internal static class WorkflowEndpoints {
         .WithName( "GetWorkflowRun" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/workflows/runs/{runId}/stream", (
+        _ = app.MapGet( "/api/workflows/runs/{runId}/stream", async (
             Guid runId,
-            WorkflowRunTracker tracker
+            JobEventBroadcaster broadcaster,
+            WerkrDbContext dbContext,
+            HttpContext httpContext,
+            CancellationToken ct
         ) => {
-            IAsyncEnumerable<WorkflowStepStatusUpdate>? updates = tracker.GetUpdates( runId );
-            return updates is null
-                ? Results.NotFound( )
-                : Results.Ok( updates );
+            // Verify the run exists before opening the SSE stream.
+            bool exists = await dbContext.WorkflowRuns.AsNoTracking( )
+                .AnyAsync( r => r.Id == runId, ct );
+            if (!exists) {
+                httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+
+            httpContext.Response.ContentType = "text/event-stream";
+            httpContext.Response.Headers.CacheControl = "no-cache";
+            httpContext.Response.Headers.Connection = "keep-alive";
+
+            JsonSerializerOptions jsonOptions = new( ) {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            using JobEventSubscription subscription = broadcaster.Subscribe( );
+
+            try {
+                await foreach (JobEvent jobEvent in subscription.Reader.ReadAllAsync( ct )) {
+                    // Only forward events belonging to this workflow run.
+                    if (jobEvent.WorkflowRunId != runId) {
+                        continue;
+                    }
+
+                    string json = JsonSerializer.Serialize( jobEvent, jsonOptions );
+                    await httpContext.Response.WriteAsync( $"event: workflow-job\n", ct );
+                    await httpContext.Response.WriteAsync( $"data: {json}\n\n", ct );
+                    await httpContext.Response.Body.FlushAsync( ct );
+                }
+            } catch (OperationCanceledException) {
+                // Client disconnected — normal SSE lifecycle.
+            }
         } )
         .WithName( "StreamWorkflowRunUpdates" )
-        .RequireAuthorization( Policies.CanRead );
+        .RequireAuthorization( Policies.CanRead )
+        .ExcludeFromDescription( );
     }
 }

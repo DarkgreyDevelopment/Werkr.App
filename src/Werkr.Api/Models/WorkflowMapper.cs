@@ -14,7 +14,6 @@ internal static class WorkflowMapper {
             Name = request.Name,
             Description = request.Description ?? string.Empty,
             Enabled = request.Enabled,
-            ScheduleId = request.ScheduleId,
         };
 
     /// <summary>Maps a <see cref="WorkflowUpdateRequest"/> to a <see cref="Workflow"/> entity with a given ID.</summary>
@@ -24,7 +23,6 @@ internal static class WorkflowMapper {
             Name = request.Name,
             Description = request.Description ?? string.Empty,
             Enabled = request.Enabled,
-            ScheduleId = request.ScheduleId,
         };
 
     /// <summary>Maps a <see cref="Workflow"/> entity to a <see cref="WorkflowDto"/>.</summary>
@@ -34,7 +32,6 @@ internal static class WorkflowMapper {
             Name: workflow.Name,
             Description: workflow.Description,
             Enabled: workflow.Enabled,
-            ScheduleId: workflow.ScheduleId,
             Steps: [.. workflow.Steps.Select( ToStepDto )] );
 
     /// <summary>Maps a <see cref="WorkflowStep"/> entity to a <see cref="WorkflowStepDto"/>.</summary>

@@ -4,6 +4,5 @@ namespace Werkr.Common.Models;
 public sealed record WorkflowUpdateRequest(
     string Name,
     string? Description = null,
-    bool Enabled = true,
-    Guid? ScheduleId = null
+    bool Enabled = true
 );

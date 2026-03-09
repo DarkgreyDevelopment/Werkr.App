@@ -16,8 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\Werkr.Agent\Protos\Shell.proto" GrpcServices="Both" Link="Protos\Shell.proto" AdditionalImportDirs="..\Werkr.Common\Protos" />
-    <Protobuf Include="..\Werkr.Agent\Protos\Action.proto" GrpcServices="Both" Link="Protos\Action.proto" AdditionalImportDirs="..\Werkr.Common\Protos" />
     <Protobuf Include="..\Werkr.Agent\Protos\GrpcLogMsg.proto" GrpcServices="None" Link="Protos\GrpcLogMsg.proto" />
     <Protobuf Include="..\Werkr.Common\Protos\ConnectionManagement.proto" GrpcServices="Both" Link="Protos\ConnectionManagement.proto" AdditionalImportDirs="..\Werkr.Common\Protos" />
   </ItemGroup>

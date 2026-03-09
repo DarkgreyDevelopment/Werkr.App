@@ -58,6 +58,8 @@ main {
         position: sticky;
         top: 0;
         overflow-x: hidden;
+        display: flex;
+            flex-direction: column;
     }
 
     .top-row {

@@ -73,21 +73,4 @@ public class NullEncryptionTests {
         ) );
     }
 
-    /// <summary>
-    /// Verifies that <see cref="GrpcOutputReader.ReadAsync"/> throws <see cref="ArgumentNullException"/> when a <see
-    /// langword="null"/> key is supplied.
-    /// </summary>
-    [TestMethod]
-    public void GrpcOutputReader_NullKey_ThrowsArgumentNullException( ) {
-        _ = Assert.ThrowsExactly<ArgumentNullException>( ( ) => {
-            // ReadAsync is an async iterator, so enumerate to trigger the guard
-            IAsyncEnumerable<OperatorOutput> reader = GrpcOutputReader.ReadAsync(
-                null!,
-                null!,
-                TestContext.CancellationToken
-            );
-            IAsyncEnumerator<OperatorOutput> enumerator = reader.GetAsyncEnumerator( TestContext.CancellationToken );
-            _ = enumerator.MoveNextAsync( ).AsTask( ).GetAwaiter( ).GetResult( );
-        } );
-    }
 }

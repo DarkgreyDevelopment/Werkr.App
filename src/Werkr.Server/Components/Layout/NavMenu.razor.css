@@ -77,7 +77,8 @@
         display: block;
 
         /* Allow sidebar to scroll for tall menus */
-        height: calc(100vh - 3.5rem);
+        flex: 1;
+            min-height: 0;
         overflow-y: auto;
     }
 }
@@ -169,18 +170,11 @@
     cursor: pointer;
 }
 
-.sidebar-footer .version-text {
-    font-size: 0.7rem;
-    color: var(--text-muted-color, #777);
-    margin-top: 0.25rem;
-}
-
 /* ── Icon-rail (collapsed sidebar) ── */
 .sidebar.collapsed .nav-group-toggle span.nav-group-label,
 .sidebar.collapsed .nav-item ::deep a span.nav-label,
 .sidebar.collapsed .navbar-brand-text,
-.sidebar.collapsed .sidebar-footer .theme-toggle span.theme-label,
-.sidebar.collapsed .sidebar-footer .version-text {
+.sidebar.collapsed .sidebar-footer .theme-toggle span.theme-label {
     display: none;
 }
 

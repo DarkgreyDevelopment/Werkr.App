@@ -1,4 +1,5 @@
 using Grpc.Core;
+using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
@@ -13,9 +14,11 @@ namespace Werkr.Api.Services;
 /// All RPCs use <see cref="EncryptedEnvelope"/>.
 /// </summary>
 /// <param name="dbContext">Database context.</param>
+/// <param name="broadcaster">Singleton broadcaster for SSE push notifications.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed class JobReportingGrpcService(
     WerkrDbContext dbContext,
+    JobEventBroadcaster broadcaster,
     ILogger<JobReportingGrpcService> logger
 ) : JobReporting.JobReportingBase {
 
@@ -64,23 +67,73 @@ public sealed class JobReportingGrpcService(
             ? wfRunId
             : null;
 
-        WerkrJob job = new( ) {
-            TaskId = inner.TaskId,
-            TaskSnapshot = inner.TaskSnapshot,
-            RuntimeSeconds = inner.RuntimeSeconds,
-            StartTime = startTime,
-            EndTime = endTime,
-            Success = inner.Success,
-            AgentConnectionId = connectionId,
-            ExitCode = inner.ExitCode,
-            ErrorCategory = errorCategory,
-            Output = string.IsNullOrWhiteSpace( inner.OutputPreview ) ? null : inner.OutputPreview,
-            OutputPath = inner.OutputPath,
-            WorkflowRunId = workflowRunId,
-        };
+        // Parse agent-assigned job ID for upsert (if provided)
+        Guid? agentJobId = !string.IsNullOrWhiteSpace( inner.JobId )
+            && Guid.TryParse( inner.JobId, out Guid parsedJobId )
+            ? parsedJobId
+            : null;
 
-        _ = dbContext.Jobs.Add( job );
+        // Parse schedule ID (if provided)
+        Guid? scheduleId = !string.IsNullOrWhiteSpace( inner.ScheduleId )
+            && Guid.TryParse( inner.ScheduleId, out Guid parsedScheduleId )
+            ? parsedScheduleId
+            : null;
+
+        // Upsert: if agent provided a job_id, check for existing job
+        WerkrJob? job = agentJobId.HasValue
+            ? await dbContext.Jobs.FirstOrDefaultAsync( j => j.Id == agentJobId.Value, context.CancellationToken )
+            : null;
+
+        if (job is not null) {
+            // Update existing job (agent persisted it first, now server catches up)
+            job.TaskId = inner.TaskId;
+            job.TaskSnapshot = inner.TaskSnapshot;
+            job.RuntimeSeconds = inner.RuntimeSeconds;
+            job.StartTime = startTime;
+            job.EndTime = endTime;
+            job.Success = inner.Success;
+            job.AgentConnectionId = connectionId;
+            job.ExitCode = inner.ExitCode;
+            job.ErrorCategory = errorCategory;
+            job.Output = string.IsNullOrWhiteSpace( inner.OutputPreview ) ? null : inner.OutputPreview;
+            job.OutputPath = inner.OutputPath;
+            job.WorkflowRunId = workflowRunId;
+            job.ScheduleId = scheduleId;
+        } else {
+            // Create new job
+            job = new( ) {
+                TaskId = inner.TaskId,
+                TaskSnapshot = inner.TaskSnapshot,
+                RuntimeSeconds = inner.RuntimeSeconds,
+                StartTime = startTime,
+                EndTime = endTime,
+                Success = inner.Success,
+                AgentConnectionId = connectionId,
+                ExitCode = inner.ExitCode,
+                ErrorCategory = errorCategory,
+                Output = string.IsNullOrWhiteSpace( inner.OutputPreview ) ? null : inner.OutputPreview,
+                OutputPath = inner.OutputPath,
+                WorkflowRunId = workflowRunId,
+                ScheduleId = scheduleId,
+            };
+            if (agentJobId.HasValue) {
+                job.Id = agentJobId.Value;
+            }
+            _ = dbContext.Jobs.Add( job );
+        }
         _ = await dbContext.SaveChangesAsync( context.CancellationToken );
+
+        // Broadcast to SSE subscribers after the job is safely persisted.
+        broadcaster.Publish( new JobEvent(
+            JobId: job.Id,
+            TaskId: job.TaskId,
+            WorkflowRunId: job.WorkflowRunId,
+            Success: job.Success,
+            ExitCode: job.ExitCode,
+            RuntimeSeconds: job.RuntimeSeconds,
+            AgentConnectionId: connectionId,
+            Timestamp: DateTime.UtcNow
+        ) );
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(

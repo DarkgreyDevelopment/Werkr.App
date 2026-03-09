@@ -149,7 +149,16 @@
 
         try {
             using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            ExecuteCommandRequest request = new( parsedType.ToString( ), commandText );
+
+            // Map OperatorType to TaskActionType int for the new unified execution model
+            int actionType = parsedType switch {
+                OperatorType.PowerShell => 0,   // PowerShellCommand
+                OperatorType.SystemShell => 2,  // ShellCommand
+                OperatorType.Action => 4,       // Action
+                _ => 2,                         // ShellCommand
+            };
+
+            ExecuteCommandRequest request = new( commandText, actionType );
 
             using HttpRequestMessage httpRequest = new( HttpMethod.Post,
                 $"/api/agents/{AgentId}/shell/stream" ) {
@@ -195,7 +204,36 @@
                             break;
                         }
 
-                        // Default "message" event — parse as OperatorOutputLine
+                        if (currentEvent == "meta") {
+                            // Meta event contains taskId/scheduleId — log and continue
+                            Logger.LogDebug( "SSE meta: {Json}", json );
+                            currentEvent = "message";
+                            continue;
+                        }
+
+                        if (currentEvent == "complete") {
+                            // Completion event from ShellEndpoints — parse exit code and status
+                            try {
+                                using JsonDocument doc = JsonDocument.Parse( json );
+                                bool success = doc.RootElement.TryGetProperty( "success", out JsonElement sEl ) && sEl.GetBoolean( );
+                                int exitCode = doc.RootElement.TryGetProperty( "exitCode", out JsonElement ecEl ) ? ecEl.GetInt32( ) : -1;
+                                string? errorMsg = doc.RootElement.TryGetProperty( "errorMessage", out JsonElement emEl ) ? emEl.GetString( ) : null;
+
+                                if (!success && !string.IsNullOrEmpty( errorMsg )) {
+                                    _outputLines.Add( new OutputLine( "Error", errorMsg, DateTime.UtcNow.ToString( "O" ) ) );
+                                }
+
+                                _outputLines.Add( new OutputLine( "Debug",
+                                    $"--- Execution finished (exit code {exitCode}) ---",
+                                    DateTime.UtcNow.ToString( "O" ) ) );
+                            } catch (JsonException ex) {
+                                Logger.LogWarning( ex, "Failed to parse SSE complete data: {Json}", json );
+                            }
+                            await InvokeAsync( StateHasChanged );
+                            break;
+                        }
+
+                        // Default: "message" or "output" event — parse as OperatorOutputLine
                         try {
                             OperatorOutputLine? outputLine = JsonSerializer.Deserialize<OperatorOutputLine>( json, s_jsonOptions );
                             if (outputLine is not null) {

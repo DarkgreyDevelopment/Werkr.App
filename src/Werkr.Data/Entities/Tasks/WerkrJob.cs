@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Werkr.Data.Entities.Interfaces;
 using Werkr.Data.Entities.Registration;
+using Werkr.Data.Entities.Schedule;
 
 namespace Werkr.Data.Entities.Tasks;
 
@@ -61,6 +62,12 @@ public class WerkrJob : ConcurrencyBase, IKey<Guid> {
     /// <summary>Foreign key to the workflow run, if this job was created as part of a workflow.</summary>
     public Guid? WorkflowRunId { get; set; }
 
+    /// <summary>
+    /// Foreign key to the schedule that triggered this job.
+    /// Null for ad-hoc runs that do not originate from a persistent schedule.
+    /// </summary>
+    public Guid? ScheduleId { get; set; }
+
     /// <summary>Navigation property to the source task.</summary>
     [ForeignKey( nameof( TaskId ) )]
     public WerkrTask? Task { get; set; }
@@ -72,4 +79,8 @@ public class WerkrJob : ConcurrencyBase, IKey<Guid> {
     /// <summary>Navigation property to the workflow run.</summary>
     [ForeignKey( nameof( WorkflowRunId ) )]
     public Workflows.WorkflowRun? WorkflowRun { get; set; }
+
+    /// <summary>Navigation property to the schedule that triggered this job.</summary>
+    [ForeignKey( nameof( ScheduleId ) )]
+    public DbSchedule? Schedule { get; set; }
 }
