@@ -40,8 +40,22 @@ jobs:
           echo "assemblySemFileVer=$(echo $VERSION_JSON | jq -r '.AssemblySemFileVer')" >> $GITHUB_OUTPUT
           echo "informationalVersion=$(echo $VERSION_JSON | jq -r '.InformationalVersion')" >> $GITHUB_OUTPUT
 
-      - name: Restore (locked-mode)
-        run: dotnet restore Werkr.slnx --locked-mode
+      - name: Restore dependencies
+        run: |
+          # Backup lock files before restore
+          find . -name "packages.lock.json" -exec cp {} {}.backup \;
+
+          # Restore with force-evaluate for linux-x64
+          dotnet restore Werkr.slnx --force-evaluate
+
+          # Validate lock file changes
+          for lockfile in $(find . -name "packages.lock.json" ! -name "*.backup"); do
+            backup="${lockfile}.backup"
+            if [ -f "$backup" ]; then
+              pwsh scripts/Test-LockFileChanges.ps1 -BackupPath "$backup" -CurrentPath "$lockfile" -ToPlatform "linux-x64"
+              rm -f "$backup"
+            fi
+          done
 
       - name: Build
         run: >
