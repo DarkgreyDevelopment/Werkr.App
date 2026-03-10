@@ -32,14 +32,11 @@ public static class ActionParameterRegistry {
     /// <summary>Sort-by values for ListDirectory (matches Werkr.Common.Models.DirectoryListSortBy enum).</summary>
     private static readonly string[] s_directoryListSortBy = ["Name", "Modified", "Size", "None"];
 
-    /// <summary>HTTP method values for HttpRequest and UploadFile.</summary>
+    /// <summary>HTTP method values for HttpRequest.</summary>
     private static readonly string[] s_httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
     /// <summary>Connection protocol values (matches Werkr.Common.Models.Actions.ConnectionProtocol enum).</summary>
     private static readonly string[] s_connectionProtocols = ["Tcp", "Http", "Https"];
-
-    /// <summary>JSON transform operation types (matches Werkr.Common.Models.Actions.JsonTransformType enum).</summary>
-    private static readonly string[] s_jsonTransformTypes = ["Extract", "Set", "Delete", "Merge"];
 
     /// <summary>
     /// The master array of all <see cref="ActionFormDescriptor"/> instances that define every supported action and its parameters. This array is the source of truth from which <see cref="Actions"/> and <see cref="All"/> are derived.
@@ -186,9 +183,9 @@ public static class ActionParameterRegistry {
         new( "TransformJson", "Transform JSON", "Apply an ordered sequence of JSON operations to an input document.", [
             new( "InputPath", "Input File Path", FieldType.Text, Placeholder: "C:\\data\\input.json", HelpText: "Optional file to read JSON from. Takes precedence over the input variable." ),
             new( "OutputPath", "Output File Path", FieldType.Text, Placeholder: "C:\\data\\output.json", HelpText: "Optional file to write the transformed JSON to." ),
-            new( "Operations[0].Type", "Operation Type", FieldType.Select, Required: true, DefaultValue: "Extract", Options: s_jsonTransformTypes, HelpText: "Type of the first transformation operation." ),
-            new( "Operations[0].Path", "JSON Pointer Path", FieldType.Text, Required: true, Placeholder: "/property/name", HelpText: "RFC 6901 JSON Pointer path (e.g. /address/city). The prefix '$.' is also accepted." ),
-            new( "Operations[0].Value", "Value (JSON)", FieldType.TextArea, Placeholder: "\"value\" or {\"key\":\"val\"}", HelpText: "JSON value for Set/Merge operations. Ignored for Extract/Delete." ),
+            new( "Operations", "Operations (JSON array)", FieldType.Json, Required: true,
+                Placeholder: "[{\"type\":\"Extract\",\"path\":\"/property/name\"}]",
+                HelpText: "Ordered array of transform operations. Each entry must have 'type' (Extract/Set/Delete/Merge) and 'path' (JSON Pointer). Set/Merge also require 'value'." ),
         ] ),
 
         // ── Network operations ───────────────────────────────────────
@@ -198,7 +195,6 @@ public static class ActionParameterRegistry {
             new( "Body", "Request Body", FieldType.TextArea, Placeholder: "{\"key\":\"value\"}", HelpText: "Optional body. When omitted the input variable value is used." ),
             new( "ContentType", "Content-Type", FieldType.Text, Placeholder: "application/json", HelpText: "Content-Type header for the request body." ),
             new( "TimeoutSeconds", "Timeout (seconds)", FieldType.Number, DefaultValue: "30" ),
-            new( "ExpectedStatusCodes", "Expected Status Codes", FieldType.Text, DefaultValue: "200", Placeholder: "200,201", HelpText: "Comma-separated list of acceptable HTTP status codes." ),
             new( "OutputFilePath", "Output File Path", FieldType.Text, Placeholder: "C:\\output\\response.json", HelpText: "Optional file path to stream the response body to." ),
             new( "FollowRedirects", "Follow Redirects", FieldType.Bool, DefaultValue: "false" ),
         ] ),
@@ -238,12 +234,18 @@ public static class ActionParameterRegistry {
             new( "UseSsl", "Use SSL/TLS", FieldType.Bool, DefaultValue: "true" ),
             new( "CredentialName", "Credential Name", FieldType.Text, Placeholder: "smtp-credentials", HelpText: "Secret store key holding {\"username\":\"…\",\"password\":\"…\"}. Leave blank for anonymous." ),
             new( "From", "From", FieldType.Text, Required: true, Placeholder: "noreply@example.com" ),
-            new( "To", "To (comma-separated)", FieldType.Text, Required: true, Placeholder: "alice@example.com,bob@example.com" ),
-            new( "Cc", "CC (comma-separated)", FieldType.Text, Placeholder: "manager@example.com" ),
+            new( "To", "To (JSON array)", FieldType.Json, Required: true,
+                Placeholder: "[\"alice@example.com\",\"bob@example.com\"]",
+                HelpText: "JSON array of recipient email addresses." ),
+            new( "Cc", "CC (JSON array)", FieldType.Json,
+                Placeholder: "[\"manager@example.com\"]",
+                HelpText: "Optional JSON array of CC email addresses." ),
             new( "Subject", "Subject", FieldType.Text, Required: true, Placeholder: "Workflow notification" ),
             new( "Body", "Body", FieldType.TextArea, Placeholder: "Email body…", HelpText: "Optional body. When omitted the input variable value is used." ),
             new( "IsHtml", "HTML Body", FieldType.Bool, DefaultValue: "false" ),
-            new( "Attachments", "Attachments (comma-separated paths)", FieldType.Text, Placeholder: "C:\\reports\\report.pdf" ),
+            new( "Attachments", "Attachments (JSON array)", FieldType.Json,
+                Placeholder: "[\"C:\\\\reports\\\\report.pdf\"]",
+                HelpText: "Optional JSON array of file paths to attach." ),
         ] ),
     ];
 

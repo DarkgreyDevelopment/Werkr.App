@@ -79,6 +79,12 @@
                             }
                         </select>
                         break;
+
+                    case FieldType.Json:
+                        <label class="form-label">@field.Label @RequiredStar( field )</label>
+                        <textarea class="form-control font-monospace" rows="4" placeholder="@field.Placeholder"
+                                  @onchange="e => SetValue( field.Name, e.Value?.ToString() )">@GetValue( field.Name )</textarea>
+                        break;
                 }
                 @if ( !string.IsNullOrWhiteSpace( field.HelpText ) ) {
                     <div class="form-text">@field.HelpText</div>
@@ -193,6 +199,7 @@
             object? typed = field.Type switch {
                 FieldType.Bool => raw.Equals( "true", StringComparison.OrdinalIgnoreCase ),
                 FieldType.Number => long.TryParse( raw, out long n ) ? n : raw,
+                FieldType.Json => TryParseRawJson( raw ),
                 _ => raw
             };
 
@@ -200,6 +207,20 @@
         }
 
         return JsonSerializer.Serialize( obj, s_jsonOptions );
+    }
+
+    /// <summary>
+    /// Attempts to parse <paramref name="raw"/> as a <see cref="JsonElement"/> so that
+    /// array/object values are embedded inline in the output JSON rather than serialized
+    /// as escaped strings.
+    /// </summary>
+    private static object TryParseRawJson( string raw ) {
+        try {
+            return JsonDocument.Parse( raw ).RootElement.Clone( );
+        } catch {
+            // Fall back to the raw string; validation will catch the error later.
+            return raw;
+        }
     }
 
     private void ParseParametersIntoValues( ) {

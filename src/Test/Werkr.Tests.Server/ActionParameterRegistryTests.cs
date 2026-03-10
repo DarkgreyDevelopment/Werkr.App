@@ -12,12 +12,12 @@ namespace Werkr.Tests.Server;
 public class ActionParameterRegistryTests {
     /// <summary>
     /// Verifies that the <see cref="ActionParameterRegistry.All"/> collection
-    /// contains exactly nineteen registered <see cref="ActionFormDescriptor"/>
+    /// contains exactly twenty-seven registered <see cref="ActionFormDescriptor"/>
     /// entries representing all supported actions.
     /// </summary>
     [TestMethod]
-    public void All_Contains_Nineteen_Actions( ) {
-        Assert.HasCount( 19, ActionParameterRegistry.All );
+    public void All_Contains_TwentySeven_Actions( ) {
+        Assert.HasCount( 27, ActionParameterRegistry.All );
     }
 
     /// <summary>
@@ -56,6 +56,14 @@ public class ActionParameterRegistryTests {
     [DataRow( "CompressArchive" )]
     [DataRow( "ExpandArchive" )]
     [DataRow( "WatchFile" )]
+    [DataRow( "ForEach" )]
+    [DataRow( "TransformJson" )]
+    [DataRow( "HttpRequest" )]
+    [DataRow( "DownloadFile" )]
+    [DataRow( "UploadFile" )]
+    [DataRow( "TestConnection" )]
+    [DataRow( "SendWebhook" )]
+    [DataRow( "SendEmail" )]
     public void Actions_Contains_Expected_Key( string key ) {
         Assert.IsTrue(
             ActionParameterRegistry.Actions.ContainsKey( key ),

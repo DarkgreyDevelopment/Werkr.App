@@ -11,5 +11,11 @@ public enum FieldType {
     /// <summary>Boolean toggle / checkbox.</summary>
     Bool,
     /// <summary>Dropdown select from a fixed set of options.</summary>
-    Select
+    Select,
+    /// <summary>
+    /// Raw JSON value (object or array) entered in a multi-line text area.
+    /// The editor embeds the parsed JSON inline rather than emitting it as a string,
+    /// making it suitable for array or nested-object parameters.
+    /// </summary>
+    Json
 }
