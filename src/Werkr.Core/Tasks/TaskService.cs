@@ -13,7 +13,7 @@ namespace Werkr.Core.Tasks;
 /// </summary>
 /// <param name="dbContext">Database context.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class TaskService(
+public sealed partial class TaskService(
     WerkrDbContext dbContext,
     ILogger<TaskService> logger
 ) {

@@ -171,11 +171,8 @@ public class SendEmailHandlerTests {
     }
 
     /// <summary>Local <see cref="IOptionsMonitor{T}"/> stub.</summary>
-    private sealed class TestOptionsMonitor<T> : IOptionsMonitor<T> {
-        public TestOptionsMonitor( T currentValue ) {
-            CurrentValue = currentValue;
-        }
-        public T CurrentValue { get; }
+    private sealed class TestOptionsMonitor<T>( T currentValue ) : IOptionsMonitor<T> {
+        public T CurrentValue { get; } = currentValue;
         public T Get( string? name ) => CurrentValue;
         public IDisposable? OnChange( Action<T, string?> listener ) => null;
     }

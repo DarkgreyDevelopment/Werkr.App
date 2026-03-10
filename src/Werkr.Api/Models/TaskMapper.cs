@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Tasks;
@@ -44,6 +45,7 @@ internal static class TaskMapper {
     /// </summary>
     private static readonly JsonSerializerOptions s_jsonOptions = new( ) {
         PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter( ) },
     };
 
     /// <summary>Maps a <see cref="TaskCreateRequest"/> to a <see cref="WerkrTask"/> entity.</summary>

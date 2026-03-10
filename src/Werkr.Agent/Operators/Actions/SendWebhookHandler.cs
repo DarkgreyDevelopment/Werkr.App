@@ -14,22 +14,16 @@ namespace Werkr.Agent.Operators.Actions;
 /// The payload comes from the <see cref="SendWebhookParameters.Payload"/> parameter
 /// or the input variable value (parameter takes precedence).
 /// </summary>
-public sealed class SendWebhookHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="SendWebhookHandler"/>.</remarks>
+public sealed partial class SendWebhookHandler(
+    IUrlValidator urlValidator,
+    IHttpClientFactory httpClientFactory,
+    ILogger<SendWebhookHandler> logger
+    ) : IActionHandler {
 
-    private readonly IUrlValidator _urlValidator;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<SendWebhookHandler> _logger;
-
-    /// <summary>Creates a new <see cref="SendWebhookHandler"/>.</summary>
-    public SendWebhookHandler(
-        IUrlValidator urlValidator,
-        IHttpClientFactory httpClientFactory,
-        ILogger<SendWebhookHandler> logger
-    ) {
-        _urlValidator = urlValidator;
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
-    }
+    private readonly IUrlValidator _urlValidator = urlValidator;
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly ILogger<SendWebhookHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "SendWebhook";
@@ -87,11 +81,14 @@ public sealed class SendWebhookHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: outputJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "SendWebhook action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"SendWebhook failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

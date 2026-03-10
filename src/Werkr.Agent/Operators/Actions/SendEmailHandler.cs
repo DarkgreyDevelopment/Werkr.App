@@ -18,25 +18,18 @@ namespace Werkr.Agent.Operators.Actions;
 /// <see cref="SendEmailParameters.CredentialName"/> is provided.
 /// Attachments are resolved through <see cref="IFilePathResolver"/>.
 /// </summary>
-public sealed class SendEmailHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="SendEmailHandler"/>.</remarks>
+public sealed partial class SendEmailHandler(
+    IOptionsMonitor<ActionOperatorConfiguration> config,
+    ISecretStore secretStore,
+    IFilePathResolver resolver,
+    ILogger<SendEmailHandler> logger
+    ) : IActionHandler {
 
-    private readonly IOptionsMonitor<ActionOperatorConfiguration> _config;
-    private readonly ISecretStore _secretStore;
-    private readonly IFilePathResolver _resolver;
-    private readonly ILogger<SendEmailHandler> _logger;
-
-    /// <summary>Creates a new <see cref="SendEmailHandler"/>.</summary>
-    public SendEmailHandler(
-        IOptionsMonitor<ActionOperatorConfiguration> config,
-        ISecretStore secretStore,
-        IFilePathResolver resolver,
-        ILogger<SendEmailHandler> logger
-    ) {
-        _config = config;
-        _secretStore = secretStore;
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly IOptionsMonitor<ActionOperatorConfiguration> _config = config;
+    private readonly ISecretStore _secretStore = secretStore;
+    private readonly IFilePathResolver _resolver = resolver;
+    private readonly ILogger<SendEmailHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "SendEmail";
@@ -142,7 +135,7 @@ public sealed class SendEmailHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: outputJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "SendEmail action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"SendEmail failed: {ex.Message}" ),
                 cancellationToken );
@@ -158,4 +151,7 @@ public sealed class SendEmailHandler : IActionHandler {
         /// <summary>SMTP password.</summary>
         public required string Password { get; init; }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

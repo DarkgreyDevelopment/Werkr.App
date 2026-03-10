@@ -15,23 +15,17 @@ namespace Werkr.Agent.Security;
 /// configuration changes at runtime, the validator picks up the new values
 /// on the next call without requiring a restart.
 /// </remarks>
-public sealed class PathAllowlistValidator : IPathAllowlistValidator {
+/// <remarks>Creates a new <see cref="PathAllowlistValidator"/>.</remarks>
+public sealed partial class PathAllowlistValidator(
+    IOptionsMonitor<AllowedPathsConfiguration> options,
+    ILogger<PathAllowlistValidator> logger
+    ) : IPathAllowlistValidator {
 
-    private readonly IOptionsMonitor<AllowedPathsConfiguration> _options;
-    private readonly ILogger<PathAllowlistValidator> _logger;
-    private readonly StringComparison _comparison;
-
-    /// <summary>Creates a new <see cref="PathAllowlistValidator"/>.</summary>
-    public PathAllowlistValidator(
-        IOptionsMonitor<AllowedPathsConfiguration> options,
-        ILogger<PathAllowlistValidator> logger
-    ) {
-        _options = options;
-        _logger = logger;
-        _comparison = RuntimeInformation.IsOSPlatform( OSPlatform.Windows )
+    private readonly IOptionsMonitor<AllowedPathsConfiguration> _options = options;
+    private readonly ILogger<PathAllowlistValidator> _logger = logger;
+    private readonly StringComparison _comparison = RuntimeInformation.IsOSPlatform( OSPlatform.Windows )
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
-    }
 
     /// <inheritdoc/>
     public void ValidatePath( string path ) {

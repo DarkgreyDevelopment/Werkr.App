@@ -30,7 +30,7 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="variableClient">Client for workflow variable get/set/create operations.</param>
 /// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
 /// <param name="logger">Logger.</param>
-public sealed class WorkflowExecutionService(
+public sealed partial class WorkflowExecutionService(
     AgentJobOutputWriter outputWriter,
     SuccessCriteriaEvaluator successEvaluator,
     ConditionEvaluator conditionEvaluator,
@@ -550,7 +550,7 @@ public sealed class WorkflowExecutionService(
     /// Builds topological levels from proto step definitions using Kahn's algorithm.
     /// Steps at the same level have all dependencies satisfied by prior levels.
     /// </summary>
-    private static IReadOnlyList<IReadOnlyList<ScheduledWorkflowStepDef>> BuildTopologicalLevels(
+    private static List<IReadOnlyList<ScheduledWorkflowStepDef>> BuildTopologicalLevels(
         IReadOnlyCollection<ScheduledWorkflowStepDef> steps
     ) {
         // Build adjacency: stepId → set of dependents

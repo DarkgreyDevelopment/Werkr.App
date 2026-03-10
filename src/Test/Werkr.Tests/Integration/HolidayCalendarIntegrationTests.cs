@@ -83,7 +83,7 @@ public class HolidayCalendarIntegrationTests {
     /// HTTP 200 OK.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateCalendar_RoundTrips( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -105,7 +105,7 @@ public class HolidayCalendarIntegrationTests {
     /// system calendar exists (e.g., the seeder has not run).
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task DeleteSystemCalendar_Returns403( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -142,7 +142,7 @@ public class HolidayCalendarIntegrationTests {
     /// system calendar exists.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CloneSystemCalendar_CreatesEditableCopy( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -177,7 +177,7 @@ public class HolidayCalendarIntegrationTests {
     /// adjustment, then retrieves the rules and asserts exactly one rule exists.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task AddRule_InvalidatesCache( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -214,7 +214,7 @@ public class HolidayCalendarIntegrationTests {
     /// retrieves the dates list, and asserts exactly one date entry exists.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task AddManualDate_Persists( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -247,7 +247,7 @@ public class HolidayCalendarIntegrationTests {
     /// <see cref="HttpStatusCode.Created"/>.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task BulkAddManualDates_PersistsAll( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -275,7 +275,7 @@ public class HolidayCalendarIntegrationTests {
     /// 4 rule preview for 2025-2027 and asserts that exactly 3 dates are returned (one per year).
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task PreviewRule_ReturnsCorrectDates( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -305,7 +305,7 @@ public class HolidayCalendarIntegrationTests {
     /// and verifies the GET response returns <see cref="HttpStatusCode.NoContent"/> after detachment.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task AttachCalendar_GetAttachment_Detach( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -350,7 +350,7 @@ public class HolidayCalendarIntegrationTests {
     /// calendar exists.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CalendarPreview_ReturnsDatesForYearRange( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -386,7 +386,7 @@ public class HolidayCalendarIntegrationTests {
     /// queries the audit log for the past 30 days, and asserts that no audit records are returned.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task AuditLog_EmptyForNewSchedule( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -413,7 +413,7 @@ public class HolidayCalendarIntegrationTests {
     /// The test is marked <see cref="Assert.Inconclusive"/> if the Federal Reserve calendar is not found.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task FedReserveCalendar_DoesNotIncludeColumbusDay( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -454,7 +454,7 @@ public class HolidayCalendarIntegrationTests {
     /// one record exists with the expected holiday name.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task SubmitAuditLog_PersistsAndRetrievesRecords( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -502,7 +502,7 @@ public class HolidayCalendarIntegrationTests {
     /// it contains at least one entry.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task OccurrencePreview_BlocklistMode_SuppressesHolidays( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -571,7 +571,7 @@ public class HolidayCalendarIntegrationTests {
     /// exactly one occurrence is returned and that it falls on July 4.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task OccurrencePreview_AllowlistMode_KeepsOnlyHolidays( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -636,7 +636,7 @@ public class HolidayCalendarIntegrationTests {
     /// instead of January 1.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task RuleMutation_InvalidatesCacheOnNextPreview( ) {
         CancellationToken ct = TestContext.CancellationToken;
 

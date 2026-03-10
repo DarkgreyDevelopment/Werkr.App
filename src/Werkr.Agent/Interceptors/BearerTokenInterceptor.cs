@@ -18,7 +18,7 @@ namespace Werkr.Agent.Interceptors;
 /// <remarks>Creates a new <see cref="BearerTokenInterceptor"/>.</remarks>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve <see cref="WerkrDbContext"/>.</param>
 /// <param name="logger">Logger for diagnostics.</param>
-public class BearerTokenInterceptor(
+public partial class BearerTokenInterceptor(
     IServiceScopeFactory scopeFactory,
     ILogger<BearerTokenInterceptor> logger
 ) : Interceptor {

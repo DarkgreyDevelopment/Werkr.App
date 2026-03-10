@@ -17,31 +17,23 @@ namespace Werkr.Agent.Operators.Actions;
 /// response status, headers, and body. Supports all HTTP methods, custom headers,
 /// request body from parameter or workflow variable, and optional file output.
 /// </summary>
-public sealed class HttpRequestHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="HttpRequestHandler"/>.</remarks>
+public sealed partial class HttpRequestHandler(
+    IUrlValidator urlValidator,
+    IHttpClientFactory httpClientFactory,
+    IFilePathResolver resolver,
+    IOptions<WorkflowVariableOptions> variableOptions,
+    ILogger<HttpRequestHandler> logger
+    ) : IActionHandler {
 
     /// <summary>Maximum number of redirects to follow when <c>FollowRedirects</c> is true.</summary>
     private const int MaxRedirects = 10;
 
-    private readonly IUrlValidator _urlValidator;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IFilePathResolver _resolver;
-    private readonly IOptions<WorkflowVariableOptions> _variableOptions;
-    private readonly ILogger<HttpRequestHandler> _logger;
-
-    /// <summary>Creates a new <see cref="HttpRequestHandler"/>.</summary>
-    public HttpRequestHandler(
-        IUrlValidator urlValidator,
-        IHttpClientFactory httpClientFactory,
-        IFilePathResolver resolver,
-        IOptions<WorkflowVariableOptions> variableOptions,
-        ILogger<HttpRequestHandler> logger
-    ) {
-        _urlValidator = urlValidator;
-        _httpClientFactory = httpClientFactory;
-        _resolver = resolver;
-        _variableOptions = variableOptions;
-        _logger = logger;
-    }
+    private readonly IUrlValidator _urlValidator = urlValidator;
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly IFilePathResolver _resolver = resolver;
+    private readonly IOptions<WorkflowVariableOptions> _variableOptions = variableOptions;
+    private readonly ILogger<HttpRequestHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "HttpRequest";
@@ -172,7 +164,7 @@ public sealed class HttpRequestHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: outputJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "HttpRequest action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"HttpRequest failed: {ex.Message}" ),
                 cancellationToken );
@@ -258,4 +250,7 @@ public sealed class HttpRequestHandler : IActionHandler {
             or HttpStatusCode.SeeOther
             or HttpStatusCode.TemporaryRedirect
             or HttpStatusCode.PermanentRedirect;
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

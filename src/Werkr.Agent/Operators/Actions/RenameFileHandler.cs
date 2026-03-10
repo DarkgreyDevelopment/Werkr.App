@@ -10,22 +10,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// <summary>
 /// Handles the <c>RenameFile</c> action - renames a file or directory in place.
 /// </summary>
-public sealed class RenameFileHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="RenameFileHandler"/>.</remarks>
+public sealed partial class RenameFileHandler( IFilePathResolver resolver, ILogger<RenameFileHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<RenameFileHandler> _logger;
-
-    /// <summary>Creates a new <see cref="RenameFileHandler"/>.</summary>
-    public RenameFileHandler( IFilePathResolver resolver, ILogger<RenameFileHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<RenameFileHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "RenameFile";
@@ -92,11 +87,14 @@ public sealed class RenameFileHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: resultPath is not null ? JsonSerializer.Serialize( resultPath, ActionJson.SerializerOptions ) : null );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "RenameFile action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"RenameFile failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

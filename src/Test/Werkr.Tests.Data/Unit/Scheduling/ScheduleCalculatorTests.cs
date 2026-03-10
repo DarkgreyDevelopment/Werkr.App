@@ -281,13 +281,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -308,13 +308,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -335,13 +335,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -361,13 +361,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -387,13 +387,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -413,13 +413,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -439,13 +439,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -465,9 +465,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -487,9 +486,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -515,13 +513,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -543,17 +541,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             3,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             lastRepeatTime,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -574,17 +572,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             2,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddMinutes( IntervalMaxDurationMax.RepeatIntervalMinutes ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -606,13 +604,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1440,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -634,17 +632,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             24,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddHours( 23 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -666,17 +664,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             3156585,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             EndOfWindow.AddSeconds( -59 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -697,13 +695,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -725,9 +723,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             9,
-            occurrences.Count( )
+            occurrences
         );
         DateTime occurrenceTime = schedule.StartDateTime!.UtcTime;
         foreach (DateTime occurrence in occurrences) {
@@ -756,9 +754,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -783,9 +780,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -806,9 +802,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
     }
 
@@ -831,9 +827,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -856,17 +851,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             3,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             lastRepeatTime,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -889,17 +884,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             2,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddMinutes( IntervalMaxDurationMax.RepeatIntervalMinutes ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -922,13 +917,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1440,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -951,17 +946,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             24,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddHours( 23 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -984,17 +979,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             527040,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddYears( 1 ).AddMinutes( -1 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1017,13 +1012,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -1046,9 +1041,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             9,
-            occurrences.Count( )
+            occurrences
         );
         DateTime occurrenceTime = schedule.StartDateTime!.UtcTime;
         foreach (DateTime occurrence in occurrences) {
@@ -1079,9 +1074,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -1107,13 +1101,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -1135,13 +1129,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -1169,17 +1163,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             2191,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             endOfWindowDate,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1206,17 +1200,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             731,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             endOfWindowDate,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1238,18 +1232,18 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             314,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         // Compare date only — UTC hour may differ from start due to DST transitions in Samoa timezone.
         Assert.AreEqual(
             endOfWindowDate,
-            DateOnly.FromDateTime( occurrences.Last( ) )
+            DateOnly.FromDateTime( occurrences[occurrences.Count - 1] )
         );
     }
 
@@ -1276,17 +1270,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             275,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             endOfWindowDate,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1313,17 +1307,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             157,
-            occurrences.LongCount( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             endOfWindowDate,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1350,17 +1344,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             74,
-            occurrences.LongCount( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             endOfWindowDate,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1381,9 +1375,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -1404,9 +1397,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -1427,9 +1419,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             2192,
-            occurrences.Count( )
+            occurrences
         );
         DateTime occurrenceTime = schedule.StartDateTime!.UtcTime;
         foreach (DateTime occurrence in occurrences) {
@@ -1460,9 +1452,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             6576,
-            occurrences.Count( )
+            occurrences
         );
         DateTime occurrenceTime = schedule.StartDateTime!.UtcTime;
         int count = 0;
@@ -1499,9 +1491,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -1523,9 +1514,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
     }
 
@@ -1549,9 +1540,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -1576,17 +1566,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             3,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             lastRepeatTime,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1610,17 +1600,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             2,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddMinutes( IntervalMaxDurationMax.RepeatIntervalMinutes ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1650,17 +1640,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             44640,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             finalDt,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1684,17 +1674,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1464,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddDays( 181 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1718,17 +1708,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             527040,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddYears( 1 ).AddMinutes( -1 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1752,17 +1742,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             92,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddDays( 728 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -1786,9 +1776,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1413,
-            occurrences.Count( )
+            occurrences
         );
         DateTime occurrenceTime = schedule.StartDateTime!.UtcTime;
         int count = 0;
@@ -1824,9 +1814,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -1851,13 +1840,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -1878,13 +1867,13 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
     }
 
@@ -1998,7 +1987,7 @@ public class ScheduleCalculatorTests {
         );
         Assert.AreEqual(
             endOfWindowDate,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -2026,17 +2015,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             263,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             endOfWindowDate,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
         CalculateOccurrences_SimpleWeeklyRecurrence(
             schedule,
@@ -2070,17 +2059,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             40,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             endOfWindowDate,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
         CalculateOccurrences_SimpleWeeklyRecurrence(
             schedule,
@@ -2107,9 +2096,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -2130,9 +2118,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -2216,9 +2203,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -2241,9 +2227,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1,
-            occurrences.Count( )
+            occurrences
         );
     }
 
@@ -2267,9 +2253,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -2294,17 +2279,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             3,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             lastRepeatTime,
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -2328,17 +2313,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             2,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddMinutes( IntervalMaxDurationMax.RepeatIntervalMinutes ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -2362,17 +2347,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1440,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddMinutes( 1439 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -2396,17 +2381,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             4368,
-            occurrences.Count( )
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddDays( 182 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -2431,17 +2416,17 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            totalScheduleTime.TotalMinutes,
-            occurrences.Count( )
+        Assert.HasCount(
+            (int)totalScheduleTime.TotalMinutes,
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddYears( 1 ).AddMinutes( -1 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -2467,17 +2452,17 @@ public class ScheduleCalculatorTests {
             EndOfWindow
         );
         // DST offset change causes a 60-minute gap
-        Assert.AreEqual(
-            totalScheduleTime.TotalMinutes - 60,
-            occurrences.Count( )
+        Assert.HasCount(
+            (int)(totalScheduleTime.TotalMinutes - 60),
+            occurrences
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime,
-            occurrences.First( )
+            occurrences[0]
         );
         Assert.AreEqual(
             schedule.StartDateTime!.UtcTime.AddYears( 1 ).AddMinutes( -1 ),
-            occurrences.Last( )
+            occurrences[occurrences.Count - 1]
         );
     }
 
@@ -2534,7 +2519,7 @@ public class ScheduleCalculatorTests {
         int count = -8;
         Assert.AreEqual(
             occurrenceTime,
-            occurrences.First( )
+            occurrences[0]
         );
         foreach (DateTime occurrence in occurrences) {
             Assert.AreEqual(
@@ -2574,9 +2559,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -2600,9 +2584,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             36,
-            occurrences.Count( )
+            occurrences
         );
     }
 
@@ -2671,9 +2655,9 @@ public class ScheduleCalculatorTests {
             calculatedOccurrences,
             "validationCount must match the number of calculatedOccurrences."
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             validationCount,
-            occurrences.Count( ),
+            occurrences,
             "SimpleWeeklyRecurrence calculatedOccurrences must match the number of the input occurrences."
         );
         for (int i = 0; i < calculatedOccurrences.Count; i++) {
@@ -2706,9 +2690,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -2729,9 +2712,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             6,
-            occurrences.Count( )
+            occurrences
         );
         int year = 2020;
         foreach (DateTime occurrence in occurrences) {
@@ -2781,9 +2764,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             7,
-            occurrences.Count( )
+            occurrences
         );
         int year = 2020;
         int count = 0;
@@ -3335,9 +3318,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -3516,9 +3498,9 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
+        Assert.HasCount(
             1953,
-            occurrences.Count( )
+            occurrences
         );
     }
 
@@ -3542,9 +3524,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 
@@ -3750,9 +3731,8 @@ public class ScheduleCalculatorTests {
             schedule,
             EndOfWindow
         );
-        Assert.AreEqual(
-            0,
-            occurrences.Count( )
+        Assert.IsEmpty(
+            occurrences
         );
     }
 

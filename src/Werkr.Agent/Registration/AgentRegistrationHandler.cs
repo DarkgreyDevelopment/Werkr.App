@@ -20,7 +20,7 @@ namespace Werkr.Agent.Registration;
 /// Creates a new <see cref="AgentRegistrationHandler"/>.
 /// </remarks>
 /// <param name="logger">Logger for diagnostics.</param>
-public class AgentRegistrationHandler( ILogger<AgentRegistrationHandler> logger ) {
+public partial class AgentRegistrationHandler( ILogger<AgentRegistrationHandler> logger ) {
 
     /// <summary>
     /// Processes a registration bundle pasted by the admin, generates the Agent's

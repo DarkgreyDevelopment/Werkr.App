@@ -16,7 +16,7 @@ namespace Werkr.Api.Services;
 /// <param name="dbContext">Database context.</param>
 /// <param name="broadcaster">Singleton broadcaster for SSE push notifications.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class JobReportingGrpcService(
+public sealed partial class JobReportingGrpcService(
     WerkrDbContext dbContext,
     JobEventBroadcaster broadcaster,
     ILogger<JobReportingGrpcService> logger

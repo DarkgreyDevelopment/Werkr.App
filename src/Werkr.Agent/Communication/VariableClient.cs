@@ -15,7 +15,7 @@ namespace Werkr.Agent.Communication;
 /// <param name="clientFactory">Factory for creating outbound gRPC clients.</param>
 /// <param name="variableOptions">Workflow variable configuration for size limits.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class VariableClient(
+public sealed partial class VariableClient(
     AgentGrpcClientFactory clientFactory,
     IOptions<WorkflowVariableOptions> variableOptions,
     ILogger<VariableClient> logger

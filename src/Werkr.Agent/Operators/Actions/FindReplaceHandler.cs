@@ -13,7 +13,8 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>FindReplace</c> action - performs string or regex find-and-replace
 /// within a file. Includes ReDoS protection via a 30-second regex match timeout.
 /// </summary>
-public sealed class FindReplaceHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="FindReplaceHandler"/>.</remarks>
+public sealed partial class FindReplaceHandler( IFilePathResolver resolver, ILogger<FindReplaceHandler> logger ) : IActionHandler {
 
     /// <summary>Maximum time a regex match is allowed to execute.</summary>
     private static readonly TimeSpan s_regexTimeout = TimeSpan.FromSeconds( 30 );
@@ -21,17 +22,11 @@ public sealed class FindReplaceHandler : IActionHandler {
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<FindReplaceHandler> _logger;
-
-    /// <summary>Creates a new <see cref="FindReplaceHandler"/>.</summary>
-    public FindReplaceHandler( IFilePathResolver resolver, ILogger<FindReplaceHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<FindReplaceHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "FindReplace";
@@ -66,7 +61,7 @@ public sealed class FindReplaceHandler : IActionHandler {
                 }
 
                 Regex regex = new( p.Find, options, s_regexTimeout );
-                count = regex.Matches( content ).Count;
+                count = regex.Count( content );
                 result = regex.Replace( content, p.Replace );
             } else {
                 StringComparison comparison = p.CaseSensitive
@@ -88,7 +83,7 @@ public sealed class FindReplaceHandler : IActionHandler {
             string outputJson = JsonSerializer.Serialize(new { path = fullPath, replacementCount = count }, ActionJson.SerializerOptions);
             return new ActionOperatorResult( Success: true, OutputVariableValue: outputJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "FindReplace action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"FindReplace failed: {ex.Message}" ),
                 cancellationToken );
@@ -108,4 +103,7 @@ public sealed class FindReplaceHandler : IActionHandler {
         }
         return count;
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

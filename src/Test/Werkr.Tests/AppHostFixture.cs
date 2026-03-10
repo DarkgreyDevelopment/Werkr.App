@@ -84,16 +84,16 @@ public static class AppHostFixture {
                     // Remove the database context registrations added by Program.Main
                     // (which captured an empty connection string) and re-register
                     // them with the Testcontainer's connection string.
-                    _ = services.RemoveAll( typeof( DbContextOptions<PostgresWerkrDbContext> ) );
-                    _ = services.RemoveAll( typeof( DbContextOptions<WerkrDbContext> ) );
-                    _ = services.RemoveAll( typeof( PostgresWerkrDbContext ) );
-                    _ = services.RemoveAll( typeof( WerkrDbContext ) );
+                    _ = services.RemoveAll<DbContextOptions<PostgresWerkrDbContext>>( );
+                    _ = services.RemoveAll<DbContextOptions<WerkrDbContext>>( );
+                    _ = services.RemoveAll<PostgresWerkrDbContext>( );
+                    _ = services.RemoveAll<WerkrDbContext>( );
 
-                    _ = services.RemoveAll( typeof( DbContextOptions<WerkrIdentityDbContext> ) );
-                    _ = services.RemoveAll( typeof( DbContextOptions<PostgresWerkrIdentityDbContext> ) );
-                    _ = services.RemoveAll( typeof( DbContextOptions<WerkrIdentityDbContext> ) );
-                    _ = services.RemoveAll( typeof( PostgresWerkrIdentityDbContext ) );
-                    _ = services.RemoveAll( typeof( WerkrIdentityDbContext ) );
+                    _ = services.RemoveAll<DbContextOptions<WerkrIdentityDbContext>>( );
+                    _ = services.RemoveAll<DbContextOptions<PostgresWerkrIdentityDbContext>>( );
+                    _ = services.RemoveAll<DbContextOptions<WerkrIdentityDbContext>>( );
+                    _ = services.RemoveAll<PostgresWerkrIdentityDbContext>( );
+                    _ = services.RemoveAll<WerkrIdentityDbContext>( );
 
                     _ = services.AddWerkrDbContext( DatabaseProvider.Postgres, connStr );
 

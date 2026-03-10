@@ -41,7 +41,7 @@ public class WorkflowIntegrationTests {
     /// deletes the workflow, and confirms a subsequent GET returns <see cref="HttpStatusCode.NotFound"/>.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task WorkflowCrud_CreateReadUpdateDelete( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -112,7 +112,7 @@ public class WorkflowIntegrationTests {
     /// reports exactly 2 steps. Cleans up the workflow after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task WorkflowSteps_AddAndLinkWithDependency( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -230,7 +230,7 @@ public class WorkflowIntegrationTests {
     /// and confirms a subsequent GET returns <see cref="HttpStatusCode.NotFound"/>.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task TaskCrud_CreateWithTagsUpdateAndDelete( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -297,7 +297,7 @@ public class WorkflowIntegrationTests {
     /// (<c>?since=…&amp;until=…</c>) for a historical range, expecting no results.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task JobListEndpoint_ReturnsFilterableResults( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -322,7 +322,7 @@ public class WorkflowIntegrationTests {
     /// Verifies that requesting a non-existent job by a random GUID returns <see cref="HttpStatusCode.NotFound"/>.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task GetJobById_ForNonExistentJob_ReturnsNotFound( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -341,7 +341,7 @@ public class WorkflowIntegrationTests {
     /// <c>daysOfWeek</c> flags value equals 21 (Monday=1 | Wednesday=4 | Friday=16).
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task WeeklySchedule_CreatesAndReturnsCorrectRecurrence( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -388,7 +388,7 @@ public class WorkflowIntegrationTests {
     /// Verifies that the <c>GET /api/agents/health</c> endpoint returns HTTP 200 OK and a JSON array.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task AgentHealthEndpoint_ReturnsSuccessfully( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -405,7 +405,7 @@ public class WorkflowIntegrationTests {
     /// at least one database health entry.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task DiagnosticsHealthEndpoint_ReturnsDatabaseStatus( ) {
         CancellationToken ct = TestContext.CancellationToken;
 

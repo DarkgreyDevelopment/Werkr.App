@@ -9,7 +9,7 @@ namespace Werkr.Server.Identity;
 /// Service for creating, validating, and managing API keys.
 /// API keys are stored as SHA-256 hashes; the raw key is only returned at creation time.
 /// </summary>
-public sealed class ApiKeyService( WerkrIdentityDbContext dbContext, ILogger<ApiKeyService> logger ) {
+public sealed partial class ApiKeyService( WerkrIdentityDbContext dbContext, ILogger<ApiKeyService> logger ) {
 
     /// <summary>
     /// Creates a new API key for the specified user with the given role.

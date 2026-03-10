@@ -17,23 +17,18 @@ namespace Werkr.Agent.Operators;
 /// <remarks>
 /// Non-interactive: all input/prompt methods throw <see cref="NotSupportedException"/>.
 /// </remarks>
-public sealed class WerkrPSHostUserInterface : PSHostUserInterface {
+/// <remarks>Creates a new <see cref="WerkrPSHostUserInterface"/>.</remarks>
+/// <param name="writer">Channel to write operator output into.</param>
+/// <param name="bufferWidth">Column width for the raw UI buffer.</param>
+public sealed class WerkrPSHostUserInterface( ChannelWriter<OperatorOutput> writer, int bufferWidth ) : PSHostUserInterface {
     /// <summary>
     /// The channel writer to which all PowerShell output is written as <see cref="OperatorOutput"/> messages.
     /// </summary>
-    private readonly ChannelWriter<OperatorOutput> _writer;
+    private readonly ChannelWriter<OperatorOutput> _writer = writer;
     /// <summary>
     /// The raw user interface providing buffer dimensions and virtual console properties.
     /// </summary>
-    private readonly WerkrPSHostRawUserInterface _rawUI;
-
-    /// <summary>Creates a new <see cref="WerkrPSHostUserInterface"/>.</summary>
-    /// <param name="writer">Channel to write operator output into.</param>
-    /// <param name="bufferWidth">Column width for the raw UI buffer.</param>
-    public WerkrPSHostUserInterface( ChannelWriter<OperatorOutput> writer, int bufferWidth ) {
-        _writer = writer;
-        _rawUI = new WerkrPSHostRawUserInterface( bufferWidth );
-    }
+    private readonly WerkrPSHostRawUserInterface _rawUI = new( bufferWidth );
 
     /// <summary>
     /// The raw user interface providing buffer dimensions and virtual console properties.

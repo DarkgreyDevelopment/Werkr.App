@@ -16,16 +16,12 @@ namespace Werkr.Common.Configuration.Registry;
 /// returns no data.
 /// </para>
 /// </summary>
-public sealed class RegistryConfigurationProvider : ConfigurationProvider {
-    private readonly RegistryConfigurationSource _source;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="RegistryConfigurationProvider"/>.
-    /// </summary>
-    /// <param name="source">The source configuration.</param>
-    public RegistryConfigurationProvider( RegistryConfigurationSource source ) {
-        _source = source ?? throw new ArgumentNullException( nameof( source ) );
-    }
+/// <remarks>
+/// Initializes a new instance of <see cref="RegistryConfigurationProvider"/>.
+/// </remarks>
+/// <param name="source">The source configuration.</param>
+public sealed class RegistryConfigurationProvider( RegistryConfigurationSource source ) : ConfigurationProvider {
+    private readonly RegistryConfigurationSource _source = source ?? throw new ArgumentNullException( nameof( source ) );
 
     /// <inheritdoc />
     public override void Load( ) {

@@ -14,31 +14,25 @@ namespace Werkr.Agent.Operators.Actions;
 /// polling fallback. Includes a stability-window check to confirm the file has
 /// finished writing before reporting success.
 /// </summary>
-public sealed class WatchFileHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="WatchFileHandler"/>.</remarks>
+public sealed partial class WatchFileHandler(
+    IFilePathResolver resolver,
+    ILogger<WatchFileHandler> logger,
+    TimeProvider timeProvider
+    ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<WatchFileHandler> _logger;
+    private readonly ILogger<WatchFileHandler> _logger = logger;
     /// <summary>
     /// Time provider for testable time-dependent logic.
     /// </summary>
-    private readonly TimeProvider _timeProvider;
-
-    /// <summary>Creates a new <see cref="WatchFileHandler"/>.</summary>
-    public WatchFileHandler(
-        IFilePathResolver resolver,
-        ILogger<WatchFileHandler> logger,
-        TimeProvider timeProvider
-    ) {
-        _resolver = resolver;
-        _logger = logger;
-        _timeProvider = timeProvider;
-    }
+    private readonly TimeProvider _timeProvider = timeProvider;
 
     /// <inheritdoc/>
     public string Action => "WatchFile";
@@ -117,7 +111,7 @@ public sealed class WatchFileHandler : IActionHandler {
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             throw;
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "WatchFile action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"WatchFile failed: {ex.Message}" ),
                 cancellationToken );
@@ -237,4 +231,7 @@ public sealed class WatchFileHandler : IActionHandler {
         cancellationToken.ThrowIfCancellationRequested( );
         return false;
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

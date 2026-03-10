@@ -11,25 +11,20 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>DeleteFile</c> action - deletes a file or directory.
 /// Supports recursive deletion and forced removal of read-only files.
 /// </summary>
-public sealed class DeleteFileHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="DeleteFileHandler"/>.</remarks>
+public sealed partial class DeleteFileHandler(
+    IFilePathResolver resolver,
+    ILogger<DeleteFileHandler> logger
+    ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<DeleteFileHandler> _logger;
-
-    /// <summary>Creates a new <see cref="DeleteFileHandler"/>.</summary>
-    public DeleteFileHandler(
-        IFilePathResolver resolver,
-        ILogger<DeleteFileHandler> logger
-    ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<DeleteFileHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "DeleteFile";
@@ -93,10 +88,7 @@ public sealed class DeleteFileHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( fullPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError(
-                ex,
-                "DeleteFile action failed"
-            );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create(
                     LogLevel.Error,
@@ -144,4 +136,7 @@ public sealed class DeleteFileHandler : IActionHandler {
             }
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

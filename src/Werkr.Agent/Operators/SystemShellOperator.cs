@@ -12,7 +12,7 @@ namespace Werkr.Agent.Operators;
 /// </summary>
 /// <remarks>Creates a new <see cref="SystemShellOperator"/>.</remarks>
 /// <param name="logger">Logger for diagnostics.</param>
-public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShellOperator {
+public partial class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShellOperator {
 
     /// <inheritdoc/>
     public bool IsAvailable => OperatingSystem.IsWindows( ) || OperatingSystem.IsLinux( ) || OperatingSystem.IsMacOS( );

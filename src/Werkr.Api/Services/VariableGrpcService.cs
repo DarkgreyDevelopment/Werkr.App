@@ -17,7 +17,7 @@ namespace Werkr.Api.Services;
 /// <param name="dbContext">Database context.</param>
 /// <param name="variableOptions">Variable size configuration.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class VariableGrpcService(
+public sealed partial class VariableGrpcService(
     WerkrDbContext dbContext,
     IOptions<WorkflowVariableOptions> variableOptions,
     ILogger<VariableGrpcService> logger

@@ -12,25 +12,20 @@ namespace Werkr.Server.Services;
 /// <c>Program.cs</c> before the identity seeder runs) and can be refreshed on demand.
 /// </para>
 /// </summary>
-public sealed class ServerConfigCache {
+/// <remarks>Creates a new instance backed by the application service provider.</remarks>
+public sealed partial class ServerConfigCache( IServiceProvider services, ILogger<ServerConfigCache> logger ) {
     /// <summary>
     /// Root service provider used to create scoped services for database access.
     /// </summary>
-    private readonly IServiceProvider _services;
+    private readonly IServiceProvider _services = services;
     /// <summary>
     /// Logger for recording cache initialisation and refresh events.
     /// </summary>
-    private readonly ILogger<ServerConfigCache> _logger;
+    private readonly ILogger<ServerConfigCache> _logger = logger;
     /// <summary>
     /// The currently cached configuration entity. Marked <see langword="volatile"/> because it may be replaced by a background refresh while other threads read it.
     /// </summary>
     private volatile ConfigurationSettings _config = new( );
-
-    /// <summary>Creates a new instance backed by the application service provider.</summary>
-    public ServerConfigCache( IServiceProvider services, ILogger<ServerConfigCache> logger ) {
-        _services = services;
-        _logger = logger;
-    }
 
     // ── Synchronous property accessors (hot path) ────────────────────
 
@@ -63,7 +58,7 @@ public sealed class ServerConfigCache {
             };
             _ = db.ConfigurationSettings.Add( config );
             _ = await db.SaveChangesAsync( ct );
-            _logger.LogInformation( "Seeded default server configuration." );
+            LogDefaultConfigSeeded( _logger );
         }
 
         _config = config;
@@ -75,4 +70,8 @@ public sealed class ServerConfigCache {
         WerkrIdentityDbContext db = scope.ServiceProvider.GetRequiredService<WerkrIdentityDbContext>( );
         _config = await db.ConfigurationSettings.FirstOrDefaultAsync( ct ) ?? new( );
     }
+
+    [LoggerMessage( Level = LogLevel.Information,
+        Message = "Seeded default server configuration." )]
+    private static partial void LogDefaultConfigSeeded( ILogger logger );
 }

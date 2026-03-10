@@ -12,7 +12,7 @@ namespace Werkr.Core.Tasks;
 /// </summary>
 /// <param name="options">Job output configuration.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class JobOutputWriter(
+public sealed partial class JobOutputWriter(
     IOptions<JobOutputOptions> options,
     ILogger<JobOutputWriter> logger
 ) {

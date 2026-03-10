@@ -15,7 +15,7 @@ namespace Werkr.Agent.Services;
 /// </summary>
 /// <param name="outputOptions">Job output directory configuration.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class OutputFetchService(
+public sealed partial class OutputFetchService(
     IOptions<JobOutputOptions> outputOptions,
     ILogger<OutputFetchService> logger
 ) : OutputFetch.OutputFetchBase {

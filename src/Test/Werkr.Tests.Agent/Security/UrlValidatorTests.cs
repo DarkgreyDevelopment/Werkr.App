@@ -253,15 +253,11 @@ public class UrlValidatorTests {
     /// <summary>
     /// Simple <see cref="IOptionsMonitor{T}"/> implementation for tests.
     /// </summary>
-    private sealed class TestOptionsMonitor<T> : IOptionsMonitor<T> {
-
-        /// <summary>Initializes a new instance.</summary>
-        public TestOptionsMonitor( T currentValue ) {
-            CurrentValue = currentValue;
-        }
+    /// <remarks>Initializes a new instance.</remarks>
+    private sealed class TestOptionsMonitor<T>( T currentValue ) : IOptionsMonitor<T> {
 
         /// <summary>Gets the current options value.</summary>
-        public T CurrentValue { get; }
+        public T CurrentValue { get; } = currentValue;
 
         /// <summary>Returns the current value.</summary>
         public T Get( string? name ) => CurrentValue;

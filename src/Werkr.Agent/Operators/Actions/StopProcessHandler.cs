@@ -11,17 +11,13 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>StopProcess</c> action - stops a running process by name or PID.
 /// Optionally force-kills the process.
 /// </summary>
-public sealed class StopProcessHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="StopProcessHandler"/>.</remarks>
+public sealed partial class StopProcessHandler( ILogger<StopProcessHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<StopProcessHandler> _logger;
-
-    /// <summary>Creates a new <see cref="StopProcessHandler"/>.</summary>
-    public StopProcessHandler( ILogger<StopProcessHandler> logger ) {
-        _logger = logger;
-    }
+    private readonly ILogger<StopProcessHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "StopProcess";
@@ -86,11 +82,14 @@ public sealed class StopProcessHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "StopProcess action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"StopProcess failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

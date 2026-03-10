@@ -19,7 +19,7 @@ namespace Werkr.Agent.Services;
 /// the evaluator's background loop.
 /// </param>
 /// <param name="logger">Logger instance.</param>
-public sealed class ScheduleInvalidationService(
+public sealed partial class ScheduleInvalidationService(
     Channel<string> invalidationChannel,
     ILogger<ScheduleInvalidationService> logger
 ) : ScheduleInvalidation.ScheduleInvalidationBase {

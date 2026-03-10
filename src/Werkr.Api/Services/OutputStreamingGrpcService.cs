@@ -16,7 +16,7 @@ namespace Werkr.Api.Services;
 /// </para>
 /// </summary>
 /// <param name="logger">Logger.</param>
-public sealed class OutputStreamingGrpcService(
+public sealed partial class OutputStreamingGrpcService(
     ILogger<OutputStreamingGrpcService> logger
 ) : Werkr.Common.Protos.OutputStreamingService.OutputStreamingServiceBase {
 

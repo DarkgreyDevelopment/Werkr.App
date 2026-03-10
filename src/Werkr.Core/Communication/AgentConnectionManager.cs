@@ -19,7 +19,7 @@ namespace Werkr.Core.Communication;
 /// <remarks>Initializes a new instance of the <see cref="AgentConnectionManager"/> class.</remarks>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve scoped services.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class AgentConnectionManager(
+public sealed partial class AgentConnectionManager(
     IServiceScopeFactory scopeFactory,
     ILogger<AgentConnectionManager> logger
 ) : IDisposable {
@@ -81,14 +81,14 @@ public sealed class AgentConnectionManager(
     /// </summary>
     /// <param name="connection">The resolved <see cref="RegisteredConnection"/>.</param>
     /// <param name="callId">Optional call ID for tracing. Generated if null.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="timeout">Command timeout. Defaults to 30 minutes if null.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Configured <see cref="CallOptions"/>.</returns>
     public static CallOptions CreateCallOptions(
         RegisteredConnection connection,
         Guid? callId = null,
-        CancellationToken cancellationToken = default,
-        TimeSpan? timeout = null
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default
     ) {
 
         Metadata metadata = new( ) {

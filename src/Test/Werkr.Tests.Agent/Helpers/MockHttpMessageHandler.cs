@@ -6,18 +6,14 @@ namespace Werkr.Tests.Agent.Helpers;
 /// A test <see cref="HttpMessageHandler"/> that returns a configurable response.
 /// Used by network handler tests to avoid real HTTP traffic.
 /// </summary>
-internal sealed class MockHttpMessageHandler : HttpMessageHandler {
+/// <remarks>
+/// Creates a handler that invokes the provided delegate for every request.
+/// </remarks>
+internal sealed class MockHttpMessageHandler(
+    Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler
+    ) : HttpMessageHandler {
 
-    private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler;
-
-    /// <summary>
-    /// Creates a handler that invokes the provided delegate for every request.
-    /// </summary>
-    public MockHttpMessageHandler(
-        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler
-    ) {
-        _handler = handler;
-    }
+    private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler = handler;
 
     /// <summary>
     /// Creates a handler that always returns the specified response.

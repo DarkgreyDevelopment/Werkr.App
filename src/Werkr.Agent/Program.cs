@@ -29,7 +29,7 @@ using Werkr.ServiceDefaults;
 namespace Werkr.Agent;
 
 /// <summary>Application entry point for the Werkr Agent.</summary>
-public class Program {
+public partial class Program {
     private static readonly Random s_random = new();
 
     /// <summary>Main entry point.</summary>

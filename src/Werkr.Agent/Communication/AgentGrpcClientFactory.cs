@@ -17,7 +17,7 @@ namespace Werkr.Agent.Communication;
 /// </summary>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve <see cref="WerkrDbContext"/>.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class AgentGrpcClientFactory(
+public sealed partial class AgentGrpcClientFactory(
     IServiceScopeFactory scopeFactory,
     ILogger<AgentGrpcClientFactory> logger
 ) : IDisposable {
@@ -93,13 +93,13 @@ public sealed class AgentGrpcClientFactory(
     /// Mirrors the pattern from <c>AgentConnectionManager.CreateCallOptions</c>.
     /// </summary>
     /// <param name="callId">Optional call ID for tracing. Generated if null.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="timeout">Call timeout. Defaults to 5 minutes if null.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Configured <see cref="CallOptions"/>.</returns>
     public CallOptions CreateCallOptions(
         Guid? callId = null,
-        CancellationToken cancellationToken = default,
-        TimeSpan? timeout = null ) {
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default ) {
 
         if (_connection is null) {
             throw new InvalidOperationException(

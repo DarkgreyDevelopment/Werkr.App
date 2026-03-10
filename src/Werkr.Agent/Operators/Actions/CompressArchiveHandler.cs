@@ -14,22 +14,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>CompressArchive</c> action - creates a Zip or TarGz archive
 /// from a source path, directory, or glob pattern.
 /// </summary>
-public sealed class CompressArchiveHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="CompressArchiveHandler"/>.</remarks>
+public sealed partial class CompressArchiveHandler( IFilePathResolver resolver, ILogger<CompressArchiveHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<CompressArchiveHandler> _logger;
-
-    /// <summary>Creates a new <see cref="CompressArchiveHandler"/>.</summary>
-    public CompressArchiveHandler( IFilePathResolver resolver, ILogger<CompressArchiveHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<CompressArchiveHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "CompressArchive";
@@ -106,7 +101,7 @@ public sealed class CompressArchiveHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( destPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "CompressArchive action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"CompressArchive failed: {ex.Message}" ),
                 cancellationToken );
@@ -186,4 +181,7 @@ public sealed class CompressArchiveHandler : IActionHandler {
             }
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

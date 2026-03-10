@@ -9,19 +9,15 @@ namespace Werkr.Tests.Agent.Helpers;
 /// <summary>
 /// Fake action handler that always succeeds. Used by <see cref="Werkr.Tests.Agent.Operators.ActionOperatorTests"/>.
 /// </summary>
-internal sealed class SuccessHandler : IActionHandler {
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SuccessHandler"/> class with an optional action name.
-    /// </summary>
-    public SuccessHandler( string action = "TestAction" ) {
-        Action = action;
-    }
+/// <remarks>
+/// Initializes a new instance of the <see cref="SuccessHandler"/> class with an optional action name.
+/// </remarks>
+internal sealed class SuccessHandler( string action = "TestAction" ) : IActionHandler {
 
     /// <summary>
     /// Gets the action name that this handler is registered under.
     /// </summary>
-    public string Action { get; }
+    public string Action { get; } = action;
 
     /// <summary>
     /// Executes the handler by writing a success output and returning a successful result.

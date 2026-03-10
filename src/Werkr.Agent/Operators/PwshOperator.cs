@@ -19,7 +19,7 @@ namespace Werkr.Agent.Operators;
 /// <remarks>Creates a new <see cref="PwshOperator"/>.</remarks>
 /// <param name="agentSettingsOptions">Agent settings containing PowerShell configuration.</param>
 /// <param name="logger">Logger for diagnostics.</param>
-public class PwshOperator(
+public partial class PwshOperator(
     IOptions<AgentSettings> agentSettingsOptions,
     ILogger<PwshOperator> logger
 ) : IShellOperator {

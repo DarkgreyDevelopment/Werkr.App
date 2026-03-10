@@ -12,22 +12,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>StartProcess</c> action - starts an external process.
 /// Optionally waits for the process to exit with an optional timeout.
 /// </summary>
-public sealed class StartProcessHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="StartProcessHandler"/>.</remarks>
+public sealed partial class StartProcessHandler( IFilePathResolver resolver, ILogger<StartProcessHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<StartProcessHandler> _logger;
-
-    /// <summary>Creates a new <see cref="StartProcessHandler"/>.</summary>
-    public StartProcessHandler( IFilePathResolver resolver, ILogger<StartProcessHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<StartProcessHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "StartProcess";
@@ -128,7 +123,7 @@ public sealed class StartProcessHandler : IActionHandler {
             string pidJson = JsonSerializer.Serialize(new { processId = process.Id }, ActionJson.SerializerOptions);
             return new ActionOperatorResult( Success: true, OutputVariableValue: pidJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "StartProcess action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"StartProcess failed: {ex.Message}" ),
                 cancellationToken );
@@ -155,4 +150,7 @@ public sealed class StartProcessHandler : IActionHandler {
             return false;
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

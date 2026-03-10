@@ -19,7 +19,7 @@ namespace Werkr.Core.Registration;
 /// <param name="scopeFactory">Service scope factory for creating database contexts.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <param name="interval">How often to check for expired bundles (default: 1 hour).</param>
-public class BundleExpirationService(
+public partial class BundleExpirationService(
     IServiceScopeFactory scopeFactory,
     ILogger<BundleExpirationService> logger,
     TimeSpan? interval = null

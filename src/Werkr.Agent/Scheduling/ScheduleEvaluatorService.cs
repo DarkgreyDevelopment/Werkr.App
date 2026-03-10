@@ -44,7 +44,7 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="invalidationChannel">Channel for receiving invalidation signals.</param>
 /// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
 /// <param name="logger">Logger.</param>
-public sealed class ScheduleEvaluatorService(
+public sealed partial class ScheduleEvaluatorService(
     AgentGrpcClientFactory clientFactory,
     AgentJobOutputWriter outputWriter,
     SuccessCriteriaEvaluator successEvaluator,

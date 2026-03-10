@@ -220,7 +220,7 @@ public class AgentConnectionManagerTests {
         CallOptions options = AgentConnectionManager.CreateCallOptions(
             conn,
             callId,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsNotNull( options.Headers );

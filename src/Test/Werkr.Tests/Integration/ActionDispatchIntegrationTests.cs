@@ -79,7 +79,7 @@ public class ActionDispatchIntegrationTests {
     /// Cleans up the created task after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_CopyFile_PersistsAndReturnsCorrectData( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -123,7 +123,7 @@ public class ActionDispatchIntegrationTests {
     /// value. All created tasks are cleaned up after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_AllActionTypes_Succeed( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -177,7 +177,7 @@ public class ActionDispatchIntegrationTests {
     /// values (including the added "append" flag). Cleans up the task after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task UpdateActionTask_ChangesActionParameters( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -233,7 +233,7 @@ public class ActionDispatchIntegrationTests {
     /// asserts that <see cref="HttpStatusCode.NotFound"/> is returned.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task DeleteActionTask_RemovesAndReturnsNotFound( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -263,7 +263,7 @@ public class ActionDispatchIntegrationTests {
     /// rejects action tasks that lack a required sub-type.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_MissingActionSubType_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -298,7 +298,7 @@ public class ActionDispatchIntegrationTests {
     /// action sub-types.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_UnknownActionSubType_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -337,7 +337,7 @@ public class ActionDispatchIntegrationTests {
     /// require parameters to be specified.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_MissingActionParameters_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -372,7 +372,7 @@ public class ActionDispatchIntegrationTests {
     /// confirming that action parameters must be valid JSON.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_MalformedJsonParameters_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -405,7 +405,7 @@ public class ActionDispatchIntegrationTests {
     /// that action-specific fields are exclusive to Action-type tasks.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateShellTask_WithActionSubType_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -439,7 +439,7 @@ public class ActionDispatchIntegrationTests {
     /// that action-specific fields are exclusive to Action-type tasks.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateShellTask_WithActionParameters_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -477,7 +477,7 @@ public class ActionDispatchIntegrationTests {
     /// and issues a POST to <c>/api/tasks/{id}/run</c>. Asserts the accepted status. Cleans up the task.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task AdHocRunActionTask_WithoutConnectedAgent_ReturnsConflict( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -509,7 +509,7 @@ public class ActionDispatchIntegrationTests {
     /// and asserts that the returned JSON array is empty. Cleans up the task after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task JobHistory_ForNewActionTask_ReturnsEmptyList( ) {
         CancellationToken ct = TestContext.CancellationToken;
 

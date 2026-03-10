@@ -95,7 +95,7 @@ public class ScheduleExecutionTests {
     /// start date, and start time. Also validates the schedule appears in the list endpoint.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ScheduleCreation_PersistsAndReturnsCorrectData( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -134,7 +134,7 @@ public class ScheduleExecutionTests {
     /// that exactly 8 occurrences are returned, each separated by exactly 1 day.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task TaskLinkedToSchedule_OccurrencePreviewReturnsExpectedDates( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -176,7 +176,7 @@ public class ScheduleExecutionTests {
     /// delay, it retrieves the schedule and asserts the updated values are reflected.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ScheduleUpdate_PersistsChangesAndTriggersInvalidationPath( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -225,7 +225,7 @@ public class ScheduleExecutionTests {
     /// then asserts the second GET returns NotFound.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ScheduleDelete_RemovesScheduleAndReturnsNotFoundAfter( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -252,7 +252,7 @@ public class ScheduleExecutionTests {
     /// <c>/api/tasks/{id}/run</c>, and asserts the accepted response.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task AdHocTaskRun_WithoutConnectedAgent_ReturnsConflict( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -273,7 +273,7 @@ public class ScheduleExecutionTests {
     /// <c>GET /api/tasks/{id}/jobs</c>, and asserts the returned JSON array is empty.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task JobHistory_ForNewTask_ReturnsEmptyList( ) {
         CancellationToken ct = TestContext.CancellationToken;
 

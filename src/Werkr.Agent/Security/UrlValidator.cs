@@ -11,19 +11,14 @@ namespace Werkr.Agent.Security;
 /// DNS-pinning verification, and prefix-based allowlist enforcement.
 /// Uses <see cref="IOptionsMonitor{T}"/> for hot-reload support.
 /// </summary>
-public sealed class UrlValidator : IUrlValidator {
+/// <remarks>Creates a new <see cref="UrlValidator"/>.</remarks>
+public sealed partial class UrlValidator(
+    IOptionsMonitor<ActionOperatorConfiguration> options,
+    ILogger<UrlValidator> logger
+    ) : IUrlValidator {
 
-    private readonly IOptionsMonitor<ActionOperatorConfiguration> _options;
-    private readonly ILogger<UrlValidator> _logger;
-
-    /// <summary>Creates a new <see cref="UrlValidator"/>.</summary>
-    public UrlValidator(
-        IOptionsMonitor<ActionOperatorConfiguration> options,
-        ILogger<UrlValidator> logger
-    ) {
-        _options = options;
-        _logger = logger;
-    }
+    private readonly IOptionsMonitor<ActionOperatorConfiguration> _options = options;
+    private readonly ILogger<UrlValidator> _logger = logger;
 
     /// <inheritdoc/>
     public Uri ValidateUrl( string url ) {

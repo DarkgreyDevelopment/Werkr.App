@@ -15,7 +15,10 @@ namespace Werkr.Agent.Operators;
 /// Non-interactive: <see cref="EnterNestedPrompt"/> and <see cref="ExitNestedPrompt"/>
 /// throw <see cref="NotSupportedException"/>.
 /// </remarks>
-public sealed class WerkrPSHost : PSHost {
+/// <remarks>Creates a new <see cref="WerkrPSHost"/>.</remarks>
+/// <param name="writer">Channel to write operator output into.</param>
+/// <param name="bufferWidth">Column width for the formatting subsystem. Default 150.</param>
+public sealed class WerkrPSHost( ChannelWriter<OperatorOutput> writer, int bufferWidth = 150 ) : PSHost {
     /// <summary>
     /// Unique identifier for this host instance, generated at construction time.
     /// </summary>
@@ -23,14 +26,7 @@ public sealed class WerkrPSHost : PSHost {
     /// <summary>
     /// The user interface implementation that routes PowerShell output to the operator output channel.
     /// </summary>
-    private readonly WerkrPSHostUserInterface _ui;
-
-    /// <summary>Creates a new <see cref="WerkrPSHost"/>.</summary>
-    /// <param name="writer">Channel to write operator output into.</param>
-    /// <param name="bufferWidth">Column width for the formatting subsystem. Default 150.</param>
-    public WerkrPSHost( ChannelWriter<OperatorOutput> writer, int bufferWidth = 150 ) {
-        _ui = new WerkrPSHostUserInterface( writer, bufferWidth );
-    }
+    private readonly WerkrPSHostUserInterface _ui = new( writer, bufferWidth );
 
     /// <inheritdoc/>
     public override string Name => "WerkrPSHost";

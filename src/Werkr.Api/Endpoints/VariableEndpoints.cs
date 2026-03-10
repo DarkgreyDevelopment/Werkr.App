@@ -83,7 +83,7 @@ internal static class VariableEndpoints {
 
             bool nameExists = await dbContext.WorkflowVariables.AsNoTracking( )
                 .AnyAsync( v => v.WorkflowId == workflowId
-                    && v.Name.ToLower( ) == request.Name.ToLower( ), ct );
+                    && v.Name.Equals( request.Name, StringComparison.CurrentCultureIgnoreCase ), ct );
             if (nameExists) {
                 return Results.BadRequest( new { message = $"A variable named '{request.Name}' already exists on this workflow." } );
             }
@@ -131,7 +131,7 @@ internal static class VariableEndpoints {
                 if (!string.Equals( entity.Name, request.Name, StringComparison.OrdinalIgnoreCase )) {
                     bool nameExists = await dbContext.WorkflowVariables.AsNoTracking( )
                         .AnyAsync( v => v.WorkflowId == workflowId
-                                     && v.Name.ToLower( ) == request.Name.ToLower( )
+                                     && v.Name.Equals( request.Name, StringComparison.CurrentCultureIgnoreCase )
                                      && v.Id != variableId, ct );
                     if (nameExists) {
                         return Results.BadRequest( new { message = $"A variable named '{request.Name}' already exists on this workflow." } );

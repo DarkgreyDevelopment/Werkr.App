@@ -15,22 +15,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// or from the workflow variable (<c>inputVariableValue</c>). File input takes precedence.
 /// Uses JSON Pointer (RFC 6901) path syntax with an optional <c>$.</c> convenience prefix.
 /// </summary>
-public sealed class TransformJsonHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="TransformJsonHandler"/>.</remarks>
+public sealed partial class TransformJsonHandler( IFilePathResolver resolver, ILogger<TransformJsonHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<TransformJsonHandler> _logger;
-
-    /// <summary>Creates a new <see cref="TransformJsonHandler"/>.</summary>
-    public TransformJsonHandler( IFilePathResolver resolver, ILogger<TransformJsonHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<TransformJsonHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "TransformJson";
@@ -109,7 +104,7 @@ public sealed class TransformJsonHandler : IActionHandler {
             // 6. Always populate OutputVariableValue
             return new ActionOperatorResult( Success: true, OutputVariableValue: resultJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "TransformJson action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"TransformJson failed: {ex.Message}" ),
                 cancellationToken );
@@ -358,4 +353,7 @@ public sealed class TransformJsonHandler : IActionHandler {
             }
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

@@ -12,25 +12,18 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>DownloadFile</c> action — downloads a file from a URL to a local
 /// destination path. Streams the response body to disk and reports download progress.
 /// </summary>
-public sealed class DownloadFileHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="DownloadFileHandler"/>.</remarks>
+public sealed partial class DownloadFileHandler(
+    IUrlValidator urlValidator,
+    IHttpClientFactory httpClientFactory,
+    IFilePathResolver resolver,
+    ILogger<DownloadFileHandler> logger
+    ) : IActionHandler {
 
-    private readonly IUrlValidator _urlValidator;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IFilePathResolver _resolver;
-    private readonly ILogger<DownloadFileHandler> _logger;
-
-    /// <summary>Creates a new <see cref="DownloadFileHandler"/>.</summary>
-    public DownloadFileHandler(
-        IUrlValidator urlValidator,
-        IHttpClientFactory httpClientFactory,
-        IFilePathResolver resolver,
-        ILogger<DownloadFileHandler> logger
-    ) {
-        _urlValidator = urlValidator;
-        _httpClientFactory = httpClientFactory;
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly IUrlValidator _urlValidator = urlValidator;
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly IFilePathResolver _resolver = resolver;
+    private readonly ILogger<DownloadFileHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "DownloadFile";
@@ -112,11 +105,14 @@ public sealed class DownloadFileHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: outputJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "DownloadFile action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"DownloadFile failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

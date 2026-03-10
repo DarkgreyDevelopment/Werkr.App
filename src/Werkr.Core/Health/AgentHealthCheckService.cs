@@ -22,7 +22,7 @@ namespace Werkr.Core.Health;
 /// <param name="connectionManager">Singleton gRPC channel cache.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <param name="interval">How often to sweep all agents (default: 60 seconds).</param>
-public class AgentHealthCheckService(
+public partial class AgentHealthCheckService(
     IServiceScopeFactory scopeFactory,
     AgentConnectionManager connectionManager,
     ILogger<AgentHealthCheckService> logger,

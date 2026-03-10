@@ -6,21 +6,16 @@ namespace Werkr.Core.Communication;
 /// Represents an active SSE subscription to job events.
 /// Disposing or calling <see cref="Dispose"/> removes the subscriber from the broadcaster.
 /// </summary>
-public sealed class JobEventSubscription : IDisposable {
+/// <remarks>Initializes a new subscription.</remarks>
+/// <param name="reader">Channel reader for this subscriber.</param>
+/// <param name="unsubscribe">Callback to remove the subscriber from the broadcaster.</param>
+public sealed class JobEventSubscription( ChannelReader<JobEvent> reader, Action unsubscribe ) : IDisposable {
 
-    private readonly Action _unsubscribe;
+    private readonly Action _unsubscribe = unsubscribe;
     private bool _disposed;
 
     /// <summary>The channel reader that delivers job events to this subscriber.</summary>
-    public ChannelReader<JobEvent> Reader { get; }
-
-    /// <summary>Initializes a new subscription.</summary>
-    /// <param name="reader">Channel reader for this subscriber.</param>
-    /// <param name="unsubscribe">Callback to remove the subscriber from the broadcaster.</param>
-    public JobEventSubscription( ChannelReader<JobEvent> reader, Action unsubscribe ) {
-        Reader = reader;
-        _unsubscribe = unsubscribe;
-    }
+    public ChannelReader<JobEvent> Reader { get; } = reader;
 
     /// <summary>Unsubscribes from the broadcaster.</summary>
     public void Dispose( ) {

@@ -13,22 +13,16 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>TestConnection</c> action — tests connectivity to a host/port using
 /// TCP, HTTP, or HTTPS. Returns reachability data rather than throwing on unreachable targets.
 /// </summary>
-public sealed class TestConnectionHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="TestConnectionHandler"/>.</remarks>
+public sealed partial class TestConnectionHandler(
+    IUrlValidator urlValidator,
+    IHttpClientFactory httpClientFactory,
+    ILogger<TestConnectionHandler> logger
+    ) : IActionHandler {
 
-    private readonly IUrlValidator _urlValidator;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<TestConnectionHandler> _logger;
-
-    /// <summary>Creates a new <see cref="TestConnectionHandler"/>.</summary>
-    public TestConnectionHandler(
-        IUrlValidator urlValidator,
-        IHttpClientFactory httpClientFactory,
-        ILogger<TestConnectionHandler> logger
-    ) {
-        _urlValidator = urlValidator;
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
-    }
+    private readonly IUrlValidator _urlValidator = urlValidator;
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly ILogger<TestConnectionHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "TestConnection";
@@ -91,7 +85,7 @@ public sealed class TestConnectionHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: outputJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "TestConnection action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"TestConnection failed: {ex.Message}" ),
                 cancellationToken );
@@ -137,4 +131,7 @@ public sealed class TestConnectionHandler : IActionHandler {
             return (false, ex.Message, sw.ElapsedMilliseconds);
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

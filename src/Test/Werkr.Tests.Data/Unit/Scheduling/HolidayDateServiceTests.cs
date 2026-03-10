@@ -91,7 +91,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task MaterializeDates_CreatesDatesFromRules( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
 
         await _service.MaterializeDatesAsync( cal.Id, 2026, 2026, ct );
@@ -106,7 +106,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task MaterializeDates_MultiYear_CreatesAll( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
 
         await _service.MaterializeDatesAsync( cal.Id, 2025, 2027, ct );
@@ -120,7 +120,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task MaterializeDates_Idempotent_NoDoubleInsert( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
 
         await _service.MaterializeDatesAsync( cal.Id, 2026, 2026, ct );
@@ -134,7 +134,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task MaterializeDates_EmptyCalendar_NoExceptions( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedEmptyCalendarAsync( ct );
 
         await _service.MaterializeDatesAsync( cal.Id, 2026, 2026, ct );
@@ -147,7 +147,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task MaterializeDates_NonexistentCalendar_NoExceptions( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         await _service.MaterializeDatesAsync( Guid.NewGuid( ), 2026, 2026, ct );
         // Should not throw
     }
@@ -156,7 +156,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task InvalidateCache_RemovesRuleGenerated_PreservesManual( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
 
         // Materialize rule-generated dates
@@ -190,7 +190,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task GetDatesForRange_AutoMaterializesWhenMissing( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
 
         // No dates materialized yet
@@ -202,7 +202,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task GetDatesForRange_IncludesManualDates( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
 
         // Add a manual date
@@ -226,7 +226,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task MaterializeDates_MergesOntoManualEntry( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
 
         // Pre-insert a manual entry matching a rule's output date
@@ -257,7 +257,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task EnsureMaterialized_OnlyRunsOnce( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
 
         await _service.EnsureMaterializedAsync( cal.Id, 2026, ct );
@@ -273,7 +273,7 @@ public class HolidayDateServiceTests {
 
     [TestMethod]
     public async Task GetDatesForRange_EmptyDateRange_ReturnsEmpty( ) {
-        CancellationToken ct = TestContext.CancellationTokenSource.Token;
+        CancellationToken ct = TestContext.CancellationToken;
         HolidayCalendar cal = await SeedCalendarWithRulesAsync( ct );
         await _service.MaterializeDatesAsync( cal.Id, 2026, 2026, ct );
 

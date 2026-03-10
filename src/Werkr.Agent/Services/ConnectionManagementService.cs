@@ -21,7 +21,7 @@ namespace Werkr.Agent.Services;
 /// when the server URL changes.
 /// </param>
 /// <param name="logger">Logger instance.</param>
-public sealed class ConnectionManagementService(
+public sealed partial class ConnectionManagementService(
     IServiceScopeFactory scopeFactory,
     AgentGrpcClientFactory clientFactory,
     ILogger<ConnectionManagementService> logger

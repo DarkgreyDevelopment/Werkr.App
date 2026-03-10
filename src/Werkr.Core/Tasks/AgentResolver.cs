@@ -17,7 +17,7 @@ namespace Werkr.Core.Tasks;
 /// <param name="dbContext">Database context for querying registered connections.</param>
 /// <param name="connectionManager">Singleton gRPC channel cache for live health checks.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class AgentResolver(
+public sealed partial class AgentResolver(
     WerkrDbContext dbContext,
     AgentConnectionManager connectionManager,
     ILogger<AgentResolver> logger

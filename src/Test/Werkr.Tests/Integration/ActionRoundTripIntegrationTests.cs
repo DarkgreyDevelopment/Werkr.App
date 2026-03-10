@@ -84,7 +84,7 @@ public class ActionRoundTripIntegrationTests {
     /// and optional Reason string through the API.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task Delay_RoundTrips_DoubleSecondsAndReason( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -117,7 +117,7 @@ public class ActionRoundTripIntegrationTests {
     /// Verifies that a GetFileInfo action task persists its single required Path parameter.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task GetFileInfo_RoundTrips_Path( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -150,7 +150,7 @@ public class ActionRoundTripIntegrationTests {
     /// and Encoding values.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ReadContent_RoundTrips_MaxBytesAndEncoding( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -183,7 +183,7 @@ public class ActionRoundTripIntegrationTests {
     /// (Type, SortBy) and other fields.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ListDirectory_RoundTrips_EnumParameters( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -218,7 +218,7 @@ public class ActionRoundTripIntegrationTests {
     /// and explicitly-set-to-false values.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task FindReplace_RoundTrips_CaseSensitiveFlag( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -253,7 +253,7 @@ public class ActionRoundTripIntegrationTests {
     /// CompressionLevel enum values.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CompressArchive_RoundTrips_FormatAndCompressionLevel( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -288,7 +288,7 @@ public class ActionRoundTripIntegrationTests {
     /// including the Format field set to Auto.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ExpandArchive_RoundTrips_AutoFormat( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -323,7 +323,7 @@ public class ActionRoundTripIntegrationTests {
     /// numeric parameters, and UsePolling boolean.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task WatchFile_RoundTrips_ModeAndPollingSettings( ) {
         CancellationToken ct = TestContext.CancellationToken;
 

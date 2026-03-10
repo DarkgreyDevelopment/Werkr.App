@@ -11,22 +11,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>GetFileInfo</c> action - returns file or directory metadata
 /// (exists, size, created, modified, isDirectory) as structured JSON output.
 /// </summary>
-public sealed class GetFileInfoHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="GetFileInfoHandler"/>.</remarks>
+public sealed partial class GetFileInfoHandler( IFilePathResolver resolver, ILogger<GetFileInfoHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<GetFileInfoHandler> _logger;
-
-    /// <summary>Creates a new <see cref="GetFileInfoHandler"/>.</summary>
-    public GetFileInfoHandler( IFilePathResolver resolver, ILogger<GetFileInfoHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<GetFileInfoHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "GetFileInfo";
@@ -88,11 +83,14 @@ public sealed class GetFileInfoHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: json );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "GetFileInfo action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"GetFileInfo failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

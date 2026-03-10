@@ -13,25 +13,18 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>UploadFile</c> action — uploads a local file to a URL using
 /// multipart/form-data.
 /// </summary>
-public sealed class UploadFileHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="UploadFileHandler"/>.</remarks>
+public sealed partial class UploadFileHandler(
+    IUrlValidator urlValidator,
+    IHttpClientFactory httpClientFactory,
+    IFilePathResolver resolver,
+    ILogger<UploadFileHandler> logger
+    ) : IActionHandler {
 
-    private readonly IUrlValidator _urlValidator;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IFilePathResolver _resolver;
-    private readonly ILogger<UploadFileHandler> _logger;
-
-    /// <summary>Creates a new <see cref="UploadFileHandler"/>.</summary>
-    public UploadFileHandler(
-        IUrlValidator urlValidator,
-        IHttpClientFactory httpClientFactory,
-        IFilePathResolver resolver,
-        ILogger<UploadFileHandler> logger
-    ) {
-        _urlValidator = urlValidator;
-        _httpClientFactory = httpClientFactory;
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly IUrlValidator _urlValidator = urlValidator;
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly IFilePathResolver _resolver = resolver;
+    private readonly ILogger<UploadFileHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "UploadFile";
@@ -105,11 +98,14 @@ public sealed class UploadFileHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: outputJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "UploadFile action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"UploadFile failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

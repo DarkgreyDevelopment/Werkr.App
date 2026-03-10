@@ -14,22 +14,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>ExpandArchive</c> action - extracts a Zip or TarGz archive
 /// to a destination directory. Includes zip-slip protection.
 /// </summary>
-public sealed class ExpandArchiveHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="ExpandArchiveHandler"/>.</remarks>
+public sealed partial class ExpandArchiveHandler( IFilePathResolver resolver, ILogger<ExpandArchiveHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<ExpandArchiveHandler> _logger;
-
-    /// <summary>Creates a new <see cref="ExpandArchiveHandler"/>.</summary>
-    public ExpandArchiveHandler( IFilePathResolver resolver, ILogger<ExpandArchiveHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<ExpandArchiveHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "ExpandArchive";
@@ -69,7 +64,7 @@ public sealed class ExpandArchiveHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( destPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "ExpandArchive action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"ExpandArchive failed: {ex.Message}" ),
                 cancellationToken );
@@ -200,4 +195,7 @@ public sealed class ExpandArchiveHandler : IActionHandler {
 
         return count;
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

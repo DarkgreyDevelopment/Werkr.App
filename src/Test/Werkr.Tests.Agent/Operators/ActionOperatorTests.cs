@@ -30,7 +30,7 @@ public class ActionOperatorTests {
     /// with the given timeout. Defaults to a one-hour timeout when none
     /// is supplied.
     /// </summary>
-    private static IOptionsMonitor<ActionOperatorConfiguration> DefaultOptions( TimeSpan? timeout = null ) {
+    private static TestOptionsMonitor<ActionOperatorConfiguration> DefaultOptions( TimeSpan? timeout = null ) {
         ActionOperatorConfiguration config = new( ) {
             DefaultTimeout = timeout ?? TimeSpan.FromHours( 1 ),
         };
@@ -380,19 +380,15 @@ public class ActionOperatorTests {
     /// <summary>
     /// Simple <see cref="IOptionsMonitor{T}"/> implementation for tests.
     /// </summary>
-    private sealed class TestOptionsMonitor<T> : IOptionsMonitor<T> {
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TestOptionsMonitor{T}"/> class.
-        /// </summary>
-        public TestOptionsMonitor( T currentValue ) {
-            CurrentValue = currentValue;
-        }
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="TestOptionsMonitor{T}"/> class.
+    /// </remarks>
+    private sealed class TestOptionsMonitor<T>( T currentValue ) : IOptionsMonitor<T> {
 
         /// <summary>
         /// Gets the current options value.
         /// </summary>
-        public T CurrentValue { get; }
+        public T CurrentValue { get; } = currentValue;
 
         /// <summary>
         /// Returns the current value regardless of the supplied <paramref name="name"/>.

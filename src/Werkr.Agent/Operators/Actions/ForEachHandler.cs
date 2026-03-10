@@ -13,14 +13,10 @@ namespace Werkr.Agent.Operators.Actions;
 /// and writes the <b>last element</b> of the array as the output variable value.
 /// Empty arrays produce a <see langword="null"/> output (success).
 /// </summary>
-public sealed class ForEachHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="ForEachHandler"/>.</remarks>
+public sealed partial class ForEachHandler( ILogger<ForEachHandler> logger ) : IActionHandler {
 
-    private readonly ILogger<ForEachHandler> _logger;
-
-    /// <summary>Creates a new <see cref="ForEachHandler"/>.</summary>
-    public ForEachHandler( ILogger<ForEachHandler> logger ) {
-        _logger = logger;
-    }
+    private readonly ILogger<ForEachHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "ForEach";
@@ -111,7 +107,7 @@ public sealed class ForEachHandler : IActionHandler {
                 return new ActionOperatorResult( Success: true, OutputVariableValue: lastElementValue );
             }
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "ForEach action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"ForEach failed: {ex.Message}" ),
                 cancellationToken );
@@ -130,4 +126,7 @@ public sealed class ForEachHandler : IActionHandler {
             or JsonValueKind.False
             or JsonValueKind.Null;
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "ForEach action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

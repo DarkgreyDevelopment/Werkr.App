@@ -11,7 +11,7 @@ namespace Werkr.Core.Workflows;
 /// </summary>
 /// <param name="dbContext">Database context.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class WorkflowService(
+public sealed partial class WorkflowService(
     WerkrDbContext dbContext,
     ILogger<WorkflowService> logger
 ) {
@@ -353,8 +353,8 @@ public sealed class WorkflowService(
 
         foreach (WorkflowStep step in steps) {
             foreach (WorkflowStepDependency dep in step.Dependencies) {
-                if (adjacency.ContainsKey( dep.DependsOnStepId )) {
-                    adjacency[dep.DependsOnStepId].Add( step.Id );
+                if (adjacency.TryGetValue( dep.DependsOnStepId, out List<long>? value )) {
+                    value.Add( step.Id );
                     inDegree[step.Id]++;
                 }
             }
@@ -430,8 +430,8 @@ public sealed class WorkflowService(
 
         foreach (WorkflowStep step in steps) {
             foreach (WorkflowStepDependency dep in step.Dependencies) {
-                if (adjacency.ContainsKey( dep.DependsOnStepId )) {
-                    adjacency[dep.DependsOnStepId].Add( step.Id );
+                if (adjacency.TryGetValue( dep.DependsOnStepId, out List<long>? value )) {
+                    value.Add( step.Id );
                     inDegree[step.Id]++;
                 }
             }

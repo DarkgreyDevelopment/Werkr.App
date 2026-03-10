@@ -12,22 +12,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>ReadContent</c> action - reads file content and emits it as action output.
 /// Supports configurable encoding and optional byte-count truncation.
 /// </summary>
-public sealed class ReadContentHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="ReadContentHandler"/>.</remarks>
+public sealed partial class ReadContentHandler( IFilePathResolver resolver, ILogger<ReadContentHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<ReadContentHandler> _logger;
-
-    /// <summary>Creates a new <see cref="ReadContentHandler"/>.</summary>
-    public ReadContentHandler( IFilePathResolver resolver, ILogger<ReadContentHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<ReadContentHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "ReadContent";
@@ -68,11 +63,14 @@ public sealed class ReadContentHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( content, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "ReadContent action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"ReadContent failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

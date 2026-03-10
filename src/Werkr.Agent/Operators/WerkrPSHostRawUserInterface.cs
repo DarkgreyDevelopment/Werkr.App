@@ -12,17 +12,13 @@ namespace Werkr.Agent.Operators;
 /// All setter properties are no-ops - the headless agent has no real console.
 /// Input methods throw <see cref="NotSupportedException"/> (non-interactive).
 /// </remarks>
-public sealed class WerkrPSHostRawUserInterface : PSHostRawUserInterface {
+/// <remarks>Creates a new <see cref="WerkrPSHostRawUserInterface"/> with the specified buffer width.</remarks>
+/// <param name="bufferWidth">Column width for formatting cmdlets. Default 150.</param>
+public sealed class WerkrPSHostRawUserInterface( int bufferWidth = 150 ) : PSHostRawUserInterface {
     /// <summary>
     /// The virtual buffer size reported to PowerShell for output formatting.
     /// </summary>
-    private readonly Size _bufferSize;
-
-    /// <summary>Creates a new <see cref="WerkrPSHostRawUserInterface"/> with the specified buffer width.</summary>
-    /// <param name="bufferWidth">Column width for formatting cmdlets. Default 150.</param>
-    public WerkrPSHostRawUserInterface( int bufferWidth = 150 ) {
-        _bufferSize = new Size( bufferWidth, 50 );
-    }
+    private readonly Size _bufferSize = new( bufferWidth, 50 );
 
     /// <inheritdoc/>
     public override Size BufferSize {

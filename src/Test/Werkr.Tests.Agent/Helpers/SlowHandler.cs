@@ -10,19 +10,15 @@ namespace Werkr.Tests.Agent.Helpers;
 /// Fake action handler that delays forever (until cancelled).
 /// Used for timeout and cancellation tests.
 /// </summary>
-internal sealed class SlowHandler : IActionHandler {
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SlowHandler"/> class with an optional action name.
-    /// </summary>
-    public SlowHandler( string action = "SlowAction" ) {
-        Action = action;
-    }
+/// <remarks>
+/// Initializes a new instance of the <see cref="SlowHandler"/> class with an optional action name.
+/// </remarks>
+internal sealed class SlowHandler( string action = "SlowAction" ) : IActionHandler {
 
     /// <summary>
     /// Gets the action name that this handler is registered under.
     /// </summary>
-    public string Action { get; }
+    public string Action { get; } = action;
 
     /// <summary>
     /// Executes the handler by writing a start message and then blocking

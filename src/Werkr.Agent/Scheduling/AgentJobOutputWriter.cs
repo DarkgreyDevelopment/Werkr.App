@@ -12,7 +12,7 @@ namespace Werkr.Agent.Scheduling;
 /// </summary>
 /// <param name="options">Job output directory configuration.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class AgentJobOutputWriter(
+public sealed partial class AgentJobOutputWriter(
     IOptions<JobOutputOptions> options,
     ILogger<AgentJobOutputWriter> logger
 ) {

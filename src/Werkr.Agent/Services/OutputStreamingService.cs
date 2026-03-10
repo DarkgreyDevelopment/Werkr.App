@@ -25,7 +25,7 @@ namespace Werkr.Agent.Services;
 /// </summary>
 /// <param name="clientFactory">Factory for creating outbound gRPC clients.</param>
 /// <param name="logger">Logger.</param>
-public sealed class OutputStreamingService(
+public sealed partial class OutputStreamingService(
     AgentGrpcClientFactory clientFactory,
     ILogger<OutputStreamingService> logger
 ) : IDisposable {
@@ -205,7 +205,7 @@ public sealed class OutputStreamingService(
             }
         }
 
-        public IReadOnlyList<OutputMessage> Snapshot( ) {
+        public OutputMessage[] Snapshot( ) {
             lock (_lock) {
                 OutputMessage[] snapshot = new OutputMessage[_count];
                 int start = (_head - _count + capacity) % capacity;

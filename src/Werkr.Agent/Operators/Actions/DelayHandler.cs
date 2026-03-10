@@ -10,22 +10,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>Delay</c> action - pauses workflow execution for a specified duration.
 /// Uses <see cref="TimeProvider"/> for testable time-dependent logic.
 /// </summary>
-public sealed class DelayHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="DelayHandler"/>.</remarks>
+public sealed partial class DelayHandler( ILogger<DelayHandler> logger, TimeProvider timeProvider ) : IActionHandler {
 
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<DelayHandler> _logger;
+    private readonly ILogger<DelayHandler> _logger = logger;
     /// <summary>
     /// Time provider for testable delay logic.
     /// </summary>
-    private readonly TimeProvider _timeProvider;
-
-    /// <summary>Creates a new <see cref="DelayHandler"/>.</summary>
-    public DelayHandler( ILogger<DelayHandler> logger, TimeProvider timeProvider ) {
-        _logger = logger;
-        _timeProvider = timeProvider;
-    }
+    private readonly TimeProvider _timeProvider = timeProvider;
 
     /// <inheritdoc/>
     public string Action => "Delay";
@@ -61,11 +56,14 @@ public sealed class DelayHandler : IActionHandler {
 
             return new ActionOperatorResult( Success: true );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "Delay action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"Delay failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

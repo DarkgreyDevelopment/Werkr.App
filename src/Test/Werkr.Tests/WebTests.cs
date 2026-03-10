@@ -20,7 +20,7 @@ public class WebTests {
     /// its root resource. The test validates both the HTTP status and the content of the response.
     /// </summary>
     [TestMethod]
-    [Timeout( 30_000 )]
+    [Timeout( 30_000, CooperativeCancellation = true )]
     public async Task GetApiRootReturnsOkStatusCode( ) {
         CancellationToken ct = TestContext.CancellationToken;
         HttpClient httpClient = AppHostFixture.ApiClient;

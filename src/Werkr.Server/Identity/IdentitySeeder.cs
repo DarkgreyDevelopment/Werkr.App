@@ -11,7 +11,7 @@ namespace Werkr.Server.Identity;
 /// <summary>
 /// Seeds default roles, role-permission mappings, and an initial admin account on application startup.
 /// </summary>
-public static class IdentitySeeder {
+public static partial class IdentitySeeder {
     /// <summary>
     /// Default permission sets for each role.
     /// Admin gets all permissions. Operator gets Read + Execute. Viewer gets Read only.
@@ -82,7 +82,7 @@ public static class IdentitySeeder {
 
                 ILogger logger = services.GetRequiredService<ILoggerFactory>( )
                     .CreateLogger( "Werkr.Identity.Seeder" );
-                logger.LogWarning( "Default admin account created: admin@werkr.local — change the password on first login." );
+                LogAdminCreated( logger );
 
                 // Write sensitive credentials only to stdout (not to Serilog sinks)
                 Console.WriteLine( );
@@ -100,18 +100,16 @@ public static class IdentitySeeder {
                 if (!string.IsNullOrWhiteSpace( passwordFilePath )) {
                     try {
                         await File.WriteAllTextAsync( passwordFilePath, generatedPassword );
-                        logger.LogInformation( "Admin password written to file." );
+                        LogPasswordWritten( logger );
                     } catch (Exception ex) {
-                        logger.LogError( ex, "Failed to write admin password to {FilePath}", passwordFilePath );
+                        LogPasswordWriteFailed( logger, ex, passwordFilePath );
                     }
                 }
             } else {
                 ILogger logger = services.GetRequiredService<ILoggerFactory>( )
                     .CreateLogger( "Werkr.Identity.Seeder" );
                 foreach (IdentityError error in result.Errors) {
-                    logger.LogError( "Failed to create default admin: {Code} — {Description}",
-                        error.Code, error.Description
-                    );
+                    LogAdminCreateFailed( logger, error.Code, error.Description );
                 }
             }
         }
@@ -174,4 +172,20 @@ public static class IdentitySeeder {
 
         return new string( passwordChars );
     }
+
+    [LoggerMessage( Level = LogLevel.Warning,
+        Message = "Default admin account created: admin@werkr.local — change the password on first login." )]
+    private static partial void LogAdminCreated( ILogger logger );
+
+    [LoggerMessage( Level = LogLevel.Information,
+        Message = "Admin password written to file." )]
+    private static partial void LogPasswordWritten( ILogger logger );
+
+    [LoggerMessage( Level = LogLevel.Error,
+        Message = "Failed to write admin password to {FilePath}" )]
+    private static partial void LogPasswordWriteFailed( ILogger logger, Exception ex, string filePath );
+
+    [LoggerMessage( Level = LogLevel.Error,
+        Message = "Failed to create default admin: {Code} — {Description}" )]
+    private static partial void LogAdminCreateFailed( ILogger logger, string code, string description );
 }

@@ -24,7 +24,7 @@ namespace Werkr.Api.Services;
 /// <param name="holidayDateService">Holiday date materialization service.</param>
 /// <param name="holidayCalendarService">Holiday calendar CRUD service.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class ScheduleSyncGrpcService(
+public sealed partial class ScheduleSyncGrpcService(
     WerkrDbContext dbContext,
     ScheduleService scheduleService,
     HolidayDateService holidayDateService,

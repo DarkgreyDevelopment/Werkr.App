@@ -7,13 +7,10 @@ namespace Werkr.Data.Encryption;
 /// before writing to the database and decrypts it after reading.
 /// Uses <see cref="FieldEncryptionProvider"/> (AES-256-GCM).
 /// </summary>
-public sealed class EncryptedStringConverter : ValueConverter<string, string> {
-
-    /// <summary>Creates a new converter backed by the specified encryption provider.</summary>
-    /// <param name="provider">The AES-256-GCM encryption provider.</param>
-    public EncryptedStringConverter( FieldEncryptionProvider provider )
-        : base(
-            v => provider.Encrypt( v )!,
-            v => provider.Decrypt( v )!
-        ) { }
+/// <remarks>Creates a new converter backed by the specified encryption provider.</remarks>
+/// <param name="provider">The AES-256-GCM encryption provider.</param>
+public sealed class EncryptedStringConverter( FieldEncryptionProvider provider ) : ValueConverter<string, string>(
+        v => provider.Encrypt( v )!,
+        v => provider.Decrypt( v )!
+        ) {
 }

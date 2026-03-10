@@ -131,7 +131,7 @@ public class ScheduledActionTests {
     /// Cleans up the task after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ActionTaskLinkedToSchedule_PersistsAllFields( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -213,7 +213,7 @@ public class ScheduledActionTests {
     /// each consecutive pair exactly 2 days apart. Cleans up the schedule.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ScheduledActionTask_OccurrencePreview_ReturnsExpectedDates( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -286,7 +286,7 @@ public class ScheduledActionTests {
     /// Cleans up the task.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ScheduledActionTask_UpdateActionType_PersistsChanges( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -366,7 +366,7 @@ public class ScheduledActionTests {
     /// has the expected action sub-type. Cleans up all tasks.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task MultipleActionTasks_SameSchedule_AllPersistCorrectly( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -444,7 +444,7 @@ public class ScheduledActionTests {
     /// the task.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ScheduledActionTask_RemoveScheduleLink_TaskRemains( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -540,7 +540,7 @@ public class ScheduledActionTests {
     /// are all still present. Cleans up the task.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task DeleteSchedule_ActionTasksRetainActionFields( ) {
         CancellationToken ct = TestContext.CancellationToken;
 

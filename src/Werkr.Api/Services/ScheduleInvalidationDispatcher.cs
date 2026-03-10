@@ -19,7 +19,7 @@ namespace Werkr.Api.Services;
 /// <param name="connectionManager">Manages gRPC channels to agents.</param>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve <see cref="WerkrDbContext"/>.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class ScheduleInvalidationDispatcher(
+public sealed partial class ScheduleInvalidationDispatcher(
     AgentConnectionManager connectionManager,
     IServiceScopeFactory scopeFactory,
     ILogger<ScheduleInvalidationDispatcher> logger

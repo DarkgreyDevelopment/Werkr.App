@@ -13,7 +13,7 @@ namespace Werkr.Agent.Operators;
 /// Follows the same channel-based streaming pattern as <see cref="PwshOperator"/>
 /// and <see cref="SystemShellOperator"/>.
 /// </summary>
-public sealed class ActionOperator : IActionOperator {
+public sealed partial class ActionOperator : IActionOperator {
 
     /// <summary>
     /// The well-known action names that must have registered handlers at startup.
