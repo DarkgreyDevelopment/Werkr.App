@@ -37,6 +37,16 @@ internal static class TaskMapper {
             ["CompressArchive"] = typeof(CompressArchiveParameters),
             ["ExpandArchive"] = typeof(ExpandArchiveParameters),
             ["WatchFile"] = typeof(WatchFileParameters),
+
+            // ── Phase 2 no-code actions ──────────────────────────────
+            ["ForEach"] = typeof(ForEachParameters),
+            ["TransformJson"] = typeof(TransformJsonParameters),
+            ["HttpRequest"] = typeof(HttpRequestParameters),
+            ["DownloadFile"] = typeof(DownloadFileParameters),
+            ["UploadFile"] = typeof(UploadFileParameters),
+            ["TestConnection"] = typeof(TestConnectionParameters),
+            ["SendWebhook"] = typeof(SendWebhookParameters),
+            ["SendEmail"] = typeof(SendEmailParameters),
         };
 
     /// <summary>

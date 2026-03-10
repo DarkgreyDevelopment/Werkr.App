@@ -215,7 +215,8 @@ public class Program {
             // Sweep stale variable temp files from previous runs (crash recovery)
             SweepStaleVariableFiles(
                 app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>( )
-                    .CreateLogger( "Werkr.Agent.Startup" ) );
+                    .CreateLogger( "Werkr.Agent.Startup" ),
+                app.Services.GetRequiredService<IOptions<JobOutputOptions>>( ).Value.OutputDirectory );
 
             // Default Aspire endpoints (health, etc.)
             _ = app.MapDefaultEndpoints( );
@@ -307,12 +308,14 @@ public class Program {
     }
 
     /// <summary>
-    /// Deletes any leftover variable temp files in <c>job-output/_vars/</c> that are older than 1 hour.
+    /// Deletes any leftover variable temp files in the <c>_vars</c> sub-directory of
+    /// <paramref name="outputDirectory"/> that are older than 1 hour.
     /// These files can accumulate if the agent crashes or is killed during a workflow run.
     /// </summary>
     /// <param name="logger">Logger instance.</param>
-    private static void SweepStaleVariableFiles( Microsoft.Extensions.Logging.ILogger logger ) {
-        string varsDir = Path.Combine("job-output", "_vars");
+    /// <param name="outputDirectory">The configured job-output base directory (from <see cref="JobOutputOptions"/>).</param>
+    private static void SweepStaleVariableFiles( Microsoft.Extensions.Logging.ILogger logger, string outputDirectory ) {
+        string varsDir = Path.Combine(outputDirectory, "_vars");
         if (!Directory.Exists( varsDir )) {
             return;
         }

@@ -348,7 +348,10 @@ public class WerkrDbContext : DbContext {
             _ = entity.Property( e => e.Name ).HasMaxLength( 128 );
             _ = entity.Property( e => e.Description ).HasMaxLength( 500 );
 
-            // Unique variable name per workflow (case-insensitive)
+            // Unique variable name per workflow.
+            // Names are normalized to lower-case by the API layer before persisting,
+            // so this index effectively enforces case-insensitive uniqueness in a
+            // provider-agnostic way.
             _ = entity.HasIndex( e => new { e.WorkflowId, e.Name } )
                 .IsUnique( );
 

@@ -32,6 +32,15 @@ public static class ActionParameterRegistry {
     /// <summary>Sort-by values for ListDirectory (matches Werkr.Common.Models.DirectoryListSortBy enum).</summary>
     private static readonly string[] s_directoryListSortBy = ["Name", "Modified", "Size", "None"];
 
+    /// <summary>HTTP method values for HttpRequest and UploadFile.</summary>
+    private static readonly string[] s_httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+
+    /// <summary>Connection protocol values (matches Werkr.Common.Models.Actions.ConnectionProtocol enum).</summary>
+    private static readonly string[] s_connectionProtocols = ["Tcp", "Http", "Https"];
+
+    /// <summary>JSON transform operation types (matches Werkr.Common.Models.Actions.JsonTransformType enum).</summary>
+    private static readonly string[] s_jsonTransformTypes = ["Extract", "Set", "Delete", "Merge"];
+
     /// <summary>
     /// The master array of all <see cref="ActionFormDescriptor"/> instances that define every supported action and its parameters. This array is the source of truth from which <see cref="Actions"/> and <see cref="All"/> are derived.
     /// </summary>
@@ -166,6 +175,75 @@ public static class ActionParameterRegistry {
             new( "PollIntervalMs", "Poll Interval (ms)", FieldType.Number, DefaultValue: "1000" ),
             new( "Mode", "Timeout Mode", FieldType.Select, DefaultValue: "FailOnTimeout", Options: s_watchFileModes, HelpText: "FailOnTimeout fails the action; ExitQuietly succeeds with a 'not found' output." ),
             new( "UsePolling", "Use Polling", FieldType.Bool, DefaultValue: "false", HelpText: "Recommended for network or UNC paths." ),
+        ] ),
+
+        // ── Control flow ─────────────────────────────────────────────
+        new( "ForEach", "For Each", "Iterate over items in a JSON array from the input variable.", [
+            new( "ArrayPropertyName", "Array Property Name", FieldType.Text, Required: true, Placeholder: "items", HelpText: "Property name within the input JSON object that contains the array to iterate over." ),
+        ] ),
+
+        // ── Data operations ──────────────────────────────────────────
+        new( "TransformJson", "Transform JSON", "Apply an ordered sequence of JSON operations to an input document.", [
+            new( "InputPath", "Input File Path", FieldType.Text, Placeholder: "C:\\data\\input.json", HelpText: "Optional file to read JSON from. Takes precedence over the input variable." ),
+            new( "OutputPath", "Output File Path", FieldType.Text, Placeholder: "C:\\data\\output.json", HelpText: "Optional file to write the transformed JSON to." ),
+            new( "Operations[0].Type", "Operation Type", FieldType.Select, Required: true, DefaultValue: "Extract", Options: s_jsonTransformTypes, HelpText: "Type of the first transformation operation." ),
+            new( "Operations[0].Path", "JSON Pointer Path", FieldType.Text, Required: true, Placeholder: "/property/name", HelpText: "RFC 6901 JSON Pointer path (e.g. /address/city). The prefix '$.' is also accepted." ),
+            new( "Operations[0].Value", "Value (JSON)", FieldType.TextArea, Placeholder: "\"value\" or {\"key\":\"val\"}", HelpText: "JSON value for Set/Merge operations. Ignored for Extract/Delete." ),
+        ] ),
+
+        // ── Network operations ───────────────────────────────────────
+        new( "HttpRequest", "HTTP Request", "Send an HTTP request and capture the response. Requires network actions to be enabled.", [
+            new( "Url", "URL", FieldType.Text, Required: true, Placeholder: "https://api.example.com/endpoint" ),
+            new( "Method", "Method", FieldType.Select, DefaultValue: "GET", Options: s_httpMethods ),
+            new( "Body", "Request Body", FieldType.TextArea, Placeholder: "{\"key\":\"value\"}", HelpText: "Optional body. When omitted the input variable value is used." ),
+            new( "ContentType", "Content-Type", FieldType.Text, Placeholder: "application/json", HelpText: "Content-Type header for the request body." ),
+            new( "TimeoutSeconds", "Timeout (seconds)", FieldType.Number, DefaultValue: "30" ),
+            new( "ExpectedStatusCodes", "Expected Status Codes", FieldType.Text, DefaultValue: "200", Placeholder: "200,201", HelpText: "Comma-separated list of acceptable HTTP status codes." ),
+            new( "OutputFilePath", "Output File Path", FieldType.Text, Placeholder: "C:\\output\\response.json", HelpText: "Optional file path to stream the response body to." ),
+            new( "FollowRedirects", "Follow Redirects", FieldType.Bool, DefaultValue: "false" ),
+        ] ),
+
+        new( "DownloadFile", "Download File", "Download a file from a URL to a local path. Requires network actions to be enabled.", [
+            new( "Url", "URL", FieldType.Text, Required: true, Placeholder: "https://example.com/file.zip" ),
+            new( "Destination", "Destination Path", FieldType.Text, Required: true, Placeholder: "C:\\downloads\\file.zip" ),
+            new( "Overwrite", "Overwrite", FieldType.Bool, DefaultValue: "false" ),
+            new( "TimeoutSeconds", "Timeout (seconds)", FieldType.Number, DefaultValue: "300" ),
+        ] ),
+
+        new( "UploadFile", "Upload File", "Upload a local file to a URL using multipart/form-data. Requires network actions to be enabled.", [
+            new( "FilePath", "File Path", FieldType.Text, Required: true, Placeholder: "C:\\uploads\\report.csv" ),
+            new( "Url", "URL", FieldType.Text, Required: true, Placeholder: "https://api.example.com/upload" ),
+            new( "Method", "Method", FieldType.Select, DefaultValue: "POST", Options: ["POST", "PUT"] ),
+            new( "FormFieldName", "Form Field Name", FieldType.Text, DefaultValue: "file", HelpText: "The multipart form field name for the file." ),
+            new( "TimeoutSeconds", "Timeout (seconds)", FieldType.Number, DefaultValue: "300" ),
+        ] ),
+
+        new( "TestConnection", "Test Connection", "Test reachability of a host/port via TCP, HTTP, or HTTPS. Always succeeds; result is captured as output.", [
+            new( "Host", "Host", FieldType.Text, Required: true, Placeholder: "api.example.com" ),
+            new( "Port", "Port", FieldType.Number, Required: true, Placeholder: "443" ),
+            new( "Protocol", "Protocol", FieldType.Select, DefaultValue: "Tcp", Options: s_connectionProtocols ),
+            new( "TimeoutSeconds", "Timeout (seconds)", FieldType.Number, DefaultValue: "10" ),
+            new( "ExpectedStatusCode", "Expected Status Code", FieldType.Number, HelpText: "For HTTP/HTTPS only: expected response code. Leave blank to accept any 2xx/3xx." ),
+        ] ),
+
+        new( "SendWebhook", "Send Webhook", "Fire a JSON POST to a webhook URL. Requires network actions to be enabled.", [
+            new( "Url", "Webhook URL", FieldType.Text, Required: true, Placeholder: "https://hooks.example.com/trigger" ),
+            new( "Payload", "Payload (JSON)", FieldType.TextArea, Placeholder: "{\"event\":\"build-complete\"}", HelpText: "Optional JSON payload. When omitted the input variable value is used." ),
+            new( "TimeoutSeconds", "Timeout (seconds)", FieldType.Number, DefaultValue: "30" ),
+        ] ),
+
+        new( "SendEmail", "Send Email", "Send an email via SMTP using MailKit. Requires network actions to be enabled.", [
+            new( "SmtpHost", "SMTP Host", FieldType.Text, Required: true, Placeholder: "smtp.example.com" ),
+            new( "Port", "Port", FieldType.Number, DefaultValue: "587" ),
+            new( "UseSsl", "Use SSL/TLS", FieldType.Bool, DefaultValue: "true" ),
+            new( "CredentialName", "Credential Name", FieldType.Text, Placeholder: "smtp-credentials", HelpText: "Secret store key holding {\"username\":\"…\",\"password\":\"…\"}. Leave blank for anonymous." ),
+            new( "From", "From", FieldType.Text, Required: true, Placeholder: "noreply@example.com" ),
+            new( "To", "To (comma-separated)", FieldType.Text, Required: true, Placeholder: "alice@example.com,bob@example.com" ),
+            new( "Cc", "CC (comma-separated)", FieldType.Text, Placeholder: "manager@example.com" ),
+            new( "Subject", "Subject", FieldType.Text, Required: true, Placeholder: "Workflow notification" ),
+            new( "Body", "Body", FieldType.TextArea, Placeholder: "Email body…", HelpText: "Optional body. When omitted the input variable value is used." ),
+            new( "IsHtml", "HTML Body", FieldType.Bool, DefaultValue: "false" ),
+            new( "Attachments", "Attachments (comma-separated paths)", FieldType.Text, Placeholder: "C:\\reports\\report.pdf" ),
         ] ),
     ];
 

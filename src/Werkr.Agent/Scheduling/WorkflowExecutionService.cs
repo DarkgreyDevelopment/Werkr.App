@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using Werkr.Agent.Communication;
 using Werkr.Agent.Operators;
+using Werkr.Common.Configuration;
 using Werkr.Common.Models.Actions;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
@@ -28,6 +30,7 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="actionOperator">Built-in action operator.</param>
 /// <param name="clientFactory">Factory for creating outbound gRPC clients to the Server.</param>
 /// <param name="variableClient">Client for workflow variable get/set/create operations.</param>
+/// <param name="jobOutputOptions">Job output configuration, used to resolve the variable temp-file directory.</param>
 /// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
 /// <param name="logger">Logger.</param>
 public sealed class WorkflowExecutionService(
@@ -39,9 +42,11 @@ public sealed class WorkflowExecutionService(
     IActionOperator actionOperator,
     AgentGrpcClientFactory clientFactory,
     VariableClient variableClient,
+    IOptions<JobOutputOptions> jobOutputOptions,
     IServiceScopeFactory serviceScopeFactory,
     ILogger<WorkflowExecutionService> logger
 ) {
+    private readonly string _varsDir = Path.Combine( jobOutputOptions.Value.OutputDirectory, "_vars" );
 
     // ── Result Types ─────────────────────────────────────────────────────────────
 
@@ -398,18 +403,17 @@ public sealed class WorkflowExecutionService(
         Dictionary<string, string>? envVars = null;
 
         if (isShellAction && (inputVariableValue is not null || outputVariableName is not null)) {
-            string varsDir = Path.Combine("job-output", "_vars");
-            _ = Directory.CreateDirectory( varsDir );
+            _ = Directory.CreateDirectory( _varsDir );
             envVars = [];
 
             if (inputVariableValue is not null) {
-                inputFilePath = Path.Combine( varsDir, $"{jobId}_input.json" );
+                inputFilePath = Path.Combine( _varsDir, $"{jobId}_input.json" );
                 await File.WriteAllTextAsync( inputFilePath, inputVariableValue, ct );
                 envVars["WERKR_INPUT"] = Path.GetFullPath( inputFilePath );
             }
 
             if (outputVariableName is not null) {
-                outputFilePath = Path.Combine( varsDir, $"{jobId}_output.json" );
+                outputFilePath = Path.Combine( _varsDir, $"{jobId}_output.json" );
                 envVars["WERKR_OUTPUT"] = Path.GetFullPath( outputFilePath );
             }
         }
