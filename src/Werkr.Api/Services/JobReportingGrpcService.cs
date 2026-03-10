@@ -1,3 +1,6 @@
+using Grpc.Core;
+using Microsoft.EntityFrameworkCore;
+using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;

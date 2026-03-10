@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Werkr.Common.Configuration;
 using Werkr.Core.Communication;
 
 namespace Werkr.Core.Tasks;

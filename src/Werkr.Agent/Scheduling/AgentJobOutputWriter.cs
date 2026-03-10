@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Werkr.Common.Configuration;
 using Werkr.Core.Communication;
 
 namespace Werkr.Agent.Scheduling;

@@ -1,15 +1,18 @@
 #nullable disable
 
+using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+
 namespace Werkr.Data.Migrations.Postgres;
 
 /// <inheritdoc />
 public partial class InitialCreate : Migration {
     /// <inheritdoc />
     protected override void Up( MigrationBuilder migrationBuilder ) {
-        migrationBuilder.EnsureSchema(
+        _ = migrationBuilder.EnsureSchema(
             name: "werkr" );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "holiday_calendars",
             schema: "werkr",
             columns: table => new {
@@ -21,10 +24,10 @@ public partial class InitialCreate : Migration {
                 updated_utc = table.Column<string>( type: "text", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_holiday_calendars", x => x.id );
+                _ = table.PrimaryKey( "pk_holiday_calendars", x => x.id );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "registered_connections",
             schema: "werkr",
             columns: table => new {
@@ -51,10 +54,10 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_registered_connections", x => x.id );
+                _ = table.PrimaryKey( "pk_registered_connections", x => x.id );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "registration_bundles",
             schema: "werkr",
             columns: table => new {
@@ -73,10 +76,10 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_registration_bundles", x => x.id );
+                _ = table.PrimaryKey( "pk_registration_bundles", x => x.id );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "schedules",
             schema: "werkr",
             columns: table => new {
@@ -89,10 +92,10 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_schedules", x => x.id );
+                _ = table.PrimaryKey( "pk_schedules", x => x.id );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "workflows",
             schema: "werkr",
             columns: table => new {
@@ -106,10 +109,10 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_workflows", x => x.id );
+                _ = table.PrimaryKey( "pk_workflows", x => x.id );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "holiday_rules",
             schema: "werkr",
             columns: table => new {
@@ -130,8 +133,8 @@ public partial class InitialCreate : Migration {
                 year_end = table.Column<int>( type: "integer", nullable: true )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_holiday_rules", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_holiday_rules", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_holiday_rules_holiday_calendars_holiday_calendar_id",
                     column: x => x.holiday_calendar_id,
                     principalSchema: "werkr",
@@ -140,7 +143,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "daily_recurrence",
             schema: "werkr",
             columns: table => new {
@@ -151,8 +154,8 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_daily_recurrence", x => x.schedule_id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_daily_recurrence", x => x.schedule_id );
+                _ = table.ForeignKey(
                     name: "fk_daily_recurrence_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
@@ -161,7 +164,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "monthly_recurrence",
             schema: "werkr",
             columns: table => new {
@@ -175,8 +178,8 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_monthly_recurrence", x => x.schedule_id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_monthly_recurrence", x => x.schedule_id );
+                _ = table.ForeignKey(
                     name: "fk_monthly_recurrence_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
@@ -185,7 +188,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "schedule_audit_log",
             schema: "werkr",
             columns: table => new {
@@ -199,8 +202,8 @@ public partial class InitialCreate : Migration {
                 created_utc = table.Column<string>( type: "text", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_schedule_audit_log", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_schedule_audit_log", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_schedule_audit_log_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
@@ -209,7 +212,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "schedule_expiration",
             schema: "werkr",
             columns: table => new {
@@ -222,8 +225,8 @@ public partial class InitialCreate : Migration {
                 time_zone = table.Column<string>( type: "text", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_schedule_expiration", x => x.schedule_id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_schedule_expiration", x => x.schedule_id );
+                _ = table.ForeignKey(
                     name: "fk_schedule_expiration_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
@@ -232,7 +235,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "schedule_holiday_calendars",
             schema: "werkr",
             columns: table => new {
@@ -241,15 +244,15 @@ public partial class InitialCreate : Migration {
                 mode = table.Column<string>( type: "text", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_schedule_holiday_calendars", x => new { x.schedule_id, x.holiday_calendar_id } );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_schedule_holiday_calendars", x => new { x.schedule_id, x.holiday_calendar_id } );
+                _ = table.ForeignKey(
                     name: "fk_schedule_holiday_calendars_holiday_calendars_holiday_calend",
                     column: x => x.holiday_calendar_id,
                     principalSchema: "werkr",
                     principalTable: "holiday_calendars",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_schedule_holiday_calendars_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
@@ -258,7 +261,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "schedule_repeat_options",
             schema: "werkr",
             columns: table => new {
@@ -270,8 +273,8 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_schedule_repeat_options", x => x.schedule_id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_schedule_repeat_options", x => x.schedule_id );
+                _ = table.ForeignKey(
                     name: "fk_schedule_repeat_options_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
@@ -280,7 +283,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "schedule_start_datetimeinfo",
             schema: "werkr",
             columns: table => new {
@@ -293,8 +296,8 @@ public partial class InitialCreate : Migration {
                 time_zone = table.Column<string>( type: "text", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_schedule_start_datetimeinfo", x => x.schedule_id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_schedule_start_datetimeinfo", x => x.schedule_id );
+                _ = table.ForeignKey(
                     name: "fk_schedule_start_datetimeinfo_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
@@ -303,7 +306,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "weekly_recurrence",
             schema: "werkr",
             columns: table => new {
@@ -315,8 +318,8 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_weekly_recurrence", x => x.schedule_id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_weekly_recurrence", x => x.schedule_id );
+                _ = table.ForeignKey(
                     name: "fk_weekly_recurrence_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
@@ -325,7 +328,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "tasks",
             schema: "werkr",
             columns: table => new {
@@ -350,8 +353,8 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_tasks", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_tasks", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_tasks_workflows_workflow_id",
                     column: x => x.workflow_id,
                     principalSchema: "werkr",
@@ -359,7 +362,7 @@ public partial class InitialCreate : Migration {
                     principalColumn: "id" );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "workflow_runs",
             schema: "werkr",
             columns: table => new {
@@ -373,8 +376,8 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_workflow_runs", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_workflow_runs", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_workflow_runs_workflows_workflow_id",
                     column: x => x.workflow_id,
                     principalSchema: "werkr",
@@ -383,7 +386,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "workflow_schedules",
             schema: "werkr",
             columns: table => new {
@@ -394,15 +397,15 @@ public partial class InitialCreate : Migration {
                 workflow_run_id = table.Column<Guid>( type: "uuid", nullable: true )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_workflow_schedules", x => new { x.workflow_id, x.schedule_id } );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_workflow_schedules", x => new { x.workflow_id, x.schedule_id } );
+                _ = table.ForeignKey(
                     name: "fk_workflow_schedules_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
                     principalTable: "schedules",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_workflow_schedules_workflows_workflow_id",
                     column: x => x.workflow_id,
                     principalSchema: "werkr",
@@ -411,7 +414,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "workflow_variables",
             schema: "werkr",
             columns: table => new {
@@ -426,8 +429,8 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_workflow_variables", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_workflow_variables", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_workflow_variables_workflows_workflow_id",
                     column: x => x.workflow_id,
                     principalSchema: "werkr",
@@ -436,7 +439,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "holiday_dates",
             schema: "werkr",
             columns: table => new {
@@ -452,15 +455,15 @@ public partial class InitialCreate : Migration {
                 window_time_zone_id = table.Column<string>( type: "character varying(128)", maxLength: 128, nullable: true )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_holiday_dates", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_holiday_dates", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_holiday_dates_holiday_calendars_holiday_calendar_id",
                     column: x => x.holiday_calendar_id,
                     principalSchema: "werkr",
                     principalTable: "holiday_calendars",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_holiday_dates_holiday_rules_holiday_rule_id",
                     column: x => x.holiday_rule_id,
                     principalSchema: "werkr",
@@ -469,7 +472,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.SetNull );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "task_schedules",
             schema: "werkr",
             columns: table => new {
@@ -479,15 +482,15 @@ public partial class InitialCreate : Migration {
                 is_one_time = table.Column<bool>( type: "boolean", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_task_schedules", x => new { x.task_id, x.schedule_id } );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_task_schedules", x => new { x.task_id, x.schedule_id } );
+                _ = table.ForeignKey(
                     name: "fk_task_schedules_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
                     principalTable: "schedules",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_task_schedules_tasks_task_id",
                     column: x => x.task_id,
                     principalSchema: "werkr",
@@ -496,7 +499,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "workflow_steps",
             schema: "werkr",
             columns: table => new {
@@ -517,21 +520,21 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_workflow_steps", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_workflow_steps", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_workflow_steps_registered_connections_agent_connection_id_o",
                     column: x => x.agent_connection_id_override,
                     principalSchema: "werkr",
                     principalTable: "registered_connections",
                     principalColumn: "id" );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_workflow_steps_tasks_task_id",
                     column: x => x.task_id,
                     principalSchema: "werkr",
                     principalTable: "tasks",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_workflow_steps_workflows_workflow_id",
                     column: x => x.workflow_id,
                     principalSchema: "werkr",
@@ -540,7 +543,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "jobs",
             schema: "werkr",
             columns: table => new {
@@ -563,27 +566,27 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_jobs", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_jobs", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_jobs_registered_connections_agent_connection_id",
                     column: x => x.agent_connection_id,
                     principalSchema: "werkr",
                     principalTable: "registered_connections",
                     principalColumn: "id" );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_jobs_schedules_schedule_id",
                     column: x => x.schedule_id,
                     principalSchema: "werkr",
                     principalTable: "schedules",
                     principalColumn: "id" );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_jobs_tasks_task_id",
                     column: x => x.task_id,
                     principalSchema: "werkr",
                     principalTable: "tasks",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_jobs_workflow_runs_workflow_run_id",
                     column: x => x.workflow_run_id,
                     principalSchema: "werkr",
@@ -591,7 +594,7 @@ public partial class InitialCreate : Migration {
                     principalColumn: "id" );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "workflow_step_dependencies",
             schema: "werkr",
             columns: table => new {
@@ -599,15 +602,15 @@ public partial class InitialCreate : Migration {
                 depends_on_step_id = table.Column<long>( type: "bigint", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_workflow_step_dependencies", x => new { x.step_id, x.depends_on_step_id } );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_workflow_step_dependencies", x => new { x.step_id, x.depends_on_step_id } );
+                _ = table.ForeignKey(
                     name: "fk_workflow_step_dependencies_workflow_steps_depends_on_step_id",
                     column: x => x.depends_on_step_id,
                     principalSchema: "werkr",
                     principalTable: "workflow_steps",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Restrict );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_workflow_step_dependencies_workflow_steps_step_id",
                     column: x => x.step_id,
                     principalSchema: "werkr",
@@ -616,7 +619,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "workflow_run_variables",
             schema: "werkr",
             columns: table => new {
@@ -632,22 +635,22 @@ public partial class InitialCreate : Migration {
                 created = table.Column<string>( type: "text", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_workflow_run_variables", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_workflow_run_variables", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_workflow_run_variables_jobs_produced_by_job_id",
                     column: x => x.produced_by_job_id,
                     principalSchema: "werkr",
                     principalTable: "jobs",
                     principalColumn: "id",
                     onDelete: ReferentialAction.SetNull );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_workflow_run_variables_workflow_runs_workflow_run_id",
                     column: x => x.workflow_run_id,
                     principalSchema: "werkr",
                     principalTable: "workflow_runs",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_workflow_run_variables_workflow_steps_produced_by_step_id",
                     column: x => x.produced_by_step_id,
                     principalSchema: "werkr",
@@ -656,264 +659,264 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.SetNull );
             } );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_holiday_calendars_name",
             schema: "werkr",
             table: "holiday_calendars",
             column: "name",
             unique: true );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_holiday_dates_holiday_calendar_id_date",
             schema: "werkr",
             table: "holiday_dates",
-            columns: new[] { "holiday_calendar_id", "date" },
+            columns: ["holiday_calendar_id", "date"],
             unique: true );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_holiday_dates_holiday_rule_id",
             schema: "werkr",
             table: "holiday_dates",
             column: "holiday_rule_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_holiday_rules_holiday_calendar_id",
             schema: "werkr",
             table: "holiday_rules",
             column: "holiday_calendar_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_jobs_agent_connection_id",
             schema: "werkr",
             table: "jobs",
             column: "agent_connection_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_jobs_schedule_id",
             schema: "werkr",
             table: "jobs",
             column: "schedule_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_jobs_task_id",
             schema: "werkr",
             table: "jobs",
             column: "task_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_jobs_workflow_run_id",
             schema: "werkr",
             table: "jobs",
             column: "workflow_run_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_registered_connections_connection_name",
             schema: "werkr",
             table: "registered_connections",
             column: "connection_name" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_registered_connections_remote_url",
             schema: "werkr",
             table: "registered_connections",
             column: "remote_url" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_registration_bundles_bundle_id",
             schema: "werkr",
             table: "registration_bundles",
             column: "bundle_id",
             unique: true );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_schedule_audit_log_schedule_id_occurrence_utc_time",
             schema: "werkr",
             table: "schedule_audit_log",
-            columns: new[] { "schedule_id", "occurrence_utc_time" } );
+            columns: ["schedule_id", "occurrence_utc_time"] );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_schedule_holiday_calendars_holiday_calendar_id",
             schema: "werkr",
             table: "schedule_holiday_calendars",
             column: "holiday_calendar_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_schedule_holiday_calendars_schedule_id",
             schema: "werkr",
             table: "schedule_holiday_calendars",
             column: "schedule_id",
             unique: true );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_task_schedules_schedule_id",
             schema: "werkr",
             table: "task_schedules",
             column: "schedule_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_tasks_workflow_id",
             schema: "werkr",
             table: "tasks",
             column: "workflow_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_run_variables_produced_by_job_id",
             schema: "werkr",
             table: "workflow_run_variables",
             column: "produced_by_job_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_run_variables_produced_by_step_id",
             schema: "werkr",
             table: "workflow_run_variables",
             column: "produced_by_step_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_run_variables_workflow_run_id_variable_name_version",
             schema: "werkr",
             table: "workflow_run_variables",
-            columns: new[] { "workflow_run_id", "variable_name", "version" },
+            columns: ["workflow_run_id", "variable_name", "version"],
             unique: true );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_runs_workflow_id",
             schema: "werkr",
             table: "workflow_runs",
             column: "workflow_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_schedules_schedule_id",
             schema: "werkr",
             table: "workflow_schedules",
             column: "schedule_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_step_dependencies_depends_on_step_id",
             schema: "werkr",
             table: "workflow_step_dependencies",
             column: "depends_on_step_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_steps_agent_connection_id_override",
             schema: "werkr",
             table: "workflow_steps",
             column: "agent_connection_id_override" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_steps_task_id",
             schema: "werkr",
             table: "workflow_steps",
             column: "task_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_steps_workflow_id",
             schema: "werkr",
             table: "workflow_steps",
             column: "workflow_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_workflow_variables_workflow_id_name",
             schema: "werkr",
             table: "workflow_variables",
-            columns: new[] { "workflow_id", "name" },
+            columns: ["workflow_id", "name"],
             unique: true );
     }
 
     /// <inheritdoc />
     protected override void Down( MigrationBuilder migrationBuilder ) {
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "daily_recurrence",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "holiday_dates",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "monthly_recurrence",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "registration_bundles",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "schedule_audit_log",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "schedule_expiration",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "schedule_holiday_calendars",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "schedule_repeat_options",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "schedule_start_datetimeinfo",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "task_schedules",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "weekly_recurrence",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "workflow_run_variables",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "workflow_schedules",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "workflow_step_dependencies",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "workflow_variables",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "holiday_rules",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "jobs",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "workflow_steps",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "holiday_calendars",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "schedules",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "workflow_runs",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "registered_connections",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "tasks",
             schema: "werkr" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "workflows",
             schema: "werkr" );
     }

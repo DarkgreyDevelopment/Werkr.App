@@ -1,6 +1,10 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Werkr.Common.Models;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
+using Werkr.Data.Identity.Extensions;
 
 namespace Werkr.Tests.Server.Identity;
 
@@ -185,7 +189,7 @@ public class SecurityTests {
             options.UseInMemoryDatabase( dbName ) );
 
         _ = services.AddIdentity<WerkrUser, IdentityRole>(
-            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions
+            IdentityExtensions.ConfigureIdentityOptions
         )
             .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
             .AddDefaultTokenProviders( );

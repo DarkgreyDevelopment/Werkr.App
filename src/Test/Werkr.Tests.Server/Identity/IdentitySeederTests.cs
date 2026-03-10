@@ -1,5 +1,12 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
+using Werkr.Data.Identity.Extensions;
 using Werkr.Data.Identity.Roles;
 using Werkr.Server.Identity;
 using Werkr.Server.Services;
@@ -40,7 +47,7 @@ public class IdentitySeederTests {
             options.UseInMemoryDatabase( dbName ) );
 
         _ = services.AddIdentity<WerkrUser, IdentityRole>(
-            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions
+            IdentityExtensions.ConfigureIdentityOptions
         )
             .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
             .AddDefaultTokenProviders( );

@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Serilog.Settings.Configuration;
 using Werkr.Common;
 using Werkr.Common.Auth;
 using Werkr.Common.Extensions;
@@ -39,8 +42,8 @@ public class Program {
 
             // Serilog (ConfigurationReaderOptions required for single-file publish)
             ConfigurationReaderOptions readerOptions = new(
-                typeof( Serilog.ConsoleLoggerConfigurationExtensions ).Assembly,
-                typeof( Serilog.FileLoggerConfigurationExtensions ).Assembly,
+                typeof( ConsoleLoggerConfigurationExtensions ).Assembly,
+                typeof( FileLoggerConfigurationExtensions ).Assembly,
                 typeof(Serilog.Sinks.OpenTelemetry.OtlpProtocol).Assembly
             );
             _ = builder.Host.UseSerilog( ( ctx, lc ) => lc

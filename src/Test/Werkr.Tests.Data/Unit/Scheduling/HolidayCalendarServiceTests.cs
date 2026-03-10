@@ -1,3 +1,7 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Api.Services;
 using Werkr.Core.Communication;
 using Werkr.Core.Scheduling;

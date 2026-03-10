@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using Microsoft.Extensions.Configuration;
 
 namespace Werkr.Common.Configuration.Registry;
 
@@ -40,7 +42,7 @@ public sealed class RegistryConfigurationProvider : ConfigurationProvider {
     /// Opens the target registry key on Windows and recursively reads
     /// all values and sub-keys into the provided <paramref name="data"/> dictionary.
     /// </summary>
-    [System.Runtime.Versioning.SupportedOSPlatform( "windows" )]
+    [SupportedOSPlatform( "windows" )]
     private void ReadRegistryWindows( Dictionary<string, string?> data ) {
         string registryPath = string.IsNullOrEmpty( _source.SubKey )
             ? _source.RootPath
@@ -65,7 +67,7 @@ public sealed class RegistryConfigurationProvider : ConfigurationProvider {
     /// given registry key, converting the registry hierarchy into
     /// colon-delimited configuration keys.
     /// </summary>
-    [System.Runtime.Versioning.SupportedOSPlatform( "windows" )]
+    [SupportedOSPlatform( "windows" )]
     private static void ReadKeyRecursive(
         Microsoft.Win32.RegistryKey key,
         string prefix,

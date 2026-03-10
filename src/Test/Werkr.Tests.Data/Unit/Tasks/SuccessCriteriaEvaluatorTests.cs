@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Core.Communication;
 using Werkr.Core.Tasks;
 using Werkr.Data.Entities.Tasks;

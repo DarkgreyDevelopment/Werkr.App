@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Auth;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option csharp_namespace = "Werkr.Common.Protos";
+
+package werkr.common.protos;
+
+// Log message streamed from shell operations.
+// Serialized to bytes, encrypted as an EncryptedEnvelope, and streamed.
+// Each streaming frame is an independently encrypted envelope containing
+// one serialized GrpcLogMsg.
+message GrpcLogMsg {
+  string log_level = 1;
+  string message = 2;
+  string timestamp = 3;
+}

@@ -114,7 +114,7 @@ public class ScheduleExecutionTests {
 
         JsonElement startDt = retrieved.GetProperty( "startDateTime" );
         Assert.AreEqual( "2026-06-15", startDt.GetProperty( "date" ).GetString( ) );
-        StringAssert.StartsWith( startDt.GetProperty( "time" ).GetString( )!, "08:30" );
+        Assert.StartsWith( "08:30", startDt.GetProperty( "time" ).GetString( )! );
         Assert.AreEqual( "UTC", startDt.GetProperty( "timeZoneId" ).GetString( ) );
 
         JsonElement daily = retrieved.GetProperty( "dailyRecurrence" );
@@ -216,7 +216,7 @@ public class ScheduleExecutionTests {
 
         JsonElement startDt = updated.GetProperty( "startDateTime" );
         Assert.AreEqual( "2026-07-01", startDt.GetProperty( "date" ).GetString( ) );
-        StringAssert.StartsWith( startDt.GetProperty( "time" ).GetString( )!, "10:00" );
+        Assert.StartsWith( "10:00", startDt.GetProperty( "time" ).GetString( )! );
     }
 
     /// <summary>

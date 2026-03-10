@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace Werkr.Data.Identity;
 
 /// <summary>

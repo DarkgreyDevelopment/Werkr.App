@@ -1,4 +1,5 @@
 using Werkr.Agent.Scheduling;
+using Werkr.Common.Protos;
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Models;
 

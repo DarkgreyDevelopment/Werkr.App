@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-
+using Microsoft.Extensions.Logging;
 using Werkr.Data.Entities.Tasks;
 using Werkr.Data.Entities.Workflows;
 
@@ -11,7 +11,8 @@ namespace Werkr.Core.Workflows;
 /// </summary>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ConditionEvaluator(
-    ILogger<ConditionEvaluator> logger ) {
+    ILogger<ConditionEvaluator> logger
+) {
 
     /// <summary>
     /// Evaluates a condition expression against a single prior step's result.

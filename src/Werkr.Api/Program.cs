@@ -1,17 +1,25 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Serilog.Settings.Configuration;
 using Werkr.Api.Authorization;
 using Werkr.Api.Endpoints;
+using Werkr.Api.Interceptors;
 using Werkr.Api.Services;
 using Werkr.Common;
 using Werkr.Common.Auth;
+using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
+using Werkr.Core.Health;
 using Werkr.Core.Registration;
 using Werkr.Core.Scheduling;
 using Werkr.Core.Tasks;
 using Werkr.Data;
+using Werkr.Data.Seeding;
 using Werkr.ServiceDefaults;
 
 namespace Werkr.Api;
@@ -28,9 +36,9 @@ public class Program {
         try {
             Log.Information( "Starting Werkr API Service..." );
 
-            string version = System.Reflection.CustomAttributeExtensions
-                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
-                    System.Reflection.Assembly.GetEntryAssembly( )! )
+            string version = CustomAttributeExtensions
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>(
+                    Assembly.GetEntryAssembly( )! )
                 ?.InformationalVersion ?? "unknown";
             Log.Information( "Werkr API version {Version}", version );
 
@@ -61,7 +69,7 @@ public class Program {
 
             // gRPC with Agent bearer-token validation
             _ = builder.Services.AddGrpc( options => {
-                options.Interceptors.Add<Werkr.Api.Interceptors.AgentBearerTokenInterceptor>( );
+                options.Interceptors.Add<AgentBearerTokenInterceptor>( );
             } );
 
             // Kestrel endpoint configuration.
@@ -144,12 +152,12 @@ public class Program {
             _ = builder.Services.AddSingleton<OutputStreamingGrpcService>( );
 
             // Agent health check background service — keeps DB status current
-            _ = builder.Services.AddHostedService<Werkr.Core.Health.AgentHealthCheckService>( sp => {
+            _ = builder.Services.AddHostedService<AgentHealthCheckService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
                 AgentConnectionManager connectionManager = sp.GetRequiredService<AgentConnectionManager>( );
-                ILogger<Werkr.Core.Health.AgentHealthCheckService> logger =
-                    sp.GetRequiredService<ILogger<Werkr.Core.Health.AgentHealthCheckService>>( );
-                return new Werkr.Core.Health.AgentHealthCheckService( scopeFactory, connectionManager, logger );
+                ILogger<AgentHealthCheckService> logger =
+                    sp.GetRequiredService<ILogger<AgentHealthCheckService>>( );
+                return new AgentHealthCheckService( scopeFactory, connectionManager, logger );
             } );
 
             // Schedule service (Scoped — one per request)
@@ -202,7 +210,7 @@ public class Program {
             }
 
             // Seed system holiday calendars
-            await Werkr.Data.Seeding.HolidayCalendarSeeder.SeedAsync( app.Services );
+            await HolidayCalendarSeeder.SeedAsync( app.Services );
 
             // Configure the HTTP request pipeline.
             _ = app.UseExceptionHandler( );

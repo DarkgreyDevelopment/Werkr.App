@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using Grpc.Core;
 using Werkr.Agent.Communication;
+using Werkr.Common.Protos;
 
 namespace Werkr.Agent.Services;
 
@@ -102,7 +104,7 @@ public sealed class OutputStreamingService(
 
         while (!ct.IsCancellationRequested) {
             try {
-                Werkr.Common.Protos.OutputStreamingService.OutputStreamingServiceClient client =
+                Common.Protos.OutputStreamingService.OutputStreamingServiceClient client =
                     await clientFactory.CreateOutputStreamingClientAsync( ct );
                 CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
 

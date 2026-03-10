@@ -1,7 +1,10 @@
 using System.Text.Json;
+using System.Threading.Channels;
+using Microsoft.EntityFrameworkCore;
 using Werkr.Api.Services;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
+using Werkr.Common.Protos;
 using Werkr.Core.Scheduling;
 using Werkr.Data;
 using Werkr.Data.Entities.Tasks;
@@ -53,7 +56,7 @@ internal static class ShellEndpoints {
 
             // Subscribe to the output stream from the agent
             string scheduleIdStr = scheduleId.ToString( );
-            System.Threading.Channels.Channel<OutputMessage>? channel =
+            Channel<OutputMessage>? channel =
                 await outputStreaming.SubscribeAsync( taskId, scheduleIdStr );
 
             if (channel is null) {

@@ -2,7 +2,11 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Serilog;
+using Serilog.Settings.Configuration;
+using Serilog.Sinks.OpenTelemetry;
 using Werkr.Agent.Communication;
 using Werkr.Agent.Interceptors;
 using Werkr.Agent.Operators;
@@ -11,12 +15,14 @@ using Werkr.Agent.Scheduling;
 using Werkr.Agent.Security;
 using Werkr.Agent.Services;
 using Werkr.Common;
+using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
 using Werkr.Common.Models;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Operators;
 using Werkr.Core.Security;
 using Werkr.Core.Tasks;
+using Werkr.Core.Workflows;
 using Werkr.Data;
 using Werkr.ServiceDefaults;
 
@@ -24,7 +30,7 @@ namespace Werkr.Agent;
 
 /// <summary>Application entry point for the Werkr Agent.</summary>
 public class Program {
-    private static readonly Random _random = new();
+    private static readonly Random s_random = new();
 
     /// <summary>Main entry point.</summary>
     /// <param name="args">Command-line arguments.</param>
@@ -65,9 +71,9 @@ public class Program {
 
             // Serilog (ConfigurationReaderOptions required for single-file publish)
             ConfigurationReaderOptions readerOptions = new(
-                typeof( Serilog.ConsoleLoggerConfigurationExtensions ).Assembly,
-                typeof( Serilog.FileLoggerConfigurationExtensions ).Assembly,
-                typeof( Serilog.Sinks.OpenTelemetry.OtlpProtocol ).Assembly );
+                typeof( ConsoleLoggerConfigurationExtensions ).Assembly,
+                typeof( FileLoggerConfigurationExtensions ).Assembly,
+                typeof( OtlpProtocol ).Assembly );
             _ = builder.Host.UseSerilog( ( ctx, lc ) => lc
                 .ReadFrom.Configuration( ctx.Configuration, readerOptions ) );
 
@@ -170,9 +176,9 @@ public class Program {
                 builder.Configuration.GetSection( WorkflowVariableOptions.SectionName ) );
             _ = builder.Services.AddSingleton<AgentJobOutputWriter>( );
             _ = builder.Services.AddSingleton<SuccessCriteriaEvaluator>( );
-            _ = builder.Services.AddSingleton<Werkr.Core.Workflows.ConditionEvaluator>( sp =>
-                new Werkr.Core.Workflows.ConditionEvaluator(
-                    sp.GetRequiredService<ILoggerFactory>( ).CreateLogger<Werkr.Core.Workflows.ConditionEvaluator>( ) ) );
+            _ = builder.Services.AddSingleton<ConditionEvaluator>( sp =>
+                new ConditionEvaluator(
+                    sp.GetRequiredService<ILoggerFactory>( ).CreateLogger<ConditionEvaluator>( ) ) );
             _ = builder.Services.AddSingleton<WorkflowExecutionService>( );
             _ = builder.Services.AddSingleton<OutputStreamingService>( );
             _ = builder.Services.AddSingleton( Channel.CreateUnbounded<string>(
@@ -232,24 +238,10 @@ public class Program {
     }
 
     private static IResult GetAgentArt( ) {
-        const string asciiArt = """
-    ╔════════════════════════════════╗
-    ║ ┌────────────────────────────┐ ║
-    ║ │      ---          ---      │ ║
-    ║ │       •            •       │ ║
-╔═══║ │   ______________________   │ ║═══╗
-║   ║ └────────────────────────────┘ ║   ║
-║   ║ __        __        _          ║   ║
-║   ║ \ \      / /__ _ __| | ___ __  ║   ║
-║   ║  \ \ /\ / / _ \ '__| |/ / '__| ║   ║
-║___║   \ V  V /  __/ |  |   <| |    ║___║
-    ║    \_/\_/ \___|_|  |_|\_\_|    ║
-    ╚════════════════════════════════╝
-            |AGENT|     | gRPC|
-    ++++++++++++++++++++++++++++++++++
-""";
 
-        const string happyAsciiArt = """
+        return Results.Text(
+            content: s_random.Next( 0, 10 ) == 0
+                ? """
       ╔════════════════════════════════╗
       ║ ┌────────────────────────────┐ ║
       ║ │      ---          ---      │ ║
@@ -264,11 +256,23 @@ public class Program {
       ╚════════════════════════════════╝          |      |      |      |      |      |      |
               |AGENT|     | gRPC|                 |      |      |      |      |      |      |
 ++++++++++++++++++++++++++++++++++++++++._______._|_.__._|_.__._|_.__._|_.__._|_.__._|_.__._|_.
-""";
-        return Results.Text(
-            content: _random.Next( 0, 10 ) == 0
-                ? happyAsciiArt
-                : asciiArt,
+"""
+                : """
+    ╔════════════════════════════════╗
+    ║ ┌────────────────────────────┐ ║
+    ║ │      ---          ---      │ ║
+    ║ │       •            •       │ ║
+╔═══║ │   ______________________   │ ║═══╗
+║   ║ └────────────────────────────┘ ║   ║
+║   ║ __        __        _          ║   ║
+║   ║ \ \      / /__ _ __| | ___ __  ║   ║
+║   ║  \ \ /\ / / _ \ '__| |/ / '__| ║   ║
+║___║   \ V  V /  __/ |  |   <| |    ║___║
+    ║    \_/\_/ \___|_|  |_|\_\_|    ║
+    ╚════════════════════════════════╝
+            |AGENT|     | gRPC|
+    ++++++++++++++++++++++++++++++++++
+""",
             contentType: "text/plain; charset=utf-8"
         );
     }

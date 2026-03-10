@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
 using Werkr.Data;

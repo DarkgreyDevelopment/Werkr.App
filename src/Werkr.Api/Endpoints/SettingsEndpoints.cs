@@ -1,5 +1,8 @@
+using Microsoft.EntityFrameworkCore;
+using Serilog;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
+using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;

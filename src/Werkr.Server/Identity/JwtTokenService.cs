@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using System.Text;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Werkr.Common.Auth;
 using Werkr.Data.Identity.Entities;
 

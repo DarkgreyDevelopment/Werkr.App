@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using Google.Protobuf;
+using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Cryptography.KeyInfo;

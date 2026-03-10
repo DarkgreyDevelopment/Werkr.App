@@ -285,9 +285,9 @@ public class ActionDispatchIntegrationTests {
             "Missing ActionSubType should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "ActionSubType",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should reference the missing ActionSubType field." );
     }
 
@@ -320,9 +320,9 @@ public class ActionDispatchIntegrationTests {
             "Unknown ActionSubType should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "FlyToMoon",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should reference the unknown action name." );
     }
 
@@ -359,9 +359,9 @@ public class ActionDispatchIntegrationTests {
             "Missing ActionParameters should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "ActionParameters",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should reference the missing ActionParameters field." );
     }
 
@@ -426,9 +426,9 @@ public class ActionDispatchIntegrationTests {
             "ShellCommand task with ActionSubType should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "ActionSubType",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should explain ActionSubType must be null for non-Action tasks." );
     }
 
@@ -460,9 +460,9 @@ public class ActionDispatchIntegrationTests {
             "ShellCommand task with ActionParameters should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "ActionParameters",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should explain ActionParameters must be null for non-Action tasks." );
     }
 

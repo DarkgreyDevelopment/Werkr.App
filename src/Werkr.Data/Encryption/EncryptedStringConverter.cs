@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
 namespace Werkr.Data.Encryption;
 
 /// <summary>

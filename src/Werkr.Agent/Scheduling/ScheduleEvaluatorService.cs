@@ -1,8 +1,10 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Microsoft.EntityFrameworkCore;
 using Werkr.Agent.Communication;
 using Werkr.Agent.Operators;
 using Werkr.Common.Models.Actions;
+using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
 using Werkr.Core.Scheduling;

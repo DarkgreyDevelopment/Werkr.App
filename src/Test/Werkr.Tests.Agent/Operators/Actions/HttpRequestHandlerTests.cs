@@ -1,7 +1,11 @@
 using System.Net;
 using System.Text.Json;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Werkr.Agent.Operators.Actions;
+using Werkr.Common.Configuration;
+using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
 using Werkr.Tests.Agent.Helpers;

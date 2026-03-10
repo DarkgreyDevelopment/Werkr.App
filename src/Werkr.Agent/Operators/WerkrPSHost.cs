@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Management.Automation.Host;
 using System.Threading.Channels;
 using Werkr.Core.Communication;
 

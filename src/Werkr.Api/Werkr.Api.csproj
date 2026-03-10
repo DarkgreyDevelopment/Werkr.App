@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="Protos\Registration.proto" GrpcServices="Server" />
+    <Protobuf Include="..\Werkr.Common\Protos\Registration.proto" GrpcServices="Server" Link="Protos\Registration.proto" />
     <Protobuf Include="..\Werkr.Common\Protos\ScheduleSync.proto" GrpcServices="Server" Link="Protos\ScheduleSync.proto" />
     <Protobuf Include="..\Werkr.Common\Protos\ScheduleInvalidation.proto" GrpcServices="Client" Link="Protos\ScheduleInvalidation.proto" />
     <Protobuf Include="..\Werkr.Common\Protos\JobReport.proto" GrpcServices="Server" Link="Protos\JobReport.proto" />

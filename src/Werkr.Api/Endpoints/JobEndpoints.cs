@@ -1,6 +1,8 @@
+using Grpc.Net.Client;
 using Werkr.Api.Models;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
+using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Core.Tasks;
 using Werkr.Data;

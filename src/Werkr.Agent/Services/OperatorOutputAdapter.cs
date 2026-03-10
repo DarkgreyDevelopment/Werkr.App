@@ -1,3 +1,5 @@
+using Grpc.Core;
+using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 
 namespace Werkr.Agent.Services;

@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Grpc.Net.Client;
 using Werkr.Common.Models;
+using Werkr.Common.Protos;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Cryptography.KeyInfo;
 using Werkr.Core.Registration.Models;

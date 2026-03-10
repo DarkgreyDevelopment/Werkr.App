@@ -1,4 +1,6 @@
 using System.Threading.Channels;
+using Grpc.Core;
+using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data.Entities.Registration;
 

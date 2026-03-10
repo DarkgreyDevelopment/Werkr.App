@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 

@@ -1,4 +1,7 @@
+using Grpc.Core;
 using Microsoft.Extensions.Options;
+using Werkr.Common.Configuration;
+using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data.Entities.Registration;
 

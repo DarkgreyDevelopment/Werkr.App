@@ -1,5 +1,9 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Werkr.Common.Models;
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Entities;
@@ -151,7 +155,7 @@ public class WerkrDbContext : DbContext {
                 new ValueComparer<byte[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, b ) => HashCode.Combine( hash, b ) ),
-                    v => v?.ToArray( )
+                    v => v == null ? null : v.ToArray( )
                 )
             );
         } );
@@ -167,7 +171,7 @@ public class WerkrDbContext : DbContext {
                 new ValueComparer<int[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item ) ),
-                    v => v?.ToArray( )
+                    v => v == null ? null : v.ToArray( )
                 )
             );
         } );
@@ -227,7 +231,7 @@ public class WerkrDbContext : DbContext {
                 new ValueComparer<string[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item ) ),
-                    v => v?.ToArray( )
+                    v => v == null ? null : v.ToArray( )
                 )
             );
         } );

@@ -1,4 +1,8 @@
 using System.Security.Claims;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Werkr.Data.Identity.Entities;
 using Werkr.Server.Identity;
 

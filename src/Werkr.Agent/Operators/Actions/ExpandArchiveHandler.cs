@@ -80,10 +80,9 @@ public sealed class ExpandArchiveHandler : IActionHandler {
     /// <summary>Detects archive format from file extension.</summary>
     private static ArchiveFormat DetectFormat( string path ) {
         string lowerPath = path.ToLowerInvariant( );
-        if (lowerPath.EndsWith( ".zip", StringComparison.Ordinal )) {
-            return ArchiveFormat.Zip;
-        }
-        return lowerPath.EndsWith( ".tar.gz", StringComparison.Ordinal ) ||
+        return lowerPath.EndsWith( ".zip", StringComparison.Ordinal )
+            ? ArchiveFormat.Zip
+            : lowerPath.EndsWith( ".tar.gz", StringComparison.Ordinal ) ||
             lowerPath.EndsWith( ".tgz", StringComparison.Ordinal )
             ? ArchiveFormat.TarGz
             : throw new ArgumentException(

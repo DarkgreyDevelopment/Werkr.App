@@ -246,13 +246,13 @@ public sealed class TransformJsonHandler : IActionHandler {
                 } else {
                     current = child;
                 }
-            } else if (current is JsonArray parentArr) {
-                current = int.TryParse( segments[i], out int idx ) && idx >= 0 && idx < parentArr.Count
+            } else {
+                current = current is JsonArray parentArr
+                    ? int.TryParse( segments[i], out int idx ) && idx >= 0 && idx < parentArr.Count
                     ? parentArr[idx]
                         ?? throw new ArgumentException( $"Operation[{opIndex}] (Set): array element at index {idx} is null." )
-                    : throw new ArgumentException( $"Operation[{opIndex}] (Set): array index '{segments[i]}' is out of range." );
-            } else {
-                throw new ArgumentException(
+                    : throw new ArgumentException( $"Operation[{opIndex}] (Set): array index '{segments[i]}' is out of range." )
+                    : throw new ArgumentException(
                     $"Operation[{opIndex}] (Set): cannot navigate through {current.GetValueKind( )} at segment '{segments[i]}'." );
             }
         }

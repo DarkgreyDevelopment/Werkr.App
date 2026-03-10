@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using Werkr.Api.Models;
 using Werkr.Api.Services;
 using Werkr.Common.Auth;

@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Werkr.Data;
 using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Tasks;

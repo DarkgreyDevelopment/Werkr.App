@@ -1,10 +1,21 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using Testcontainers.PostgreSql;
 using Werkr.Api;
+using Werkr.Common;
+using Werkr.Common.Auth;
 using Werkr.Data;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
+using Werkr.Data.Identity.Extensions;
 using Werkr.Data.Identity.Roles;
 
 namespace Werkr.Tests;
@@ -96,8 +107,7 @@ public static class AppHostFixture {
                     _ = services.AddScoped<WerkrIdentityDbContext>( sp =>
                         sp.GetRequiredService<PostgresWerkrIdentityDbContext>( ) );
 
-                    _ = services.AddIdentityCore<WerkrUser>(
-                            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions )
+                    _ = services.AddIdentityCore<WerkrUser>( IdentityExtensions.ConfigureIdentityOptions )
                         .AddRoles<IdentityRole>( )
                         .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
                         .AddDefaultTokenProviders( );
@@ -230,7 +240,7 @@ public static class AppHostFixture {
             new( ClaimTypes.Role, "Admin" ),
             new( WerkrClaimTypes.ApiKeyId, Guid.NewGuid( ).ToString( ) ),
             new( WerkrClaimTypes.ApiKeyName, "integration-test-key" ),
-            new( JwtRegisteredClaimNames.Jti, Guid.NewGuid( ).ToString( ) ),
+            new( Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames.Jti, Guid.NewGuid( ).ToString( ) ),
             // Permission claims required by ClaimsPermissionAuthorizationHandler
             new( WerkrClaimTypes.Permission, Permission.Create.ToString( ) ),
             new( WerkrClaimTypes.Permission, Permission.Read.ToString( ) ),

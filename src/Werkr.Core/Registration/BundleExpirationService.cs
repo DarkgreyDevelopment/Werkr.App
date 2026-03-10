@@ -1,5 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Werkr.Common.Models;
 using Werkr.Data;
+using Werkr.Data.Entities.Registration;
 
 namespace Werkr.Core.Registration;
 
@@ -53,7 +58,7 @@ public class BundleExpirationService(
 
         DateTime now = DateTime.UtcNow;
 
-        List<Data.Entities.Registration.RegistrationBundle> staleBundles = await dbContext.RegistrationBundles
+        List<RegistrationBundle> staleBundles = await dbContext.RegistrationBundles
             .Where( b => b.Status == RegistrationStatus.Pending && b.ExpiresAt < now )
             .ToListAsync( ct );
 
@@ -61,7 +66,7 @@ public class BundleExpirationService(
             return;
         }
 
-        foreach (Data.Entities.Registration.RegistrationBundle bundle in staleBundles) {
+        foreach (RegistrationBundle bundle in staleBundles) {
             bundle.Status = RegistrationStatus.Expired;
         }
 

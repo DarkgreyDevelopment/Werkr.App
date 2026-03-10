@@ -1,12 +1,14 @@
 #nullable disable
 
+using Microsoft.EntityFrameworkCore.Migrations;
+
 namespace Werkr.Data.Identity.Migrations.Sqlite;
 
 /// <inheritdoc />
 public partial class InitialCreate : Migration {
     /// <inheritdoc />
     protected override void Up( MigrationBuilder migrationBuilder ) {
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "config_settings",
             columns: table => new {
                 id = table.Column<Guid>( type: "TEXT", nullable: false ),
@@ -20,10 +22,10 @@ public partial class InitialCreate : Migration {
                 version = table.Column<int>( type: "INTEGER", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_config_settings", x => x.id );
+                _ = table.PrimaryKey( "pk_config_settings", x => x.id );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "roles",
             columns: table => new {
                 id = table.Column<string>( type: "TEXT", nullable: false ),
@@ -32,10 +34,10 @@ public partial class InitialCreate : Migration {
                 concurrency_stamp = table.Column<string>( type: "TEXT", nullable: true )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_roles", x => x.id );
+                _ = table.PrimaryKey( "pk_roles", x => x.id );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "users",
             columns: table => new {
                 id = table.Column<string>( type: "TEXT", nullable: false ),
@@ -60,10 +62,10 @@ public partial class InitialCreate : Migration {
                 access_failed_count = table.Column<int>( type: "INTEGER", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_users", x => x.id );
+                _ = table.PrimaryKey( "pk_users", x => x.id );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "role_claims",
             columns: table => new {
                 id = table.Column<int>( type: "INTEGER", nullable: false )
@@ -73,8 +75,8 @@ public partial class InitialCreate : Migration {
                 claim_value = table.Column<string>( type: "TEXT", nullable: true )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_role_claims", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_role_claims", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_role_claims_roles_role_id",
                     column: x => x.role_id,
                     principalTable: "roles",
@@ -82,7 +84,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "role_permissions",
             columns: table => new {
                 id = table.Column<long>( type: "INTEGER", nullable: false )
@@ -91,8 +93,8 @@ public partial class InitialCreate : Migration {
                 permission = table.Column<string>( type: "TEXT", maxLength: 64, nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_role_permissions", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_role_permissions", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_role_permissions_roles_role_id",
                     column: x => x.role_id,
                     principalTable: "roles",
@@ -100,7 +102,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "api_keys",
             columns: table => new {
                 id = table.Column<Guid>( type: "TEXT", nullable: false ),
@@ -115,8 +117,8 @@ public partial class InitialCreate : Migration {
                 last_used_utc = table.Column<DateTime>( type: "TEXT", nullable: true )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_api_keys", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_api_keys", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_api_keys_users_created_by_user_id",
                     column: x => x.created_by_user_id,
                     principalTable: "users",
@@ -124,7 +126,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "user_claims",
             columns: table => new {
                 id = table.Column<int>( type: "INTEGER", nullable: false )
@@ -134,8 +136,8 @@ public partial class InitialCreate : Migration {
                 claim_value = table.Column<string>( type: "TEXT", nullable: true )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_user_claims", x => x.id );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_user_claims", x => x.id );
+                _ = table.ForeignKey(
                     name: "fk_user_claims_users_user_id",
                     column: x => x.user_id,
                     principalTable: "users",
@@ -143,7 +145,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "user_logins",
             columns: table => new {
                 login_provider = table.Column<string>( type: "TEXT", maxLength: 128, nullable: false ),
@@ -152,8 +154,8 @@ public partial class InitialCreate : Migration {
                 user_id = table.Column<string>( type: "TEXT", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_user_logins", x => new { x.login_provider, x.provider_key } );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_user_logins", x => new { x.login_provider, x.provider_key } );
+                _ = table.ForeignKey(
                     name: "fk_user_logins_users_user_id",
                     column: x => x.user_id,
                     principalTable: "users",
@@ -161,21 +163,21 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "user_roles",
             columns: table => new {
                 user_id = table.Column<string>( type: "TEXT", nullable: false ),
                 role_id = table.Column<string>( type: "TEXT", nullable: false )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_user_roles", x => new { x.user_id, x.role_id } );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_user_roles", x => new { x.user_id, x.role_id } );
+                _ = table.ForeignKey(
                     name: "fk_user_roles_roles_role_id",
                     column: x => x.role_id,
                     principalTable: "roles",
                     principalColumn: "id",
                     onDelete: ReferentialAction.Cascade );
-                table.ForeignKey(
+                _ = table.ForeignKey(
                     name: "fk_user_roles_users_user_id",
                     column: x => x.user_id,
                     principalTable: "users",
@@ -183,7 +185,7 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateTable(
+        _ = migrationBuilder.CreateTable(
             name: "user_tokens",
             columns: table => new {
                 user_id = table.Column<string>( type: "TEXT", nullable: false ),
@@ -192,8 +194,8 @@ public partial class InitialCreate : Migration {
                 value = table.Column<string>( type: "TEXT", nullable: true )
             },
             constraints: table => {
-                table.PrimaryKey( "pk_user_tokens", x => new { x.user_id, x.login_provider, x.name } );
-                table.ForeignKey(
+                _ = table.PrimaryKey( "pk_user_tokens", x => new { x.user_id, x.login_provider, x.name } );
+                _ = table.ForeignKey(
                     name: "fk_user_tokens_users_user_id",
                     column: x => x.user_id,
                     principalTable: "users",
@@ -201,60 +203,60 @@ public partial class InitialCreate : Migration {
                     onDelete: ReferentialAction.Cascade );
             } );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_api_keys_created_by_user_id",
             table: "api_keys",
             column: "created_by_user_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_api_keys_key_hash",
             table: "api_keys",
             column: "key_hash",
             unique: true );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_api_keys_key_prefix",
             table: "api_keys",
             column: "key_prefix" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_role_claims_role_id",
             table: "role_claims",
             column: "role_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_role_permissions_role_id_permission",
             table: "role_permissions",
-            columns: new[] { "role_id", "permission" },
+            columns: ["role_id", "permission"],
             unique: true );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "RoleNameIndex",
             table: "roles",
             column: "normalized_name",
             unique: true );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_user_claims_user_id",
             table: "user_claims",
             column: "user_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_user_logins_user_id",
             table: "user_logins",
             column: "user_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "ix_user_roles_role_id",
             table: "user_roles",
             column: "role_id" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "EmailIndex",
             table: "users",
             column: "normalized_email" );
 
-        migrationBuilder.CreateIndex(
+        _ = migrationBuilder.CreateIndex(
             name: "UserNameIndex",
             table: "users",
             column: "normalized_user_name",
@@ -263,34 +265,34 @@ public partial class InitialCreate : Migration {
 
     /// <inheritdoc />
     protected override void Down( MigrationBuilder migrationBuilder ) {
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "api_keys" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "config_settings" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "role_claims" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "role_permissions" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "user_claims" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "user_logins" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "user_roles" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "user_tokens" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "roles" );
 
-        migrationBuilder.DropTable(
+        _ = migrationBuilder.DropTable(
             name: "users" );
     }
 }

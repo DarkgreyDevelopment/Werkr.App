@@ -1,3 +1,6 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Core.Scheduling;
 using Werkr.Data;
 using Werkr.Data.Calendar.Enums;

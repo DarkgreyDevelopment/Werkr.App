@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
 
