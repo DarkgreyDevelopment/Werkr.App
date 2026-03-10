@@ -101,7 +101,7 @@ public class ExpandArchiveHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -129,7 +129,7 @@ public class ExpandArchiveHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -157,11 +157,11 @@ public class ExpandArchiveHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
-        Assert.IsInstanceOfType<IOException>( result.Exception );
+        _ = Assert.IsInstanceOfType<IOException>( result.Exception );
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ public class ExpandArchiveHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -218,11 +218,11 @@ public class ExpandArchiveHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
-        Assert.IsInstanceOfType<IOException>( result.Exception );
+        _ = Assert.IsInstanceOfType<IOException>( result.Exception );
         Assert.Contains( "zip-slip", result.Exception!.Message );
     }
 
@@ -243,7 +243,7 @@ public class ExpandArchiveHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
@@ -265,11 +265,11 @@ public class ExpandArchiveHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
-        Assert.IsInstanceOfType<FileNotFoundException>( result.Exception );
+        _ = Assert.IsInstanceOfType<FileNotFoundException>( result.Exception );
     }
 
     /// <summary>
@@ -290,10 +290,10 @@ public class ExpandArchiveHandlerTests {
         ActionOperatorResult result = await denied.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
-        Assert.IsInstanceOfType<UnauthorizedAccessException>( result.Exception );
+        _ = Assert.IsInstanceOfType<UnauthorizedAccessException>( result.Exception );
     }
 }

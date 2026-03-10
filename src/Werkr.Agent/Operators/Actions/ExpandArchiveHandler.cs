@@ -38,7 +38,8 @@ public sealed class ExpandArchiveHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             ExpandArchiveParameters p = parameters.Deserialize<ExpandArchiveParameters>( ActionJson.SerializerOptions )
@@ -70,7 +71,7 @@ public sealed class ExpandArchiveHandler : IActionHandler {
                     $"ExpandArchive: extracted {count} entry/entries from '{sourcePath}' to '{destPath}'" ),
                 cancellationToken );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( destPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "ExpandArchive action failed" );
             await output.WriteAsync(

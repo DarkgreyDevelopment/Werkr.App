@@ -34,13 +34,15 @@ public sealed class RenameFileHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             RenameFileParameters p = parameters.Deserialize<RenameFileParameters>( ActionJson.SerializerOptions )
                 ?? throw new ArgumentException( "Failed to deserialize RenameFile parameters." );
 
             string fullPath = _resolver.ResolveSinglePath( p.Path );
+            string? resultPath = null;
 
             if (Directory.Exists( fullPath )) {
                 // Rename directory
@@ -59,6 +61,7 @@ public sealed class RenameFileHandler : IActionHandler {
                 }
 
                 Directory.Move( dir.FullName, updatePath );
+                resultPath = updatePath;
                 await output.WriteAsync(
                     OperatorOutput.Create( LogLevel.Information, $"Renamed directory '{fullPath}' → '{updatePath}'" ),
                     cancellationToken );
@@ -79,6 +82,7 @@ public sealed class RenameFileHandler : IActionHandler {
                 }
 
                 File.Move( file.FullName, updatePath, p.Overwrite );
+                resultPath = updatePath;
                 await output.WriteAsync(
                     OperatorOutput.Create( LogLevel.Information, $"Renamed file '{fullPath}' → '{updatePath}'" ),
                     cancellationToken );
@@ -86,7 +90,7 @@ public sealed class RenameFileHandler : IActionHandler {
                 throw new InvalidOperationException( $"Source path '{fullPath}' does not exist." );
             }
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: resultPath is not null ? JsonSerializer.Serialize( resultPath, ActionJson.SerializerOptions ) : null );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "RenameFile action failed" );
             await output.WriteAsync(

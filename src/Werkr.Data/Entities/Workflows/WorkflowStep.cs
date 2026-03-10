@@ -58,6 +58,14 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
     /// </summary>
     public DependencyMode DependencyMode { get; set; } = DependencyMode.All;
 
+    /// <summary>Name of the input variable consumed by this step. Null if no input variable is declared.</summary>
+    [MaxLength( 128 )]
+    public string? InputVariableName { get; set; }
+
+    /// <summary>Name of the output variable produced by this step. Null if no output variable is declared.</summary>
+    [MaxLength( 128 )]
+    public string? OutputVariableName { get; set; }
+
     /// <summary>Navigation property to the parent workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow? Workflow { get; set; }

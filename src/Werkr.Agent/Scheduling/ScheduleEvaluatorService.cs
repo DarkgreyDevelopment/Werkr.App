@@ -885,7 +885,7 @@ public sealed class ScheduleEvaluatorService(
                 Parameters = parsedParameters.RootElement.Clone( ),
             };
 
-            return actionOperator.Execute( descriptor, ct );
+            return actionOperator.Execute( descriptor, cancellationToken: ct );
         }
 
         IShellOperator operator_ = actionType switch {
@@ -896,13 +896,13 @@ public sealed class ScheduleEvaluatorService(
 
         return actionType switch {
             TaskActionType.PowerShellCommand or TaskActionType.ShellCommand =>
-                operator_.RunCommand( taskDef.Content, ct ),
+                operator_.RunCommand( taskDef.Content, cancellationToken: ct ),
 
             TaskActionType.PowerShellScript or TaskActionType.ShellScript when taskDef.Arguments.Count > 0 =>
-                operator_.RunScriptWithArgs( taskDef.Content, taskDef.Arguments, ct ),
+                operator_.RunScriptWithArgs( taskDef.Content, taskDef.Arguments, cancellationToken: ct ),
 
             TaskActionType.PowerShellScript or TaskActionType.ShellScript =>
-                operator_.RunScript( taskDef.Content, ct ),
+                operator_.RunScript( taskDef.Content, cancellationToken: ct ),
 
             _ => throw new NotSupportedException( $"ActionType '{actionType}' is not supported for local execution." ),
         };

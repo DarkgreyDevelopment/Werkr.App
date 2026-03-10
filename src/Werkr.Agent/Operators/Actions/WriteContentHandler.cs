@@ -38,7 +38,8 @@ public sealed class WriteContentHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             WriteContentParameters p = parameters.Deserialize<WriteContentParameters>( ActionJson.SerializerOptions )
@@ -60,7 +61,7 @@ public sealed class WriteContentHandler : IActionHandler {
                     cancellationToken );
             }
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( fullPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "WriteContent action failed" );
             await output.WriteAsync(

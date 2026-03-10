@@ -132,7 +132,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PostAsync(
-                $"/api/workflows/{workflowId}/run", null );
+                $"/api/workflows/{workflowId}/execute", null );
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );
                 _errorMessage = $"Run failed: {body}";

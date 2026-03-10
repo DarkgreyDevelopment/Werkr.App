@@ -1,0 +1,56 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+
+// Agent fetches/pushes variable values during workflow execution.
+// Hosted by the API. All RPCs use EncryptedEnvelope.
+service VariableService {
+  // Request envelope contains GetVariableRequest; response contains GetVariableResponse.
+  rpc GetVariable (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Request envelope contains SetVariableRequest; response contains SetVariableResponse.
+  rpc SetVariable (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Creates a WorkflowRun and seeds default variable values. Used by agents for
+  // cron-triggered workflows where no API-side run was pre-created.
+  // Request envelope contains CreateWorkflowRunRequest; response contains CreateWorkflowRunResponse.
+  rpc CreateWorkflowRun (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message GetVariableRequest {
+  string connection_id = 1;
+  string workflow_run_id = 2;
+  string variable_name = 3;
+}
+
+message GetVariableResponse {
+  bool found = 1;
+  string value = 2;           // JSON blob
+  int32 version = 3;
+}
+
+message SetVariableRequest {
+  string connection_id = 1;
+  string workflow_run_id = 2;
+  string variable_name = 3;
+  string value = 4;            // JSON blob
+  int64 produced_by_step_id = 5;
+  string produced_by_job_id = 6;
+}
+
+message SetVariableResponse {
+  bool accepted = 1;
+  int32 version = 2;           // assigned version number
+  string error = 3;            // non-empty on rejection (size limit, invalid JSON, etc.)
+}
+
+message CreateWorkflowRunRequest {
+  string connection_id = 1;
+  int64 workflow_id = 2;
+}
+
+message CreateWorkflowRunResponse {
+  bool accepted = 1;
+  string workflow_run_id = 2;  // API-generated run ID
+  string error = 3;            // non-empty on rejection
+}

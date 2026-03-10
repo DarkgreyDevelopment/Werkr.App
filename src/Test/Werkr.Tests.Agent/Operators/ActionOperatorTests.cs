@@ -146,7 +146,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "TestAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = [];
@@ -177,7 +177,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "FailAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await foreach (OperatorOutput _ in execution.Output.WithCancellation( TestContext.CancellationToken )) { }
@@ -203,7 +203,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "ThrowAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await foreach (OperatorOutput _ in execution.Output.WithCancellation( TestContext.CancellationToken )) { }
@@ -232,7 +232,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "UnknownAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = [];
@@ -268,7 +268,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "SlowAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = [];
@@ -306,7 +306,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "SlowAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            cts.Token
+            cancellationToken: cts.Token
         );
 
         List<OperatorOutput> outputs = [];
@@ -339,7 +339,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "testaction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await foreach (OperatorOutput _ in execution.Output.WithCancellation( TestContext.CancellationToken )) { }
@@ -367,7 +367,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "TestAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await foreach (OperatorOutput _ in execution.Output.WithCancellation( TestContext.CancellationToken )) { }

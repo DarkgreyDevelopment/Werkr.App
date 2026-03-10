@@ -47,7 +47,8 @@ public sealed class WatchFileHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             WatchFileParameters p = parameters.Deserialize<WatchFileParameters>( ActionJson.SerializerOptions )
@@ -110,7 +111,9 @@ public sealed class WatchFileHandler : IActionHandler {
                     cancellationToken );
             }
 
-            return new ActionOperatorResult( Success: true );
+            string? watchOutputJson = detectedFile is not null
+                ? JsonSerializer.Serialize(detectedFile, ActionJson.SerializerOptions) : null;
+            return new ActionOperatorResult( Success: true, OutputVariableValue: watchOutputJson );
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             throw;
         } catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -145,7 +148,7 @@ public sealed class WatchFileHandler : IActionHandler {
         };
 
         void OnFileEvent( object sender, FileSystemEventArgs e ) {
-            tcs.TrySetResult( e.FullPath );
+            _ = tcs.TrySetResult( e.FullPath );
         }
 
         watcher.Created += OnFileEvent;

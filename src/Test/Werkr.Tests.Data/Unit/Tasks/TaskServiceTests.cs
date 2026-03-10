@@ -148,8 +148,7 @@ public class TaskServiceTests {
     /// Tags are optional — the UI warns if empty but the API allows it.
     /// </summary>
     [TestMethod]
-    public async Task Create_AllowsEmptyTargetTags()
-    {
+    public async Task Create_AllowsEmptyTargetTags( ) {
         WerkrTask task = MakeTask( );
         task.TargetTags = [];
 
@@ -158,8 +157,8 @@ public class TaskServiceTests {
             TestContext.CancellationToken
         );
 
-        Assert.IsNotNull(created);
-        Assert.IsEmpty(created.TargetTags);
+        Assert.IsNotNull( created );
+        Assert.IsEmpty( created.TargetTags );
     }
 
     /// <summary>

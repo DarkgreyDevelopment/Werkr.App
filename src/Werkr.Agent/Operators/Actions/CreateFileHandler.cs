@@ -39,7 +39,8 @@ public sealed class CreateFileHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             CreateFileParameters p = parameters
@@ -105,7 +106,7 @@ public sealed class CreateFileHandler : IActionHandler {
                 cancellationToken
             );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( fullPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError(
                 ex,

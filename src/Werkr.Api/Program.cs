@@ -163,6 +163,8 @@ public class Program {
             // Task & Job services (Scoped — one per request)
             _ = builder.Services.Configure<JobOutputOptions>(
                 builder.Configuration.GetSection( JobOutputOptions.SectionName ) );
+            _ = builder.Services.Configure<WorkflowVariableOptions>(
+                builder.Configuration.GetSection( WorkflowVariableOptions.SectionName ) );
             _ = builder.Services.AddScoped<TaskService>( );
             _ = builder.Services.AddScoped<AgentResolver>( );
             _ = builder.Services.AddScoped<JobOutputWriter>( );
@@ -222,6 +224,7 @@ public class Program {
             _ = app.MapGrpcService<ScheduleSyncGrpcService>( );
             _ = app.MapGrpcService<JobReportingGrpcService>( );
             _ = app.MapGrpcService<OutputStreamingGrpcService>( );
+            _ = app.MapGrpcService<VariableGrpcService>( );
 
             // REST endpoints
             _ = app.MapStatusEndpoints( );
@@ -234,6 +237,7 @@ public class Program {
             _ = app.MapJobEndpoints( );
             _ = app.MapSettingsEndpoints( );
             _ = app.MapWorkflowEndpoints( );
+            _ = app.MapVariableEndpoints( );
             _ = app.MapHolidayCalendarEndpoints( );
             _ = app.MapEventEndpoints( );
             _ = app.MapShellEndpoints( );

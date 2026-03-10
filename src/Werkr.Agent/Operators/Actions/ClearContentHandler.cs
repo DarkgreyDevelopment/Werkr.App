@@ -34,7 +34,8 @@ public sealed class ClearContentHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             ClearContentParameters p = parameters.Deserialize<ClearContentParameters>( ActionJson.SerializerOptions )
@@ -52,7 +53,7 @@ public sealed class ClearContentHandler : IActionHandler {
                 OperatorOutput.Create( LogLevel.Information, $"Cleared content of '{fullPath}'" ),
                 cancellationToken );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( fullPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "ClearContent action failed" );
             await output.WriteAsync(

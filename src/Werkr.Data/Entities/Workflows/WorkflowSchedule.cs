@@ -24,6 +24,13 @@ public class WorkflowSchedule {
     /// </summary>
     public bool IsOneTime { get; set; }
 
+    /// <summary>
+    /// The API-generated workflow run ID for this schedule.
+    /// Populated for run-now schedules so the agent uses the API-created <see cref="Workflows.WorkflowRun"/>
+    /// instead of generating its own. <see langword="null"/> for recurring schedules (agent creates run on evaluation).
+    /// </summary>
+    public Guid? WorkflowRunId { get; set; }
+
     /// <summary>Navigation property to the workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow? Workflow { get; set; }

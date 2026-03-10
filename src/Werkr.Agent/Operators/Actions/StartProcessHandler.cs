@@ -36,7 +36,8 @@ public sealed class StartProcessHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             StartProcessParameters p = parameters.Deserialize<StartProcessParameters>( ActionJson.SerializerOptions )
@@ -119,11 +120,13 @@ public sealed class StartProcessHandler : IActionHandler {
                     OperatorOutput.Create( LogLevel.Information, $"Process exited with code {exitCode}" ),
                     cancellationToken );
 
-                return new ActionOperatorResult( Success: exitCode == 0 );
+                string exitJson = JsonSerializer.Serialize(new { processId = process.Id, exitCode }, ActionJson.SerializerOptions);
+                return new ActionOperatorResult( Success: exitCode == 0, OutputVariableValue: exitJson );
             }
 
             // Fire and forget — process started but not awaited
-            return new ActionOperatorResult( Success: true );
+            string pidJson = JsonSerializer.Serialize(new { processId = process.Id }, ActionJson.SerializerOptions);
+            return new ActionOperatorResult( Success: true, OutputVariableValue: pidJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "StartProcess action failed" );
             await output.WriteAsync(

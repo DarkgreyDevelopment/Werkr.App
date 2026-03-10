@@ -78,6 +78,17 @@ public sealed class AgentGrpcClientFactory(
     }
 
     /// <summary>
+    /// Creates a <see cref="VariableService.VariableServiceClient"/> for
+    /// getting and setting workflow run variables on the Server.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A configured gRPC client.</returns>
+    public async Task<VariableService.VariableServiceClient> CreateVariableServiceClientAsync( CancellationToken ct = default ) {
+        await EnsureInitializedAsync( ct );
+        return new VariableService.VariableServiceClient( _channel );
+    }
+
+    /// <summary>
     /// Creates gRPC <see cref="CallOptions"/> with bearer token, connection ID, call ID, and deadline.
     /// Mirrors the pattern from <c>AgentConnectionManager.CreateCallOptions</c>.
     /// </summary>

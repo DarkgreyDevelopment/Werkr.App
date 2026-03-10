@@ -28,7 +28,8 @@ internal sealed class ThrowHandler : IActionHandler {
     public Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         throw new InvalidOperationException( "Simulated handler failure." );
     }

@@ -34,4 +34,7 @@ public class WorkflowRun : ConcurrencyBase, IKey<Guid> {
 
     /// <summary>Navigation to jobs created during this workflow run.</summary>
     public ICollection<WerkrJob> Jobs { get; set; } = [];
+
+    /// <summary>Navigation to runtime variable values for this run.</summary>
+    public ICollection<WorkflowRunVariable> RunVariables { get; set; } = [];
 }

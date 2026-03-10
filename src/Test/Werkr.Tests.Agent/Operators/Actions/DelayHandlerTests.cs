@@ -65,7 +65,7 @@ public class DelayHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -82,7 +82,7 @@ public class DelayHandlerTests {
         Task<ActionOperatorResult> task = _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         _timeProvider.Advance( TimeSpan.FromSeconds( 10 ) );
@@ -103,7 +103,7 @@ public class DelayHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -132,12 +132,12 @@ public class DelayHandlerTests {
         Task<ActionOperatorResult> task = _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            cts.Token
+            cancellationToken: cts.Token
         );
 
         await cts.CancelAsync( );
 
-        await Assert.ThrowsExactlyAsync<TaskCanceledException>( ( ) => task );
+        _ = await Assert.ThrowsExactlyAsync<TaskCanceledException>( ( ) => task );
     }
 
     /// <summary>
@@ -151,7 +151,7 @@ public class DelayHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );

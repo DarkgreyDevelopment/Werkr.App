@@ -85,6 +85,14 @@ message ScheduledWorkflowDefinition {
   string name = 2;
   repeated ScheduledWorkflowStepDef steps = 3;
   ScheduleDefinition schedule = 4;
+  repeated WorkflowVariableDef variables = 5;       // Design-time variable definitions
+  string workflow_run_id = 6;                        // API-generated run ID
+  map<string, string> trigger_variables = 7;         // Per-execution trigger param overrides
+}
+
+message WorkflowVariableDef {
+  string name = 1;
+  string default_value = 2;         // JSON blob or empty
 }
 
 message ScheduledWorkflowStepDef {
@@ -98,6 +106,8 @@ message ScheduledWorkflowStepDef {
   ScheduledTaskDefinition task = 8;
   string agent_connection_id_override = 9;
   int32 dependency_mode = 10;
+  string input_variable_name = 11;   // Step's declared input variable
+  string output_variable_name = 12;  // Step's declared output variable
 }
 
 // ── Bulk Holiday Date Fetch ──

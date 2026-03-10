@@ -58,7 +58,7 @@ public class PSHostTests {
         OperatorExecution execution = op.RunCommand(
             "Get-ChildItem -Path / -Force -ErrorAction SilentlyContinue "
             + "| Select-Object -First 3 | Format-Table -AutoSize",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -105,7 +105,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "Get-Process | Select-Object -First 5 | Format-Table -Property Id, ProcessName -AutoSize",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -143,7 +143,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "Get-Process | Select-Object -First 1 | Format-List -Property Id, ProcessName",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -180,7 +180,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "Write-Host 'Hello from PSHost'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -203,7 +203,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "Write-Progress -Activity 'TestActivity' -Status 'Running' -PercentComplete 50",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -228,7 +228,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "1..5 | ForEach-Object { $_ }",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -263,7 +263,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "Write-Output 'single-flow-test'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -289,7 +289,7 @@ public class PSHostTests {
         PwshOperator narrowOp = CreateOperator( bufferWidth: 40 );
         OperatorExecution narrowExec = narrowOp.RunCommand(
             "Get-Process | Select-Object -First 3 | Format-Table -Property Id, ProcessName, CPU",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> narrowOutputs = await CollectOutputAsync(
@@ -301,7 +301,7 @@ public class PSHostTests {
         PwshOperator wideOp = CreateOperator( bufferWidth: 200 );
         OperatorExecution wideExec = wideOp.RunCommand(
             "Get-Process | Select-Object -First 3 | Format-Table -Property Id, ProcessName, CPU",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> wideOutputs = await CollectOutputAsync(
@@ -364,7 +364,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "Write-Error 'pshost-error-test'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -392,7 +392,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "Write-Warning 'pshost-warning-test'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(
@@ -421,7 +421,7 @@ public class PSHostTests {
         // A command that succeeds — HadErrors should be false
         OperatorExecution successExec = op.RunCommand(
             "Write-Output 'success'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         _ = await CollectOutputAsync(
             successExec,
@@ -436,7 +436,7 @@ public class PSHostTests {
         // A command that errors — HadErrors should be true
         OperatorExecution errorExec = op.RunCommand(
             "Write-Error 'fail'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         _ = await CollectOutputAsync(
             errorExec,
@@ -459,7 +459,7 @@ public class PSHostTests {
         PwshOperator op = CreateOperator( );
         OperatorExecution execution = op.RunCommand(
             "Write-Host 'unique-message-42'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = await CollectOutputAsync(

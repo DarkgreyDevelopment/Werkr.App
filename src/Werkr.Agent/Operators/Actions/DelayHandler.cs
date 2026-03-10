@@ -34,7 +34,8 @@ public sealed class DelayHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             DelayParameters p = parameters.Deserialize<DelayParameters>( ActionJson.SerializerOptions )

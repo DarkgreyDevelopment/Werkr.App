@@ -30,7 +30,8 @@ public sealed class StopProcessHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             StopProcessParameters p = parameters.Deserialize<StopProcessParameters>( ActionJson.SerializerOptions )

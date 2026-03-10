@@ -36,7 +36,8 @@ public sealed class ReadContentHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             ReadContentParameters p = parameters.Deserialize<ReadContentParameters>( ActionJson.SerializerOptions )
@@ -65,7 +66,7 @@ public sealed class ReadContentHandler : IActionHandler {
                 OperatorOutput.Create( LogLevel.Information, content ),
                 cancellationToken );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( content, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "ReadContent action failed" );
             await output.WriteAsync(

@@ -17,12 +17,16 @@ public interface IActionOperator {
     /// <param name="descriptor">
     /// The action descriptor containing the action name string and JSON parameters.
     /// </param>
+    /// <param name="inputVariableValue">
+    /// Optional JSON blob from the step's input variable, or <see langword="null"/> if no input is declared.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token for timeout/cancellation support.</param>
     /// <returns>
     /// An <see cref="OperatorExecution"/> containing streamed output and a typed result.
     /// </returns>
     OperatorExecution Execute(
         ActionDescriptor descriptor,
+        string? inputVariableValue = null,
         CancellationToken cancellationToken = default
     );
 }

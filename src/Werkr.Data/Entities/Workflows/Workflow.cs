@@ -37,6 +37,9 @@ public class Workflow : ConcurrencyBase, IKey<long> {
     /// <summary>Navigation property for workflow runs.</summary>
     public ICollection<WorkflowRun> Runs { get; set; } = [];
 
+    /// <summary>Navigation property for design-time variable definitions.</summary>
+    public ICollection<WorkflowVariable> Variables { get; set; } = [];
+
     /// <summary>Navigation property for schedule links (many-to-many via WorkflowSchedule).</summary>
     public ICollection<WorkflowSchedule> WorkflowSchedules { get; set; } = [];
 }

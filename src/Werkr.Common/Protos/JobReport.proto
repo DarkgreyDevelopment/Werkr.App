@@ -40,6 +40,10 @@ message JobResultRequest {
   string job_id = 13;
   // Schedule ID that triggered this job execution.
   string schedule_id = 14;
+  // Variable name for step output (empty = no output).
+  string output_variable_name = 15;
+  // JSON blob of the output variable value (empty = no output).
+  string output_variable_value = 16;
 }
 
 message JobResultResponse {

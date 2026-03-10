@@ -92,7 +92,7 @@ public class WatchFileHandlerTests {
         ActionOperatorResult result = await handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -122,7 +122,7 @@ public class WatchFileHandlerTests {
         Task<ActionOperatorResult> watchTask = handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await Task.Delay( 200, TestContext.CancellationToken );
@@ -161,7 +161,7 @@ public class WatchFileHandlerTests {
         ActionOperatorResult result = await handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -192,11 +192,11 @@ public class WatchFileHandlerTests {
         ActionOperatorResult result = await handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
-        Assert.IsInstanceOfType<TimeoutException>( result.Exception );
+        _ = Assert.IsInstanceOfType<TimeoutException>( result.Exception );
     }
 
     /// <summary>
@@ -224,7 +224,7 @@ public class WatchFileHandlerTests {
         ActionOperatorResult result = await handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -258,7 +258,7 @@ public class WatchFileHandlerTests {
         ActionOperatorResult result = await handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
@@ -290,13 +290,13 @@ public class WatchFileHandlerTests {
         Task<ActionOperatorResult> task = handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            cts.Token
+            cancellationToken: cts.Token
         );
 
         await Task.Delay( 200, TestContext.CancellationToken );
         await cts.CancelAsync( );
 
-        await Assert.ThrowsExactlyAsync<TaskCanceledException>( ( ) => task );
+        _ = await Assert.ThrowsExactlyAsync<TaskCanceledException>( ( ) => task );
     }
 
     /// <summary>
@@ -319,11 +319,11 @@ public class WatchFileHandlerTests {
         ActionOperatorResult result = await handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
-        Assert.IsInstanceOfType<UnauthorizedAccessException>( result.Exception );
+        _ = Assert.IsInstanceOfType<UnauthorizedAccessException>( result.Exception );
     }
 
     /// <summary>
@@ -348,10 +348,10 @@ public class WatchFileHandlerTests {
         ActionOperatorResult result = await handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
-        Assert.IsInstanceOfType<DirectoryNotFoundException>( result.Exception );
+        _ = Assert.IsInstanceOfType<DirectoryNotFoundException>( result.Exception );
     }
 }

@@ -96,6 +96,8 @@ public sealed class ScheduleSyncGrpcService(
             .Include( ws => ws.Workflow )
                 .ThenInclude( w => w!.Steps )
                     .ThenInclude( s => s.Dependencies )
+            .Include(ws => ws.Workflow)
+                .ThenInclude(w => w!.Variables)
             .Where( ws => ws.Workflow!.Enabled )
             .ToListAsync( context.CancellationToken );
 
@@ -115,6 +117,23 @@ public sealed class ScheduleSyncGrpcService(
             }
 
             ScheduledWorkflowDefinition workflowDef = MapWorkflowDefinition( workflow, schedule );
+
+            // For run-now schedules, include the API-generated workflow run ID
+            if (ws.WorkflowRunId.HasValue) {
+                workflowDef.WorkflowRunId = ws.WorkflowRunId.Value.ToString( );
+
+                // Include trigger variables (ManualInput entries) for local cache seeding
+                List<WorkflowRunVariable> triggerVars = await dbContext.Set<WorkflowRunVariable>()
+                    .AsNoTracking()
+                    .Where(v => v.WorkflowRunId == ws.WorkflowRunId.Value
+                        && v.Source == VariableSource.ManualInput)
+                    .ToListAsync(context.CancellationToken);
+
+                foreach (WorkflowRunVariable tv in triggerVars) {
+                    workflowDef.TriggerVariables[tv.VariableName] = tv.Value;
+                }
+            }
+
             response.Workflows.Add( workflowDef );
         }
 
@@ -230,6 +249,8 @@ public sealed class ScheduleSyncGrpcService(
                 MaxIterations = step.MaxIterations,
                 AgentConnectionIdOverride = step.AgentConnectionIdOverride?.ToString( ) ?? string.Empty,
                 DependencyMode = (int) step.DependencyMode,
+                InputVariableName = step.InputVariableName ?? string.Empty,
+                OutputVariableName = step.OutputVariableName ?? string.Empty,
             };
 
             // Add dependency step IDs
@@ -260,6 +281,14 @@ public sealed class ScheduleSyncGrpcService(
             }
 
             def.Steps.Add( stepDef );
+        }
+
+        // Populate design-time variable definitions
+        foreach (WorkflowVariable variable in workflow.Variables) {
+            def.Variables.Add( new WorkflowVariableDef {
+                Name = variable.Name,
+                DefaultValue = variable.DefaultValue ?? string.Empty,
+            } );
         }
 
         return def;

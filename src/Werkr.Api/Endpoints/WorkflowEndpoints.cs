@@ -174,6 +174,8 @@ internal static class WorkflowEndpoints {
                     AgentConnectionIdOverride = request.AgentConnectionIdOverride,
                     DependencyMode = Enum.Parse<DependencyMode>(
                             request.DependencyMode, ignoreCase: true ),
+                    InputVariableName = request.InputVariableName,
+                    OutputVariableName = request.OutputVariableName,
                 };
                 WorkflowStep updated = await workflowService.UpdateStepAsync( step, ct );
                 return Results.Ok( WorkflowMapper.ToStepDto( updated ) );
@@ -277,8 +279,9 @@ internal static class WorkflowEndpoints {
         .WithName( "ValidateWorkflow" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPost( "/api/workflows/{id}/run", async (
+        _ = app.MapPost( "/api/workflows/{id}/execute", async (
             long id,
+            WorkflowRunRequest? request,
             WorkflowService workflowService,
             RunNowService runNowService,
             ScheduleInvalidationDispatcher invalidationDispatcher,
@@ -293,12 +296,14 @@ internal static class WorkflowEndpoints {
                 return Results.BadRequest( new { message = "Workflow is disabled." } );
             }
 
-            Guid scheduleId = await runNowService.CreateWorkflowRunNowAsync( id, ct );
+            Dictionary<string, string>? triggerVariables = request?.Variables;
+            (Guid scheduleId, Guid workflowRunId) = await runNowService.CreateWorkflowRunNowAsync(
+                id, triggerVariables: triggerVariables, ct: ct );
             await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
             return Results.Accepted( $"/api/workflows/{id}/runs",
-                new { scheduleId, message = "One-time schedule created. Execution will begin on the next agent sync." } );
+                new { scheduleId, workflowRunId, message = "One-time schedule created. Execution will begin on the next agent sync." } );
         } )
-        .WithName( "RunWorkflow" )
+        .WithName( "ExecuteWorkflow" )
         .RequireAuthorization( Policies.CanExecute );
 
         _ = app.MapGet( "/api/workflows/{id}/runs", async (

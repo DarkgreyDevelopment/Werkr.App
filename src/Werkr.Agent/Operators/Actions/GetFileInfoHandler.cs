@@ -35,7 +35,8 @@ public sealed class GetFileInfoHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             GetFileInfoParameters p = parameters.Deserialize<GetFileInfoParameters>( ActionJson.SerializerOptions )
@@ -85,7 +86,7 @@ public sealed class GetFileInfoHandler : IActionHandler {
                 OperatorOutput.Create( LogLevel.Information, json ),
                 cancellationToken );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: json );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "GetFileInfo action failed" );
             await output.WriteAsync(

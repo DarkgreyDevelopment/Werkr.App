@@ -40,7 +40,8 @@ public sealed class FindReplaceHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             FindReplaceParameters p = parameters.Deserialize<FindReplaceParameters>( ActionJson.SerializerOptions )
@@ -84,7 +85,8 @@ public sealed class FindReplaceHandler : IActionHandler {
                     $"FindReplace: {count} replacement(s) made in '{fullPath}'" ),
                 cancellationToken );
 
-            return new ActionOperatorResult( Success: true );
+            string outputJson = JsonSerializer.Serialize(new { path = fullPath, replacementCount = count }, ActionJson.SerializerOptions);
+            return new ActionOperatorResult( Success: true, OutputVariableValue: outputJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "FindReplace action failed" );
             await output.WriteAsync(

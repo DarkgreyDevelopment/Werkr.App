@@ -56,7 +56,7 @@ public class SystemShellOperatorTests {
 
         OperatorExecution execution = _operator.RunCommand(
             "echo hello",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );
@@ -87,7 +87,7 @@ public class SystemShellOperatorTests {
 
         OperatorExecution execution = _operator.RunCommand(
             command,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );
@@ -120,7 +120,7 @@ public class SystemShellOperatorTests {
         try {
             OperatorExecution execution = _operator.RunCommand(
                 command,
-                cts.Token
+                cancellationToken: cts.Token
             );
             await foreach (OperatorOutput output in execution.Output.WithCancellation( cts.Token )) {
                 outputs.Add( output );
@@ -153,7 +153,7 @@ public class SystemShellOperatorTests {
 
         OperatorExecution execution = _operator.RunCommand(
             command,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );
@@ -177,7 +177,7 @@ public class SystemShellOperatorTests {
 
         OperatorExecution execution = _operator.RunScript(
             "C:\\nonexistent\\fake.bat",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );
@@ -204,7 +204,7 @@ public class SystemShellOperatorTests {
 
         OperatorExecution execution = _operator.RunCommand(
             command,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );

@@ -36,7 +36,8 @@ public sealed class ListDirectoryHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             ListDirectoryParameters p = parameters.Deserialize<ListDirectoryParameters>( ActionJson.SerializerOptions )
@@ -59,7 +60,7 @@ public sealed class ListDirectoryHandler : IActionHandler {
                 _ => throw new ArgumentOutOfRangeException( nameof( p.Type ), p.Type, "Unknown PathType value." )
             };
 
-            List<string> results = entries.ToList( );
+            List<string> results = [.. entries];
 
             results = p.SortBy switch {
                 DirectoryListSortBy.Name => [.. results.OrderBy( Path.GetFileName )],
@@ -82,7 +83,7 @@ public sealed class ListDirectoryHandler : IActionHandler {
                 OperatorOutput.Create( LogLevel.Information, json ),
                 cancellationToken );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: json );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "ListDirectory action failed" );
             await output.WriteAsync(

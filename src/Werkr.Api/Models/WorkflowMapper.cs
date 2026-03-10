@@ -46,7 +46,9 @@ internal static class WorkflowMapper {
             MaxIterations: step.MaxIterations,
             AgentConnectionIdOverride: step.AgentConnectionIdOverride,
             DependencyMode: step.DependencyMode.ToString( ),
-            Dependencies: [.. step.Dependencies.Select( ToDepDto )] );
+            Dependencies: [.. step.Dependencies.Select( ToDepDto )],
+            InputVariableName: step.InputVariableName,
+            OutputVariableName: step.OutputVariableName );
 
     /// <summary>Maps a <see cref="WorkflowStepDependency"/> to a <see cref="StepDependencyDto"/>.</summary>
     public static StepDependencyDto ToDepDto( WorkflowStepDependency dep ) =>
@@ -63,6 +65,8 @@ internal static class WorkflowMapper {
             MaxIterations = request.MaxIterations,
             AgentConnectionIdOverride = request.AgentConnectionIdOverride,
             DependencyMode = Enum.Parse<DependencyMode>( request.DependencyMode, ignoreCase: true ),
+            InputVariableName = request.InputVariableName,
+            OutputVariableName = request.OutputVariableName,
         };
 
     /// <summary>Maps a <see cref="WorkflowRun"/> entity to a <see cref="WorkflowRunDto"/>.</summary>
@@ -83,4 +87,34 @@ internal static class WorkflowMapper {
             EndTime: run.EndTime,
             Status: run.Status.ToString( ),
             Jobs: [.. run.Jobs.Select( TaskMapper.ToJobDto )] );
+
+    /// <summary>Maps a <see cref="WorkflowVariable"/> entity to a <see cref="WorkflowVariableDto"/>.</summary>
+    public static WorkflowVariableDto ToVariableDto( WorkflowVariable variable ) =>
+        new(
+            Id: variable.Id,
+            WorkflowId: variable.WorkflowId,
+            Name: variable.Name,
+            Description: variable.Description,
+            DefaultValue: variable.DefaultValue );
+
+    /// <summary>Maps a <see cref="WorkflowRunVariable"/> entity to a <see cref="RunVariableCurrentDto"/>.</summary>
+    public static RunVariableCurrentDto ToRunVariableCurrentDto( WorkflowRunVariable variable ) =>
+        new(
+            Name: variable.VariableName,
+            Value: variable.Value,
+            Version: variable.Version,
+            Source: variable.Source.ToString( ),
+            Created: variable.Created );
+
+    /// <summary>Maps a <see cref="WorkflowRunVariable"/> entity to a <see cref="RunVariableVersionDto"/>.</summary>
+    public static RunVariableVersionDto ToRunVariableVersionDto( WorkflowRunVariable variable ) =>
+        new(
+            Id: variable.Id,
+            VariableName: variable.VariableName,
+            Value: variable.Value,
+            Version: variable.Version,
+            ProducedByStepId: variable.ProducedByStepId,
+            ProducedByJobId: variable.ProducedByJobId,
+            Source: variable.Source.ToString( ),
+            Created: variable.Created );
 }

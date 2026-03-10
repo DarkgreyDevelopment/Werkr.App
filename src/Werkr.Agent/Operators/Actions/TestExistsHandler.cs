@@ -36,7 +36,8 @@ public sealed class TestExistsHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             TestExistsParameters p = parameters.Deserialize<TestExistsParameters>( ActionJson.SerializerOptions )
@@ -59,7 +60,7 @@ public sealed class TestExistsHandler : IActionHandler {
                 cancellationToken );
 
             // Success is true when the path exists, false when it does not.
-            return new ActionOperatorResult( Success: exists );
+            return new ActionOperatorResult( Success: exists, OutputVariableValue: exists ? "true" : "false" );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "TestExists action failed" );
             await output.WriteAsync(

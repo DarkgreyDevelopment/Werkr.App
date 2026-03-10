@@ -492,8 +492,8 @@ public class ActionDispatchIntegrationTests {
         HttpResponseMessage runResponse = await Api.PostAsJsonAsync(
             $"/api/tasks/{taskId}/run", new object( ), JsonOptions, ct );
 
-        Assert.AreEqual(HttpStatusCode.Accepted, runResponse.StatusCode,
-            "Ad-hoc action run should return 202 Accepted (one-time schedule created).");
+        Assert.AreEqual( HttpStatusCode.Accepted, runResponse.StatusCode,
+            "Ad-hoc action run should return 202 Accepted (one-time schedule created)." );
 
         // Cleanup
         _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );

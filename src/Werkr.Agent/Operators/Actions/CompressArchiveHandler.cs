@@ -38,7 +38,8 @@ public sealed class CompressArchiveHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             CompressArchiveParameters p = parameters.Deserialize<CompressArchiveParameters>( ActionJson.SerializerOptions )
@@ -65,10 +66,10 @@ public sealed class CompressArchiveHandler : IActionHandler {
 
                 foreach (string file in Directory.EnumerateFiles( sourcePath, "*", SearchOption.AllDirectories )) {
                     string entryName = Path.GetRelativePath( baseDir, file );
-                    filesToCompress.Add( ( file, entryName ) );
+                    filesToCompress.Add( (file, entryName) );
                 }
             } else if (File.Exists( sourcePath )) {
-                filesToCompress.Add( ( sourcePath, Path.GetFileName( sourcePath ) ) );
+                filesToCompress.Add( (sourcePath, Path.GetFileName( sourcePath )) );
             } else {
                 // Try as glob pattern
                 string[] resolved = _resolver.ResolveFiles( p.Source );
@@ -78,7 +79,7 @@ public sealed class CompressArchiveHandler : IActionHandler {
                 string commonDir = Path.GetDirectoryName( resolved[0] ) ?? ".";
                 foreach (string file in resolved) {
                     string entryName = Path.GetRelativePath( commonDir, file );
-                    filesToCompress.Add( ( file, entryName ) );
+                    filesToCompress.Add( (file, entryName) );
                 }
             }
 
@@ -103,7 +104,7 @@ public sealed class CompressArchiveHandler : IActionHandler {
                     $"CompressArchive: created {p.Format} archive '{destPath}' with {filesToCompress.Count} file(s)" ),
                 cancellationToken );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( destPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogError( ex, "CompressArchive action failed" );
             await output.WriteAsync(

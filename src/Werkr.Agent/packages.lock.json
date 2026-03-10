@@ -19,6 +19,15 @@
         "resolved": "2.78.0",
         "contentHash": "6jPG2gHon+w2PczW8jjrCRnW/g9eEfCdd7aK6mDooptWtuPsV3ZxAwKKEx7LGEDVoT4c2SViRl8Yu3L1XiWIIg=="
       },
+      "MailKit": {
+        "type": "Direct",
+        "requested": "[4.15.1, )",
+        "resolved": "4.15.1",
+        "contentHash": "4mLbqTbH3ctd0NlukHjVQbU3ZnNDuCtB6ttNZDLPZLWMA2Dr31rh/eCSTqOwDojUX8zfDOVaxstMgJTE9PwZNA==",
+        "dependencies": {
+          "MimeKit": "4.15.1"
+        }
+      },
       "Microsoft.PowerShell.SDK": {
         "type": "Direct",
         "requested": "[7.6.0-rc.1, )",
@@ -110,6 +119,11 @@
           "Grpc.Net.Client": "2.70.0",
           "Serilog": "4.2.0"
         }
+      },
+      "BouncyCastle.Cryptography": {
+        "type": "Transitive",
+        "resolved": "2.6.2",
+        "contentHash": "7oWOcvnntmMKNzDLsdxAYqApt+AjpRpP2CShjMfIa3umZ42UQMvH0tl1qAliYPNYO6vTdcGMqnRrCPmsfzTI1w=="
       },
       "Grpc.AspNetCore.Server": {
         "type": "Transitive",
@@ -471,6 +485,15 @@
         "type": "Transitive",
         "resolved": "7.6.0-rc.1",
         "contentHash": "HFG8NIyKCrZ7SM/lgewFpEQ13kbsRQm6c8ihdo2v+Am0XfftCw+cxzKOpNXlti8ZBEkPksZzkbxlPeAds0PZGA=="
+      },
+      "MimeKit": {
+        "type": "Transitive",
+        "resolved": "4.15.1",
+        "contentHash": "cxCcQhD0zhboFoG136jJuJtQjNRDJ+BxBm3f2vWn+53bff/CRo+K1mAkWjsW4Wuyy5O22F40MdMG2nRzQu1cJw==",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "2.6.2",
+          "System.Security.Cryptography.Pkcs": "10.0.0"
+        }
       },
       "Newtonsoft.Json": {
         "type": "Transitive",
