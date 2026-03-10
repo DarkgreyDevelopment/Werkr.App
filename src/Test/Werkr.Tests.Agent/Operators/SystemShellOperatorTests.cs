@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Agent.Operators;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;

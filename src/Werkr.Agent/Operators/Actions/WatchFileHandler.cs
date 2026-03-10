@@ -147,9 +147,7 @@ public sealed class WatchFileHandler : IActionHandler {
             EnableRaisingEvents = true,
         };
 
-        void OnFileEvent( object sender, FileSystemEventArgs e ) {
-            _ = tcs.TrySetResult( e.FullPath );
-        }
+        void OnFileEvent( object sender, FileSystemEventArgs e ) => _ = tcs.TrySetResult( e.FullPath );
 
         watcher.Created += OnFileEvent;
         watcher.Changed += OnFileEvent;

@@ -58,10 +58,10 @@ public sealed class TransformJsonHandler : IActionHandler {
                     throw new FileNotFoundException( $"Input file not found: '{fullInputPath}'" );
                 }
                 inputJson = await File.ReadAllTextAsync( fullInputPath, cancellationToken );
-            } else if (!string.IsNullOrWhiteSpace( inputVariableValue )) {
-                inputJson = inputVariableValue;
             } else {
-                throw new ArgumentException(
+                inputJson = !string.IsNullOrWhiteSpace( inputVariableValue )
+                    ? inputVariableValue
+                    : throw new ArgumentException(
                     "TransformJson requires either an InputPath parameter or an input variable value, but neither was provided." );
             }
 
@@ -240,19 +240,17 @@ public sealed class TransformJsonHandler : IActionHandler {
         for (int i = 0; i < segments.Length - 1; i++) {
             if (current is JsonObject parentObj) {
                 if (!parentObj.TryGetPropertyValue( segments[i], out JsonNode? child ) || child is null) {
-                    JsonObject intermediate = new( );
+                    JsonObject intermediate = [];
                     parentObj[segments[i]] = intermediate;
                     current = intermediate;
                 } else {
                     current = child;
                 }
             } else if (current is JsonArray parentArr) {
-                if (int.TryParse( segments[i], out int idx ) && idx >= 0 && idx < parentArr.Count) {
-                    current = parentArr[idx]
-                        ?? throw new ArgumentException( $"Operation[{opIndex}] (Set): array element at index {idx} is null." );
-                } else {
-                    throw new ArgumentException( $"Operation[{opIndex}] (Set): array index '{segments[i]}' is out of range." );
-                }
+                current = int.TryParse( segments[i], out int idx ) && idx >= 0 && idx < parentArr.Count
+                    ? parentArr[idx]
+                        ?? throw new ArgumentException( $"Operation[{opIndex}] (Set): array element at index {idx} is null." )
+                    : throw new ArgumentException( $"Operation[{opIndex}] (Set): array index '{segments[i]}' is out of range." );
             } else {
                 throw new ArgumentException(
                     $"Operation[{opIndex}] (Set): cannot navigate through {current.GetValueKind( )} at segment '{segments[i]}'." );
@@ -327,13 +325,7 @@ public sealed class TransformJsonHandler : IActionHandler {
         }
 
         // Navigate to target
-        JsonNode? target;
-        if (segments.Length == 0) {
-            target = document;
-        } else {
-            target = NavigateTo( document, segments );
-        }
-
+        JsonNode? target = segments.Length == 0 ? document : NavigateTo( document, segments );
         if (target is not JsonObject targetObj) {
             throw new ArgumentException(
                 $"Operation[{opIndex}] (Merge): target at '/{string.Join( "/", segments )}' is not a JSON object." );

@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
-using Grpc.Core;
 using Werkr.Agent.Communication;
-using Werkr.Common.Protos;
 
 namespace Werkr.Agent.Services;
 

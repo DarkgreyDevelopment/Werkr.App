@@ -1,7 +1,5 @@
 using System.Text.RegularExpressions;
 
-using Microsoft.Extensions.Logging;
-
 using Werkr.Data.Entities.Tasks;
 using Werkr.Data.Entities.Workflows;
 

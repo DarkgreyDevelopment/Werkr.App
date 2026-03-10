@@ -1,6 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 using Werkr.Server.Identity;

@@ -1,6 +1,4 @@
-using Werkr.Agent.Protos;
 using Werkr.Agent.Services;
-using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
 using Werkr.Tests.Agent.Helpers;

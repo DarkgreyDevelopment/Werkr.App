@@ -1,8 +1,3 @@
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using Werkr.Common.Models;
 using Werkr.Core.Communication;
 using Werkr.Core.Tasks;
 using Werkr.Data;

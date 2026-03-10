@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Werkr.Common.Models;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;

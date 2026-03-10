@@ -1,6 +1,3 @@
-using Google.Protobuf;
-using Grpc.Core;
-using Werkr.Api.Protos;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Registration;
 using Werkr.Core.Registration.Models;

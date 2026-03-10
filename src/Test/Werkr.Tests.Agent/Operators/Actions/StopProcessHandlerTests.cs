@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Channels;
-using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Agent.Operators.Actions;
-using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
 using Werkr.Tests.Agent.Helpers;

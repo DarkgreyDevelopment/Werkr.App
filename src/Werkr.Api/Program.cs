@@ -1,14 +1,10 @@
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.EntityFrameworkCore;
-using Serilog;
-using Serilog.Settings.Configuration;
 using Werkr.Api.Authorization;
 using Werkr.Api.Endpoints;
 using Werkr.Api.Services;
 using Werkr.Common;
 using Werkr.Common.Auth;
-using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;

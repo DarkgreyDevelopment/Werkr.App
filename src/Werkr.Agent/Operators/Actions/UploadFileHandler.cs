@@ -68,8 +68,9 @@ public sealed class UploadFileHandler : IActionHandler {
             StreamContent fileContent = new( fs );
             fileContent.Headers.ContentType = new MediaTypeHeaderValue( "application/octet-stream" );
 
-            MultipartFormDataContent form = new( );
-            form.Add( fileContent, p.FormFieldName, Path.GetFileName( fullPath ) );
+            MultipartFormDataContent form = new( ) {
+                { fileContent, p.FormFieldName, Path.GetFileName( fullPath ) }
+            };
             request.Content = form;
 
             if (p.Headers is not null) {

@@ -20,10 +20,9 @@ internal static class TestUrlValidator {
 
     private sealed class AllowAllUrlValidator : IUrlValidator {
         public Uri ValidateUrl( string url ) {
-            if (!Uri.TryCreate( url, UriKind.Absolute, out Uri? uri )) {
-                throw new UnauthorizedAccessException( $"Invalid URL: '{url}'" );
-            }
-            return uri;
+            return !Uri.TryCreate( url, UriKind.Absolute, out Uri? uri )
+                ? throw new UnauthorizedAccessException( $"Invalid URL: '{url}'" )
+                : uri;
         }
     }
 

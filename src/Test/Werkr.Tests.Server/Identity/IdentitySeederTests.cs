@@ -1,9 +1,3 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 using Werkr.Data.Identity.Roles;

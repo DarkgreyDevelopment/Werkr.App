@@ -1,6 +1,4 @@
 using System.Reflection;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Components;
 
 namespace Werkr.Tests.Server.Authorization;
 

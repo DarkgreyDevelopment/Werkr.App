@@ -1,4 +1,3 @@
-using Werkr.Common.Models;
 using Werkr.Core.Registration;
 using Werkr.Core.Registration.Models;
 using Werkr.Data.Entities.Registration;

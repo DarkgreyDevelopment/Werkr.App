@@ -1,9 +1,5 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
-using Werkr.Common.Models;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Cryptography.KeyInfo;
 using Werkr.Core.Registration;

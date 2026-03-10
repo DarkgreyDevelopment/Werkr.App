@@ -1,8 +1,4 @@
-using Grpc.Core;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Werkr.Common.Configuration;
-using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
@@ -52,17 +48,13 @@ public sealed class VariableGrpcService(
             .OrderByDescending( v => v.Version )
             .FirstOrDefaultAsync( context.CancellationToken );
 
-        GetVariableResponse response;
-        if (latest is null) {
-            response = new GetVariableResponse { Found = false };
-        } else {
-            response = new GetVariableResponse {
+        GetVariableResponse response = latest is null
+            ? new GetVariableResponse { Found = false }
+            : new GetVariableResponse {
                 Found = true,
                 Value = latest.Value,
                 Version = latest.Version,
             };
-        }
-
         if (logger.IsEnabled( LogLevel.Debug )) {
             logger.LogDebug(
                 "GetVariable for run {RunId}, variable '{Name}': found={Found}, version={Version}.",

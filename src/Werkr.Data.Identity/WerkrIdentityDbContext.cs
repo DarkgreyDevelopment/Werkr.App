@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using Werkr.Data.Identity.Entities;
 
 namespace Werkr.Data.Identity;

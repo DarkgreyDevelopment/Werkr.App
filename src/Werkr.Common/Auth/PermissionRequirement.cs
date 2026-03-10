@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
-
 namespace Werkr.Common.Auth;
 
 /// <summary>

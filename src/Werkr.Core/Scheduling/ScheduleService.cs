@@ -1,6 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Werkr.Data;
 using Werkr.Data.Calendar.Models;
 using Werkr.Data.Calendar.Validation;

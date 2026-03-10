@@ -1,9 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-
 using Werkr.Common.Models;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Registration.Models;

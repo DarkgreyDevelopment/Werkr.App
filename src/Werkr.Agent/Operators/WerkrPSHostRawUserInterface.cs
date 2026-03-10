@@ -1,5 +1,3 @@
-using System.Management.Automation.Host;
-
 namespace Werkr.Agent.Operators;
 
 /// <summary>

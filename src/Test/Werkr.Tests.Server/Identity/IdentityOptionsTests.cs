@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using Werkr.Data.Identity.Extensions;
 
 namespace Werkr.Tests.Server.Identity;

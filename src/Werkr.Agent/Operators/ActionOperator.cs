@@ -118,14 +118,13 @@ public sealed class ActionOperator : IActionOperator {
     }
 
     /// <inheritdoc/>
-    public OperatorExecution Execute(ActionDescriptor descriptor, string? inputVariableValue = null, CancellationToken cancellationToken = default)
-    {
+    public OperatorExecution Execute( ActionDescriptor descriptor, string? inputVariableValue = null, CancellationToken cancellationToken = default ) {
         Channel<OperatorOutput> channel = Channel.CreateBounded<OperatorOutput>(
             new BoundedChannelOptions( 10_000 ) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false } );
 
         TaskCompletionSource<IOperatorResult> resultTcs = new( TaskCreationOptions.RunContinuationsAsynchronously );
 
-        _ = ExecuteInternal(descriptor, channel.Writer, resultTcs, inputVariableValue, cancellationToken);
+        _ = ExecuteInternal( descriptor, channel.Writer, resultTcs, inputVariableValue, cancellationToken );
 
         return new OperatorExecution( channel.Reader.ReadAllAsync( cancellationToken ), resultTcs.Task );
     }

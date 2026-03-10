@@ -1,6 +1,4 @@
-using System.Text.Json;
 using Microsoft.Win32;
-using WixToolset.Dtf.WindowsInstaller;
 
 namespace Werkr.Installer.Msi.CustomActions;
 

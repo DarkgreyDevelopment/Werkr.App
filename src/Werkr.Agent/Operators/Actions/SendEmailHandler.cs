@@ -1,9 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
-using MailKit.Net.Smtp;
-using MailKit.Security;
 using Microsoft.Extensions.Options;
-using MimeKit;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;

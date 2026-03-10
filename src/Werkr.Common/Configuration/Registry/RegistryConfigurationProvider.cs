@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using Microsoft.Extensions.Configuration;
 
 namespace Werkr.Common.Configuration.Registry;
 

@@ -1,9 +1,6 @@
 using System.Security.Cryptography;
-using Grpc.Core;
-using Microsoft.EntityFrameworkCore;
 using Werkr.Agent.Communication;
 using Werkr.Common.Models;
-using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;

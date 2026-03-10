@@ -1,8 +1,4 @@
-using Grpc.Core;
-using Grpc.Net.Client;
-using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Models;
-using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;

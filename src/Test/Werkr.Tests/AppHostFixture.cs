@@ -1,17 +1,7 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
-using Testcontainers.PostgreSql;
 using Werkr.Api;
-using Werkr.Common;
-using Werkr.Common.Auth;
 using Werkr.Data;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;

@@ -1,6 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Management.Automation;
-using System.Management.Automation.Host;
 using System.Security;
 using System.Threading.Channels;
 using Werkr.Common.Rendering;

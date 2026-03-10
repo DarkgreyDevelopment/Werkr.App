@@ -1,7 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Core.Tasks;
 using Werkr.Data;
 using Werkr.Data.Entities.Tasks;

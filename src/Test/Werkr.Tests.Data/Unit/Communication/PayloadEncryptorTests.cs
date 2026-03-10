@@ -1,4 +1,3 @@
-using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
 

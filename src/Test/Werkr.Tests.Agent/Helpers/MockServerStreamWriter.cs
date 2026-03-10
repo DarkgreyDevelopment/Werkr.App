@@ -1,5 +1,3 @@
-using Grpc.Core;
-
 namespace Werkr.Tests.Agent.Helpers;
 
 /// <summary>

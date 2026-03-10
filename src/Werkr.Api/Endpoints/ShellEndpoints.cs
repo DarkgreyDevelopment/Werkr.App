@@ -1,9 +1,7 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Werkr.Api.Services;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
-using Werkr.Common.Protos;
 using Werkr.Core.Scheduling;
 using Werkr.Data;
 using Werkr.Data.Entities.Tasks;

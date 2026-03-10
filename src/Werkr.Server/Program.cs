@@ -1,7 +1,4 @@
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.EntityFrameworkCore;
-using Serilog;
-using Serilog.Settings.Configuration;
 using Werkr.Common;
 using Werkr.Common.Auth;
 using Werkr.Common.Extensions;

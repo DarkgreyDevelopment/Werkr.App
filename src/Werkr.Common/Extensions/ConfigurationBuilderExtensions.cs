@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Werkr.Common.Configuration.Registry;
 
 namespace Werkr.Common.Extensions;

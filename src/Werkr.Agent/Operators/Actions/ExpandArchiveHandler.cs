@@ -58,13 +58,9 @@ public sealed class ExpandArchiveHandler : IActionHandler {
                 ? DetectFormat( sourcePath )
                 : p.Format;
 
-            int count;
-            if (format == ArchiveFormat.Zip) {
-                count = await ExtractZipAsync( sourcePath, destPath, p.Overwrite, output, cancellationToken );
-            } else {
-                count = await ExtractTarGzAsync( sourcePath, destPath, p.Overwrite, output, cancellationToken );
-            }
-
+            int count = format == ArchiveFormat.Zip
+                ? await ExtractZipAsync( sourcePath, destPath, p.Overwrite, output, cancellationToken )
+                : await ExtractTarGzAsync( sourcePath, destPath, p.Overwrite, output, cancellationToken );
             await output.WriteAsync(
                 OperatorOutput.Create(
                     LogLevel.Information,
@@ -87,11 +83,10 @@ public sealed class ExpandArchiveHandler : IActionHandler {
         if (lowerPath.EndsWith( ".zip", StringComparison.Ordinal )) {
             return ArchiveFormat.Zip;
         }
-        if (lowerPath.EndsWith( ".tar.gz", StringComparison.Ordinal ) ||
-            lowerPath.EndsWith( ".tgz", StringComparison.Ordinal )) {
-            return ArchiveFormat.TarGz;
-        }
-        throw new ArgumentException(
+        return lowerPath.EndsWith( ".tar.gz", StringComparison.Ordinal ) ||
+            lowerPath.EndsWith( ".tgz", StringComparison.Ordinal )
+            ? ArchiveFormat.TarGz
+            : throw new ArgumentException(
             $"Cannot auto-detect archive format from extension: '{Path.GetFileName( path )}'. " +
             "Specify the Format parameter explicitly." );
     }

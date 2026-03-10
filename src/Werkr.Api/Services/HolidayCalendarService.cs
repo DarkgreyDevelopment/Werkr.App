@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore;
 using Werkr.Core.Scheduling;
 using Werkr.Data;
 using Werkr.Data.Calendar.Enums;

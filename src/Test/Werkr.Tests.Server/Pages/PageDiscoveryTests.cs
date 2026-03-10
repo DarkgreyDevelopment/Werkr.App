@@ -1,5 +1,4 @@
 using System.Reflection;
-using Microsoft.AspNetCore.Components;
 
 namespace Werkr.Tests.Server.Pages;
 
