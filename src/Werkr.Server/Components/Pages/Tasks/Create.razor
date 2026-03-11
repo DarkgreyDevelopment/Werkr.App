@@ -71,7 +71,8 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title">Action Parameters</h5>
-                <ActionParameterEditor @bind-ActionSubType="_model.ActionSubType"
+                <ActionParameterEditor @ref="_actionEditor"
+                                       @bind-ActionSubType="_model.ActionSubType"
                                        @bind-ActionParameters="_model.ActionParameters" />
             </div>
         </div>
@@ -124,6 +125,7 @@
 
 @code {
     private readonly TaskFormModel _model = new( );
+    private ActionParameterEditor? _actionEditor;
     private string? _errorMessage;
     private bool _isSaving;
     private List<WorkflowDto> _workflows = [];
@@ -145,6 +147,9 @@
     }
 
     private async Task SubmitAsync( ) {
+        if ( _model.ActionType == "Action" && _actionEditor is not null && !_actionEditor.Validate( ) ) {
+            return;
+        }
         _isSaving = true;
         _errorMessage = null;
         _model.TargetTags = string.Join( ",", _targetTags );

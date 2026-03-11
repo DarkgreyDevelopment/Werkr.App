@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Werkr.Common.Models;
@@ -13,32 +14,14 @@ namespace Werkr.Api.Models;
 internal static class TaskMapper {
 
     /// <summary>
-    /// Maps action sub-type names (case-insensitive) to their corresponding parameter deserialization types. Used during validation to ensure <c>ActionParameters</c> JSON can be correctly deserialized for the given <c>ActionSubType</c>.
+    /// Maps action sub-type names (case-insensitive) to their corresponding parameter deserialization types.
+    /// Derived from the shared <see cref="ActionRegistry"/> so every action is validated automatically.
     /// </summary>
-    private static readonly Dictionary<string, Type> s_actionParameterTypes =
-        new( StringComparer.OrdinalIgnoreCase ) {
-            ["CopyFile"] = typeof( CopyFileParameters ),
-            ["MoveFile"] = typeof( MoveFileParameters ),
-            ["RenameFile"] = typeof( RenameFileParameters ),
-            ["DeleteFile"] = typeof( DeleteFileParameters ),
-            ["CreateFile"] = typeof( CreateFileParameters ),
-            ["CreateDirectory"] = typeof( CreateDirectoryParameters ),
-            ["TestExists"] = typeof( TestExistsParameters ),
-            ["ClearContent"] = typeof( ClearContentParameters ),
-            ["WriteContent"] = typeof( WriteContentParameters ),
-            ["StartProcess"] = typeof( StartProcessParameters ),
-            ["StopProcess"] = typeof( StopProcessParameters ),
-
-            // ── Phase 1 no-code actions ──────────────────────────────
-            ["Delay"] = typeof(DelayParameters),
-            ["GetFileInfo"] = typeof(GetFileInfoParameters),
-            ["ReadContent"] = typeof(ReadContentParameters),
-            ["ListDirectory"] = typeof(ListDirectoryParameters),
-            ["FindReplace"] = typeof(FindReplaceParameters),
-            ["CompressArchive"] = typeof(CompressArchiveParameters),
-            ["ExpandArchive"] = typeof(ExpandArchiveParameters),
-            ["WatchFile"] = typeof(WatchFileParameters),
-        };
+    private static readonly FrozenDictionary<string, Type> s_actionParameterTypes =
+        ActionRegistry.Actions.ToFrozenDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ParameterType,
+            StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Shared <see cref="JsonSerializerOptions"/> configured for case-insensitive property name matching during action parameter deserialization.
@@ -168,7 +151,7 @@ internal static class TaskMapper {
                     throw new ArgumentException( "ActionParameters must be a JSON object." );
                 }
 
-                object? deserialized = JsonSerializer.Deserialize(
+                _ = JsonSerializer.Deserialize(
                     actionParameters,
                     parameterType,
                     s_jsonOptions ) ?? throw new ArgumentException(

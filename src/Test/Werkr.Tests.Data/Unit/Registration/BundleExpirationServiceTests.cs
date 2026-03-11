@@ -33,14 +33,21 @@ public class BundleExpirationServiceTests {
 
     /// <summary>
     /// Creates an in-memory SQLite database and registers <see cref="WerkrDbContext"/> services.
+    /// Uses a named shared-cache database so each scope gets its own connection,
+    /// preventing "unable to delete/modify user-function due to active statements"
+    /// when the background service and polling loop access the database concurrently.
     /// </summary>
     [TestInitialize]
     public void TestInit( ) {
-        _connection = new SqliteConnection( "DataSource=:memory:" );
+        string dbName = $"bundle_expiration_{Guid.NewGuid():N}";
+        string connectionString = $"DataSource=file:{dbName}?mode=memory&cache=shared";
+
+        // Keep-alive connection preserves the shared in-memory database
+        _connection = new SqliteConnection( connectionString );
         _connection.Open( );
 
         ServiceCollection services = new( );
-        _ = services.AddDbContext<SqliteWerkrDbContext>( opt => opt.UseSqlite( _connection ) );
+        _ = services.AddDbContext<SqliteWerkrDbContext>( opt => opt.UseSqlite( connectionString ) );
         _ = services.AddScoped<WerkrDbContext>( sp => sp.GetRequiredService<SqliteWerkrDbContext>( ) );
         _serviceProvider = services.BuildServiceProvider( );
 
