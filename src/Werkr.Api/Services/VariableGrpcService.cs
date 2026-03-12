@@ -2,6 +2,7 @@ using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Werkr.Common.Configuration;
+using Werkr.Common.Models;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
@@ -16,10 +17,14 @@ namespace Werkr.Api.Services;
 /// </summary>
 /// <param name="dbContext">Database context.</param>
 /// <param name="variableOptions">Variable size configuration.</param>
+/// <param name="workflowBroadcaster">Workflow event broadcaster for run lifecycle events.</param>
+/// <param name="outputStreaming">Output streaming service for rate-limit state cleanup.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class VariableGrpcService(
     WerkrDbContext dbContext,
     IOptions<WorkflowVariableOptions> variableOptions,
+    WorkflowEventBroadcaster workflowBroadcaster,
+    OutputStreamingGrpcService outputStreaming,
     ILogger<VariableGrpcService> logger
 ) : VariableService.VariableServiceBase {
 
@@ -235,6 +240,109 @@ public sealed partial class VariableGrpcService(
         return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
             ? connection
             : throw new RpcException( new Status( StatusCode.Internal, "Connection not resolved by interceptor." ) );
+    }
+
+    /// <summary>
+    /// Sets <c>WorkflowRun.Status</c> to Completed or Failed and publishes a <see cref="RunCompletedEvent"/>.
+    /// </summary>
+    public override async Task<EncryptedEnvelope> CompleteWorkflowRun(
+        EncryptedEnvelope request,
+        ServerCallContext context
+    ) {
+        RegisteredConnection connection = GetConnection( context );
+        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
+
+        CompleteWorkflowRunRequest inner = PayloadEncryptor.DecryptFromEnvelope<CompleteWorkflowRunRequest>(
+            request, connection.SharedKey );
+
+        if (!Guid.TryParse( inner.WorkflowRunId, out Guid runId )) {
+            throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid workflow_run_id." ) );
+        }
+
+        DateTime endTime = DateTime.TryParse( inner.EndTime, out DateTime et )
+            ? DateTime.SpecifyKind( et, DateTimeKind.Utc )
+            : DateTime.UtcNow;
+
+        WorkflowRun? run = await dbContext.WorkflowRuns
+            .FirstOrDefaultAsync( r => r.Id == runId, context.CancellationToken );
+
+        if (run is null) {
+            throw new RpcException( new Status( StatusCode.NotFound, $"WorkflowRun {runId} not found." ) );
+        }
+
+        run.Status = inner.Success ? WorkflowRunStatus.Completed : WorkflowRunStatus.Failed;
+        run.EndTime = endTime;
+        _ = await dbContext.SaveChangesAsync( context.CancellationToken );
+
+        // Count step results for the event
+        int completedSteps = await dbContext.WorkflowStepExecutions
+            .CountAsync( se => se.WorkflowRunId == runId && se.Status == StepExecutionStatus.Completed,
+                context.CancellationToken );
+        int failedSteps = await dbContext.WorkflowStepExecutions
+            .CountAsync( se => se.WorkflowRunId == runId && se.Status == StepExecutionStatus.Failed,
+                context.CancellationToken );
+
+        long? failedStepId = inner.FailedStepId > 0 ? inner.FailedStepId : null;
+
+        workflowBroadcaster.Publish( new RunCompletedEvent(
+            WorkflowRunId: runId,
+            Success: inner.Success,
+            FailedStepId: failedStepId,
+            CompletedSteps: completedSteps,
+            FailedSteps: failedSteps,
+            Timestamp: DateTime.UtcNow
+        ) );
+
+        outputStreaming.CleanupRun( runId );
+
+        if (logger.IsEnabled( LogLevel.Information )) {
+            logger.LogInformation(
+                "Workflow run {RunId} finalized: Success={Success}, Completed={Completed}, Failed={Failed}.",
+                runId.ToString( ), inner.Success.ToString( ),
+                completedSteps.ToString( ), failedSteps.ToString( ) );
+        }
+
+        CompleteWorkflowRunResponse response = new( ) { Accepted = true };
+        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+    }
+
+    /// <summary>
+    /// Returns step execution records for a workflow run (used by the agent for retry skip logic).
+    /// </summary>
+    public override async Task<EncryptedEnvelope> GetStepExecutions(
+        EncryptedEnvelope request,
+        ServerCallContext context
+    ) {
+        RegisteredConnection connection = GetConnection( context );
+        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
+
+        GetStepExecutionsRequest inner = PayloadEncryptor.DecryptFromEnvelope<GetStepExecutionsRequest>(
+            request, connection.SharedKey );
+
+        if (!Guid.TryParse( inner.WorkflowRunId, out Guid runId )) {
+            throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid workflow_run_id." ) );
+        }
+
+        // Return the latest attempt per step
+        List<WorkflowStepExecution> executions = await dbContext.WorkflowStepExecutions
+            .Where( se => se.WorkflowRunId == runId )
+            .OrderByDescending( se => se.Attempt )
+            .ToListAsync( context.CancellationToken );
+
+        GetStepExecutionsResponse response = new( );
+
+        HashSet<long> seen = [];
+        foreach (WorkflowStepExecution exec in executions) {
+            if (seen.Add( exec.StepId )) {
+                response.Entries.Add( new StepExecutionEntry {
+                    StepId = exec.StepId,
+                    Attempt = exec.Attempt,
+                    Status = exec.Status.ToString( ),
+                } );
+            }
+        }
+
+        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
     }
 
     /// <summary>

@@ -148,6 +148,9 @@ public class Program {
             // Job event broadcaster (Singleton — SSE fan-out for real-time push)
             _ = builder.Services.AddSingleton<JobEventBroadcaster>( );
 
+            // Workflow event broadcaster (Singleton — SSE fan-out for step lifecycle events)
+            _ = builder.Services.AddSingleton<WorkflowEventBroadcaster>( );
+
             // Output streaming gRPC service (Singleton — receives agent output streams)
             _ = builder.Services.AddSingleton<OutputStreamingGrpcService>( );
 
@@ -163,6 +166,7 @@ public class Program {
             // Schedule service (Scoped — one per request)
             _ = builder.Services.AddScoped<ScheduleService>( );
             _ = builder.Services.AddScoped<RunNowService>( );
+            _ = builder.Services.AddScoped<RetryFromFailedService>( );
 
             // Task & Job services (Scoped — one per request)
             _ = builder.Services.Configure<JobOutputOptions>(

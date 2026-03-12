@@ -111,6 +111,15 @@ public class Program {
 
             _ = builder.Services.AddOutputCache( );
 
+            // SignalR — real-time workflow run event push to browser
+            _ = builder.Services.AddSignalR( );
+
+            // SSE-to-SignalR relay — bridges API workflow events to hub groups
+            _ = builder.Services.AddSingleton<JobEventRelayService>( );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<JobEventRelayService>( ) );
+            _ = builder.Services.AddHealthChecks( )
+                .AddCheck<JobEventRelayService>( "sse-relay" );
+
             // Server configuration cache — reads config from the DB instead of appsettings
             _ = builder.Services.AddSingleton<ServerConfigCache>( );
 
@@ -165,6 +174,9 @@ public class Program {
                 .AddInteractiveServerRenderMode( );
 
             _ = app.MapDefaultEndpoints( );
+
+            // SignalR hub — workflow run real-time events
+            _ = app.MapHub<Werkr.Server.Hubs.WorkflowRunHub>( "/hubs/workflow-run" );
 
             // Auth endpoints — token exchange and API key management (Decision A1)
             _ = app.MapAuthEndpoints( );

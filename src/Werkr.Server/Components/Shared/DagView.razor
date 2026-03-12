@@ -23,7 +23,10 @@
             }
 
             @foreach ( DagNode node in _nodes ) {
-                <g class="dag-node" @onclick="( ) => OnStepSelected.InvokeAsync( node.Step )">
+                bool isRunning = StepStatuses is not null
+                    && StepStatuses.TryGetValue( node.Step.Id, out StepExecutionStatus nodeStatus )
+                    && nodeStatus == StepExecutionStatus.Running;
+                <g class="dag-node @( isRunning ? "dag-node-running" : "" )" @onclick="( ) => OnStepSelected.InvokeAsync( node.Step )">
                     <rect x="@node.X" y="@node.Y"
                           width="@NodeWidth" height="@NodeHeight"
                           rx="6" ry="6"
@@ -51,6 +54,10 @@
 
     [Parameter]
     public EventCallback<WorkflowStepDto> OnStepSelected { get; set; }
+
+    /// <summary>Optional step execution status map (StepId → status string). When non-null, overlays execution coloring on each node.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<long, StepExecutionStatus>? StepStatuses { get; set; }
 
     private const int NodeWidth = 160;
     private const int NodeHeight = 52;
@@ -179,8 +186,18 @@
         if ( _svgHeight < 100 ) _svgHeight = 100;
     }
 
-    private static string GetNodeFill( WorkflowStepDto step ) =>
-        StatusDisplayHelper.GetNodeFillVar( step.ControlStatement );
+    private string GetNodeFill( WorkflowStepDto step ) {
+        if (StepStatuses is not null && StepStatuses.TryGetValue( step.Id, out StepExecutionStatus status )) {
+            return status switch {
+                StepExecutionStatus.Running => "var(--werkr-step-running, #2196F3)",
+                StepExecutionStatus.Completed => "var(--werkr-step-completed, #4CAF50)",
+                StepExecutionStatus.Failed => "var(--werkr-step-failed, #F44336)",
+                StepExecutionStatus.Skipped => "var(--werkr-step-skipped, #9E9E9E)",
+                _ => "var(--werkr-step-pending, #FFC107)",
+            };
+        }
+        return StatusDisplayHelper.GetNodeFillVar( step.ControlStatement );
+    }
 
     private static string Truncate( string text, int max ) =>
         text.Length <= max ? text : text[..max] + "…";

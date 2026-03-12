@@ -20,3 +20,12 @@
     stroke-width: 2.5;
     stroke: var(--bs-primary);
 }
+
+::deep .dag-node-running rect {
+    animation: dag-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dag-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}

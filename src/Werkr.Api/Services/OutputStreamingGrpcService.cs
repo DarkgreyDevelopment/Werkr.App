@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Grpc.Core;
 using Werkr.Common.Protos;
+using Werkr.Core.Communication;
 
 namespace Werkr.Api.Services;
 
@@ -15,8 +16,10 @@ namespace Werkr.Api.Services;
 /// <see cref="AgentStream"/> that wraps the duplex call.
 /// </para>
 /// </summary>
+/// <param name="workflowBroadcaster">Workflow event broadcaster for log events.</param>
 /// <param name="logger">Logger.</param>
 public sealed partial class OutputStreamingGrpcService(
+    WorkflowEventBroadcaster workflowBroadcaster,
     ILogger<OutputStreamingGrpcService> logger
 ) : Werkr.Common.Protos.OutputStreamingService.OutputStreamingServiceBase {
 
@@ -33,6 +36,43 @@ public sealed partial class OutputStreamingGrpcService(
 
     /// <summary>All currently connected agent streams keyed by peer address.</summary>
     private readonly ConcurrentDictionary<string, AgentStream> _agents = new( );
+
+    /// <summary>
+    /// Per-run rate limiter for <see cref="LogAppendedEvent"/> publishing.
+    /// Tracks last publish timestamp and dropped-line count per workflow run ID.
+    /// Max 50 events/second per run to prevent flooding the SSE→SignalR pipeline.
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, RunLogRateState> _logRateState = new( );
+
+    /// <summary>Mutable rate-limit state for a single workflow run's log events.</summary>
+    private sealed class RunLogRateState {
+        private long _lastPublishTicks;
+        private int _droppedCount;
+
+        /// <summary>Maximum log events published per second per run.</summary>
+        private const int MaxEventsPerSecond = 50;
+        private static readonly long TickInterval = TimeSpan.TicksPerSecond / MaxEventsPerSecond;
+
+        /// <summary>
+        /// Attempts to acquire a publish permit. Returns true if within rate limit.
+        /// On true after drops, returns the count of dropped lines for batching notice.
+        /// </summary>
+        public bool TryAcquire( out int droppedSinceLastPublish ) {
+            long now = Environment.TickCount64 * TimeSpan.TicksPerMillisecond / TimeSpan.TicksPerMillisecond;
+            long nowTicks = DateTime.UtcNow.Ticks;
+            long last = Interlocked.Read( ref _lastPublishTicks );
+
+            if ( nowTicks - last >= TickInterval ) {
+                Interlocked.Exchange( ref _lastPublishTicks, nowTicks );
+                droppedSinceLastPublish = Interlocked.Exchange( ref _droppedCount, 0 );
+                return true;
+            }
+
+            _ = Interlocked.Increment( ref _droppedCount );
+            droppedSinceLastPublish = 0;
+            return false;
+        }
+    }
 
     // ── gRPC Entry Point ─────────────────────────────────────────────────────────
 
@@ -63,6 +103,33 @@ public sealed partial class OutputStreamingGrpcService(
                 foreach (KeyValuePair<string, Channel<OutputMessage>> kvp in agentStream.Consumers) {
                     if (kvp.Key == consumerKey) {
                         _ = kvp.Value.Writer.TryWrite( message );
+                    }
+                }
+
+                // Publish LogAppendedEvent for workflow step output (rate-limited)
+                if (message.PayloadCase == OutputMessage.PayloadOneofCase.Line
+                    && !string.IsNullOrEmpty( message.WorkflowRunId )
+                    && Guid.TryParse( message.WorkflowRunId, out Guid workflowRunId )
+                    && Guid.TryParse( message.JobId, out Guid jobId )) {
+
+                    RunLogRateState rateState = _logRateState.GetOrAdd( workflowRunId, _ => new RunLogRateState( ) );
+                    if ( rateState.TryAcquire( out int dropped ) ) {
+                        if ( dropped > 0 ) {
+                            workflowBroadcaster.Publish( new LogAppendedEvent(
+                                WorkflowRunId: workflowRunId,
+                                StepId: message.StepId,
+                                JobId: jobId,
+                                Line: $"... {dropped} lines batched ...",
+                                Timestamp: DateTime.UtcNow
+                            ) );
+                        }
+                        workflowBroadcaster.Publish( new LogAppendedEvent(
+                            WorkflowRunId: workflowRunId,
+                            StepId: message.StepId,
+                            JobId: jobId,
+                            Line: message.Line.Text,
+                            Timestamp: DateTime.UtcNow
+                        ) );
                     }
                 }
             }
@@ -138,6 +205,17 @@ public sealed partial class OutputStreamingGrpcService(
                 logger.LogWarning( ex, "Failed to send unsubscribe to agent {Peer}.", kvp.Key );
             }
         }
+    }
+
+    // ── Run Lifecycle ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Removes rate-limit state for a completed workflow run, preventing unbounded
+    /// growth of <see cref="_logRateState"/>.
+    /// </summary>
+    /// <param name="runId">The workflow run that has completed.</param>
+    public void CleanupRun( Guid runId ) {
+        _ = _logRateState.TryRemove( runId, out _ );
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────

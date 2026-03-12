@@ -81,7 +81,7 @@ internal static class WorkflowMapper {
             EndTime: run.EndTime,
             Status: run.Status.ToString( ) );
 
-    /// <summary>Maps a <see cref="WorkflowRun"/> entity (with Jobs) to a <see cref="WorkflowRunDetailDto"/>.</summary>
+    /// <summary>Maps a <see cref="WorkflowRun"/> entity (with Jobs and StepExecutions) to a <see cref="WorkflowRunDetailDto"/>.</summary>
     public static WorkflowRunDetailDto ToRunDetailDto( WorkflowRun run ) =>
         new(
             Id: run.Id,
@@ -89,7 +89,24 @@ internal static class WorkflowMapper {
             StartTime: run.StartTime,
             EndTime: run.EndTime,
             Status: run.Status.ToString( ),
-            Jobs: [.. run.Jobs.Select( TaskMapper.ToJobDto )] );
+            Jobs: [.. run.Jobs.Select( TaskMapper.ToJobDto )],
+            StepExecutions: run.StepExecutions is not null
+                ? [.. run.StepExecutions.Select( ToStepExecutionDto )]
+                : [] );
+
+    /// <summary>Maps a <see cref="WorkflowStepExecution"/> entity to a <see cref="StepExecutionDto"/>.</summary>
+    public static StepExecutionDto ToStepExecutionDto( WorkflowStepExecution execution ) =>
+        new(
+            Id: execution.Id,
+            WorkflowRunId: execution.WorkflowRunId,
+            StepId: execution.StepId,
+            Attempt: execution.Attempt,
+            Status: execution.Status.ToString( ),
+            StartTime: execution.StartTime,
+            EndTime: execution.EndTime,
+            JobId: execution.JobId,
+            ErrorMessage: execution.ErrorMessage,
+            SkipReason: execution.SkipReason );
 
     /// <summary>Maps a <see cref="WorkflowVariable"/> entity to a <see cref="WorkflowVariableDto"/>.</summary>
     public static WorkflowVariableDto ToVariableDto( WorkflowVariable variable ) =>

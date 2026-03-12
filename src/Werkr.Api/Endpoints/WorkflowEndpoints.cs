@@ -417,6 +417,7 @@ internal static class WorkflowEndpoints {
         ) => {
             WorkflowRun? run = await dbContext.WorkflowRuns.AsNoTracking( )
                 .Include( r => r.Jobs )
+                .Include( r => r.StepExecutions )
                 .FirstOrDefaultAsync( r => r.Id == runId, ct );
             return run is null
                 ? Results.NotFound( )
@@ -469,5 +470,48 @@ internal static class WorkflowEndpoints {
         .WithName( "StreamWorkflowRunUpdates" )
         .RequireAuthorization( Policies.CanRead )
         .ExcludeFromDescription( );
+
+        // Step execution history for a run (all attempts)
+        _ = app.MapGet( "/api/workflows/runs/{runId:guid}/step-executions", async (
+            Guid runId,
+            WerkrDbContext dbContext,
+            CancellationToken ct
+        ) => {
+            List<WorkflowStepExecution> executions = await dbContext.WorkflowStepExecutions
+                .AsNoTracking( )
+                .Where( e => e.WorkflowRunId == runId )
+                .OrderBy( e => e.StepId )
+                .ThenBy( e => e.Attempt )
+                .ToListAsync( ct );
+            return Results.Ok( executions.Select( WorkflowMapper.ToStepExecutionDto ) );
+        } )
+        .WithName( "GetStepExecutions" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapPost( "/api/workflows/{id}/runs/{runId:guid}/retry-from/{stepId:long}", async (
+            long id,
+            Guid runId,
+            long stepId,
+            RetryFromFailedRequest? request,
+            RetryFromFailedService retryService,
+            ScheduleInvalidationDispatcher invalidationDispatcher,
+            CancellationToken ct
+        ) => {
+            try {
+                RetryFromFailedService.RetryResult result = await retryService.RetryAsync(
+                    id, runId, stepId, request?.VariableOverrides, ct );
+
+                await invalidationDispatcher.InvalidateAsync( result.ScheduleId, ct );
+
+                return Results.Accepted( $"/api/workflows/runs/{runId}",
+                    new { result.RunId, result.RetryFromStepId, result.ResetStepCount } );
+            } catch ( InvalidOperationException ex ) {
+                return Results.Conflict( new { message = ex.Message } );
+            } catch ( KeyNotFoundException ex ) {
+                return Results.NotFound( new { message = ex.Message } );
+            }
+        } )
+        .WithName( "RetryFromFailed" )
+        .RequireAuthorization( Policies.CanExecute );
     }
 }
