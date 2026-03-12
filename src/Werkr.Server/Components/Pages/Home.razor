@@ -166,7 +166,7 @@
                             @foreach ( AgentHealthDto item in _health ) {
                                 <tr>
                                     <td>@item.ConnectionName</td>
-                                    <td><span class="badge @GetStatusBadgeClass( item.Status )">@item.Status</span></td>
+                                    <td><span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.Status )">@item.Status</span></td>
                                     <td>@FormatAvailability( item.PowerShellAvailable )</td>
                                     <td>@FormatAvailability( item.SystemShellAvailable )</td>
                                     <td>@FormatRelativeTime( item.LastSeen )</td>
@@ -221,7 +221,7 @@
                                     <td><a href="/jobs/@job.Id">@job.Id.ToString( )[..8]…</a></td>
                                     <td><a href="/tasks/@job.TaskId">Task #@job.TaskId</a></td>
                                     <td>
-                                        <span class="badge @( job.Success ? "bg-success" : "bg-danger" )">
+                                        <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( job.Success ? "Completed" : "Failed" )">
                                             @( job.Success ? "Success" : "Failed" )
                                         </span>
                                         @if ( !job.Success && !string.IsNullOrWhiteSpace( job.ErrorCategory ) ) {
@@ -294,7 +294,7 @@
                                     <td><a href="/workflows/runs/@run.Id">@run.Id.ToString( )[..8]…</a></td>
                                     <td><a href="/workflows/@run.WorkflowId">Workflow #@run.WorkflowId</a></td>
                                     <td>
-                                        <span class="badge @GetRunStatusBadge( run.Status )">@run.Status</span>
+                                        <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( run.Status )">@run.Status</span>
                                     </td>
                                     <td>@FormatRelativeTime( run.StartTime )</td>
                                     <td>
@@ -456,17 +456,6 @@
 
     private static string FormatAvailability( bool? value ) => AgentDisplayHelper.FormatAvailability( value );
     private static string FormatRelativeTime( DateTime? timestamp ) => AgentDisplayHelper.FormatRelativeTime( timestamp );
-    private static string GetStatusBadgeClass( string status ) => AgentDisplayHelper.GetStatusBadgeClass( status );
-
-    private static string GetRunStatusBadge( string status ) {
-        return status switch {
-            "Completed" or "Succeeded" => "bg-success",
-            "Failed" or "Faulted" => "bg-danger",
-            "Running" or "InProgress" => "bg-primary",
-            "Cancelled" or "Canceled" => "bg-warning text-dark",
-            _ => "bg-secondary"
-        };
-    }
 
     public ValueTask DisposeAsync( ) {
         _disposed = true;

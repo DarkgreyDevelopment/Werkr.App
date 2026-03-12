@@ -5,6 +5,38 @@
     <AssemblyName>Werkr.Server</AssemblyName>
   </PropertyGroup>
 
+  <!-- ── graph-ui TypeScript build pipeline ── -->
+  <PropertyGroup>
+    <GraphUiNodeEnv Condition="'$(Configuration)' == 'Release'">production</GraphUiNodeEnv>
+    <GraphUiNodeEnv Condition="'$(Configuration)' != 'Release'">development</GraphUiNodeEnv>
+  </PropertyGroup>
+
+  <Target Name="EnsureNode" BeforeTargets="NpmInstall">
+    <Exec Command="node --version"
+          IgnoreExitCode="true"
+          ConsoleToMsBuild="true"
+          StandardOutputImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="_NodeExitCode" />
+    </Exec>
+    <Error Condition="'$(_NodeExitCode)' != '0'"
+           Text="Node.js 22+ is required to build graph-ui. Install from https://nodejs.org/ (LTS)." />
+  </Target>
+
+  <Target Name="NpmInstall"
+          BeforeTargets="BuildGraphUi"
+          Condition="!Exists('graph-ui/node_modules/')">
+    <Exec Command="npm ci --prefix graph-ui"
+          WorkingDirectory="$(MSBuildProjectDirectory)"
+          StandardOutputImportance="low" />
+  </Target>
+
+  <Target Name="BuildGraphUi" BeforeTargets="BeforeBuild">
+    <Exec Command="node esbuild.config.mjs"
+          WorkingDirectory="$(MSBuildProjectDirectory)/graph-ui"
+          EnvironmentVariables="NODE_ENV=$(GraphUiNodeEnv)"
+          StandardOutputImportance="low" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="All" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />

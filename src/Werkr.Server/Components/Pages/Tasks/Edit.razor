@@ -161,7 +161,7 @@
                             <td>@j.StartTime.ToString( "g" )</td>
                             <td>@j.RuntimeSeconds.ToString( "F1" )s</td>
                             <td>
-                                <span class="badge @( j.Success ? "bg-success" : "bg-danger" )">
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( j.Success ? "Completed" : "Failed" )">
                                     @( j.Success ? "Success" : "Failed" )
                                 </span>
                             </td>

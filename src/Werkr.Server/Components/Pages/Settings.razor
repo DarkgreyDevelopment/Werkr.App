@@ -158,7 +158,7 @@
                                     <td>@item.ConnectionName</td>
                                     <td>@FormatNullableBoolean( item.PowerShellAvailable )</td>
                                     <td>@FormatNullableBoolean( item.SystemShellAvailable )</td>
-                                    <td><span class="badge @GetStatusBadgeClass( item.Status )">@item.Status</span></td>
+                                    <td><span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.Status )">@item.Status</span></td>
                                 </tr>
                             }
                         </tbody>
@@ -307,16 +307,6 @@
             true => "Yes",
             false => "No",
             null => "Unknown"
-        };
-    }
-
-    private static string GetStatusBadgeClass( string status ) {
-        return status switch {
-            "Connected" => "bg-success",
-            "Disconnected" => "bg-warning text-dark",
-            "Revoked" => "bg-secondary",
-            "Unreachable" => "bg-danger",
-            _ => "bg-info"
         };
     }
 

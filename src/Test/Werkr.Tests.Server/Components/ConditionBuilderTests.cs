@@ -22,7 +22,7 @@ public class ConditionBuilderTests : BunitContext {
                       .Add( p => p.ExpressionChanged, EventCallback.Factory.Create<string?>( this, _ => { } ) ) );
 
         // Should not show the raw input
-        Assert.ThrowsExactly<ElementNotFoundException>( ( ) => cut.Find( "input[type=text]" ) );
+        _ = Assert.ThrowsExactly<ElementNotFoundException>( ( ) => cut.Find( "input[type=text]" ) );
 
         // Should show the structured dropdowns — Type select should exist
         IReadOnlyList<AngleSharp.Dom.IElement> selects = cut.FindAll( "select" );

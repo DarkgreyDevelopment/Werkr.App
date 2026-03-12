@@ -21,7 +21,7 @@
         <div class="card mb-3">
             <div class="card-body">
                 <h5 class="card-title">@_agent.ConnectionName</h5>
-                <span class="badge @GetStatusBadgeClass( _agent.Status )">@_agent.Status</span>
+                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( _agent.Status )">@_agent.Status</span>
                 <dl class="row mt-3 mb-0">
                     <dt class="col-sm-3">Connection ID</dt>
                     <dd class="col-sm-9"><code>@_agent.Id</code></dd>
@@ -260,5 +260,5 @@
     }
 
     private static string FormatAvailability( bool? value ) => AgentDisplayHelper.FormatAvailability( value );
-    private static string GetStatusBadgeClass( string status ) => AgentDisplayHelper.GetStatusBadgeClass( status );
+
 }

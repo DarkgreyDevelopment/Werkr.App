@@ -46,7 +46,7 @@
                         <td><a href="/agents/@agent.Id">@agent.ConnectionName</a></td>
                         <td><code>@agent.RemoteUrl</code></td>
                         <td>
-                            <span class="badge @GetStatusBadgeClass( agent.Status )">@agent.Status</span>
+                            <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( agent.Status )">@agent.Status</span>
                         </td>
                         <td>@( agent.LastSeen?.ToString( "g" ) ?? "—" )</td>
                         <td>@agent.RegisteredAt.ToString( "g" )</td>
@@ -116,7 +116,5 @@
             _errorMessage = $"Failed to revoke agent: {ex.Message}";
         }
     }
-
-    private static string GetStatusBadgeClass( string status ) => AgentDisplayHelper.GetStatusBadgeClass( status );
 
 }

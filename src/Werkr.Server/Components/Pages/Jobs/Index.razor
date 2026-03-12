@@ -81,11 +81,11 @@
                         <td>
                             @{ bool isRunning = j.EndTime is null && !j.Success; }
                             @if ( isRunning ) {
-                                <span class="badge bg-warning text-dark">
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( "Running" )">
                                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>Running
                                 </span>
                             } else {
-                                <span class="badge @( j.Success ? "bg-success" : "bg-danger" )">
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( j.Success ? "Completed" : "Failed" )">
                                     @( j.Success ? "Success" : "Failed" )
                                 </span>
                             }

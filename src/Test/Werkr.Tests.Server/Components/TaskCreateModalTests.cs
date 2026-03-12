@@ -23,7 +23,7 @@ public class TaskCreateModalTests : BunitContext {
     private void RegisterHttpClient( HttpMessageHandler handler ) {
         HttpClient client = new( handler ) { BaseAddress = new Uri( "http://localhost" ) };
         IHttpClientFactory factory = new FakeHttpClientFactory( client );
-        Services.AddSingleton( factory );
+        _ = Services.AddSingleton( factory );
     }
 
     /// <summary>
@@ -38,7 +38,7 @@ public class TaskCreateModalTests : BunitContext {
                       .Add( p => p.OnTaskCreated, EventCallback.Factory.Create<TaskDto>( this, _ => { } ) ) );
 
         // Modal should not be visible
-        Assert.ThrowsExactly<ElementNotFoundException>( ( ) => cut.Find( ".modal" ) );
+        _ = Assert.ThrowsExactly<ElementNotFoundException>( ( ) => cut.Find( ".modal" ) );
     }
 
     /// <summary>
@@ -52,7 +52,7 @@ public class TaskCreateModalTests : BunitContext {
             parameters.Add( p => p.WorkflowId, 42L )
                       .Add( p => p.OnTaskCreated, EventCallback.Factory.Create<TaskDto>( this, _ => { } ) ) );
 
-        cut.InvokeAsync( ( ) => cut.Instance.Show( ) );
+        _ = cut.InvokeAsync( ( ) => cut.Instance.Show( ) );
 
         // Modal should be visible
         AngleSharp.Dom.IElement modal = cut.Find( ".modal" );
@@ -82,14 +82,14 @@ public class TaskCreateModalTests : BunitContext {
             parameters.Add( p => p.WorkflowId, 42L )
                       .Add( p => p.OnTaskCreated, EventCallback.Factory.Create<TaskDto>( this, _ => { } ) ) );
 
-        cut.InvokeAsync( ( ) => cut.Instance.Show( ) );
+        _ = cut.InvokeAsync( ( ) => cut.Instance.Show( ) );
 
         // Click Cancel
         AngleSharp.Dom.IElement cancelButton = cut.Find( "button.btn-outline-secondary" );
         cancelButton.Click( );
 
         // Modal should be hidden again
-        Assert.ThrowsExactly<ElementNotFoundException>( ( ) => cut.Find( ".modal" ) );
+        _ = Assert.ThrowsExactly<ElementNotFoundException>( ( ) => cut.Find( ".modal" ) );
     }
 
     /// <summary>
@@ -103,7 +103,7 @@ public class TaskCreateModalTests : BunitContext {
             parameters.Add( p => p.WorkflowId, 42L )
                       .Add( p => p.OnTaskCreated, EventCallback.Factory.Create<TaskDto>( this, _ => { } ) ) );
 
-        cut.InvokeAsync( ( ) => cut.Instance.Show( ) );
+        _ = cut.InvokeAsync( ( ) => cut.Instance.Show( ) );
 
         IReadOnlyList<AngleSharp.Dom.IElement> options = cut.FindAll( ".form-select option" );
         string[] optionValues = [.. options.Select( o => o.GetAttribute( "value" ) ?? "" )];

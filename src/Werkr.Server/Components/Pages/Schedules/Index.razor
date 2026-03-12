@@ -51,7 +51,7 @@
                         <td>@FormatStart( s.StartDateTime )</td>
                         <td>@FormatExpiration( s.Expiration )</td>
                         <td>
-                            <span class="badge @GetStatusBadgeClass( s )">@GetStatus( s )</span>
+                            <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( GetStatus( s ) )">@GetStatus( s )</span>
                         </td>
                         <td>@GetNextOccurrence( s.Id )</td>
                         <td class="text-end">
@@ -166,9 +166,6 @@
         }
         return "Active";
     }
-
-    private static string GetStatusBadgeClass( ScheduleDto s ) =>
-        GetStatus( s ) == "Active" ? "bg-success" : "bg-secondary";
 
     private string GetNextOccurrence( Guid scheduleId ) {
         if ( _nextOccurrences.TryGetValue( scheduleId, out DateTime? next ) && next.HasValue ) {

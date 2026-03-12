@@ -295,7 +295,7 @@
                                     <td>@run.StartTime.ToString( "g" )</td>
                                     <td>@( run.EndTime?.ToString( "g" ) ?? "—" )</td>
                                     <td>
-                                        <span class="badge @RunStatusBadge( run.Status )">@run.Status</span>
+                                        <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( run.Status )">@run.Status</span>
                                     </td>
                                 </tr>
                             }
@@ -480,14 +480,6 @@
             _errorMessage = $"Failed to add dependency: {ex.Message}";
         }
     }
-
-    private static string RunStatusBadge( string status ) => status switch {
-        "Completed" => "bg-success",
-        "Running" => "bg-primary",
-        "Failed" => "bg-danger",
-        "Cancelled" => "bg-warning text-dark",
-        _ => "bg-secondary"
-    };
 
     private string TaskName( long taskId ) {
         TaskDto? t = _tasks?.FirstOrDefault( x => x.Id == taskId );

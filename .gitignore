@@ -78,6 +78,10 @@ docs/projects/*
 
 # SQLite Database Files
 *.db
+
+# Node / TypeScript build artifacts
+node_modules/
+**/wwwroot/js/dist/
 *.db-shm
 *.db-wal
 

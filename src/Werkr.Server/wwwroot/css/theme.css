@@ -57,6 +57,27 @@ body.dark-theme {
     --text-muted-color:     var(--grey-600);
     --badge-bg:             var(--grey-700);
 
+    /* ── Werkr Status Colors ── */
+    --werkr-success:          #28a745;
+    --werkr-failed:           #dc3545;
+    --werkr-running:          #ffc107;
+    --werkr-pending:          #6f42c1;
+    --werkr-skipped:          #6c757d;
+    --werkr-not-run:          #4a4a4a;
+
+    /* ── DAG Node Types ── */
+    --werkr-node-default:     #0d6efd;
+    --werkr-node-conditional: #6f42c1;
+    --werkr-node-fallback:    #9b59b6;
+    --werkr-node-loop:        #fd7e14;
+    --werkr-node-unknown:     #495057;
+
+    /* ── DAG Structural ── */
+    --werkr-edge-color:       #6c757d;
+    --werkr-node-stroke:      #495057;
+    --werkr-node-text:        #ffffff;
+    --werkr-node-text-muted:  rgba(255, 255, 255, 0.8);
+
     background-color: var(--body-bg);
     color: var(--body-content-color);
 }
@@ -85,6 +106,27 @@ body.light-theme {
     --focus-ring-color:     #258cfb;
     --text-muted-color:     var(--grey-600);
     --badge-bg:             var(--grey-400);
+
+    /* ── Werkr Status Colors ── */
+    --werkr-success:          #198754;
+    --werkr-failed:           #dc3545;
+    --werkr-running:          #ffc107;
+    --werkr-pending:          #6f42c1;
+    --werkr-skipped:          #6c757d;
+    --werkr-not-run:          #e9ecef;
+
+    /* ── DAG Node Types ── */
+    --werkr-node-default:     #0d6efd;
+    --werkr-node-conditional: #6f42c1;
+    --werkr-node-fallback:    #9b59b6;
+    --werkr-node-loop:        #fd7e14;
+    --werkr-node-unknown:     #6c757d;
+
+    /* ── DAG Structural ── */
+    --werkr-edge-color:       #6c757d;
+    --werkr-node-stroke:      #6c757d;
+    --werkr-node-text:        #ffffff;
+    --werkr-node-text-muted:  rgba(255, 255, 255, 0.8);
 
     background-color: var(--body-bg);
     color: var(--body-content-color);
@@ -351,3 +393,11 @@ body.light-theme legend {
     font-size: 0.9rem;
     line-height: 1;
 }
+
+/* ── Badge → Werkr semantic color bridge ──────────────────── */
+.badge.bg-success   { background-color: var(--werkr-success) !important; }
+.badge.bg-danger    { background-color: var(--werkr-failed) !important; }
+.badge.bg-warning   { background-color: var(--werkr-running) !important; }
+.badge.bg-primary   { background-color: var(--werkr-pending) !important; }
+.badge.bg-secondary { background-color: var(--werkr-skipped) !important; }
+.badge.bg-info      { background-color: var(--werkr-pending) !important; }

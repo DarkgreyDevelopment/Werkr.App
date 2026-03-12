@@ -28,7 +28,7 @@
 
                 <dt class="col-sm-3">Result</dt>
                 <dd class="col-sm-9">
-                    <span class="badge @( _job.Success ? "bg-success" : "bg-danger" )">
+                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( _job.Success ? "Completed" : "Failed" )">
                         @( _job.Success ? "Success" : "Failed" )
                     </span>
                 </dd>

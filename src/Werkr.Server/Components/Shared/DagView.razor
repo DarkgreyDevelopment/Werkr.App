@@ -11,14 +11,14 @@
             <defs>
                 <marker id="arrowhead" markerWidth="10" markerHeight="7"
                         refX="10" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#6c757d" />
+                    <polygon points="0 0, 10 3.5, 0 7" fill="var(--werkr-edge-color)" />
                 </marker>
             </defs>
 
             @foreach ( DagEdge edge in _edges ) {
                 <line x1="@edge.X1" y1="@edge.Y1"
                       x2="@edge.X2" y2="@edge.Y2"
-                      stroke="#6c757d" stroke-width="2"
+                      stroke="var(--werkr-edge-color)" stroke-width="2"
                       marker-end="url(#arrowhead)" />
             }
 
@@ -27,13 +27,13 @@
                     <rect x="@node.X" y="@node.Y"
                           width="@NodeWidth" height="@NodeHeight"
                           rx="6" ry="6"
-                          fill="@GetNodeFill( node.Step )" stroke="#495057" stroke-width="1.5" />
+                          fill="@GetNodeFill( node.Step )" stroke="var(--werkr-node-stroke)" stroke-width="1.5" />
                     <text x="@( node.X + NodeWidth / 2 )" y="@( node.Y + 22 )"
-                          text-anchor="middle" font-size="13" font-weight="600" fill="#fff">
+                          text-anchor="middle" font-size="13" font-weight="600" fill="var(--werkr-node-text)">
                         @Truncate( node.Label, 16 )
                     </text>
                     <text x="@( node.X + NodeWidth / 2 )" y="@( node.Y + 40 )"
-                          text-anchor="middle" font-size="10" fill="#ffffffcc">
+                          text-anchor="middle" font-size="10" fill="var(--werkr-node-text-muted)">
                         Order @node.Step.Order | @node.Step.ControlStatement
                     </text>
                 </g>
@@ -179,13 +179,8 @@
         if ( _svgHeight < 100 ) _svgHeight = 100;
     }
 
-    private static string GetNodeFill( WorkflowStepDto step ) => step.ControlStatement.ToLowerInvariant( ) switch {
-        "default" => "#0d6efd",        // Blue — default execution
-        "if" or "elseif" => "#6f42c1", // Purple — conditional branch
-        "else" => "#9b59b6",           // Light purple — fallback branch
-        "while" or "do" => "#fd7e14",  // Orange — loop
-        _ => "#495057"                 // Gray — unknown
-    };
+    private static string GetNodeFill( WorkflowStepDto step ) =>
+        StatusDisplayHelper.GetNodeFillVar( step.ControlStatement );
 
     private static string Truncate( string text, int max ) =>
         text.Length <= max ? text : text[..max] + "…";

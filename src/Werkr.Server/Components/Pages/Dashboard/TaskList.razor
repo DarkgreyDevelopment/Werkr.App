@@ -117,7 +117,7 @@
                         <td>
                             @if ( item.LastJob is not null ) {
                                 <a href="/jobs/@item.LastJob.Id">
-                                    <span class="badge @GetResultBadge( item.LastJob.Success )">@( item.LastJob.Success ? "Success" : "Failed" )</span>
+                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.LastJob.Success ? "Completed" : "Failed" )">@( item.LastJob.Success ? "Success" : "Failed" )</span>
                                 </a>
                                 <br />
                                 <small class="text-muted">@item.LastJob.StartTime.ToString( "g" )</small>
@@ -302,8 +302,6 @@
             _errorMessage = $"Failed to toggle task: {ex.Message}";
         }
     }
-
-    private static string GetResultBadge( bool success ) => success ? "bg-success" : "bg-danger";
 
     private static string Truncate( string text, int max ) =>
         text.Length <= max ? text : text[..max] + "…";
