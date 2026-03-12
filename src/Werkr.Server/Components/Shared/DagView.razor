@@ -180,7 +180,7 @@
     }
 
     private static string GetNodeFill( WorkflowStepDto step ) => step.ControlStatement.ToLowerInvariant( ) switch {
-        "sequential" => "#0d6efd",     // Blue — normal sequential execution
+        "default" => "#0d6efd",        // Blue — default execution
         "if" or "elseif" => "#6f42c1", // Purple — conditional branch
         "else" => "#9b59b6",           // Light purple — fallback branch
         "while" or "do" => "#fd7e14",  // Orange — loop

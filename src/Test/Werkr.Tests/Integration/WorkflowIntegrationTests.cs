@@ -172,7 +172,7 @@ public class WorkflowIntegrationTests {
         var step1Request = new {
             taskId = task1Id,
             order = 1,
-            controlStatement = "Sequential",
+            controlStatement = "Default",
             dependencyMode = "All"
         };
 
@@ -188,7 +188,7 @@ public class WorkflowIntegrationTests {
         var step2Request = new {
             taskId = task2Id,
             order = 2,
-            controlStatement = "Sequential",
+            controlStatement = "Default",
             dependencyMode = "All"
         };
 
@@ -289,6 +289,152 @@ public class WorkflowIntegrationTests {
     }
 
     #endregion Task CRUD with Tags
+
+    #region Workflow TargetTags
+
+    /// <summary>
+    /// Verifies that a workflow can be created with <c>TargetTags</c>, updated to change its tags,
+    /// and that the tags persist correctly through the full CRUD cycle.
+    /// </summary>
+    [TestMethod]
+    [Timeout( 60_000, CooperativeCancellation = true )]
+    public async Task WorkflowTargetTags_CreateUpdateReadDelete( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+
+        // Create workflow with tags
+        var createRequest = new {
+            name = "IntTest_WF_Tags",
+            description = "Workflow with target tags",
+            enabled = true,
+            targetTags = new[] { "linux", "docker" },
+        };
+
+        HttpResponseMessage createResponse = await Api.PostAsJsonAsync(
+            "/api/workflows", createRequest, JsonOptions, ct );
+        Assert.AreEqual( HttpStatusCode.Created, createResponse.StatusCode,
+            $"Workflow creation failed: {await createResponse.Content.ReadAsStringAsync( ct )}" );
+
+        JsonElement created = await createResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        long workflowId = created.GetProperty( "id" ).GetInt64( );
+
+        // Verify tags returned on create response
+        JsonElement createdTags = created.GetProperty( "targetTags" );
+        Assert.AreEqual( 2, createdTags.GetArrayLength( ), "Should return 2 target tags." );
+
+        // Read and verify tags persisted
+        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/workflows/{workflowId}", ct );
+        Assert.AreEqual( HttpStatusCode.OK, getResponse.StatusCode );
+
+        JsonElement retrieved = await getResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        JsonElement tags = retrieved.GetProperty( "targetTags" );
+        Assert.AreEqual( 2, tags.GetArrayLength( ), "Read-back should return 2 target tags." );
+
+        HashSet<string> tagValues = [.. Enumerable.Range( 0, tags.GetArrayLength( ) ).Select( i => tags[i].GetString( )! )];
+        Assert.Contains( "linux", tagValues, "Should contain 'linux' tag." );
+        Assert.Contains( "docker", tagValues, "Should contain 'docker' tag." );
+
+        // Update to a single tag
+        var updateRequest = new {
+            name = "IntTest_WF_Tags",
+            description = "Updated",
+            enabled = true,
+            targetTags = new[] { "windows" },
+        };
+
+        HttpResponseMessage putResponse = await Api.PutAsJsonAsync(
+            $"/api/workflows/{workflowId}", updateRequest, JsonOptions, ct );
+        Assert.AreEqual( HttpStatusCode.OK, putResponse.StatusCode );
+
+        JsonElement updated = await putResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        JsonElement updatedTags = updated.GetProperty( "targetTags" );
+        Assert.AreEqual( 1, updatedTags.GetArrayLength( ), "Updated workflow should have 1 tag." );
+        Assert.AreEqual( "windows", updatedTags[0].GetString( ) );
+
+        // Update to null/empty tags
+        var clearRequest = new {
+            name = "IntTest_WF_Tags",
+            description = "Cleared tags",
+            enabled = true,
+            targetTags = Array.Empty<string>( ),
+        };
+
+        HttpResponseMessage clearResponse = await Api.PutAsJsonAsync(
+            $"/api/workflows/{workflowId}", clearRequest, JsonOptions, ct );
+        Assert.AreEqual( HttpStatusCode.OK, clearResponse.StatusCode );
+
+        JsonElement cleared = await clearResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        JsonElement clearedTags = cleared.GetProperty( "targetTags" );
+        Assert.AreEqual( 0, clearedTags.GetArrayLength( ), "Cleared workflow should have 0 tags." );
+
+        // Cleanup
+        _ = await Api.DeleteAsync( $"/api/workflows/{workflowId}", ct );
+    }
+
+    /// <summary>
+    /// Verifies that a workflow can be associated with a schedule and disassociated.
+    /// </summary>
+    [TestMethod]
+    [Timeout( 60_000, CooperativeCancellation = true )]
+    public async Task WorkflowScheduleAssociation_AssociateAndDisassociate( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+
+        // Create a workflow
+        var wfRequest = new {
+            name = "IntTest_WF_Sched",
+            description = "Workflow for schedule test",
+            enabled = true,
+        };
+
+        HttpResponseMessage wfResponse = await Api.PostAsJsonAsync(
+            "/api/workflows", wfRequest, JsonOptions, ct );
+        Assert.AreEqual( HttpStatusCode.Created, wfResponse.StatusCode );
+        JsonElement wf = await wfResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        long workflowId = wf.GetProperty( "id" ).GetInt64( );
+
+        // Create a schedule
+        var schedRequest = new {
+            name = "IntTest_Schedule_Assoc",
+            stopTaskAfterMinutes = 30L,
+            startDateTime = new { date = "2026-06-15", time = "09:00:00", timeZoneId = "UTC" },
+        };
+
+        HttpResponseMessage schedResponse = await Api.PostAsJsonAsync(
+            "/api/schedules", schedRequest, JsonOptions, ct );
+        Assert.AreEqual( HttpStatusCode.Created, schedResponse.StatusCode );
+        JsonElement sched = await schedResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        string scheduleId = sched.GetProperty( "id" ).GetString( )!;
+
+        // Associate schedule with workflow
+        var assocRequest = new { scheduleId };
+        HttpResponseMessage assocResponse = await Api.PostAsJsonAsync(
+            $"/api/workflows/{workflowId}/schedules", assocRequest, JsonOptions, ct );
+        Assert.AreEqual( HttpStatusCode.Created, assocResponse.StatusCode,
+            $"Association failed: {await assocResponse.Content.ReadAsStringAsync( ct )}" );
+
+        // Verify schedule is listed
+        HttpResponseMessage listResponse = await Api.GetAsync( $"/api/workflows/{workflowId}/schedules", ct );
+        Assert.AreEqual( HttpStatusCode.OK, listResponse.StatusCode );
+        JsonElement schedules = await listResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        Assert.IsGreaterThanOrEqualTo( 1, schedules.GetArrayLength( ),
+            "Should have at least 1 associated schedule." );
+
+        // Disassociate
+        HttpResponseMessage disassocResponse = await Api.DeleteAsync(
+            $"/api/workflows/{workflowId}/schedules/{scheduleId}", ct );
+        Assert.AreEqual( HttpStatusCode.NoContent, disassocResponse.StatusCode );
+
+        // Verify empty
+        HttpResponseMessage emptyResponse = await Api.GetAsync( $"/api/workflows/{workflowId}/schedules", ct );
+        Assert.AreEqual( HttpStatusCode.OK, emptyResponse.StatusCode );
+        JsonElement emptyList = await emptyResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        Assert.AreEqual( 0, emptyList.GetArrayLength( ), "Should have 0 associated schedules." );
+
+        // Cleanup
+        _ = await Api.DeleteAsync( $"/api/workflows/{workflowId}", ct );
+        _ = await Api.DeleteAsync( $"/api/schedules/{scheduleId}", ct );
+    }
+
+    #endregion Workflow TargetTags
 
     #region Job Query Endpoints
 

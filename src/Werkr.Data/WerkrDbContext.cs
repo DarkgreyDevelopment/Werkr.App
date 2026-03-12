@@ -236,6 +236,22 @@ public class WerkrDbContext : DbContext {
             );
         } );
 
+        // Workflow.TargetTags stored as JSON
+        _ = modelBuilder.Entity<Workflow>( entity => {
+            PropertyBuilder<string[]?> targetTagsProp = entity.Property( e => e.TargetTags )
+                .HasConversion(
+                    v => v == null ? null : JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
+                    v => v == null ? null : JsonSerializer.Deserialize<string[]>(v, (JsonSerializerOptions?)null)
+                );
+            targetTagsProp.Metadata.SetValueComparer(
+                new ValueComparer<string[]?>(
+                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    v => v == null ? null : v.ToArray( )
+                )
+            );
+        } );
+
         // WorkflowStepDependency composite key and relationships
         _ = modelBuilder.Entity<WorkflowStepDependency>( entity => {
             _ = entity.HasKey( e => new { e.StepId, e.DependsOnStepId } );
@@ -539,8 +555,8 @@ public class WerkrDbContext : DbContext {
 
     private sealed class ControlStatementStringConverter( )
         : ValueConverter<ControlStatement, string>(
-            v => v.ToString( ),
-            v => Enum.Parse<ControlStatement>( v ) );
+            v => v == ControlStatement.Default ? "Default" : v.ToString( ),
+            v => v == "Sequential" ? ControlStatement.Default : Enum.Parse<ControlStatement>( v ) );
 
     private sealed class DependencyModeStringConverter( )
         : ValueConverter<DependencyMode, string>(

@@ -6,5 +6,6 @@ public sealed record WorkflowDto(
     string Name,
     string Description,
     bool Enabled,
-    IReadOnlyList<WorkflowStepDto> Steps
+    IReadOnlyList<WorkflowStepDto> Steps,
+    string[]? TargetTags = null
 );

@@ -9,6 +9,7 @@ using Werkr.Core.Communication;
 using Werkr.Core.Scheduling;
 using Werkr.Core.Workflows;
 using Werkr.Data;
+using Werkr.Data.Calendar.Models;
 using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Api.Endpoints;
@@ -23,6 +24,7 @@ internal static class WorkflowEndpoints {
         MapWorkflowCrud( app );
         MapWorkflowSteps( app );
         MapStepDependencies( app );
+        MapWorkflowSchedules( app );
         MapWorkflowExecution( app );
         return app;
     }
@@ -250,6 +252,91 @@ internal static class WorkflowEndpoints {
             }
         } )
         .WithName( "RemoveStepDependency" )
+        .RequireAuthorization( Policies.CanDelete );
+    }
+
+    // ── Workflow Schedules ──
+
+    /// <summary>
+    /// Registers endpoints for associating schedules with a workflow.
+    /// </summary>
+    private static void MapWorkflowSchedules( WebApplication app ) {
+
+        _ = app.MapGet( "/api/workflows/{workflowId}/schedules", async (
+            long workflowId,
+            WerkrDbContext dbContext,
+            ScheduleService scheduleService,
+            CancellationToken ct
+        ) => {
+            List<WorkflowSchedule> links = await dbContext.WorkflowSchedules.AsNoTracking( )
+                .Where( ws => ws.WorkflowId == workflowId )
+                .ToListAsync( ct );
+
+            List<ScheduleDto> dtos = [];
+            foreach (WorkflowSchedule ws in links) {
+                Schedule? schedule = await scheduleService.GetByIdAsync( ws.ScheduleId, ct );
+                if (schedule is not null) {
+                    dtos.Add( ScheduleMapper.ToDto( schedule ) );
+                }
+            }
+            return Results.Ok( dtos );
+        } )
+        .WithName( "GetWorkflowSchedules" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapPost( "/api/workflows/{workflowId}/schedules", async (
+            long workflowId,
+            WorkflowScheduleAssociateRequest request,
+            WerkrDbContext dbContext,
+            CancellationToken ct
+        ) => {
+            bool workflowExists = await dbContext.Workflows.AnyAsync(
+                w => w.Id == workflowId, ct );
+            if (!workflowExists) {
+                return Results.NotFound( new { message = "Workflow not found." } );
+            }
+
+            bool scheduleExists = await dbContext.Schedules.AnyAsync(
+                s => s.Id == request.ScheduleId, ct );
+            if (!scheduleExists) {
+                return Results.NotFound( new { message = "Schedule not found." } );
+            }
+
+            bool alreadyLinked = await dbContext.WorkflowSchedules.AnyAsync(
+                ws => ws.WorkflowId == workflowId && ws.ScheduleId == request.ScheduleId, ct );
+            if (alreadyLinked) {
+                return Results.Conflict( new { message = "Schedule is already associated with this workflow." } );
+            }
+
+            WorkflowSchedule link = new( ) {
+                WorkflowId = workflowId,
+                ScheduleId = request.ScheduleId,
+            };
+            _ = dbContext.WorkflowSchedules.Add( link );
+            _ = await dbContext.SaveChangesAsync( ct );
+            return Results.Created( $"/api/workflows/{workflowId}/schedules", null );
+        } )
+        .WithName( "AssociateWorkflowSchedule" )
+        .RequireAuthorization( Policies.CanCreate );
+
+        _ = app.MapDelete( "/api/workflows/{workflowId}/schedules/{scheduleId}", async (
+            long workflowId,
+            Guid scheduleId,
+            WerkrDbContext dbContext,
+            CancellationToken ct
+        ) => {
+            WorkflowSchedule? link = await dbContext.WorkflowSchedules
+                .FirstOrDefaultAsync(
+                    ws => ws.WorkflowId == workflowId && ws.ScheduleId == scheduleId, ct );
+            if (link is null) {
+                return Results.NotFound( );
+            }
+
+            _ = dbContext.WorkflowSchedules.Remove( link );
+            _ = await dbContext.SaveChangesAsync( ct );
+            return Results.NoContent( );
+        } )
+        .WithName( "DisassociateWorkflowSchedule" )
         .RequireAuthorization( Policies.CanDelete );
     }
 

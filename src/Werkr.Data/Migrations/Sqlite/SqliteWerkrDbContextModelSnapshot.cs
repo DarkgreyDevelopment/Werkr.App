@@ -16,7 +16,7 @@ namespace Werkr.Data.Migrations.Sqlite
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.4");
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
                 {
@@ -984,6 +984,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasMaxLength(256)
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
+
+                    b.Property<string>("TargetTags")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_tags");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()

@@ -75,6 +75,7 @@ public sealed partial class WorkflowService(
         existing.Name = workflow.Name;
         existing.Description = workflow.Description;
         existing.Enabled = workflow.Enabled;
+        existing.TargetTags = workflow.TargetTags;
 
         _ = await dbContext.SaveChangesAsync( ct );
 

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Werkr.Agent.Communication;
 using Werkr.Agent.Operators;
@@ -110,7 +111,7 @@ public sealed partial class WorkflowExecutionService(
         }
 
         // Seed variable cache from workflow definition defaults and trigger variables
-        Dictionary<string, string> variableCache = new(StringComparer.OrdinalIgnoreCase);
+        ConcurrentDictionary<string, string> variableCache = new(StringComparer.OrdinalIgnoreCase);
         foreach (WorkflowVariableDef varDef in workflow.Variables) {
             if (!string.IsNullOrWhiteSpace( varDef.DefaultValue )) {
                 variableCache[varDef.Name] = varDef.DefaultValue;
@@ -124,8 +125,8 @@ public sealed partial class WorkflowExecutionService(
         IReadOnlyList<IReadOnlyList<ScheduledWorkflowStepDef>> levels =
             BuildTopologicalLevels( workflow.Steps );
 
-        // Step result map: stepId → completed job result
-        Dictionary<long, StepJobResult> stepResults = [];
+        // Step result map: stepId → completed job result (concurrent for parallel steps)
+        ConcurrentDictionary<long, StepJobResult> stepResults = new();
 
         // If/Else/ElseIf chain tracking: stepId → whether that branch was taken
         Dictionary<long, bool> branchTaken = [];
@@ -149,24 +150,23 @@ public sealed partial class WorkflowExecutionService(
                     }
                 }
 
-                // Execute parallelizable steps (sequentially — no DB context concerns on agent
-                // but keeps behavior consistent with the original executor)
-                foreach (ScheduledWorkflowStepDef step in parallelizable) {
-                    ct.ThrowIfCancellationRequested( );
+                // Execute parallelizable steps concurrently via Task.WhenAll
+                if (parallelizable.Count > 0) {
+                    StepExecutionResult[] parallelResults = await Task.WhenAll(
+                        parallelizable.Select( step => ExecuteStepAsync(
+                            step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, ct ) ) );
 
-                    StepExecutionResult result = await ExecuteStepAsync(
-                        step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, ct);
+                    foreach (StepExecutionResult result in parallelResults) {
+                        if (result.Job is not null) {
+                            stepResults[result.StepId] = result.Job;
+                        }
 
-                    if (result.Job is not null) {
-                        stepResults[result.StepId] = result.Job;
-                    }
-
-                    if (result.Failed) {
-                        logger.LogWarning(
-                            "Workflow run {RunId} failed at step {StepId}: {Error}.",
-                            workflowRunId, result.StepId, result.ErrorMessage );
-                        workflowFailed = true;
-                        break;
+                        if (result.Failed) {
+                            logger.LogWarning(
+                                "Workflow run {RunId} failed at step {StepId}: {Error}.",
+                                workflowRunId, result.StepId, result.ErrorMessage );
+                            workflowFailed = true;
+                        }
                     }
                 }
 
@@ -217,9 +217,9 @@ public sealed partial class WorkflowExecutionService(
     private async Task<StepExecutionResult> ExecuteStepAsync(
         ScheduledWorkflowStepDef step,
         Guid workflowRunId,
-        Dictionary<long, StepJobResult> stepResults,
+        ConcurrentDictionary<long, StepJobResult> stepResults,
         Dictionary<long, bool> branchTaken,
-        Dictionary<string, string> variableCache,
+        ConcurrentDictionary<string, string> variableCache,
         Guid? scheduleId,
         CancellationToken ct
     ) {
@@ -298,7 +298,7 @@ public sealed partial class WorkflowExecutionService(
         ScheduledTaskDefinition taskDef,
         Guid workflowRunId,
         List<WerkrJob> predecessorJobs,
-        Dictionary<string, string> variableCache,
+        ConcurrentDictionary<string, string> variableCache,
         Guid? scheduleId,
         CancellationToken ct
     ) {
@@ -611,7 +611,7 @@ public sealed partial class WorkflowExecutionService(
     /// <summary>Checks whether dependencies are satisfied based on DependencyMode.</summary>
     private static bool CheckDependencies(
         ScheduledWorkflowStepDef step,
-        Dictionary<long, StepJobResult> stepResults
+        ConcurrentDictionary<long, StepJobResult> stepResults
     ) {
         if (step.DependsOnStepIds.Count == 0) {
             return true; // Root step — no dependencies
@@ -637,7 +637,7 @@ public sealed partial class WorkflowExecutionService(
         ControlStatement cs = (ControlStatement) step.ControlStatement;
 
         switch (cs) {
-            case ControlStatement.Sequential:
+            case ControlStatement.Default:
                 return true;
 
             case ControlStatement.If:
@@ -682,7 +682,7 @@ public sealed partial class WorkflowExecutionService(
     /// </summary>
     private static List<WerkrJob> BuildPredecessorJobs(
         ScheduledWorkflowStepDef step,
-        Dictionary<long, StepJobResult> stepResults
+        ConcurrentDictionary<long, StepJobResult> stepResults
     ) {
         List<WerkrJob> jobs = [];
         foreach (long depId in step.DependsOnStepIds) {

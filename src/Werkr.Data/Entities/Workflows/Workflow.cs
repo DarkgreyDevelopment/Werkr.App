@@ -28,6 +28,9 @@ public class Workflow : ConcurrencyBase, IKey<long> {
     /// <summary>Whether the workflow is enabled.</summary>
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Agent targeting tags for workflow-level override.</summary>
+    public string[]? TargetTags { get; set; }
+
     /// <summary>Navigation property for workflow steps.</summary>
     public ICollection<WorkflowStep> Steps { get; set; } = [];
 

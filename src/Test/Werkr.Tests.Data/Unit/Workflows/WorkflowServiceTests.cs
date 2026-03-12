@@ -625,6 +625,96 @@ public class WorkflowServiceTests {
         ); // Level 1: B, C
     }
 
+    /// <summary>
+    /// Verifies that three independent steps (no dependencies) are all grouped at level 0.
+    /// </summary>
+    [TestMethod]
+    public async Task GetTopologicalLevelsAsync_ThreeIndependentSteps_AllAtLevelZero( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+        Workflow workflow = new( ) { Name = "ThreeIndependent", Description = string.Empty };
+        _ = await _service.CreateAsync( workflow, ct );
+        await SeedTaskAsync( ct );
+
+        _ = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 0 }, ct );
+        _ = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 1 }, ct );
+        _ = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 2 }, ct );
+
+        IReadOnlyList<IReadOnlyList<WorkflowStep>> levels =
+            await _service.GetTopologicalLevelsAsync( workflow.Id, ct );
+
+        Assert.HasCount( 1, levels );
+        Assert.HasCount( 3, levels[0] );
+    }
+
+    /// <summary>
+    /// Verifies a diamond-shaped DAG: A → B, A → C, B → D, C → D produces
+    /// three levels: [A], [B, C], [D]. B and C are parallelizable at level 1.
+    /// </summary>
+    [TestMethod]
+    public async Task GetTopologicalLevelsAsync_DiamondDag_GroupsCorrectly( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+        Workflow workflow = new( ) { Name = "Diamond", Description = string.Empty };
+        _ = await _service.CreateAsync( workflow, ct );
+        await SeedTaskAsync( ct );
+
+        WorkflowStep a = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 0 }, ct );
+        WorkflowStep b = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 1 }, ct );
+        WorkflowStep c = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 2 }, ct );
+        WorkflowStep d = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 3 }, ct );
+
+        await _service.AddStepDependencyAsync( b.Id, a.Id, ct );
+        await _service.AddStepDependencyAsync( c.Id, a.Id, ct );
+        await _service.AddStepDependencyAsync( d.Id, b.Id, ct );
+        await _service.AddStepDependencyAsync( d.Id, c.Id, ct );
+
+        IReadOnlyList<IReadOnlyList<WorkflowStep>> levels =
+            await _service.GetTopologicalLevelsAsync( workflow.Id, ct );
+
+        Assert.HasCount( 3, levels );
+        Assert.HasCount( 1, levels[0] ); // Level 0: A
+        Assert.HasCount( 2, levels[1] ); // Level 1: B, C (parallel)
+        Assert.HasCount( 1, levels[2] ); // Level 2: D
+    }
+
+    /// <summary>
+    /// Verifies that If/ElseIf/Else steps at the same level are separated from Default steps
+    /// for independent chain-bound processing. Both sets share the same topological level
+    /// but the execution engine will partition them for sequential vs. parallel execution.
+    /// </summary>
+    [TestMethod]
+    public async Task GetTopologicalLevelsAsync_MixedControlStatements_SameLevelGrouped( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+        Workflow workflow = new( ) { Name = "MixedControl", Description = string.Empty };
+        _ = await _service.CreateAsync( workflow, ct );
+        await SeedTaskAsync( ct );
+
+        // Root step
+        WorkflowStep root = await _service.AddStepAsync(
+            workflow.Id, new WorkflowStep { TaskId = 1, Order = 0 }, ct );
+
+        // Default step depends on root
+        WorkflowStep defaultStep = await _service.AddStepAsync(
+            workflow.Id, new WorkflowStep { TaskId = 1, Order = 1, ControlStatement = ControlStatement.Default }, ct );
+        await _service.AddStepDependencyAsync( defaultStep.Id, root.Id, ct );
+
+        // If step depends on root
+        WorkflowStep ifStep = await _service.AddStepAsync(
+            workflow.Id, new WorkflowStep { TaskId = 1, Order = 2, ControlStatement = ControlStatement.If, ConditionExpression = "$? -eq $true" }, ct );
+        await _service.AddStepDependencyAsync( ifStep.Id, root.Id, ct );
+
+        IReadOnlyList<IReadOnlyList<WorkflowStep>> levels =
+            await _service.GetTopologicalLevelsAsync( workflow.Id, ct );
+
+        Assert.HasCount( 2, levels );
+        Assert.HasCount( 1, levels[0] ); // Level 0: root
+        Assert.HasCount( 2, levels[1] ); // Level 1: defaultStep + ifStep (execution engine partitions them)
+
+        // Verify both steps are at level 1 with their correct control statements
+        HashSet<ControlStatement> controlStatements = [.. levels[1].Select( s => s.ControlStatement )];
+        Assert.Contains( ControlStatement.Default, controlStatements );
+        Assert.Contains( ControlStatement.If, controlStatements );
+    }
+
     // ── Control Flow Validation ──
 
     /// <summary>

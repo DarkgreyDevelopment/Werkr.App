@@ -40,6 +40,11 @@
                     <ToggleSwitch @bind-Value="_model!.Enabled" Label="Enabled" />
                 </div>
 
+                <div class="mb-3">
+                    <label class="form-label">Target Tags</label>
+                    <TagInput @bind-Value="_model!.TargetTags" />
+                </div>
+
                 <button type="submit" class="btn btn-primary" disabled="@_isSaving">
                     @if ( _isSaving ) {
                         <span class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -84,6 +89,60 @@
                     }
                 </div>
             }
+        </div>
+    </div>
+
+    @* ── Schedules ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Schedules</h5>
+            @if ( _schedules is not null && _schedules.Count > 0 ) {
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( ScheduleDto sched in _schedules ) {
+                                <tr>
+                                    <td>@sched.Name</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-outline-danger btn-sm"
+                                                @onclick="( ) => DisassociateScheduleAsync( sched.Id )">
+                                            Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            } else {
+                <p class="text-muted">No schedules associated.</p>
+            }
+
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Associate Schedule</label>
+                    <select class="form-select" @bind="_selectedScheduleId">
+                        <option value="">— select schedule —</option>
+                        @if ( _availableSchedules is not null ) {
+                            @foreach ( ScheduleDto s in _availableSchedules ) {
+                                <option value="@s.Id">@s.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-outline-primary" @onclick="AssociateScheduleAsync"
+                            disabled="@string.IsNullOrEmpty( _selectedScheduleId )">
+                        Add Schedule
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -144,25 +203,30 @@
             <div class="row g-2 align-items-end">
                 <div class="col-md-3">
                     <label class="form-label">Task</label>
-                    <select class="form-select" @bind="_newStep.TaskId">
-                        <option value="0">— select task —</option>
-                        @if ( _tasks is not null ) {
-                            @foreach ( TaskDto t in _tasks ) {
-                                <option value="@t.Id">@t.Name</option>
+                    <div class="d-flex gap-1">
+                        <select class="form-select" @bind="_newStep.TaskId">
+                            <option value="0">— select task —</option>
+                            @if ( _tasks is not null ) {
+                                @foreach ( TaskDto t in _tasks ) {
+                                    <option value="@t.Id">@t.Name</option>
+                                }
                             }
-                        }
-                    </select>
+                        </select>
+                        <button type="button" class="btn btn-outline-success btn-sm text-nowrap"
+                                @onclick="( ) => _taskCreateModal?.Show( )">
+                            + New
+                        </button>
+                    </div>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Control</label>
                     <select class="form-select" @bind="_newStep.ControlStatement">
-                        <option>Sequential</option>
-                        <option>Parallel</option>
-                        <option>ConditionalIf</option>
-                        <option>ConditionalElseIf</option>
-                        <option>ConditionalElse</option>
-                        <option>ConditionalWhile</option>
-                        <option>ConditionalDo</option>
+                        <option>Default</option>
+                        <option>If</option>
+                        <option>ElseIf</option>
+                        <option>Else</option>
+                        <option>While</option>
+                        <option>Do</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -178,9 +242,9 @@
             </div>
             @if ( IsConditionalControl( _newStep.ControlStatement ) ) {
                 <div class="row g-2 mt-2">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label">Condition Expression</label>
-                        <input type="text" class="form-control font-monospace" placeholder="e.g. exitCode == 0" @bind="_newStep.ConditionExpression" />
+                        <ConditionBuilder @bind-Expression="_newStep.ConditionExpression" />
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Max Iterations</label>
@@ -243,6 +307,8 @@
             }
         </div>
     </div>
+
+    <TaskCreateModal @ref="_taskCreateModal" WorkflowId="Id" OnTaskCreated="OnTaskCreatedAsync" />
 }
 
 @code {
@@ -252,6 +318,8 @@
     private WorkflowFormModel? _model;
     private List<WorkflowRunDto>? _runs;
     private List<TaskDto>? _tasks;
+    private List<ScheduleDto>? _schedules;
+    private List<ScheduleDto>? _availableSchedules;
     private DagValidationResult? _dagResult;
 
     private string? _errorMessage;
@@ -259,8 +327,10 @@
     private bool _isLoading;
     private bool _isSaving;
     private bool _isValidating;
+    private string _selectedScheduleId = "";
 
     private readonly NewStepModel _newStep = new( );
+    private TaskCreateModal? _taskCreateModal;
     private long _depStepId;
     private long _depDependsOnStepId;
 
@@ -289,9 +359,16 @@
                 Name = _workflow.Name,
                 Description = _workflow.Description,
                 Enabled = _workflow.Enabled,
+                TargetTags = _workflow.TargetTags ?? [],
             };
             _runs = await client.GetFromJsonAsync<List<WorkflowRunDto>>( $"/api/workflows/{Id}/runs" );
             _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            _schedules = await client.GetFromJsonAsync<List<ScheduleDto>>( $"/api/workflows/{Id}/schedules" );
+            List<ScheduleDto>? allSchedules = await client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" );
+            HashSet<Guid> linkedIds = _schedules is not null
+                ? [.. _schedules.Select( s => s.Id )]
+                : [];
+            _availableSchedules = allSchedules?.Where( s => !linkedIds.Contains( s.Id ) ).ToList( ) ?? [];
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load workflow: {ex.Message}";
         } finally {
@@ -308,7 +385,8 @@
             WorkflowUpdateRequest request = new(
                 Name: _model.Name,
                 Description: _model.Description,
-                Enabled: _model.Enabled );
+                Enabled: _model.Enabled,
+                TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
 
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/workflows/{Id}", request );
@@ -417,17 +495,58 @@
     }
 
     private static bool IsConditionalControl( string control ) =>
-        control is "ConditionalIf" or "ConditionalElseIf" or "ConditionalWhile" or "ConditionalDo";
+        control is "If" or "ElseIf" or "While" or "Do";
+
+    private async Task AssociateScheduleAsync( ) {
+        if ( string.IsNullOrEmpty( _selectedScheduleId ) || !Guid.TryParse( _selectedScheduleId, out Guid schedId ) ) return;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PostAsJsonAsync(
+                $"/api/workflows/{Id}/schedules", new WorkflowScheduleAssociateRequest( schedId ) );
+            if ( response.IsSuccessStatusCode ) {
+                _selectedScheduleId = "";
+                await LoadAsync( );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to associate schedule: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to associate schedule: {ex.Message}";
+        }
+    }
+
+    private async Task DisassociateScheduleAsync( Guid scheduleId ) {
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.DeleteAsync(
+                $"/api/workflows/{Id}/schedules/{scheduleId}" );
+            if ( response.IsSuccessStatusCode ) {
+                await LoadAsync( );
+            } else {
+                _errorMessage = $"Failed to remove schedule: HTTP {(int) response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to remove schedule: {ex.Message}";
+        }
+    }
+
+    private async Task OnTaskCreatedAsync( TaskDto task ) {
+        _newStep.TaskId = task.Id;
+        await LoadAsync( );
+    }
 
     private sealed class WorkflowFormModel {
         public string Name { get; set; } = "";
         public string? Description { get; set; }
         public bool Enabled { get; set; } = true;
+        public string[] TargetTags { get; set; } = [];
     }
 
     private sealed class NewStepModel {
         public long TaskId { get; set; }
-        public string ControlStatement { get; set; } = "Sequential";
+        public string ControlStatement { get; set; } = "Default";
         public string DependencyMode { get; set; } = "All";
         public string? ConditionExpression { get; set; }
         public int MaxIterations { get; set; } = 100;
