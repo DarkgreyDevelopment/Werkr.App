@@ -1,5 +1,6 @@
 ﻿@page "/jobs"
 @rendermode InteractiveServer
+@using Werkr.Common.Models
 @attribute [Authorize]
 @inject IHttpClientFactory HttpClientFactory
 
@@ -10,44 +11,8 @@
 
 <p>Browse execution history across all tasks. Use the filters to narrow results.</p>
 
-<div class="row mb-3 align-items-end g-2">
-    <div class="col-md-2">
-        <label class="form-label" for="taskIdFilter">Task ID (optional)</label>
-        <input type="number" id="taskIdFilter" class="form-control" @bind="_taskIdFilter" />
-    </div>
-    <div class="col-md-2">
-        <label class="form-label" for="statusFilter">Status</label>
-        <select id="statusFilter" class="form-select" @bind="_statusFilter">
-            <option value="">All</option>
-            <option value="success">Success</option>
-            <option value="failed">Failed</option>
-            <option value="running">Running</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label" for="sinceFilter">Since</label>
-        <input type="date" id="sinceFilter" class="form-control" @bind="_sinceFilter" />
-    </div>
-    <div class="col-md-2">
-        <label class="form-label" for="untilFilter">Until</label>
-        <input type="date" id="untilFilter" class="form-control" @bind="_untilFilter" />
-    </div>
-    <div class="col-md-1">
-        <label class="form-label" for="limitFilter">Limit</label>
-        <input type="number" id="limitFilter" class="form-control" @bind="_limit" />
-    </div>
-    <div class="col-md-3 d-flex gap-2">
-        <button class="btn btn-primary" @onclick="LoadAsync" disabled="@_isLoading">
-            @if ( _isLoading ) {
-                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-            }
-            Search
-        </button>
-        <button class="btn btn-outline-secondary" @onclick="ClearFilters" disabled="@_isLoading">
-            Clear
-        </button>
-    </div>
-</div>
+<FilterBar PageKey="jobs" Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
@@ -108,13 +73,17 @@
 
 @code {
     private List<JobListDto>? _jobs;
+    private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
-    private long? _taskIdFilter;
-    private string _statusFilter = "";
-    private DateTime? _sinceFilter;
-    private DateTime? _untilFilter;
-    private int _limit = 50;
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "taskId", "Task ID", FilterFieldType.Number ),
+        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Success", "Failed", "Running"] ),
+        new FilterField( "since", "Since", FilterFieldType.Date ),
+        new FilterField( "until", "Until", FilterFieldType.Date ),
+        new FilterField( "limit", "Limit", FilterFieldType.Number ),
+    ] );
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
         new( "Task List", "/" ),
@@ -131,18 +100,19 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
 
-            if ( _taskIdFilter.HasValue ) {
-                // Use task-specific endpoint when a task ID is provided
+            string? taskIdStr = _activeCriteria?.Get( "taskId" );
+            if ( long.TryParse( taskIdStr, out long taskId ) ) {
+                int limit = GetLimit( );
                 _jobs = await client.GetFromJsonAsync<List<JobListDto>>(
-                    $"/api/tasks/{_taskIdFilter}/jobs?limit={_limit}" );
+                    $"/api/tasks/{taskId}/jobs?limit={limit}" );
             } else {
-                // Use global jobs endpoint
                 string url = BuildGlobalJobsUrl( );
                 _jobs = await client.GetFromJsonAsync<List<JobListDto>>( url );
             }
 
             // Client-side running filter — no server param for this
-            if ( _statusFilter == "running" && _jobs is not null ) {
+            string? statusFilter = _activeCriteria?.Get( "status" );
+            if ( string.Equals( statusFilter, "Running", StringComparison.OrdinalIgnoreCase ) && _jobs is not null ) {
                 _jobs = _jobs.Where( j => j.EndTime is null && !j.Success ).ToList( );
             }
         } catch ( Exception ex ) {
@@ -153,24 +123,38 @@
     }
 
     private string BuildGlobalJobsUrl( ) {
-        List<string> queryParams = [$"limit={_limit}"];
+        int limit = GetLimit( );
+        List<string> queryParams = [$"limit={limit}"];
 
-        if ( _statusFilter == "success" ) queryParams.Add( "success=true" );
-        else if ( _statusFilter == "failed" ) queryParams.Add( "success=false" );
+        string? statusFilter = _activeCriteria?.Get( "status" );
+        if ( string.Equals( statusFilter, "Success", StringComparison.OrdinalIgnoreCase ) )
+            queryParams.Add( "success=true" );
+        else if ( string.Equals( statusFilter, "Failed", StringComparison.OrdinalIgnoreCase ) )
+            queryParams.Add( "success=false" );
 
-        if ( _sinceFilter.HasValue )
-            queryParams.Add( $"since={_sinceFilter.Value:O}" );
-        if ( _untilFilter.HasValue )
-            queryParams.Add( $"until={_untilFilter.Value:O}" );
+        string? sinceStr = _activeCriteria?.Get( "since" );
+        if ( DateTime.TryParse( sinceStr, out DateTime since ) )
+            queryParams.Add( $"since={since:O}" );
+
+        string? untilStr = _activeCriteria?.Get( "until" );
+        if ( DateTime.TryParse( untilStr, out DateTime until ) )
+            queryParams.Add( $"until={until:O}" );
 
         return $"/api/jobs?{string.Join( "&", queryParams )}";
     }
 
-    private void ClearFilters( ) {
-        _taskIdFilter = null;
-        _statusFilter = "";
-        _sinceFilter = null;
-        _untilFilter = null;
-        _limit = 50;
+    private int GetLimit( ) {
+        string? limitStr = _activeCriteria?.Get( "limit" );
+        return int.TryParse( limitStr, out int parsed ) && parsed > 0 ? parsed : 50;
+    }
+
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
     }
 }

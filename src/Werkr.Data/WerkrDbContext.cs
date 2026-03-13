@@ -9,6 +9,7 @@ using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Entities;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
+using Werkr.Data.Entities.Settings;
 using Werkr.Data.Entities.Tasks;
 using Werkr.Data.Entities.Workflows;
 
@@ -101,6 +102,9 @@ public class WerkrDbContext : DbContext {
 
     /// <summary>Per-run-per-step execution tracking (supports retry attempts).</summary>
     public DbSet<WorkflowStepExecution> WorkflowStepExecutions => Set<WorkflowStepExecution>( );
+
+    /// <summary>Named saved filter views (personal and shared).</summary>
+    public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>( );
 
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
@@ -438,6 +442,12 @@ public class WerkrDbContext : DbContext {
                 .WithMany( )
                 .HasForeignKey( e => e.JobId )
                 .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // SavedFilter — named filter views per page per user
+        _ = modelBuilder.Entity<SavedFilter>( entity => {
+            _ = entity.HasIndex( e => new { e.PageKey, e.OwnerId } );
+            _ = entity.HasIndex( e => new { e.PageKey, e.IsShared } );
         } );
     }
 

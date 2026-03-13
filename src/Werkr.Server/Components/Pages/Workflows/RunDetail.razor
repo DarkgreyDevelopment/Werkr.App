@@ -89,6 +89,10 @@
                             @onclick='( ) => _activeTab = "timeline"'>Timeline</button>
                 </li>
                 <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "gantt" ? "active" : "" )"
+                            @onclick='( ) => _activeTab = "gantt"'>Gantt</button>
+                </li>
+                <li class="nav-item">
                     <button class="nav-link @( _activeTab == "log" ? "active" : "" )"
                             @onclick='( ) => _activeTab = "log"'>Log</button>
                 </li>
@@ -151,6 +155,15 @@
                                   OnStepSelected="( step ) => SelectStep( step )" />
                     break;
 
+                case "gantt":
+                    @* ── Gantt: vis-timeline Bars ── *@
+                    <GanttTab @ref="_ganttTab"
+                              StepExecutions="_detail.StepExecutions"
+                              Steps="_workflow?.Steps ?? []"
+                              IsRunActive="@( _detail.EndTime is null )"
+                              OnStepSelected="( step ) => SelectStep( step )" />
+                    break;
+
                 case "log":
                     @* ── Log: Full Log Viewer ── *@
                     <LogViewer Lines="GetFilteredLogLines( )" />
@@ -181,6 +194,7 @@
     private bool _disposed;
     private string _activeTab = "compact";
     private StepExecutionDto? _selectedStep;
+    private GanttTab? _ganttTab;
 
     // Retry
     private bool _retrying;
@@ -243,9 +257,14 @@
         }
     }
 
-    private Task OnStepStatusChanged( StepStatusDto dto ) => InvokeAsync( ( ) => {
+    private Task OnStepStatusChanged( StepStatusDto dto ) => InvokeAsync( async ( ) => {
         if ( Enum.TryParse<StepExecutionStatus>( dto.Status, out StepExecutionStatus status ) ) {
             _stepStatuses[dto.StepId] = status;
+        }
+
+        // Forward to Gantt tab for real-time bar updates
+        if ( _ganttTab is not null ) {
+            await _ganttTab.HandleStepStatusChangedAsync( dto );
         }
 
         // Update step execution in the detail DTO list

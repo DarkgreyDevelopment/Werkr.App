@@ -1,0 +1,132 @@
+@using Werkr.Common.Models
+@using Werkr.Server.Helpers
+@using Werkr.Server.Hubs
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<GanttTab> Logger
+
+<HeadContent>
+    <link rel="stylesheet" href="js/dist/timeline-view.css" />
+</HeadContent>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="warning" Title="Gantt" Message="@_errorMessage" />
+}
+
+<div class="gantt-container" id="@_containerId" style="min-height:300px;"></div>
+
+@code {
+    [Parameter] public IReadOnlyList<StepExecutionDto> StepExecutions { get; set; } = [];
+    [Parameter] public IReadOnlyList<WorkflowStepDto> Steps { get; set; } = [];
+    [Parameter] public bool IsRunActive { get; set; }
+    [Parameter] public EventCallback<StepExecutionDto> OnStepSelected { get; set; }
+
+    private readonly string _containerId = $"gantt-{Guid.NewGuid( ):N}";
+    private TimelineJsInterop? _interop;
+    private string? _errorMessage;
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync( bool firstRender ) {
+        if ( !firstRender || _initialized ) return;
+        _initialized = true;
+
+        try {
+            _interop = new TimelineJsInterop( JS );
+            _interop.OnItemClicked += OnItemClickedAsync;
+            await _interop.InitAsync( _containerId, new { } );
+
+            GanttItemDto[] items = MapExecutionsToItems( );
+            if ( items.Length > 0 ) {
+                await _interop.LoadItemsAsync( items );
+            }
+        } catch ( Exception ex ) {
+            Logger.LogError( ex, "Failed to initialize Gantt timeline." );
+            _errorMessage = "Timeline view could not be loaded. Try refreshing the page.";
+            StateHasChanged( );
+        }
+    }
+
+    /// <summary>Called by parent RunDetail.razor to forward SignalR step status events.</summary>
+    public async Task HandleStepStatusChangedAsync( StepStatusDto dto ) {
+        if ( _interop is null || !_initialized ) return;
+
+        string stepName = GetStepName( dto.StepId );
+        string className = StatusToClassName( dto.Status );
+        string tooltip = BuildTooltip( stepName, dto.Status, dto.RuntimeSeconds );
+
+        GanttItemDto item = new(
+            Id: $"{dto.StepId}-1",
+            Content: stepName,
+            Start: dto.Timestamp.ToString( "o" ),
+            End: dto.Status is "Completed" or "Failed" or "Skipped" ? dto.Timestamp.ToString( "o" ) : null,
+            ClassName: className,
+            Title: tooltip
+        );
+
+        try {
+            await _interop.UpdateItemAsync( item );
+        } catch ( Exception ex ) {
+            Logger.LogWarning( ex, "Failed to update Gantt item for step {StepId}.", dto.StepId );
+        }
+    }
+
+    private GanttItemDto[] MapExecutionsToItems( ) {
+        List<GanttItemDto> items = new( );
+        foreach ( StepExecutionDto se in StepExecutions ) {
+            if ( se.StartTime is null ) continue;
+
+            string stepName = GetStepName( se.StepId );
+            string className = StatusToClassName( se.Status );
+            double? duration = se is { StartTime: not null, EndTime: not null }
+                ? ( se.EndTime.Value - se.StartTime.Value ).TotalSeconds
+                : null;
+            string tooltip = BuildTooltip( stepName, se.Status, duration );
+
+            items.Add( new GanttItemDto(
+                Id: $"{se.StepId}-{se.Attempt}",
+                Content: stepName,
+                Start: se.StartTime!.Value.ToString( "o" ),
+                End: se.EndTime?.ToString( "o" ),
+                ClassName: className,
+                Title: tooltip
+            ) );
+        }
+        return [.. items];
+    }
+
+    private string GetStepName( long stepId ) {
+        WorkflowStepDto? step = Steps.FirstOrDefault( s => s.Id == stepId );
+        return step is not null ? $"Step #{step.Order} (Task {step.TaskId})" : $"Step {stepId}";
+    }
+
+    private static string StatusToClassName( string status ) => status switch {
+        "Running" => "gantt-running",
+        "Completed" => "gantt-completed",
+        "Failed" => "gantt-failed",
+        "Skipped" => "gantt-skipped",
+        _ => "gantt-pending",
+    };
+
+    private static string BuildTooltip( string stepName, string status, double? runtimeSeconds ) {
+        string duration = runtimeSeconds.HasValue ? $" ({runtimeSeconds.Value:F1}s)" : "";
+        return $"{stepName}{duration} — {status}";
+    }
+
+    private async Task OnItemClickedAsync( long stepId ) {
+        StepExecutionDto? step = StepExecutions
+            .Where( e => e.StepId == stepId )
+            .OrderByDescending( e => e.Attempt )
+            .FirstOrDefault( );
+
+        if ( step is not null ) {
+            await OnStepSelected.InvokeAsync( step );
+        }
+    }
+
+    public async ValueTask DisposeAsync( ) {
+        if ( _interop is not null ) {
+            _interop.OnItemClicked -= OnItemClickedAsync;
+            await _interop.DisposeAsync( );
+        }
+    }
+}

@@ -12,7 +12,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteWerkrDbContext))]
-    [Migration("20260312210510_InitialCreate")]
+    [Migration("20260312235927_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -730,6 +730,68 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasName("pk_weekly_recurrence");
 
                     b.ToTable("weekly_recurrence", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Settings.SavedFilter", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Created")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CriteriaJson")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("criteria_json");
+
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_shared");
+
+                    b.Property<string>("LastUpdated")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("PageKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("page_key");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_saved_filters");
+
+                    b.HasIndex("PageKey", "IsShared")
+                        .HasDatabaseName("ix_saved_filters_page_key_is_shared");
+
+                    b.HasIndex("PageKey", "OwnerId")
+                        .HasDatabaseName("ix_saved_filters_page_key_owner_id");
+
+                    b.ToTable("saved_filters", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>

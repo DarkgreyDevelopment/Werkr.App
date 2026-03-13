@@ -1,5 +1,6 @@
 ﻿@page "/schedules"
 @rendermode InteractiveServer
+@using Werkr.Common.Models
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
@@ -23,13 +24,16 @@
     </button>
 </div>
 
+<FilterBar PageKey="schedules" Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
+
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
 }
 
 @if ( _isLoading && _schedules is null ) {
     <LoadingSpinner Message="Loading schedules…" />
-} else if ( _schedules is not null && _schedules.Count > 0 ) {
+} else if ( _schedules is not null && FilteredSchedules.Count > 0 ) {
     <div class="table-responsive">
         <table class="table table-striped align-middle">
             <thead>
@@ -44,7 +48,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ( ScheduleDto s in _schedules ) {
+                @foreach ( ScheduleDto s in FilteredSchedules ) {
                     <tr>
                         <td><a href="/schedules/@s.Id">@s.Name</a></td>
                         <td>@DescribeRecurrence( s )</td>
@@ -76,11 +80,25 @@
 @code {
     private List<ScheduleDto>? _schedules;
     private Dictionary<Guid, DateTime?> _nextOccurrences = new( );
+    private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
     private ConfirmDialog _confirmDialog = default!;
     private Guid _pendingDeleteId;
     private string _deleteMessage = "";
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "search", "Name", FilterFieldType.Text ),
+        new FilterField( "enabled", "Status", FilterFieldType.Dropdown, ["Active", "Expired"] ),
+    ] );
+
+    private List<ScheduleDto> FilteredSchedules => ( _schedules ?? [] )
+        .Where( s =>
+            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "search" ) )
+              || s.Name.Contains( _activeCriteria.Get( "search" )!, StringComparison.OrdinalIgnoreCase ) )
+            && ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "enabled" ) )
+              || GetStatus( s ).Equals( _activeCriteria.Get( "enabled" )!, StringComparison.OrdinalIgnoreCase ) ) )
+        .ToList( );
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
         new( "Task List", "/" ),
@@ -175,4 +193,14 @@
     }
 
     private sealed record OccurrencePreview( Guid ScheduleId, DateTime WindowEnd, List<DateTime>? Occurrences );
+
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
+    }
 }

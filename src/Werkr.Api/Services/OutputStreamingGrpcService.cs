@@ -62,8 +62,8 @@ public sealed partial class OutputStreamingGrpcService(
             long nowTicks = DateTime.UtcNow.Ticks;
             long last = Interlocked.Read( ref _lastPublishTicks );
 
-            if ( nowTicks - last >= TickInterval ) {
-                Interlocked.Exchange( ref _lastPublishTicks, nowTicks );
+            if (nowTicks - last >= TickInterval) {
+                _ = Interlocked.Exchange( ref _lastPublishTicks, nowTicks );
                 droppedSinceLastPublish = Interlocked.Exchange( ref _droppedCount, 0 );
                 return true;
             }
@@ -113,8 +113,8 @@ public sealed partial class OutputStreamingGrpcService(
                     && Guid.TryParse( message.JobId, out Guid jobId )) {
 
                     RunLogRateState rateState = _logRateState.GetOrAdd( workflowRunId, _ => new RunLogRateState( ) );
-                    if ( rateState.TryAcquire( out int dropped ) ) {
-                        if ( dropped > 0 ) {
+                    if (rateState.TryAcquire( out int dropped )) {
+                        if (dropped > 0) {
                             workflowBroadcaster.Publish( new LogAppendedEvent(
                                 WorkflowRunId: workflowRunId,
                                 StepId: message.StepId,

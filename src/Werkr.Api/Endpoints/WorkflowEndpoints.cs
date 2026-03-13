@@ -505,9 +505,9 @@ internal static class WorkflowEndpoints {
 
                 return Results.Accepted( $"/api/workflows/runs/{runId}",
                     new { result.RunId, result.RetryFromStepId, result.ResetStepCount } );
-            } catch ( InvalidOperationException ex ) {
+            } catch (InvalidOperationException ex) {
                 return Results.Conflict( new { message = ex.Message } );
-            } catch ( KeyNotFoundException ex ) {
+            } catch (KeyNotFoundException ex) {
                 return Results.NotFound( new { message = ex.Message } );
             }
         } )

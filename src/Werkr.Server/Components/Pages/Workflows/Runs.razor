@@ -1,4 +1,5 @@
 ﻿@page "/workflows/{WorkflowId:long}/runs"
+@using Werkr.Common.Models
 @using Werkr.Server.Services
 @rendermode InteractiveServer
 @attribute [Authorize]
@@ -23,13 +24,18 @@
     </button>
 </div>
 
+<FilterBar PageKey="runs"
+           Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync"
+           OnFilterCleared="OnFilterClearedAsync" />
+
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
 }
 
 @if ( _isLoading && _runs is null ) {
     <LoadingSpinner Message="Loading runs…" />
-} else if ( _runs is not null && _runs.Count > 0 ) {
+} else if ( _runs is not null && FilteredRuns.Count > 0 ) {
     <div class="table-responsive">
         <table class="table table-striped align-middle">
             <thead>
@@ -42,7 +48,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ( WorkflowRunDto run in _runs ) {
+                @foreach ( WorkflowRunDto run in FilteredRuns ) {
                     <tr>
                         <td><a href="/workflows/runs/@run.Id">@run.Id.ToString()[..8]…</a></td>
                         <td>@run.StartTime.ToString( "g" )</td>
@@ -66,6 +72,7 @@
     [Parameter] public long WorkflowId { get; set; }
 
     private List<WorkflowRunDto>? _runs;
+    private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
     private bool _disposed;
@@ -73,6 +80,22 @@
     private CancellationTokenSource? _cts;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Running", "Completed", "Failed", "Skipped"] ),
+        new FilterField( "since", "Since", FilterFieldType.Date ),
+        new FilterField( "until", "Until", FilterFieldType.Date ),
+    ] );
+
+    private List<WorkflowRunDto> FilteredRuns => ( _runs ?? [] )
+        .Where( r =>
+            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "status" ) )
+              || r.Status.Equals( _activeCriteria.Get( "status" ), StringComparison.OrdinalIgnoreCase ) )
+            && ( !DateTime.TryParse( _activeCriteria?.Get( "since" ), out DateTime since )
+              || r.StartTime >= since )
+            && ( !DateTime.TryParse( _activeCriteria?.Get( "until" ), out DateTime until )
+              || r.StartTime <= until.AddDays( 1 ) ) )
+        .ToList( );
 
     protected override async Task OnInitializedAsync( ) {
         _breadcrumbs = [
@@ -120,5 +143,15 @@
         _cts?.Dispose( );
         _refreshTimer?.Dispose( );
         return ValueTask.CompletedTask;
+    }
+
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
     }
 }

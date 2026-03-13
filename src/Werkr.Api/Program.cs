@@ -249,6 +249,7 @@ public class Program {
             _ = app.MapHolidayCalendarEndpoints( );
             _ = app.MapEventEndpoints( );
             _ = app.MapShellEndpoints( );
+            _ = app.MapFilterEndpoints( );
 
             _ = app.MapDefaultEndpoints( );
 

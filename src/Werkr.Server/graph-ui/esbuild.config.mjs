@@ -2,14 +2,25 @@ import { build } from "esbuild";
 
 const isProd = process.env.NODE_ENV === "production";
 
-await build({
-  entryPoints: ["src/index.ts"],
+const shared = {
   bundle: true,
   format: "esm",
   target: "es2022",
-  outfile: "../wwwroot/js/dist/graph-ui.js",
   minify: isProd,
   sourcemap: isProd ? false : "linked",
   treeShaking: true,
   logLevel: "info",
-});
+};
+
+await Promise.all([
+  build({
+    ...shared,
+    entryPoints: ["src/index.ts"],
+    outfile: "../wwwroot/js/dist/graph-ui.js",
+  }),
+  build({
+    ...shared,
+    entryPoints: ["src/timeline/timeline-view.ts"],
+    outfile: "../wwwroot/js/dist/timeline-view.js",
+  }),
+]);

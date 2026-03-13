@@ -123,6 +123,9 @@ public class Program {
             // Server configuration cache — reads config from the DB instead of appsettings
             _ = builder.Services.AddSingleton<ServerConfigCache>( );
 
+            // Saved filter service — localStorage CRUD for personal filter views
+            _ = builder.Services.AddScoped<SavedFilterService>( );
+
             // Auth forwarding handler — self-mints JWT for outgoing API requests
             _ = builder.Services.AddTransient<AuthForwardingHandler>( );
 

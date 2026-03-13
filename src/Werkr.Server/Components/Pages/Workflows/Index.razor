@@ -1,5 +1,6 @@
 ﻿@page "/workflows"
 @rendermode InteractiveServer
+@using Werkr.Common.Models
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
@@ -23,13 +24,16 @@
     </button>
 </div>
 
+<FilterBar PageKey="workflows" Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
+
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
 }
 
 @if ( _isLoading && _workflows is null ) {
     <LoadingSpinner Message="Loading workflows…" />
-} else if ( _workflows is not null && _workflows.Count > 0 ) {
+} else if ( _workflows is not null && FilteredWorkflows.Count > 0 ) {
     <div class="table-responsive">
         <table class="table table-striped align-middle">
             <thead>
@@ -42,7 +46,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ( WorkflowDto w in _workflows ) {
+                @foreach ( WorkflowDto w in FilteredWorkflows ) {
                     <tr>
                         <td>@w.Id</td>
                         <td><a href="/workflows/@w.Id">@w.Name</a></td>
@@ -77,12 +81,26 @@
 
 @code {
     private List<WorkflowDto>? _workflows;
+    private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
     private bool _isRunning;
     private ConfirmDialog _confirmDialog = default!;
     private long _pendingDeleteId;
     private string _deleteMessage = "";
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "search", "Name", FilterFieldType.Text ),
+        new FilterField( "enabled", "Enabled", FilterFieldType.Dropdown, ["Yes", "No"] ),
+    ] );
+
+    private List<WorkflowDto> FilteredWorkflows => ( _workflows ?? [] )
+        .Where( w =>
+            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "search" ) )
+              || w.Name.Contains( _activeCriteria.Get( "search" )!, StringComparison.OrdinalIgnoreCase ) )
+            && ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "enabled" ) )
+              || ( _activeCriteria.Get( "enabled" ) == "Yes" ? w.Enabled : !w.Enabled ) ) )
+        .ToList( );
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
         new( "Task List", "/" ),
@@ -142,5 +160,15 @@
         } finally {
             _isRunning = false;
         }
+    }
+
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
     }
 }

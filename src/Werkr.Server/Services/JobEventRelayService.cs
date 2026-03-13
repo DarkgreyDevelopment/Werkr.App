@@ -73,7 +73,7 @@ public sealed partial class JobEventRelayService(
 
         using HttpResponseMessage response = await client.SendAsync(
             request, HttpCompletionOption.ResponseHeadersRead, ct );
-        response.EnsureSuccessStatusCode( );
+        _ = response.EnsureSuccessStatusCode( );
 
         _isConnected = true;
         LogConnected( _logger );
@@ -94,9 +94,9 @@ public sealed partial class JobEventRelayService(
             }
 
             if (line.StartsWith( "event:", StringComparison.Ordinal )) {
-                currentEventType = line[ 6.. ].Trim( );
+                currentEventType = line[6..].Trim( );
             } else if (line.StartsWith( "data:", StringComparison.Ordinal )) {
-                currentData = line[ 5.. ].Trim( );
+                currentData = line[5..].Trim( );
             } else if (line.Length == 0 && currentEventType is not null && currentData is not null) {
                 // End of SSE frame — dispatch.
                 await DispatchEventAsync( currentEventType, currentData, ct );
@@ -182,19 +182,19 @@ public sealed partial class JobEventRelayService(
                     break;
 
                 case "run-completed": {
-                    bool success = root.GetProperty( "success" ).GetBoolean( );
-                    await _hubContext.Clients.Group( group ).SendAsync( "RunStatusChanged",
-                        new RunStatusDto(
-                            runId,
-                            success ? "Completed" : "Failed",
-                            null,
-                            root.TryGetProperty( "failedStepId", out JsonElement fsId ) && fsId.ValueKind != JsonValueKind.Null
-                                ? fsId.GetInt64( )
-                                : null,
-                            ParseTimestamp( root )
-                        ), ct );
-                    break;
-                }
+                        bool success = root.GetProperty( "success" ).GetBoolean( );
+                        await _hubContext.Clients.Group( group ).SendAsync( "RunStatusChanged",
+                            new RunStatusDto(
+                                runId,
+                                success ? "Completed" : "Failed",
+                                null,
+                                root.TryGetProperty( "failedStepId", out JsonElement fsId ) && fsId.ValueKind != JsonValueKind.Null
+                                    ? fsId.GetInt64( )
+                                    : null,
+                                ParseTimestamp( root )
+                            ), ct );
+                        break;
+                    }
 
                 case "log-appended":
                     await _hubContext.Clients.Group( group ).SendAsync( "LogAppended",
