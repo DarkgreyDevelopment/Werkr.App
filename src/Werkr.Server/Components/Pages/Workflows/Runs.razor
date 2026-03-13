@@ -99,7 +99,6 @@
 
     protected override async Task OnInitializedAsync( ) {
         _breadcrumbs = [
-            new( "Task List", "/" ),
             new( "Workflows", "/workflows" ),
             new( $"Workflow {WorkflowId}", $"/workflows/{WorkflowId}" ),
             new( "Runs" )

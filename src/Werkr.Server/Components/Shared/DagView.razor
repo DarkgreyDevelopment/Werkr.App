@@ -15,6 +15,13 @@
                 </marker>
             </defs>
 
+            @foreach ( ParallelGroup group in _parallelGroups ) {
+                <rect x="@group.X" y="@group.Y"
+                      width="@group.Width" height="@group.Height"
+                      rx="10" ry="10"
+                      class="dag-parallel-group" />
+            }
+
             @foreach ( DagEdge edge in _edges ) {
                 <line x1="@edge.X1" y1="@edge.Y1"
                       x2="@edge.X2" y2="@edge.Y2"
@@ -68,6 +75,7 @@
 
     private List<DagNode> _nodes = [];
     private List<DagEdge> _edges = [];
+    private List<ParallelGroup> _parallelGroups = [];
     private int _svgWidth;
     private int _svgHeight;
 
@@ -81,6 +89,7 @@
         if ( steps.Count == 0 ) {
             _nodes = [];
             _edges = [];
+            _parallelGroups = [];
             _svgWidth = 0;
             _svgHeight = 0;
             return;
@@ -165,6 +174,21 @@
             }
         }
 
+        // Build parallel group rectangles for multi-node layers
+        const int groupPad = 10;
+        _parallelGroups = [];
+        for ( int layerIdx = 0; layerIdx < layers.Count; layerIdx++ ) {
+            List<long> layer = layers[layerIdx];
+            if ( layer.Count < 2 ) continue;
+            DagNode first = nodePositions[layer[0]];
+            DagNode last = nodePositions[layer[^1]];
+            _parallelGroups.Add( new ParallelGroup(
+                X: first.X - groupPad,
+                Y: first.Y - groupPad,
+                Width: last.X + NodeWidth - first.X + groupPad * 2,
+                Height: NodeHeight + groupPad * 2 ) );
+        }
+
         // Build edges
         _edges = [];
         foreach ( WorkflowStepDto step in steps ) {
@@ -204,4 +228,5 @@
 
     private sealed record DagNode( WorkflowStepDto Step, string Label, int X, int Y );
     private sealed record DagEdge( int X1, int Y1, int X2, int Y2 );
+    private sealed record ParallelGroup( int X, int Y, int Width, int Height );
 }

@@ -12,15 +12,15 @@
     <nav class="nav flex-column">
         <AuthorizeView>
             <Authorized>
-                @* ── Dashboard group ── *@
-                <details class="nav-group px-3">
+                @* ── Workflows group (all authenticated) ── *@
+                <details class="nav-group px-3" open>
                     <summary class="nav-group-toggle" onclick="event.stopPropagation()">
-                        <span class="nav-group-label">Dashboard</span>
+                        <span class="nav-group-label">Workflows</span>
                     </summary>
                     <div class="nav-group-items">
                         <div class="nav-item">
                             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                                <span class="nav-label">Task List</span>
+                                <span class="nav-label">Dashboard</span>
                             </NavLink>
                         </div>
                         <div class="nav-item">
@@ -36,38 +36,33 @@
                     </div>
                 </details>
 
-                @* ── Automation group ── *@
-                <AuthorizeView Roles="Admin,Operator" Context="automationAuth">
+                @* ── Tasks group (Admin/Operator) ── *@
+                <AuthorizeView Roles="Admin,Operator" Context="tasksAuth">
                     <details class="nav-group px-3">
                         <summary class="nav-group-toggle" onclick="event.stopPropagation()">
-                            <span class="nav-group-label">Automation</span>
+                            <span class="nav-group-label">Tasks</span>
                         </summary>
                         <div class="nav-group-items">
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="tasks">
+                                    <span class="nav-label">All Tasks</span>
+                                </NavLink>
+                            </div>
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="schedules">
                                     <span class="nav-label">Schedules</span>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
-                                <NavLink class="nav-link" href="tasks">
-                                    <span class="nav-label">Tasks</span>
-                                </NavLink>
-                            </div>
-                            <div class="nav-item">
-                                <NavLink class="nav-link" href="workflows">
-                                    <span class="nav-label">Workflows</span>
-                                </NavLink>
-                            </div>
-                            <div class="nav-item">
-                                <NavLink class="nav-link" href="holiday-calendars">
-                                    <span class="nav-label">Holiday Calendars</span>
+                                <NavLink class="nav-link" href="tasklist">
+                                    <span class="nav-label">Task List</span>
                                 </NavLink>
                             </div>
                         </div>
                     </details>
                 </AuthorizeView>
 
-                @* ── Administration group ── *@
+                @* ── Administration group (Admin) ── *@
                 <AuthorizeView Roles="Admin" Context="adminAuth">
                     <details class="nav-group px-3">
                         <summary class="nav-group-toggle" onclick="event.stopPropagation()">
@@ -97,6 +92,11 @@
                             <div class="nav-item">
                                 <NavLink class="nav-link" href="agents">
                                     <span class="nav-label">Agents</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="holiday-calendars">
+                                    <span class="nav-label">Holiday Calendars</span>
                                 </NavLink>
                             </div>
                         </div>

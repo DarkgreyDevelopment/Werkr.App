@@ -26,6 +26,7 @@ internal static class WorkflowEndpoints {
         MapStepDependencies( app );
         MapWorkflowSchedules( app );
         MapWorkflowExecution( app );
+        MapWorkflowDashboard( app );
         return app;
     }
 
@@ -513,5 +514,247 @@ internal static class WorkflowEndpoints {
         } )
         .WithName( "RetryFromFailed" )
         .RequireAuthorization( Policies.CanExecute );
+    }
+
+    // ── Workflow Dashboard ──
+
+    /// <summary>
+    /// Registers aggregated dashboard and latest-run-status endpoints.
+    /// </summary>
+    private static void MapWorkflowDashboard( WebApplication app ) {
+
+        _ = app.MapGet( "/api/workflows/dashboard", async (
+            int? page,
+            int? pageSize,
+            string? search,
+            string? tag,
+            string? status,
+            bool? enabled,
+            int? recentRunCount,
+            WerkrDbContext dbContext,
+            ScheduleService scheduleService,
+            ILogger<Program> logger,
+            CancellationToken ct
+        ) => {
+            int pageVal = Math.Max( 1, page ?? 1 );
+            int pageSizeVal = Math.Clamp( pageSize ?? 25, 1, 100 );
+            int sparklineCount = Math.Clamp( recentRunCount ?? 10, 1, 50 );
+
+            // Query 1 — Paginated workflow summaries
+            IQueryable<Workflow> query = dbContext.Workflows.AsNoTracking( );
+
+            if ( !string.IsNullOrWhiteSpace( search ) ) {
+                query = query.Where( w => w.Name.Contains( search ) );
+            }
+
+            if ( enabled.HasValue ) {
+                query = query.Where( w => w.Enabled == enabled.Value );
+            }
+
+            if ( !string.IsNullOrWhiteSpace( tag ) ) {
+                query = query.Where( w => w.TargetTags != null && w.TargetTags.Contains( tag ) );
+            }
+
+            bool hasStatusFilter = !string.IsNullOrWhiteSpace( status );
+            int totalCount = await query.CountAsync( ct );
+
+            IQueryable<Workflow> orderedQuery = query.OrderBy( w => w.Name );
+
+            // When status filter is active, fetch all rows so we can filter
+            // in memory before paginating; otherwise paginate at DB level.
+            if ( !hasStatusFilter ) {
+                orderedQuery = orderedQuery
+                    .Skip( ( pageVal - 1 ) * pageSizeVal )
+                    .Take( pageSizeVal );
+            }
+
+            var summaries = await orderedQuery
+                .Select( w => new {
+                    w.Id,
+                    w.Name,
+                    w.Description,
+                    w.Enabled,
+                    w.TargetTags,
+                    StepCount = w.Steps.Count,
+                    RunCount = w.Runs.Count,
+                    LastRun = w.Runs
+                        .OrderByDescending( r => r.StartTime )
+                        .Select( r => new { r.Id, r.Status, r.StartTime, r.EndTime } )
+                        .FirstOrDefault( )
+                } )
+                .ToListAsync( ct );
+
+            // Apply last-run status filter in memory (status is an enum stored as int)
+            if ( hasStatusFilter ) {
+                summaries = summaries
+                    .Where( s => s.LastRun is not null
+                        && s.LastRun.Status.ToString( ).Equals( status, StringComparison.OrdinalIgnoreCase ) )
+                    .ToList( );
+                totalCount = summaries.Count;
+                summaries = summaries
+                    .Skip( ( pageVal - 1 ) * pageSizeVal )
+                    .Take( pageSizeVal )
+                    .ToList( );
+            }
+
+            List<long> workflowIds = summaries.Select( w => w.Id ).ToList( );
+
+            // Query 2 — Sparkline data (recent runs for the page of workflow IDs)
+            List<WorkflowRun> recentRuns;
+            try {
+                recentRuns = await dbContext.WorkflowRuns.AsNoTracking( )
+                    .Where( r => workflowIds.Contains( r.WorkflowId ) )
+                    .GroupBy( r => r.WorkflowId )
+                    .SelectMany( g => g.OrderByDescending( r => r.StartTime ).Take( sparklineCount ) )
+                    .ToListAsync( ct );
+            } catch ( Exception ex ) {
+                // Fallback: EF provider may not support GroupBy+SelectMany+Take
+                logger.LogWarning( ex, "Sparkline GroupBy query failed; falling back to in-memory grouping" );
+                recentRuns = await dbContext.WorkflowRuns.AsNoTracking( )
+                    .Where( r => workflowIds.Contains( r.WorkflowId ) )
+                    .OrderByDescending( r => r.StartTime )
+                    .ToListAsync( ct );
+                recentRuns = recentRuns
+                    .GroupBy( r => r.WorkflowId )
+                    .SelectMany( g => g.Take( sparklineCount ) )
+                    .ToList( );
+            }
+
+            ILookup<long, RunSparklineDto> sparklineByWorkflow = recentRuns
+                .OrderBy( r => r.StartTime )
+                .ToLookup(
+                    r => r.WorkflowId,
+                    r => new RunSparklineDto(
+                        RunId: r.Id,
+                        Status: r.Status.ToString( ),
+                        DurationSeconds: r.EndTime.HasValue
+                            ? ( r.EndTime.Value - r.StartTime ).TotalSeconds
+                            : null ) );
+
+            // Schedule computation — next scheduled run per workflow
+            List<WorkflowSchedule> scheduleLinks = await dbContext.WorkflowSchedules.AsNoTracking( )
+                .Where( ws => workflowIds.Contains( ws.WorkflowId ) )
+                .ToListAsync( ct );
+
+            Dictionary<long, DateTime?> nextScheduledByWorkflow = [];
+            DateTime utcNow = DateTime.UtcNow;
+            DateTime windowEnd = utcNow.AddDays( 30 );
+
+            ILookup<long, Guid> scheduleIdsByWorkflow = scheduleLinks
+                .ToLookup( ws => ws.WorkflowId, ws => ws.ScheduleId );
+
+            foreach ( long wfId in workflowIds ) {
+                DateTime? earliest = null;
+                foreach ( Guid scheduleId in scheduleIdsByWorkflow[wfId] ) {
+                    Schedule? schedule = await scheduleService.GetByIdAsync( scheduleId, ct );
+                    if ( schedule is null ) continue;
+                    try {
+                        IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
+                            schedule, windowEnd );
+                        DateTime? next = occurrences.FirstOrDefault( o => o > utcNow );
+                        if ( next.HasValue && next.Value != default
+                            && ( !earliest.HasValue || next.Value < earliest.Value ) ) {
+                            earliest = next;
+                        }
+                    } catch {
+                        // Schedule may be misconfigured — skip it
+                    }
+                }
+                nextScheduledByWorkflow[wfId] = earliest;
+            }
+
+            // Assemble response
+            List<WorkflowDashboardDto> items = summaries.Select( s => new WorkflowDashboardDto(
+                Id: s.Id,
+                Name: s.Name,
+                Description: s.Description,
+                Enabled: s.Enabled,
+                TargetTags: s.TargetTags,
+                StepCount: s.StepCount,
+                RunCount: s.RunCount,
+                LastRun: s.LastRun is not null
+                    ? new WorkflowRunSummaryDto(
+                        Id: s.LastRun.Id,
+                        Status: s.LastRun.Status.ToString( ),
+                        StartTime: s.LastRun.StartTime,
+                        EndTime: s.LastRun.EndTime )
+                    : null,
+                RecentRuns: sparklineByWorkflow[s.Id].ToList( ),
+                NextScheduledRun: nextScheduledByWorkflow.GetValueOrDefault( s.Id )
+            ) ).ToList( );
+
+            return Results.Ok( new WorkflowDashboardPageDto(
+                Items: items,
+                TotalCount: totalCount,
+                Page: pageVal,
+                PageSize: pageSizeVal ) );
+        } )
+        .WithName( "GetWorkflowDashboard" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapGet( "/api/workflows/{id}/latest-run-status", async (
+            long id,
+            WerkrDbContext dbContext,
+            ILogger<Program> logger,
+            CancellationToken ct
+        ) => {
+            var latestRun = await dbContext.WorkflowRuns.AsNoTracking( )
+                .Where( r => r.WorkflowId == id )
+                .OrderByDescending( r => r.StartTime )
+                .Select( r => new { r.Id, r.Status, r.StartTime, r.EndTime } )
+                .FirstOrDefaultAsync( ct );
+
+            if ( latestRun is null ) {
+                return Results.Ok( new WorkflowLatestRunStatusDto(
+                    RunId: null,
+                    RunStatus: null,
+                    RunStartTime: null,
+                    RunEndTime: null,
+                    Steps: [] ) );
+            }
+
+            List<StepStatusSummaryDto> steps;
+            try {
+                steps = await dbContext.WorkflowStepExecutions.AsNoTracking( )
+                    .Where( e => e.WorkflowRunId == latestRun.Id )
+                    .GroupBy( e => e.StepId )
+                    .Select( g => g.OrderByDescending( e => e.Attempt ).First( ) )
+                    .Select( e => new StepStatusSummaryDto(
+                        StepId: e.StepId,
+                        Status: e.Status.ToString( ),
+                        StartTime: e.StartTime,
+                        EndTime: e.EndTime,
+                        ExitCode: e.Job != null ? e.Job.ExitCode : null ) )
+                    .ToListAsync( ct );
+            } catch ( Exception ex ) {
+                // Fallback: EF provider (e.g. SQLite) may not support GroupBy+First
+                logger.LogWarning( ex, "Latest-run-status GroupBy query failed; falling back to in-memory grouping" );
+                List<WorkflowStepExecution> allExecs = await dbContext.WorkflowStepExecutions
+                    .AsNoTracking( )
+                    .Include( e => e.Job )
+                    .Where( e => e.WorkflowRunId == latestRun.Id )
+                    .OrderByDescending( e => e.Attempt )
+                    .ToListAsync( ct );
+                steps = allExecs
+                    .GroupBy( e => e.StepId )
+                    .Select( g => g.First( ) )
+                    .Select( e => new StepStatusSummaryDto(
+                        StepId: e.StepId,
+                        Status: e.Status.ToString( ),
+                        StartTime: e.StartTime,
+                        EndTime: e.EndTime,
+                        ExitCode: e.Job != null ? e.Job.ExitCode : null ) )
+                    .ToList( );
+            }
+
+            return Results.Ok( new WorkflowLatestRunStatusDto(
+                RunId: latestRun.Id,
+                RunStatus: latestRun.Status.ToString( ),
+                RunStartTime: latestRun.StartTime,
+                RunEndTime: latestRun.EndTime,
+                Steps: steps ) );
+        } )
+        .WithName( "GetLatestRunStatus" )
+        .RequireAuthorization( Policies.CanRead );
     }
 }

@@ -1,74 +1,220 @@
-﻿@page "/workflows"
+﻿@page "/"
+@page "/workflows"
 @rendermode InteractiveServer
 @using Werkr.Common.Models
-@attribute [Authorize( Roles = "Admin,Operator" )]
+@using Werkr.Server.Helpers
+@attribute [Authorize]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
 
-<PageTitle>Werkr - Workflows</PageTitle>
+<PageTitle>Werkr - Workflow Dashboard</PageTitle>
 
-<h1>Workflows</h1>
+<h1>Workflow Dashboard</h1>
 <Breadcrumb Items="_breadcrumbs" />
 
-<p>Manage multi-step orchestrated workflows with DAG-based execution.</p>
-
-<div class="mb-3">
-    <a href="/workflows/create" class="btn btn-primary">
-        <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Workflow
-    </a>
-    <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
-        @if ( _isLoading ) {
-            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-        }
-        Refresh
-    </button>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <AuthorizeView Roles="Admin,Operator">
+            <a href="/workflows/create" class="btn btn-primary">
+                <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Workflow
+            </a>
+        </AuthorizeView>
+        <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
+            @if ( _isLoading ) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            Refresh
+        </button>
+    </div>
+    <div class="btn-group" role="group" aria-label="View toggle">
+        <button class="btn btn-sm @( _viewMode == "cards" ? "btn-primary" : "btn-outline-secondary" )"
+                @onclick='( ) => _viewMode = "cards"'>
+            <i class="bi bi-grid"></i> Cards
+        </button>
+        <button class="btn btn-sm @( _viewMode == "table" ? "btn-primary" : "btn-outline-secondary" )"
+                @onclick='( ) => _viewMode = "table"'>
+            <i class="bi bi-table"></i> Table
+        </button>
+    </div>
 </div>
 
-<FilterBar PageKey="workflows" Definition="_filterDefinition"
+<FilterBar PageKey="workflow-dashboard" Definition="_filterDefinition"
            OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
 }
 
-@if ( _isLoading && _workflows is null ) {
+@if ( _isLoading && _dashboard is null ) {
     <LoadingSpinner Message="Loading workflows…" />
-} else if ( _workflows is not null && FilteredWorkflows.Count > 0 ) {
-    <div class="table-responsive">
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Steps</th>
-                    <th>Enabled</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ( WorkflowDto w in FilteredWorkflows ) {
-                    <tr>
-                        <td>@w.Id</td>
-                        <td><a href="/workflows/@w.Id">@w.Name</a></td>
-                        <td>@w.Steps.Count</td>
-                        <td>
-                            <span class="badge @( w.Enabled ? "bg-success" : "bg-secondary" )">
-                                @( w.Enabled ? "Yes" : "No" )
-                            </span>
-                        </td>
-                        <td class="text-end">
-                            <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id">Edit</a>
-                            <button class="btn btn-outline-info btn-sm me-1" @onclick="() => RunWorkflow( w.Id )" disabled="@_isRunning">
-                                Run
-                            </button>
+} else if ( _dashboard is not null && _dashboard.Items.Count > 0 ) {
+
+    @if ( _viewMode == "cards" ) {
+        @* ── Card Grid View ── *@
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-3">
+            @foreach ( WorkflowDashboardDto w in _dashboard.Items ) {
+                <div class="col">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-0">
+                                    <a href="/workflows/@w.Id" class="text-decoration-none">@w.Name</a>
+                                </h5>
+                                <span class="badge @( w.Enabled ? "bg-success" : "bg-secondary" )">
+                                    @( w.Enabled ? "Enabled" : "Disabled" )
+                                </span>
+                            </div>
+
+                            @if ( w.TargetTags is { Length: > 0 } ) {
+                                <div class="mb-2">
+                                    @foreach ( string tagItem in w.TargetTags ) {
+                                        <span class="badge bg-info me-1">@tagItem</span>
+                                    }
+                                </div>
+                            }
+
+                            <div class="d-flex gap-3 text-muted small mb-2">
+                                <span><strong>@w.StepCount</strong> steps</span>
+                                <span><strong>@w.RunCount</strong> runs</span>
+                            </div>
+
+                            @if ( w.LastRun is not null ) {
+                                <div class="mb-2">
+                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( w.LastRun.Status )">
+                                        @w.LastRun.Status
+                                    </span>
+                                    <span class="text-muted small ms-1">@FormatRelativeTime( w.LastRun.StartTime )</span>
+                                </div>
+                            } else {
+                                <div class="mb-2 text-muted small">No runs yet</div>
+                            }
+
+                            @if ( w.RecentRuns.Count > 0 ) {
+                                <div class="mb-2">
+                                    <RunSparkline Runs="MapSparkline( w.RecentRuns )" />
+                                </div>
+                            }
+
+                            @if ( w.NextScheduledRun.HasValue ) {
+                                <div class="text-muted small">
+                                    Next: @w.NextScheduledRun.Value.ToString( "g" )
+                                </div>
+                            }
+                        </div>
+                        <div class="card-footer">
+                            <AuthorizeView Roles="Admin,Operator">
+                                <button class="btn btn-outline-info btn-sm me-1"
+                                        @onclick="( ) => RunWorkflow( w.Id )" disabled="@_isRunning">
+                                    Run
+                                </button>
+                                <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id/edit">Edit</a>
+                            </AuthorizeView>
                             <a class="btn btn-outline-secondary btn-sm me-1" href="/workflows/@w.Id/runs">Runs</a>
-                            <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( w )">Delete</button>
-                        </td>
+                            <AuthorizeView Roles="Admin,Operator">
+                                <button class="btn btn-outline-danger btn-sm" @onclick="( ) => PromptDelete( w.Id, w.Name )">Delete</button>
+                            </AuthorizeView>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    } else {
+        @* ── Table View ── *@
+        <div class="table-responsive mb-3">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Tags</th>
+                        <th>Steps</th>
+                        <th>Enabled</th>
+                        <th>Last Run</th>
+                        <th>Sparkline</th>
+                        <th>Next Scheduled</th>
+                        <th class="text-end">Actions</th>
                     </tr>
+                </thead>
+                <tbody>
+                    @foreach ( WorkflowDashboardDto w in _dashboard.Items ) {
+                        <tr>
+                            <td><a href="/workflows/@w.Id">@w.Name</a></td>
+                            <td>
+                                @if ( w.TargetTags is { Length: > 0 } ) {
+                                    @foreach ( string tagItem in w.TargetTags ) {
+                                        <span class="badge bg-info me-1">@tagItem</span>
+                                    }
+                                }
+                            </td>
+                            <td>@w.StepCount</td>
+                            <td>
+                                <span class="badge @( w.Enabled ? "bg-success" : "bg-secondary" )">
+                                    @( w.Enabled ? "Yes" : "No" )
+                                </span>
+                            </td>
+                            <td>
+                                @if ( w.LastRun is not null ) {
+                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( w.LastRun.Status )">
+                                        @w.LastRun.Status
+                                    </span>
+                                    <span class="text-muted small ms-1">@FormatRelativeTime( w.LastRun.StartTime )</span>
+                                } else {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if ( w.RecentRuns.Count > 0 ) {
+                                    <RunSparkline Runs="MapSparkline( w.RecentRuns )" />
+                                }
+                            </td>
+                            <td>
+                                @if ( w.NextScheduledRun.HasValue ) {
+                                    @w.NextScheduledRun.Value.ToString( "g" )
+                                } else {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <AuthorizeView Roles="Admin,Operator">
+                                    <button class="btn btn-outline-info btn-sm me-1"
+                                            @onclick="( ) => RunWorkflow( w.Id )" disabled="@_isRunning">
+                                        Run
+                                    </button>
+                                    <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id/edit">Edit</a>
+                                </AuthorizeView>
+                                <a class="btn btn-outline-secondary btn-sm me-1" href="/workflows/@w.Id/runs">Runs</a>
+                                <AuthorizeView Roles="Admin,Operator">
+                                    <button class="btn btn-outline-danger btn-sm"
+                                            @onclick="( ) => PromptDelete( w.Id, w.Name )">Delete</button>
+                                </AuthorizeView>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ── Pagination ── *@
+    @if ( _dashboard.TotalCount > _dashboard.PageSize ) {
+        int totalPages = (int) Math.Ceiling( (double) _dashboard.TotalCount / _dashboard.PageSize );
+        <nav aria-label="Workflow dashboard pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @( _page <= 1 ? "disabled" : "" )">
+                    <button class="page-link" @onclick="( ) => GoToPage( _page - 1 )">Previous</button>
+                </li>
+                @for ( int p = 1; p <= totalPages; p++ ) {
+                    int pageNum = p;
+                    <li class="page-item @( pageNum == _page ? "active" : "" )">
+                        <button class="page-link" @onclick="( ) => GoToPage( pageNum )">@pageNum</button>
+                    </li>
                 }
-            </tbody>
-        </table>
-    </div>
+                <li class="page-item @( _page >= totalPages ? "disabled" : "" )">
+                    <button class="page-link" @onclick="( ) => GoToPage( _page + 1 )">Next</button>
+                </li>
+            </ul>
+        </nav>
+    }
+
 } else if ( !_isLoading ) {
     <EmptyState Message="No workflows configured yet. Click 'New Workflow' to create one." />
 }
@@ -80,30 +226,25 @@
                OnConfirmed="DeleteConfirmedAsync" />
 
 @code {
-    private List<WorkflowDto>? _workflows;
+    private WorkflowDashboardPageDto? _dashboard;
     private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
     private bool _isRunning;
+    private string _viewMode = "cards";
+    private int _page = 1;
     private ConfirmDialog _confirmDialog = default!;
     private long _pendingDeleteId;
     private string _deleteMessage = "";
 
     private static readonly FilterDefinition _filterDefinition = new( [
         new FilterField( "search", "Name", FilterFieldType.Text ),
+        new FilterField( "tag", "Tag", FilterFieldType.Text ),
         new FilterField( "enabled", "Enabled", FilterFieldType.Dropdown, ["Yes", "No"] ),
+        new FilterField( "status", "Last Run Status", FilterFieldType.Dropdown, ["Running", "Completed", "Failed", "Cancelled"] ),
     ] );
 
-    private List<WorkflowDto> FilteredWorkflows => ( _workflows ?? [] )
-        .Where( w =>
-            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "search" ) )
-              || w.Name.Contains( _activeCriteria.Get( "search" )!, StringComparison.OrdinalIgnoreCase ) )
-            && ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "enabled" ) )
-              || ( _activeCriteria.Get( "enabled" ) == "Yes" ? w.Enabled : !w.Enabled ) ) )
-        .ToList( );
-
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
         new( "Workflows" )
     ];
 
@@ -116,7 +257,8 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" );
+            string url = BuildDashboardUrl( );
+            _dashboard = await client.GetFromJsonAsync<WorkflowDashboardPageDto>( url );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load workflows: {ex.Message}";
         } finally {
@@ -124,9 +266,31 @@
         }
     }
 
-    private void PromptDelete( WorkflowDto wf ) {
-        _pendingDeleteId = wf.Id;
-        _deleteMessage = $"Are you sure you want to delete workflow '{wf.Name}'? All steps and runs will be lost.";
+    private string BuildDashboardUrl( ) {
+        List<string> queryParts = [$"page={_page}", "pageSize=25"];
+        if ( _activeCriteria is not null ) {
+            string? search = _activeCriteria.Get( "search" );
+            if ( !string.IsNullOrWhiteSpace( search ) )
+                queryParts.Add( $"search={Uri.EscapeDataString( search )}" );
+
+            string? tagFilter = _activeCriteria.Get( "tag" );
+            if ( !string.IsNullOrWhiteSpace( tagFilter ) )
+                queryParts.Add( $"tag={Uri.EscapeDataString( tagFilter )}" );
+
+            string? enabledFilter = _activeCriteria.Get( "enabled" );
+            if ( !string.IsNullOrWhiteSpace( enabledFilter ) )
+                queryParts.Add( $"enabled={( enabledFilter == "Yes" ? "true" : "false" )}" );
+
+            string? statusFilter = _activeCriteria.Get( "status" );
+            if ( !string.IsNullOrWhiteSpace( statusFilter ) )
+                queryParts.Add( $"status={Uri.EscapeDataString( statusFilter )}" );
+        }
+        return "/api/workflows/dashboard?" + string.Join( "&", queryParts );
+    }
+
+    private void PromptDelete( long id, string name ) {
+        _pendingDeleteId = id;
+        _deleteMessage = $"Are you sure you want to delete workflow '{name}'? All steps and runs will be lost.";
         _confirmDialog.Show( );
     }
 
@@ -154,6 +318,8 @@
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );
                 _errorMessage = $"Run failed: {body}";
+            } else {
+                await LoadAsync( );
             }
         } catch ( Exception ex ) {
             _errorMessage = $"Run failed: {ex.Message}";
@@ -162,13 +328,36 @@
         }
     }
 
+    private async Task GoToPage( int pageNum ) {
+        _page = pageNum;
+        await LoadAsync( );
+    }
+
     private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
         _activeCriteria = criteria;
+        _page = 1;
         await LoadAsync( );
     }
 
     private async Task OnFilterClearedAsync( ) {
         _activeCriteria = null;
+        _page = 1;
         await LoadAsync( );
+    }
+
+    private static IReadOnlyList<RunSparkline.RunSummary> MapSparkline(
+        IReadOnlyList<RunSparklineDto> runs ) =>
+        runs.Select( r => new RunSparkline.RunSummary(
+            RunId: r.RunId,
+            Status: r.Status,
+            DurationSeconds: r.DurationSeconds ) ).ToList( );
+
+    private static string FormatRelativeTime( DateTime utcTime ) {
+        TimeSpan span = DateTime.UtcNow - utcTime;
+        if ( span.TotalMinutes < 1 ) return "just now";
+        if ( span.TotalMinutes < 60 ) return $"{(int) span.TotalMinutes}m ago";
+        if ( span.TotalHours < 24 ) return $"{(int) span.TotalHours}h ago";
+        if ( span.TotalDays < 30 ) return $"{(int) span.TotalDays}d ago";
+        return utcTime.ToString( "d" );
     }
 }

@@ -51,7 +51,8 @@ internal static class WorkflowMapper {
             DependencyMode: step.DependencyMode.ToString( ),
             Dependencies: [.. step.Dependencies.Select( ToDepDto )],
             InputVariableName: step.InputVariableName,
-            OutputVariableName: step.OutputVariableName );
+            OutputVariableName: step.OutputVariableName,
+            TaskName: step.Task?.Name );
 
     /// <summary>Maps a <see cref="WorkflowStepDependency"/> to a <see cref="StepDependencyDto"/>.</summary>
     public static StepDependencyDto ToDepDto( WorkflowStepDependency dep ) =>

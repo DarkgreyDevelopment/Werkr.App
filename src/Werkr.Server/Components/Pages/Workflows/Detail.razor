@@ -1,0 +1,215 @@
+@page "/workflows/{Id:long}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Workflow Detail</PageTitle>
+
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading workflow…" />
+} else if ( _workflow is not null ) {
+    @* ── Header Bar ── *@
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h1 class="mb-1">@_workflow.Name</h1>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge @( _workflow.Enabled ? "bg-success" : "bg-secondary" )">
+                    @( _workflow.Enabled ? "Enabled" : "Disabled" )
+                </span>
+                @if ( _workflow.TargetTags is { Length: > 0 } ) {
+                    @foreach ( string tag in _workflow.TargetTags ) {
+                        <span class="badge bg-info">@tag</span>
+                    }
+                }
+                @if ( !string.IsNullOrWhiteSpace( _workflow.Description ) ) {
+                    <span class="text-muted small">@_workflow.Description</span>
+                }
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <AuthorizeView Roles="Admin,Operator">
+                <button class="btn btn-outline-info btn-sm"
+                        @onclick="RunNowAsync" disabled="@_isRunning">
+                    @if ( _isRunning ) {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    Run Now
+                </button>
+                <a class="btn btn-outline-primary btn-sm" href="/workflows/@Id/edit">Edit</a>
+            </AuthorizeView>
+            <a class="btn btn-outline-secondary btn-sm" href="/workflows/@Id/runs">View Runs</a>
+        </div>
+    </div>
+
+    @* ── View Switcher Tabs ── *@
+    <div class="d-flex">
+        <div class="@( _selectedStep is not null ? "flex-grow-1" : "w-100" )" style="min-width:0;">
+            <ul class="nav nav-tabs mb-3" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "graph" ? "active" : "" )"
+                            @onclick='( ) => _activeTab = "graph"'>Graph</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "list" ? "active" : "" )"
+                            @onclick='( ) => _activeTab = "list"'>List</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "gantt" ? "active" : "" )"
+                            @onclick='( ) => _activeTab = "gantt"'>Gantt</button>
+                </li>
+            </ul>
+
+            @switch ( _activeTab ) {
+                case "graph":
+                    <div class="card">
+                        <div class="card-body p-2 overflow-auto">
+                            <DagView WorkflowId="Id"
+                                     Steps="_workflow.Steps"
+                                     StepStatuses="_stepStatuses"
+                                     OnStepSelected="OnDagStepSelected" />
+                        </div>
+                    </div>
+                    break;
+
+                case "list":
+                    <WorkflowStepListView Steps="_workflow.Steps"
+                                          StepStatuses="_stepStatuses"
+                                          OnStepSelected="OnListStepSelected" />
+                    break;
+
+                case "gantt":
+                    @if ( _latestRunId.HasValue ) {
+                        <GanttTab RunId="_latestRunId" />
+                    } else {
+                        <EmptyState Message="No runs yet — Gantt view requires at least one workflow run." />
+                    }
+                    break;
+            }
+        </div>
+
+        @* ── Right Panel: Step Detail ── *@
+        @if ( _selectedStep is not null ) {
+            <div class="ms-3" style="min-width:320px;max-width:400px;">
+                <StepDetailPanel Step="_selectedStep"
+                                 Job="GetJobForStep( _selectedStep )"
+                                 OnClose="( ) => _selectedStep = null" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public long Id { get; set; }
+
+    private WorkflowDto? _workflow;
+    private WorkflowLatestRunStatusDto? _latestRunStatus;
+    private Guid? _latestRunId;
+    private Dictionary<long, StepExecutionStatus> _stepStatuses = new( );
+    private StepExecutionDto? _selectedStep;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _isRunning;
+    private string _activeTab = "graph";
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Workflows", "/workflows" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/workflows/{Id}" );
+            if ( _workflow is null ) {
+                _errorMessage = "Workflow not found.";
+                return;
+            }
+            _breadcrumbs = [new( "Workflows", "/workflows" ), new( _workflow.Name )];
+
+            // Load latest run status for DAG overlay
+            HttpResponseMessage statusResponse = await client.GetAsync(
+                $"/api/workflows/{Id}/latest-run-status" );
+            if ( statusResponse.IsSuccessStatusCode ) {
+                _latestRunStatus = await statusResponse.Content
+                    .ReadFromJsonAsync<WorkflowLatestRunStatusDto>( );
+                _latestRunId = _latestRunStatus?.RunId;
+                BuildStepStatuses( );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load workflow: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void BuildStepStatuses( ) {
+        _stepStatuses.Clear( );
+        if ( _latestRunStatus?.Steps is null ) return;
+        foreach ( StepStatusSummaryDto s in _latestRunStatus.Steps ) {
+            if ( Enum.TryParse<StepExecutionStatus>( s.Status, out StepExecutionStatus status ) ) {
+                _stepStatuses[s.StepId] = status;
+            }
+        }
+    }
+
+    private void OnDagStepSelected( WorkflowStepDto step ) {
+        // Map from workflow step to step execution for StepDetailPanel
+        _selectedStep = MapToExecution( step.Id );
+    }
+
+    private void OnListStepSelected( WorkflowStepDto step ) {
+        _selectedStep = MapToExecution( step.Id );
+    }
+
+    private StepExecutionDto? MapToExecution( long stepId ) {
+        StepStatusSummaryDto? status = _latestRunStatus?.Steps
+            ?.FirstOrDefault( s => s.StepId == stepId );
+        if ( status is null || _latestRunId is null ) return null;
+        return new StepExecutionDto(
+            Id: 0,
+            WorkflowRunId: _latestRunId.Value,
+            StepId: stepId,
+            Attempt: 1,
+            Status: status.Status,
+            StartTime: status.StartTime,
+            EndTime: status.EndTime,
+            JobId: null,
+            ErrorMessage: null,
+            SkipReason: null );
+    }
+
+    private JobDto? GetJobForStep( StepExecutionDto step ) => null;
+
+    private async Task RunNowAsync( ) {
+        _isRunning = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PostAsync(
+                $"/api/workflows/{Id}/execute", null );
+            if ( !response.IsSuccessStatusCode ) {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Run failed: {body}";
+            } else {
+                await LoadAsync( );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Run failed: {ex.Message}";
+        } finally {
+            _isRunning = false;
+        }
+    }
+}

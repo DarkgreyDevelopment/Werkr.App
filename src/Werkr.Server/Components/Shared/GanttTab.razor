@@ -4,6 +4,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject ILogger<GanttTab> Logger
+@inject IHttpClientFactory HttpClientFactory
 
 <HeadContent>
     <link rel="stylesheet" href="js/dist/timeline-view.css" />
@@ -21,10 +22,43 @@
     [Parameter] public bool IsRunActive { get; set; }
     [Parameter] public EventCallback<StepExecutionDto> OnStepSelected { get; set; }
 
+    /// <summary>Optional RunId for self-fetching run detail data. When provided and StepExecutions is empty, fetches data from the API.</summary>
+    [Parameter] public Guid? RunId { get; set; }
+
     private readonly string _containerId = $"gantt-{Guid.NewGuid( ):N}";
     private TimelineJsInterop? _interop;
     private string? _errorMessage;
     private bool _initialized;
+    private IReadOnlyList<StepExecutionDto> _effectiveExecutions = [];
+    private IReadOnlyList<WorkflowStepDto> _effectiveSteps = [];
+
+    protected override async Task OnParametersSetAsync( ) {
+        if ( StepExecutions.Count > 0 || RunId is null ) {
+            _effectiveExecutions = StepExecutions;
+            _effectiveSteps = Steps;
+            return;
+        }
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            WorkflowRunDetailDto? detail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
+                $"/api/workflows/runs/{RunId}" );
+            if ( detail is not null ) {
+                _effectiveExecutions = detail.StepExecutions;
+                // Fetch workflow steps if not provided
+                if ( Steps.Count == 0 ) {
+                    WorkflowDto? wf = await client.GetFromJsonAsync<WorkflowDto>(
+                        $"/api/workflows/{detail.WorkflowId}" );
+                    _effectiveSteps = wf?.Steps ?? [];
+                } else {
+                    _effectiveSteps = Steps;
+                }
+            }
+        } catch ( Exception ex ) {
+            Logger.LogWarning( ex, "Failed to fetch run detail for RunId {RunId}.", RunId );
+            _errorMessage = "Failed to load Gantt data.";
+        }
+    }
 
     protected override async Task OnAfterRenderAsync( bool firstRender ) {
         if ( !firstRender || _initialized ) return;
@@ -72,7 +106,7 @@
 
     private GanttItemDto[] MapExecutionsToItems( ) {
         List<GanttItemDto> items = new( );
-        foreach ( StepExecutionDto se in StepExecutions ) {
+        foreach ( StepExecutionDto se in _effectiveExecutions ) {
             if ( se.StartTime is null ) continue;
 
             string stepName = GetStepName( se.StepId );
@@ -95,7 +129,7 @@
     }
 
     private string GetStepName( long stepId ) {
-        WorkflowStepDto? step = Steps.FirstOrDefault( s => s.Id == stepId );
+        WorkflowStepDto? step = _effectiveSteps.FirstOrDefault( s => s.Id == stepId );
         return step is not null ? $"Step #{step.Order} (Task {step.TaskId})" : $"Step {stepId}";
     }
 
@@ -113,7 +147,7 @@
     }
 
     private async Task OnItemClickedAsync( long stepId ) {
-        StepExecutionDto? step = StepExecutions
+        StepExecutionDto? step = _effectiveExecutions
             .Where( e => e.StepId == stepId )
             .OrderByDescending( e => e.Attempt )
             .FirstOrDefault( );

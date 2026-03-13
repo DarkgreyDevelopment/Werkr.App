@@ -29,3 +29,8 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
 }
+
+::deep .dag-parallel-group {
+    fill: var(--werkr-parallel-group-bg, rgba(108,117,125,0.1));
+    stroke: none;
+}

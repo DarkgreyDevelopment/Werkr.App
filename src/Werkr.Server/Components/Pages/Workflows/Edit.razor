@@ -1,4 +1,4 @@
-﻿@page "/workflows/{Id:long}"
+﻿@page "/workflows/{Id:long}/edit"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject IHttpClientFactory HttpClientFactory
@@ -335,7 +335,6 @@
     private long _depDependsOnStepId;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
         new( "Workflows", "/workflows" ),
         new( "Edit" )
     ];
@@ -354,7 +353,7 @@
                 _errorMessage = "Workflow not found.";
                 return;
             }
-            _breadcrumbs = [new( "Task List", "/" ), new( "Workflows", "/workflows" ), new( _workflow.Name )];
+            _breadcrumbs = [new( "Workflows", "/workflows" ), new( _workflow.Name, $"/workflows/{Id}" ), new( "Edit" )];
             _model = new WorkflowFormModel {
                 Name = _workflow.Name,
                 Description = _workflow.Description,
