@@ -1,0 +1,45 @@
+.dag-canvas-container {
+    position: relative;
+}
+
+.dag-canvas {
+    width: 100%;
+    min-height: 400px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    background-color: var(--bs-body-bg);
+}
+
+.dag-minimap {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+    background: var(--bs-body-bg);
+    opacity: 0.9;
+}
+
+.dag-toolbar {
+    padding: 4px 0;
+}
+
+/* X6 foreignObject node styles (must use ::deep to pierce shadow) */
+::deep .werkr-node {
+    font-family: inherit;
+    transition: box-shadow 0.15s ease;
+    cursor: pointer;
+}
+
+::deep .werkr-node:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+::deep .werkr-pulse {
+    animation: werkr-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes werkr-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}

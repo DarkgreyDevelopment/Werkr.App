@@ -1,0 +1,188 @@
+@rendermode InteractiveServer
+@using Werkr.Common.Models
+@using Werkr.Server.Helpers
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<DagCanvas> Logger
+
+<div class="dag-canvas-container position-relative">
+    @* ── Toolbar ── *@
+    <div class="dag-toolbar d-flex align-items-center gap-2 mb-1">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Layout direction">
+            <button type="button"
+                    class="btn @( _direction == "LR" ? "btn-primary" : "btn-outline-secondary" )"
+                    @onclick='( ) => SetDirectionAsync( "LR" )'>
+                LR
+            </button>
+            <button type="button"
+                    class="btn @( _direction == "TB" ? "btn-primary" : "btn-outline-secondary" )"
+                    @onclick='( ) => SetDirectionAsync( "TB" )'>
+                TB
+            </button>
+        </div>
+
+        <div class="btn-group btn-group-sm" role="group" aria-label="Zoom controls">
+            <button type="button" class="btn btn-outline-secondary" @onclick="ZoomInAsync" title="Zoom in">
+                <i class="bi bi-zoom-in"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="ZoomFitAsync" title="Zoom to fit">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="ZoomOutAsync" title="Zoom out">
+                <i class="bi bi-zoom-out"></i>
+            </button>
+        </div>
+
+        <small class="text-muted ms-auto">@( _zoomLevel.ToString( "P0" ) )</small>
+    </div>
+
+    @* ── Canvas ── *@
+    <div id="@_containerId" class="dag-canvas"></div>
+
+    @* ── Minimap ── *@
+    <div id="@_minimapId" class="dag-minimap"></div>
+</div>
+
+@code {
+    [Parameter] public long WorkflowId { get; set; }
+    [Parameter] public IReadOnlyList<WorkflowStepDto>? Steps { get; set; }
+    [Parameter] public EventCallback<WorkflowStepDto> OnStepSelected { get; set; }
+    [Parameter] public IReadOnlyDictionary<long, StepExecutionStatus>? StepStatuses { get; set; }
+
+    private readonly string _containerId = $"dag-{Guid.NewGuid( ):N}";
+    private readonly string _minimapId = $"dag-mini-{Guid.NewGuid( ):N}";
+    private DagJsInterop? _interop;
+    private bool _initialized;
+    private string _direction = "LR";
+    private double _zoomLevel = 1.0;
+    private IReadOnlyList<WorkflowStepDto>? _previousSteps;
+    private IReadOnlyDictionary<long, StepExecutionStatus>? _previousStatuses;
+
+    protected override async Task OnAfterRenderAsync( bool firstRender ) {
+        if ( !firstRender || _initialized ) return;
+        _initialized = true;
+
+        try {
+            _interop = new DagJsInterop( JS );
+            _interop.OnNodeClicked += OnNodeClickedAsync;
+            _interop.OnZoomChanged += OnZoomChangedAsync;
+            await _interop.InitAsync( _containerId, _minimapId );
+
+            if ( Steps is not null && Steps.Count > 0 ) {
+                await LoadGraphDataAsync( );
+            }
+        } catch ( Exception ex ) {
+            Logger.LogError( ex, "Failed to initialize DAG canvas." );
+        }
+    }
+
+    protected override async Task OnParametersSetAsync( ) {
+        if ( !_initialized || _interop is null ) return;
+
+        // If the steps reference changed, reload the entire graph
+        if ( !ReferenceEquals( Steps, _previousSteps ) && Steps is not null ) {
+            _previousSteps = Steps;
+            try {
+                await LoadGraphDataAsync( );
+            } catch ( Exception ex ) {
+                Logger.LogError( ex, "Failed to reload DAG graph." );
+            }
+        }
+
+        // If only statuses changed, update the overlay
+        if ( !ReferenceEquals( StepStatuses, _previousStatuses ) ) {
+            _previousStatuses = StepStatuses;
+            try {
+                await ApplyStatusesAsync( );
+            } catch ( Exception ex ) {
+                Logger.LogError( ex, "Failed to update DAG status overlay." );
+            }
+        }
+    }
+
+    private async Task LoadGraphDataAsync( ) {
+        if ( _interop is null || Steps is null ) return;
+
+        DagNodeDto[] nodes = Steps.Select( step => new DagNodeDto(
+            StepId: step.Id,
+            StepLabel: $"Step #{step.Order}",
+            TaskName: step.TaskName ?? $"Task {step.TaskId}",
+            ControlStatement: step.ControlStatement,
+            Order: step.Order
+        ) ).ToArray( );
+
+        DagEdgeDto[] edges = Steps
+            .SelectMany( step => step.Dependencies.Select( dep => new DagEdgeDto(
+                SourceStepId: dep.DependsOnStepId,
+                TargetStepId: step.Id
+            ) ) )
+            .ToArray( );
+
+        await _interop.LoadGraphAsync( nodes, edges );
+
+        if ( StepStatuses is not null && StepStatuses.Count > 0 ) {
+            await ApplyStatusesAsync( );
+        }
+    }
+
+    private async Task ApplyStatusesAsync( ) {
+        if ( _interop is null || StepStatuses is null || StepStatuses.Count == 0 ) {
+            if ( _interop is not null ) {
+                await _interop.ClearStatusesAsync( );
+            }
+            return;
+        }
+
+        Dictionary<long, string> statusMap = StepStatuses.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ToString( )
+        );
+        await _interop.ApplyAllStatusesAsync( statusMap );
+    }
+
+    private async Task OnNodeClickedAsync( long stepId ) {
+        WorkflowStepDto? step = Steps?.FirstOrDefault( s => s.Id == stepId );
+        if ( step is not null ) {
+            await OnStepSelected.InvokeAsync( step );
+        }
+    }
+
+    private Task OnZoomChangedAsync( double zoom ) {
+        _zoomLevel = zoom;
+        InvokeAsync( StateHasChanged );
+        return Task.CompletedTask;
+    }
+
+    private async Task SetDirectionAsync( string direction ) {
+        _direction = direction;
+        if ( _interop is not null ) {
+            await _interop.SetLayoutDirectionAsync( direction );
+        }
+    }
+
+    private async Task ZoomInAsync( ) {
+        if ( _interop is not null ) {
+            await _interop.ZoomToAsync( _zoomLevel * 1.2 );
+        }
+    }
+
+    private async Task ZoomOutAsync( ) {
+        if ( _interop is not null ) {
+            await _interop.ZoomToAsync( _zoomLevel / 1.2 );
+        }
+    }
+
+    private async Task ZoomFitAsync( ) {
+        if ( _interop is not null ) {
+            await _interop.ZoomToFitAsync( );
+        }
+    }
+
+    public async ValueTask DisposeAsync( ) {
+        if ( _interop is not null ) {
+            _interop.OnNodeClicked -= OnNodeClickedAsync;
+            _interop.OnZoomChanged -= OnZoomChangedAsync;
+            await _interop.DisposeAsync( );
+        }
+    }
+}

@@ -23,4 +23,9 @@ await Promise.all([
     entryPoints: ["src/timeline/timeline-view.ts"],
     outfile: "../wwwroot/js/dist/timeline-view.js",
   }),
+  build({
+    ...shared,
+    entryPoints: ["src/dag/dag-readonly.ts"],
+    outfile: "../wwwroot/js/dist/dag-readonly.js",
+  }),
 ]);
