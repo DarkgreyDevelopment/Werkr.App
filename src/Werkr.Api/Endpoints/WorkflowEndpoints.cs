@@ -411,6 +411,29 @@ internal static class WorkflowEndpoints {
         .WithName( "GetWorkflowRuns" )
         .RequireAuthorization( Policies.CanRead );
 
+        // Global workflow runs across all workflows (for the top-level Workflow Runs page)
+        _ = app.MapGet( "/api/workflows/runs", async (
+            int? limit,
+            WerkrDbContext dbContext,
+            CancellationToken ct
+        ) => {
+            List<WorkflowRunDto> dtos = await dbContext.WorkflowRuns.AsNoTracking( )
+                .Include( r => r.Workflow )
+                .OrderByDescending( r => r.StartTime )
+                .Take( limit ?? 50 )
+                .Select( r => new WorkflowRunDto(
+                    r.Id,
+                    r.WorkflowId,
+                    r.StartTime,
+                    r.EndTime,
+                    r.Status.ToString( ),
+                    r.Workflow != null ? r.Workflow.Name : null ) )
+                .ToListAsync( ct );
+            return Results.Ok( dtos );
+        } )
+        .WithName( "GetAllWorkflowRuns" )
+        .RequireAuthorization( Policies.CanRead );
+
         _ = app.MapGet( "/api/workflows/runs/{runId}", async (
             Guid runId,
             WerkrDbContext dbContext,

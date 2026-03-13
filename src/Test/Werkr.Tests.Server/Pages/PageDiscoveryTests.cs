@@ -25,6 +25,7 @@ public class PageDiscoveryTests {
         "/tasks/{Id:long}",
         "/workflows",
         "/workflows/create",
+        "/workflows/new",
         "/workflows/{Id:long}",
         "/workflows/{WorkflowId:long}/runs",
         "/workflows/runs/{RunId:guid}",

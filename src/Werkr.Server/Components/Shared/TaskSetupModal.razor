@@ -6,7 +6,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Create New Task</h5>
+                    <h5 class="modal-title">@( IsEditing ? "Edit Task" : "Create New Task" )</h5>
                     <button type="button" class="btn-close" @onclick="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -14,7 +14,7 @@
                         <div class="alert alert-danger">@_errorMessage</div>
                     }
 
-                    <EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="TaskCreateModal">
+                    <EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="TaskSetupModal">
                         <div class="mb-3">
                             <label class="form-label">Name</label>
                             <InputText class="form-control" @bind-Value="_model.Name" />
@@ -29,11 +29,11 @@
                             <div class="col-md-6">
                                 <label class="form-label">Action Type</label>
                                 <InputSelect class="form-select" @bind-Value="_model.ActionType">
+                                    <option value="Action">Action</option>
                                     <option value="PowerShellCommand">PowerShell Command</option>
                                     <option value="PowerShellScript">PowerShell Script</option>
                                     <option value="ShellCommand">Shell Command</option>
                                     <option value="ShellScript">Shell Script</option>
-                                    <option value="Action">Action</option>
                                 </InputSelect>
                             </div>
                             <div class="col-md-6">
@@ -87,7 +87,7 @@
                                 @if ( _isSaving ) {
                                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                                 }
-                                Create Task
+                                @( IsEditing ? "Save Changes" : "Create Task" )
                             </button>
                             <button type="button" class="btn btn-outline-secondary" @onclick="Close">Cancel</button>
                         </div>
@@ -105,16 +105,33 @@
     [Parameter]
     public EventCallback<TaskDto> OnTaskCreated { get; set; }
 
+    [Parameter]
+    public EventCallback<TaskDto> OnTaskUpdated { get; set; }
+
     private bool _isVisible;
     private bool _isSaving;
     private string? _errorMessage;
     private ActionParameterEditor? _actionEditor;
     private string[] _targetTags = [];
     private TaskFormModel _model = new( );
+    private long? _editTaskId;
+
+    private bool IsEditing => _editTaskId is not null;
 
     public void Show( ) {
         _model = new TaskFormModel( );
         _targetTags = [];
+        _editTaskId = null;
+        _isVisible = true;
+        _isSaving = false;
+        _errorMessage = null;
+        StateHasChanged( );
+    }
+
+    public void Show( TaskDto existingTask ) {
+        _model = TaskFormModel.FromDto( existingTask );
+        _targetTags = existingTask.TargetTags ?? [];
+        _editTaskId = existingTask.Id;
         _isVisible = true;
         _isSaving = false;
         _errorMessage = null;
@@ -133,21 +150,38 @@
         _isSaving = true;
         _errorMessage = null;
         try {
-            TaskCreateRequest request = _model.ToCreateRequest( WorkflowId, _targetTags );
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/tasks", request );
-            if ( response.IsSuccessStatusCode ) {
-                TaskDto? created = await response.Content.ReadFromJsonAsync<TaskDto>( );
-                _isVisible = false;
-                if ( created is not null ) {
-                    await OnTaskCreated.InvokeAsync( created );
+            if ( IsEditing ) {
+                TaskUpdateRequest request = _model.ToUpdateRequest( _targetTags );
+                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/tasks/{_editTaskId}", request );
+                if ( response.IsSuccessStatusCode ) {
+                    TaskDto? updated = await response.Content.ReadFromJsonAsync<TaskDto>( );
+                    _isVisible = false;
+                    if ( updated is not null ) {
+                        await OnTaskUpdated.InvokeAsync( updated );
+                    }
+                } else {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to update task: {body}";
                 }
             } else {
-                string body = await response.Content.ReadAsStringAsync( );
-                _errorMessage = $"Failed to create task: {body}";
+                TaskCreateRequest request = _model.ToCreateRequest( WorkflowId, _targetTags );
+                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/tasks", request );
+                if ( response.IsSuccessStatusCode ) {
+                    TaskDto? created = await response.Content.ReadFromJsonAsync<TaskDto>( );
+                    _isVisible = false;
+                    if ( created is not null ) {
+                        await OnTaskCreated.InvokeAsync( created );
+                    }
+                } else {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to create task: {body}";
+                }
             }
         } catch ( Exception ex ) {
-            _errorMessage = $"Failed to create task: {ex.Message}";
+            _errorMessage = IsEditing
+                ? $"Failed to update task: {ex.Message}"
+                : $"Failed to create task: {ex.Message}";
         } finally {
             _isSaving = false;
         }
@@ -163,7 +197,7 @@
     private sealed class TaskFormModel {
         public string Name { get; set; } = "";
         public string? Description { get; set; }
-        public string ActionType { get; set; } = "ShellCommand";
+        public string ActionType { get; set; } = "Action";
         public string Content { get; set; } = "";
         public string? Arguments { get; set; }
         public bool Enabled { get; set; } = true;
@@ -171,6 +205,21 @@
         public string? SuccessCriteria { get; set; }
         public string ActionSubType { get; set; } = "";
         public string? ActionParameters { get; set; }
+
+        public static TaskFormModel FromDto( TaskDto dto ) {
+            return new TaskFormModel {
+                Name = dto.Name,
+                Description = dto.Description,
+                ActionType = dto.ActionType,
+                Content = dto.Content,
+                Arguments = dto.Arguments is not null ? string.Join( "\n", dto.Arguments ) : null,
+                Enabled = dto.Enabled,
+                TimeoutMinutes = dto.TimeoutMinutes,
+                SuccessCriteria = dto.SuccessCriteria,
+                ActionSubType = dto.ActionSubType ?? "",
+                ActionParameters = dto.ActionParameters,
+            };
+        }
 
         public TaskCreateRequest ToCreateRequest( long workflowId, string[] targetTags ) {
             string[]? args = string.IsNullOrWhiteSpace( Arguments )
@@ -187,7 +236,26 @@
                 Enabled: Enabled,
                 TimeoutMinutes: TimeoutMinutes,
                 SuccessCriteria: SuccessCriteria,
-                WorkflowId: workflowId,
+                WorkflowId: workflowId > 0 ? workflowId : null,
+                ActionSubType: string.IsNullOrWhiteSpace( ActionSubType ) ? null : ActionSubType,
+                ActionParameters: string.IsNullOrWhiteSpace( ActionParameters ) ? null : ActionParameters );
+        }
+
+        public TaskUpdateRequest ToUpdateRequest( string[] targetTags ) {
+            string[]? args = string.IsNullOrWhiteSpace( Arguments )
+                ? null
+                : Arguments.Split( '\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries );
+
+            return new TaskUpdateRequest(
+                Name: Name,
+                Description: Description,
+                ActionType: ActionType,
+                Content: Content,
+                Arguments: args,
+                TargetTags: targetTags,
+                Enabled: Enabled,
+                TimeoutMinutes: TimeoutMinutes,
+                SuccessCriteria: SuccessCriteria,
                 ActionSubType: string.IsNullOrWhiteSpace( ActionSubType ) ? null : ActionSubType,
                 ActionParameters: string.IsNullOrWhiteSpace( ActionParameters ) ? null : ActionParameters );
         }

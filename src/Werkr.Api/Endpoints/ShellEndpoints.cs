@@ -43,7 +43,7 @@ internal static class ShellEndpoints {
             // Look up the agent's tags so the ephemeral task routes to this agent
             string[]? agentTags = await dbContext.RegisteredConnections
                 .AsNoTracking( )
-                .Where( c => c.Id == agentId && c.IsServer )
+                .Where( c => c.Id == agentId && !c.IsServer )
                 .Select( c => c.Tags )
                 .FirstOrDefaultAsync( ct );
 
@@ -51,13 +51,14 @@ internal static class ShellEndpoints {
             (long taskId, Guid scheduleId) = await runNowService.CreateEphemeralTaskAsync(
                 request.Command, actionType, agentTags, ct );
 
-            // Push invalidation so the agent picks it up immediately
-            await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
-
-            // Subscribe to the output stream from the agent
+            // Subscribe to the output stream BEFORE pushing invalidation so the
+            // agent's subscription is registered before execution can begin.
             string scheduleIdStr = scheduleId.ToString( );
             Channel<OutputMessage>? channel =
                 await outputStreaming.SubscribeAsync( taskId, scheduleIdStr );
+
+            // Push invalidation so the agent picks it up immediately
+            await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
 
             if (channel is null) {
                 // No agent stream available yet — return 202 with IDs so client can poll

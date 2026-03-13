@@ -1,12 +1,13 @@
 ﻿@page "/workflows/{Id:long}/edit"
+@page "/workflows/new"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
 
-<PageTitle>Werkr - Edit Workflow</PageTitle>
+<PageTitle>Werkr - @( IsNewMode ? "New" : "Edit" ) Workflow</PageTitle>
 
-<h1>Edit Workflow</h1>
+<h1>@( IsNewMode ? "New" : "Edit" ) Workflow</h1>
 <Breadcrumb Items="_breadcrumbs" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
@@ -19,7 +20,7 @@
 
 @if ( _isLoading ) {
     <LoadingSpinner Message="Loading workflow…" />
-} else if ( _workflow is not null ) {
+} else if ( _model is not null ) {
     @* ── Workflow Metadata ── *@
     <div class="card mb-4">
         <div class="card-body">
@@ -49,18 +50,20 @@
                     @if ( _isSaving ) {
                         <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                     }
-                    Save Changes
+                    @( IsNewMode ? "Create Workflow" : "Save Changes" )
                 </button>
             </EditForm>
         </div>
     </div>
 
     @* ── DAG Visualization ── *@
-    @if ( _workflow.Steps.Count > 0 ) {
+    @if ( DisplaySteps.Count > 0 ) {
         <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title">Workflow DAG</h5>
-                <DagView WorkflowId="Id" Steps="_workflow.Steps" />
+                @if ( !IsNewMode ) {
+                    <DagView WorkflowId="Id" Steps="_workflow!.Steps" />
+                }
             </div>
         </div>
     }
@@ -69,12 +72,15 @@
     <div class="card mb-4">
         <div class="card-body">
             <h5 class="card-title">DAG Validation</h5>
-            <button class="btn btn-outline-primary" @onclick="ValidateDagAsync" disabled="@_isValidating">
+            <button class="btn btn-outline-primary" @onclick="ValidateDagAsync" disabled="@( _isValidating || DisplaySteps.Count == 0 )">
                 @if ( _isValidating ) {
                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                 }
                 Validate DAG
             </button>
+            @if ( DisplaySteps.Count == 0 ) {
+                <p class="text-muted mt-2">Add steps to validate the DAG.</p>
+            }
             @if ( _dagResult is not null ) {
                 <div class="mt-2">
                     @if ( _dagResult.IsValid ) {
@@ -96,7 +102,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <h5 class="card-title">Schedules</h5>
-            @if ( _schedules is not null && _schedules.Count > 0 ) {
+            @if ( DisplaySchedules.Count > 0 ) {
                 <div class="table-responsive mb-3">
                     <table class="table table-sm table-striped align-middle">
                         <thead>
@@ -106,10 +112,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ( ScheduleDto sched in _schedules ) {
+                            @foreach ( ScheduleDto sched in DisplaySchedules ) {
                                 <tr>
                                     <td>@sched.Name</td>
                                     <td class="text-end">
+                                        <button class="btn btn-outline-primary btn-sm me-1"
+                                                @onclick="() => EditScheduleAsync( sched.Id )">
+                                            Edit
+                                        </button>
                                         <button class="btn btn-outline-danger btn-sm"
                                                 @onclick="( ) => DisassociateScheduleAsync( sched.Id )">
                                             Remove
@@ -127,14 +137,20 @@
             <div class="row g-2 align-items-end">
                 <div class="col-md-4">
                     <label class="form-label">Associate Schedule</label>
-                    <select class="form-select" @bind="_selectedScheduleId">
-                        <option value="">— select schedule —</option>
-                        @if ( _availableSchedules is not null ) {
-                            @foreach ( ScheduleDto s in _availableSchedules ) {
-                                <option value="@s.Id">@s.Name</option>
+                    <div class="d-flex gap-1">
+                        <select class="form-select" @bind="_selectedScheduleId">
+                            <option value="">— select schedule —</option>
+                            @if ( _availableSchedules is not null ) {
+                                @foreach ( ScheduleDto s in _availableSchedules ) {
+                                    <option value="@s.Id">@s.Name</option>
+                                }
                             }
-                        }
-                    </select>
+                        </select>
+                        <button type="button" class="btn btn-outline-success btn-sm text-nowrap"
+                                @onclick="OpenCreateScheduleAsync">
+                            + New
+                        </button>
+                    </div>
                 </div>
                 <div class="col-auto">
                     <button class="btn btn-outline-primary" @onclick="AssociateScheduleAsync"
@@ -149,9 +165,9 @@
     @* ── Steps ── *@
     <div class="card mb-4">
         <div class="card-body">
-            <h5 class="card-title">Steps (@_workflow.Steps.Count)</h5>
+            <h5 class="card-title">Steps (@DisplaySteps.Count)</h5>
 
-            @if ( _workflow.Steps.Count > 0 ) {
+            @if ( DisplaySteps.Count > 0 ) {
                 <div class="table-responsive mb-3">
                     <table class="table table-sm table-striped align-middle">
                         <thead>
@@ -168,29 +184,60 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ( WorkflowStepDto step in _workflow.Steps.OrderBy( s => s.Order ) ) {
-                                <tr>
-                                    <td>@step.Order</td>
-                                    <td>@step.Id</td>
-                                    <td>@TaskName( step.TaskId )</td>
-                                    <td><code>@step.ControlStatement</code></td>
-                                    <td>@( step.ConditionExpression ?? "—" )</td>
-                                    <td>@step.MaxIterations</td>
-                                    <td>@step.DependencyMode</td>
-                                    <td>
-                                        @if ( step.Dependencies.Count > 0 ) {
-                                            @string.Join( ", ", step.Dependencies.Select( d => d.DependsOnStepId ) )
-                                        } else {
-                                            <span class="text-muted">None</span>
-                                        }
-                                    </td>
-                                    <td class="text-end">
-                                        <button class="btn btn-outline-danger btn-sm"
-                                                @onclick="() => DeleteStepAsync( step.Id )">
-                                            Remove
-                                        </button>
-                                    </td>
-                                </tr>
+                            @if ( IsNewMode ) {
+                                @foreach ( LocalStepModel step in _localSteps.OrderBy( s => s.Order ) ) {
+                                    <tr>
+                                        <td>@step.Order</td>
+                                        <td>@step.LocalId</td>
+                                        <td>@TaskName( step.TaskId )</td>
+                                        <td><code>@step.ControlStatement</code></td>
+                                        <td>@( step.ConditionExpression ?? "—" )</td>
+                                        <td>@step.MaxIterations</td>
+                                        <td>@step.DependencyMode</td>
+                                        <td>
+                                            @if ( step.DependsOnLocalIds.Count > 0 ) {
+                                                @string.Join( ", ", step.DependsOnLocalIds )
+                                            } else {
+                                                <span class="text-muted">None</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-outline-danger btn-sm"
+                                                    @onclick="() => RemoveLocalStep( step.LocalId )">
+                                                Remove
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            } else {
+                                @foreach ( WorkflowStepDto step in _workflow!.Steps.OrderBy( s => s.Order ) ) {
+                                    <tr>
+                                        <td>@step.Order</td>
+                                        <td>@step.Id</td>
+                                        <td>@TaskName( step.TaskId )</td>
+                                        <td><code>@step.ControlStatement</code></td>
+                                        <td>@( step.ConditionExpression ?? "—" )</td>
+                                        <td>@step.MaxIterations</td>
+                                        <td>@step.DependencyMode</td>
+                                        <td>
+                                            @if ( step.Dependencies.Count > 0 ) {
+                                                @string.Join( ", ", step.Dependencies.Select( d => d.DependsOnStepId ) )
+                                            } else {
+                                                <span class="text-muted">None</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-outline-primary btn-sm me-1"
+                                                    @onclick="() => EditTaskAsync( step.TaskId )">
+                                                Edit Task
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm"
+                                                    @onclick="() => DeleteStepAsync( step.Id )">
+                                                Remove
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                     </table>
@@ -213,7 +260,7 @@
                             }
                         </select>
                         <button type="button" class="btn btn-outline-success btn-sm text-nowrap"
-                                @onclick="( ) => _taskCreateModal?.Show( )">
+                                @onclick="( ) => _taskSetupModal?.Show( )">
                             + New
                         </button>
                     </div>
@@ -253,7 +300,7 @@
                 </div>
             }
 
-            @if ( _workflow.Steps.Count > 0 ) {
+            @if ( DisplaySteps.Count > 0 ) {
                 <h6 class="mt-4">Add Dependency</h6>
                 <div class="row g-2 align-items-end">
                     <div class="col-md-3">
@@ -276,7 +323,9 @@
     <div class="card mb-4">
         <div class="card-body">
             <h5 class="card-title">Recent Runs</h5>
-            <a href="/workflows/@Id/runs" class="btn btn-outline-secondary btn-sm mb-2">View All Runs</a>
+            @if ( !IsNewMode ) {
+                <a href="/workflows/@Id/runs" class="btn btn-outline-secondary btn-sm mb-2">View All Runs</a>
+            }
             @if ( _runs is not null && _runs.Count > 0 ) {
                 <div class="table-responsive">
                     <table class="table table-sm table-striped align-middle">
@@ -308,11 +357,14 @@
         </div>
     </div>
 
-    <TaskCreateModal @ref="_taskCreateModal" WorkflowId="Id" OnTaskCreated="OnTaskCreatedAsync" />
+    <TaskSetupModal @ref="_taskSetupModal" WorkflowId="Id" OnTaskCreated="OnTaskCreatedAsync" OnTaskUpdated="OnTaskUpdatedAsync" />
+    <ScheduleSetupModal @ref="_scheduleSetupModal" OnScheduleCreated="OnScheduleCreatedAsync" OnScheduleUpdated="OnScheduleUpdatedAsync" />
 }
 
 @code {
     [Parameter] public long Id { get; set; }
+
+    private bool IsNewMode => Id == 0;
 
     private WorkflowDto? _workflow;
     private WorkflowFormModel? _model;
@@ -322,6 +374,11 @@
     private List<ScheduleDto>? _availableSchedules;
     private DagValidationResult? _dagResult;
 
+    // Local state for new mode
+    private readonly List<LocalStepModel> _localSteps = [];
+    private readonly List<ScheduleDto> _localSchedules = [];
+    private long _nextLocalStepId = 1;
+
     private string? _errorMessage;
     private string? _successMessage;
     private bool _isLoading;
@@ -330,7 +387,8 @@
     private string _selectedScheduleId = "";
 
     private readonly NewStepModel _newStep = new( );
-    private TaskCreateModal? _taskCreateModal;
+    private TaskSetupModal? _taskSetupModal;
+    private ScheduleSetupModal? _scheduleSetupModal;
     private long _depStepId;
     private long _depDependsOnStepId;
 
@@ -339,8 +397,33 @@
         new( "Edit" )
     ];
 
+    // Unified display helpers
+    private IReadOnlyList<LocalStepModel> DisplaySteps =>
+        IsNewMode ? _localSteps : _workflow?.Steps.Select( s => LocalStepModel.FromDto( s ) ).ToList( ) ?? [];
+
+    private IReadOnlyList<ScheduleDto> DisplaySchedules =>
+        IsNewMode ? _localSchedules : _schedules ?? [];
+
     protected override async Task OnInitializedAsync( ) {
-        await LoadAsync( );
+        if ( IsNewMode ) {
+            _model = new WorkflowFormModel( );
+            _breadcrumbs = [new( "Workflows", "/workflows" ), new( "New" )];
+            await LoadReferenceDataAsync( );
+        } else {
+            await LoadAsync( );
+        }
+    }
+
+    private async Task LoadReferenceDataAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            List<ScheduleDto>? allSchedules = await client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" );
+            HashSet<Guid> linkedIds = [.. _localSchedules.Select( s => s.Id )];
+            _availableSchedules = allSchedules?.Where( s => !linkedIds.Contains( s.Id ) ).ToList( ) ?? [];
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load reference data: {ex.Message}";
+        }
     }
 
     private async Task LoadAsync( ) {
@@ -381,20 +464,109 @@
         _errorMessage = null;
         _successMessage = null;
         try {
-            WorkflowUpdateRequest request = new(
-                Name: _model.Name,
-                Description: _model.Description,
-                Enabled: _model.Enabled,
-                TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
-
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/workflows/{Id}", request );
-            if ( response.IsSuccessStatusCode ) {
-                _successMessage = "Workflow saved.";
+
+            if ( IsNewMode ) {
+                WorkflowCreateRequest createRequest = new(
+                    Name: _model.Name,
+                    Description: _model.Description,
+                    Enabled: _model.Enabled,
+                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
+
+                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/workflows", createRequest );
+                if ( !response.IsSuccessStatusCode ) {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to create workflow: {body}";
+                    return;
+                }
+
+                WorkflowDto? created = await response.Content.ReadFromJsonAsync<WorkflowDto>( );
+                long workflowId = created?.Id ?? 0;
+                if ( workflowId == 0 ) {
+                    _errorMessage = "Failed to create workflow: no ID returned.";
+                    return;
+                }
+
+                // Add steps and collect real IDs
+                Dictionary<long, long> localToRealStepId = [];
+                foreach ( LocalStepModel step in _localSteps.OrderBy( s => s.Order ) ) {
+                    WorkflowStepCreateRequest stepReq = new(
+                        TaskId: step.TaskId,
+                        Order: step.Order,
+                        ControlStatement: step.ControlStatement,
+                        ConditionExpression: string.IsNullOrWhiteSpace( step.ConditionExpression ) ? null : step.ConditionExpression,
+                        MaxIterations: step.MaxIterations,
+                        DependencyMode: step.DependencyMode );
+
+                    HttpResponseMessage stepResp = await client.PostAsJsonAsync(
+                        $"/api/workflows/{workflowId}/steps", stepReq );
+                    if ( !stepResp.IsSuccessStatusCode ) {
+                        string body = await stepResp.Content.ReadAsStringAsync( );
+                        _errorMessage = $"Workflow created but failed to add step (order {step.Order}): {body}";
+                        Id = workflowId;
+                        await LoadAsync( );
+                        return;
+                    }
+
+                    WorkflowStepDto? createdStep = await stepResp.Content.ReadFromJsonAsync<WorkflowStepDto>( );
+                    if ( createdStep is not null ) {
+                        localToRealStepId[step.LocalId] = createdStep.Id;
+                    }
+                }
+
+                // Add dependencies using mapped real IDs
+                foreach ( LocalStepModel step in _localSteps ) {
+                    if ( step.DependsOnLocalIds.Count == 0 ) continue;
+                    if ( !localToRealStepId.TryGetValue( step.LocalId, out long realStepId ) ) continue;
+
+                    foreach ( long depLocalId in step.DependsOnLocalIds ) {
+                        if ( !localToRealStepId.TryGetValue( depLocalId, out long realDepId ) ) continue;
+                        StepDependencyRequest depReq = new( realDepId );
+                        HttpResponseMessage depResp = await client.PostAsJsonAsync(
+                            $"/api/workflows/{workflowId}/steps/{realStepId}/dependencies", depReq );
+                        if ( !depResp.IsSuccessStatusCode ) {
+                            string body = await depResp.Content.ReadAsStringAsync( );
+                            _errorMessage = $"Workflow created but failed to add dependency: {body}";
+                            Id = workflowId;
+                            await LoadAsync( );
+                            return;
+                        }
+                    }
+                }
+
+                // Associate schedules
+                foreach ( ScheduleDto sched in _localSchedules ) {
+                    HttpResponseMessage schedResp = await client.PostAsJsonAsync(
+                        $"/api/workflows/{workflowId}/schedules", new WorkflowScheduleAssociateRequest( sched.Id ) );
+                    if ( !schedResp.IsSuccessStatusCode ) {
+                        string body = await schedResp.Content.ReadAsStringAsync( );
+                        _errorMessage = $"Workflow created but failed to associate schedule '{sched.Name}': {body}";
+                        Id = workflowId;
+                        await LoadAsync( );
+                        return;
+                    }
+                }
+
+                Id = workflowId;
+                _localSteps.Clear( );
+                _localSchedules.Clear( );
+                _successMessage = "Workflow created successfully.";
                 await LoadAsync( );
             } else {
-                string body = await response.Content.ReadAsStringAsync( );
-                _errorMessage = $"Failed to save: {body}";
+                WorkflowUpdateRequest request = new(
+                    Name: _model.Name,
+                    Description: _model.Description,
+                    Enabled: _model.Enabled,
+                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
+
+                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/workflows/{Id}", request );
+                if ( response.IsSuccessStatusCode ) {
+                    _successMessage = "Workflow saved.";
+                    await LoadAsync( );
+                } else {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to save: {body}";
+                }
             }
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to save: {ex.Message}";
@@ -407,9 +579,13 @@
         _isValidating = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsync( $"/api/workflows/{Id}/validate", null );
-            _dagResult = await response.Content.ReadFromJsonAsync<DagValidationResult>( );
+            if ( IsNewMode ) {
+                _dagResult = ValidateDagLocally( );
+            } else {
+                HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+                HttpResponseMessage response = await client.PostAsync( $"/api/workflows/{Id}/validate", null );
+                _dagResult = await response.Content.ReadFromJsonAsync<DagValidationResult>( );
+            }
         } catch ( Exception ex ) {
             _errorMessage = $"Validation failed: {ex.Message}";
         } finally {
@@ -417,8 +593,94 @@
         }
     }
 
+    private DagValidationResult ValidateDagLocally( ) {
+        List<string> errors = [];
+
+        if ( _localSteps.Count == 0 ) {
+            return new DagValidationResult( false, ["No steps defined."] );
+        }
+
+        // Validate control flow
+        foreach ( LocalStepModel step in _localSteps ) {
+            if ( step.ControlStatement is "If" or "ElseIf" or "While" ) {
+                if ( string.IsNullOrWhiteSpace( step.ConditionExpression ) ) {
+                    errors.Add( $"Step {step.LocalId} ({step.ControlStatement}) requires a condition expression." );
+                }
+            }
+            if ( step.ControlStatement is "While" or "Do" ) {
+                if ( step.MaxIterations <= 0 ) {
+                    errors.Add( $"Step {step.LocalId} ({step.ControlStatement}) requires MaxIterations > 0." );
+                }
+            }
+            if ( step.ControlStatement is "Else" or "ElseIf" ) {
+                bool dependsOnConditional = step.DependsOnLocalIds.Any( depId =>
+                    _localSteps.Any( s => s.LocalId == depId && s.ControlStatement is "If" or "ElseIf" ) );
+                if ( !dependsOnConditional ) {
+                    errors.Add( $"Step {step.LocalId} ({step.ControlStatement}) must depend on an If or ElseIf step." );
+                }
+            }
+        }
+
+        // Cycle detection via Kahn's algorithm
+        HashSet<long> allIds = [.. _localSteps.Select( s => s.LocalId )];
+        Dictionary<long, int> inDegree = allIds.ToDictionary( id => id, _ => 0 );
+        Dictionary<long, List<long>> adjacency = allIds.ToDictionary( id => id, _ => new List<long>( ) );
+
+        foreach ( LocalStepModel step in _localSteps ) {
+            foreach ( long depId in step.DependsOnLocalIds ) {
+                if ( !allIds.Contains( depId ) ) {
+                    errors.Add( $"Step {step.LocalId} depends on non-existent step {depId}." );
+                    continue;
+                }
+                adjacency[depId].Add( step.LocalId );
+                inDegree[step.LocalId]++;
+            }
+        }
+
+        Queue<long> queue = new( inDegree.Where( kv => kv.Value == 0 ).Select( kv => kv.Key ) );
+        int sorted = 0;
+        while ( queue.Count > 0 ) {
+            long current = queue.Dequeue( );
+            sorted++;
+            foreach ( long neighbor in adjacency[current] ) {
+                inDegree[neighbor]--;
+                if ( inDegree[neighbor] == 0 ) queue.Enqueue( neighbor );
+            }
+        }
+
+        if ( sorted != allIds.Count ) {
+            errors.Add( "Cycle detected in the workflow DAG." );
+        }
+
+        return new DagValidationResult( errors.Count == 0, errors );
+    }
+
     private async Task AddStepAsync( ) {
         _errorMessage = null;
+
+        if ( IsNewMode ) {
+            int autoOrder = _localSteps.Count > 0
+                ? _localSteps.Max( s => s.Order ) + 1
+                : 1;
+
+            _localSteps.Add( new LocalStepModel {
+                LocalId = _nextLocalStepId++,
+                TaskId = _newStep.TaskId,
+                Order = autoOrder,
+                ControlStatement = _newStep.ControlStatement,
+                ConditionExpression = string.IsNullOrWhiteSpace( _newStep.ConditionExpression ) ? null : _newStep.ConditionExpression,
+                MaxIterations = _newStep.MaxIterations,
+                DependencyMode = _newStep.DependencyMode,
+            } );
+
+            _newStep.TaskId = 0;
+            _newStep.ControlStatement = "Default";
+            _newStep.ConditionExpression = null;
+            _newStep.MaxIterations = 100;
+            _newStep.DependencyMode = "All";
+            return;
+        }
+
         try {
             int autoOrder = _workflow?.Steps.Count > 0
                 ? _workflow.Steps.Max( s => s.Order ) + 1
@@ -464,6 +726,23 @@
 
     private async Task AddDependencyAsync( ) {
         _errorMessage = null;
+
+        if ( IsNewMode ) {
+            LocalStepModel? step = _localSteps.FirstOrDefault( s => s.LocalId == _depStepId );
+            if ( step is null ) {
+                _errorMessage = $"Step {_depStepId} not found.";
+                return;
+            }
+            if ( !_localSteps.Any( s => s.LocalId == _depDependsOnStepId ) ) {
+                _errorMessage = $"Depends-on step {_depDependsOnStepId} not found.";
+                return;
+            }
+            if ( !step.DependsOnLocalIds.Contains( _depDependsOnStepId ) ) {
+                step.DependsOnLocalIds.Add( _depDependsOnStepId );
+            }
+            return;
+        }
+
         try {
             StepDependencyRequest request = new( _depDependsOnStepId );
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
@@ -491,6 +770,17 @@
     private async Task AssociateScheduleAsync( ) {
         if ( string.IsNullOrEmpty( _selectedScheduleId ) || !Guid.TryParse( _selectedScheduleId, out Guid schedId ) ) return;
         _errorMessage = null;
+
+        if ( IsNewMode ) {
+            ScheduleDto? sched = _availableSchedules?.FirstOrDefault( s => s.Id == schedId );
+            if ( sched is not null ) {
+                _localSchedules.Add( sched );
+                _availableSchedules?.Remove( sched );
+                _selectedScheduleId = "";
+            }
+            return;
+        }
+
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PostAsJsonAsync(
@@ -509,6 +799,16 @@
 
     private async Task DisassociateScheduleAsync( Guid scheduleId ) {
         _errorMessage = null;
+
+        if ( IsNewMode ) {
+            ScheduleDto? sched = _localSchedules.FirstOrDefault( s => s.Id == scheduleId );
+            if ( sched is not null ) {
+                _localSchedules.Remove( sched );
+                _availableSchedules?.Add( sched );
+            }
+            return;
+        }
+
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.DeleteAsync(
@@ -525,7 +825,69 @@
 
     private async Task OnTaskCreatedAsync( TaskDto task ) {
         _newStep.TaskId = task.Id;
-        await LoadAsync( );
+        if ( IsNewMode ) {
+            await LoadReferenceDataAsync( );
+        } else {
+            await LoadAsync( );
+        }
+    }
+
+    private async Task OnTaskUpdatedAsync( TaskDto task ) {
+        if ( IsNewMode ) {
+            await LoadReferenceDataAsync( );
+        } else {
+            await LoadAsync( );
+        }
+    }
+
+    private void EditTaskAsync( long taskId ) {
+        TaskDto? task = _tasks?.FirstOrDefault( x => x.Id == taskId );
+        if ( task is not null ) {
+            _taskSetupModal?.Show( task );
+        }
+    }
+
+    private async Task OpenCreateScheduleAsync( ) {
+        if ( _scheduleSetupModal is not null ) await _scheduleSetupModal.Show( );
+    }
+
+    private async Task EditScheduleAsync( Guid scheduleId ) {
+        ScheduleDto? sched = DisplaySchedules.FirstOrDefault( s => s.Id == scheduleId )
+            ?? _availableSchedules?.FirstOrDefault( s => s.Id == scheduleId );
+        if ( sched is not null && _scheduleSetupModal is not null ) {
+            await _scheduleSetupModal.Show( sched );
+        }
+    }
+
+    private async Task OnScheduleCreatedAsync( ScheduleDto schedule ) {
+        _errorMessage = null;
+        if ( IsNewMode ) {
+            _localSchedules.Add( schedule );
+            _availableSchedules?.RemoveAll( s => s.Id == schedule.Id );
+        } else {
+            try {
+                HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+                HttpResponseMessage response = await client.PostAsJsonAsync(
+                    $"/api/workflows/{Id}/schedules", new WorkflowScheduleAssociateRequest( schedule.Id ) );
+                if ( !response.IsSuccessStatusCode ) {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Schedule created but failed to associate: {body}";
+                }
+                await LoadAsync( );
+            } catch ( Exception ex ) {
+                _errorMessage = $"Schedule created but failed to associate: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task OnScheduleUpdatedAsync( ScheduleDto schedule ) {
+        if ( IsNewMode ) {
+            int idx = _localSchedules.FindIndex( s => s.Id == schedule.Id );
+            if ( idx >= 0 ) _localSchedules[idx] = schedule;
+            await LoadReferenceDataAsync( );
+        } else {
+            await LoadAsync( );
+        }
     }
 
     private sealed class WorkflowFormModel {
@@ -541,5 +903,34 @@
         public string DependencyMode { get; set; } = "All";
         public string? ConditionExpression { get; set; }
         public int MaxIterations { get; set; } = 100;
+    }
+
+    private void RemoveLocalStep( long localId ) {
+        _localSteps.RemoveAll( s => s.LocalId == localId );
+        foreach ( LocalStepModel step in _localSteps ) {
+            step.DependsOnLocalIds.Remove( localId );
+        }
+    }
+
+    private sealed class LocalStepModel {
+        public long LocalId { get; set; }
+        public long TaskId { get; set; }
+        public int Order { get; set; }
+        public string ControlStatement { get; set; } = "Default";
+        public string? ConditionExpression { get; set; }
+        public int MaxIterations { get; set; } = 100;
+        public string DependencyMode { get; set; } = "All";
+        public List<long> DependsOnLocalIds { get; set; } = [];
+
+        public static LocalStepModel FromDto( WorkflowStepDto dto ) => new( ) {
+            LocalId = dto.Id,
+            TaskId = dto.TaskId,
+            Order = dto.Order,
+            ControlStatement = dto.ControlStatement,
+            ConditionExpression = dto.ConditionExpression,
+            MaxIterations = dto.MaxIterations,
+            DependencyMode = dto.DependencyMode,
+            DependsOnLocalIds = [.. dto.Dependencies.Select( d => d.DependsOnStepId )],
+        };
     }
 }

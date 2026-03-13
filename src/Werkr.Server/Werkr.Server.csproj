@@ -24,10 +24,13 @@
 
   <Target Name="NpmInstall"
           BeforeTargets="BuildGraphUi"
-          Condition="!Exists('graph-ui/node_modules/')">
+          Inputs="$(MSBuildProjectDirectory)/graph-ui/package-lock.json"
+          Outputs="$(BaseIntermediateOutputPath)graph-ui-npm.stamp">
     <Exec Command="npm ci --prefix graph-ui"
           WorkingDirectory="$(MSBuildProjectDirectory)"
           StandardOutputImportance="low" />
+    <Touch Files="$(BaseIntermediateOutputPath)graph-ui-npm.stamp"
+           AlwaysCreate="true" />
   </Target>
 
   <Target Name="BuildGraphUi" BeforeTargets="BeforeBuild">

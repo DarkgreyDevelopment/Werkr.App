@@ -106,7 +106,8 @@ public sealed partial class OutputStreamingService(
             try {
                 Common.Protos.OutputStreamingService.OutputStreamingServiceClient client =
                     await clientFactory.CreateOutputStreamingClientAsync( ct );
-                CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
+                CallOptions callOptions = clientFactory.CreateCallOptions(
+                    timeout: Timeout.InfiniteTimeSpan, cancellationToken: ct );
 
                 using AsyncDuplexStreamingCall<OutputMessage, OutputSubscription> call =
                     client.StreamOutput( callOptions );

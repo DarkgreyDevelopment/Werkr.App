@@ -129,11 +129,19 @@ public class Program {
             // Auth forwarding handler — self-mints JWT for outgoing API requests
             _ = builder.Services.AddTransient<AuthForwardingHandler>( );
 
-            // General-purpose HttpClient for the API service via service discovery
+            // General-purpose HttpClient for the API service via service discovery.
+            // Override the global standard resilience handler with SSE-friendly timeouts
+            // so long-lived SSE connections (JobEventRelayService) are not killed by the
+            // default 10s attempt / 30s total timeout.
             _ = builder.Services.AddHttpClient( "ApiService", client => {
                 client.BaseAddress = new Uri( "https://api" );
             } )
-            .AddHttpMessageHandler<AuthForwardingHandler>( );
+            .AddHttpMessageHandler<AuthForwardingHandler>( )
+            .AddStandardResilienceHandler( options => {
+                options.AttemptTimeout.Timeout = Timeout.InfiniteTimeSpan;
+                options.TotalRequestTimeout.Timeout = Timeout.InfiniteTimeSpan;
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds( 60 );
+            } );
 
             // Background health monitor — keeps agent DB status in sync with actual reachability
             _ = builder.Services.AddHostedService<AgentHealthMonitorService>( );

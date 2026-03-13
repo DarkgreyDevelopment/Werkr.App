@@ -13,9 +13,9 @@
 <p>Manage recurring execution schedules for tasks and workflows.</p>
 
 <div class="mb-3">
-    <a href="/schedules/create" class="btn btn-primary">
+    <button class="btn btn-primary" @onclick="OpenCreateScheduleAsync">
         <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Schedule
-    </a>
+    </button>
     <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
         @if ( _isLoading ) {
             <span class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -50,7 +50,7 @@
             <tbody>
                 @foreach ( ScheduleDto s in FilteredSchedules ) {
                     <tr>
-                        <td><a href="/schedules/@s.Id">@s.Name</a></td>
+                        <td><button class="btn btn-link p-0" @onclick="() => EditScheduleAsync( s )">@s.Name</button></td>
                         <td>@DescribeRecurrence( s )</td>
                         <td>@FormatStart( s.StartDateTime )</td>
                         <td>@FormatExpiration( s.Expiration )</td>
@@ -59,7 +59,7 @@
                         </td>
                         <td>@GetNextOccurrence( s.Id )</td>
                         <td class="text-end">
-                            <a class="btn btn-outline-primary btn-sm me-1" href="/schedules/@s.Id">Edit</a>
+                            <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => EditScheduleAsync( s )">Edit</button>
                             <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( s )">Delete</button>
                         </td>
                     </tr>
@@ -77,6 +77,8 @@
                ConfirmButtonText="Delete"
                OnConfirmed="DeleteConfirmedAsync" />
 
+<ScheduleSetupModal @ref="_scheduleSetupModal" OnScheduleCreated="OnScheduleCreatedAsync" OnScheduleUpdated="OnScheduleUpdatedAsync" />
+
 @code {
     private List<ScheduleDto>? _schedules;
     private Dictionary<Guid, DateTime?> _nextOccurrences = new( );
@@ -84,6 +86,7 @@
     private string? _errorMessage;
     private bool _isLoading;
     private ConfirmDialog _confirmDialog = default!;
+    private ScheduleSetupModal? _scheduleSetupModal;
     private Guid _pendingDeleteId;
     private string _deleteMessage = "";
 
@@ -201,6 +204,22 @@
 
     private async Task OnFilterClearedAsync( ) {
         _activeCriteria = null;
+        await LoadAsync( );
+    }
+
+    private async Task EditScheduleAsync( ScheduleDto schedule ) {
+        if ( _scheduleSetupModal is not null ) await _scheduleSetupModal.Show( schedule );
+    }
+
+    private async Task OpenCreateScheduleAsync( ) {
+        if ( _scheduleSetupModal is not null ) await _scheduleSetupModal.Show( );
+    }
+
+    private async Task OnScheduleCreatedAsync( ScheduleDto schedule ) {
+        await LoadAsync( );
+    }
+
+    private async Task OnScheduleUpdatedAsync( ScheduleDto schedule ) {
         await LoadAsync( );
     }
 }

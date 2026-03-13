@@ -7,6 +7,7 @@ using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Tasks;
+using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Api.Services;
 
@@ -45,14 +46,21 @@ public sealed partial class ScheduleInvalidationDispatcher(
             .Select( ts => ts.Task! )
             .ToListAsync( ct );
 
-        if (affectedTasks.Count == 0) {
+        // Find workflows referencing this schedule to get their TargetTags
+        List<Workflow> affectedWorkflows = await db.WorkflowSchedules
+            .AsNoTracking( )
+            .Where( ws => ws.ScheduleId == scheduleId )
+            .Select( ws => ws.Workflow! )
+            .ToListAsync( ct );
+
+        if (affectedTasks.Count == 0 && affectedWorkflows.Count == 0) {
             if (logger.IsEnabled( LogLevel.Debug )) {
-                logger.LogDebug( "No tasks reference schedule {ScheduleId}. Skipping invalidation.", scheduleId );
+                logger.LogDebug( "No tasks or workflows reference schedule {ScheduleId}. Skipping invalidation.", scheduleId );
             }
             return;
         }
 
-        // Collect all unique target tags from affected tasks
+        // Collect all unique target tags from affected tasks and workflows
         HashSet<string> allTargetTags = new( StringComparer.OrdinalIgnoreCase );
         foreach (WerkrTask task in affectedTasks) {
             if (task.TargetTags is { Length: > 0 }) {
@@ -61,11 +69,18 @@ public sealed partial class ScheduleInvalidationDispatcher(
                 }
             }
         }
+        foreach (Workflow workflow in affectedWorkflows) {
+            if (workflow.TargetTags is { Length: > 0 }) {
+                foreach (string tag in workflow.TargetTags) {
+                    _ = allTargetTags.Add( tag );
+                }
+            }
+        }
 
         // Find all connected agents
         List<RegisteredConnection> agents = await db.RegisteredConnections
             .AsNoTracking( )
-            .Where( c => c.IsServer && c.Status == ConnectionStatus.Connected )
+            .Where( c => !c.IsServer && c.Status == ConnectionStatus.Connected )
             .ToListAsync( ct );
 
         // Filter agents whose tags overlap with the affected tasks' TargetTags

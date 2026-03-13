@@ -38,11 +38,11 @@
                     <div class="col-md-4">
                         <label class="form-label" for="actionType">Action Type</label>
                         <InputSelect id="actionType" class="form-select" @bind-Value="_model.ActionType">
+                            <option value="Action">Action</option>
                             <option value="PowerShellCommand">PowerShell Command</option>
                             <option value="PowerShellScript">PowerShell Script</option>
                             <option value="ShellCommand">Shell Command</option>
                             <option value="ShellScript">Shell Script</option>
-                            <option value="Action">Action</option>
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
@@ -260,7 +260,7 @@
     private sealed class TaskFormModel {
         public string Name { get; set; } = "";
         public string? Description { get; set; }
-        public string ActionType { get; set; } = "ShellCommand";
+        public string ActionType { get; set; } = "Action";
         public string Content { get; set; } = "";
         public string? Arguments { get; set; }
         public string TargetTags { get; set; } = "";
