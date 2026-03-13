@@ -15,7 +15,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <AuthorizeView Roles="Admin,Operator">
-            <a href="/workflows/new" class="btn btn-primary">
+            <a href="/workflows/new/dag-editor" class="btn btn-primary">
                 <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Workflow
             </a>
         </AuthorizeView>
@@ -107,7 +107,7 @@
                                         @onclick="( ) => RunWorkflow( w.Id )" disabled="@_isRunning">
                                     Run
                                 </button>
-                                <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id/edit">Edit</a>
+                                <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id/dag-editor">Edit</a>
                             </AuthorizeView>
                             <a class="btn btn-outline-secondary btn-sm me-1" href="/workflows/@w.Id/runs">Runs</a>
                             <AuthorizeView Roles="Admin,Operator">
@@ -179,7 +179,7 @@
                                             @onclick="( ) => RunWorkflow( w.Id )" disabled="@_isRunning">
                                         Run
                                     </button>
-                                    <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id/edit">Edit</a>
+                                    <a class="btn btn-outline-primary btn-sm me-1" href="/workflows/@w.Id/dag-editor">Edit</a>
                                 </AuthorizeView>
                                 <a class="btn btn-outline-secondary btn-sm me-1" href="/workflows/@w.Id/runs">Runs</a>
                                 <AuthorizeView Roles="Admin,Operator">

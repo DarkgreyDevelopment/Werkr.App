@@ -1,5 +1,6 @@
-﻿@page "/workflows/{Id:long}/edit"
-@page "/workflows/new"
+﻿@* Legacy: page directives removed — routes now served by DagEditor.razor *@
+@* @page "/workflows/{Id:long}/edit" *@
+@* @page "/workflows/new" *@
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject IHttpClientFactory HttpClientFactory

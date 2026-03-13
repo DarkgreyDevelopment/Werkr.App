@@ -29,12 +29,13 @@ export function initGraph(
   minimapContainerId: string,
   dotNetObjRef: DotNetObjectReference
 ): void {
-  graph = createGraph( {
+  const result = createGraph( {
     containerId,
     minimapContainerId,
     readonly: true,
   } );
 
+  graph = result.graph;
   dotNetRef = dotNetObjRef;
   bindGraphEvents( graph, dotNetRef );
 }

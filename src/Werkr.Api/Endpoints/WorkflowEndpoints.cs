@@ -206,6 +206,72 @@ internal static class WorkflowEndpoints {
         } )
         .WithName( "RemoveWorkflowStep" )
         .RequireAuthorization( Policies.CanDelete );
+
+        _ = app.MapPost( "/api/workflows/{workflowId}/steps/batch", async (
+            long workflowId,
+            WorkflowStepBatchRequest request,
+            WorkflowService workflowService,
+            Microsoft.AspNetCore.Http.HttpContext httpContext,
+            CancellationToken ct
+        ) => {
+            // Dynamic per-operation-type authorization
+            Microsoft.AspNetCore.Authorization.IAuthorizationService authService =
+                httpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Authorization.IAuthorizationService>();
+
+            bool needsCreate = request.Operations.Any( o =>
+                string.Equals( o.OperationType, "Add", StringComparison.OrdinalIgnoreCase ) );
+            bool needsUpdate = request.Operations.Any( o =>
+                string.Equals( o.OperationType, "Update", StringComparison.OrdinalIgnoreCase ) );
+            bool needsDelete = request.Operations.Any( o =>
+                string.Equals( o.OperationType, "Delete", StringComparison.OrdinalIgnoreCase ) );
+
+            // Check dependency changes too
+            foreach (StepBatchOperation op in request.Operations) {
+                if (op.DependencyChanges is null) continue;
+                foreach (DependencyBatchItem dep in op.DependencyChanges) {
+                    if (string.Equals( dep.OperationType, "Add", StringComparison.OrdinalIgnoreCase )) {
+                        needsCreate = true;
+                    } else if (string.Equals( dep.OperationType, "Delete", StringComparison.OrdinalIgnoreCase )) {
+                        needsDelete = true;
+                    }
+                }
+            }
+
+            List<string> missingPolicies = [];
+            if (needsCreate) {
+                Microsoft.AspNetCore.Authorization.AuthorizationResult result =
+                    await authService.AuthorizeAsync( httpContext.User, null, Policies.CanCreate );
+                if (!result.Succeeded) missingPolicies.Add( Policies.CanCreate );
+            }
+            if (needsUpdate) {
+                Microsoft.AspNetCore.Authorization.AuthorizationResult result =
+                    await authService.AuthorizeAsync( httpContext.User, null, Policies.CanUpdate );
+                if (!result.Succeeded) missingPolicies.Add( Policies.CanUpdate );
+            }
+            if (needsDelete) {
+                Microsoft.AspNetCore.Authorization.AuthorizationResult result =
+                    await authService.AuthorizeAsync( httpContext.User, null, Policies.CanDelete );
+                if (!result.Succeeded) missingPolicies.Add( Policies.CanDelete );
+            }
+
+            if (missingPolicies.Count > 0) {
+                return Results.Forbid();
+            }
+
+            try {
+                WorkflowStepBatchResponse response =
+                    await workflowService.BatchUpdateStepsAsync( workflowId, request, ct );
+                return response.Success
+                    ? Results.Ok( response )
+                    : Results.BadRequest( response );
+            } catch (KeyNotFoundException) {
+                return Results.NotFound();
+            } catch (Exception ex) when (ex is FormatException or ArgumentException) {
+                return Results.BadRequest( new { message = ex.Message } );
+            }
+        } )
+        .WithName( "BatchUpdateWorkflowSteps" )
+        .RequireAuthorization( Policies.CanRead );
     }
 
     // ── Step Dependencies ──

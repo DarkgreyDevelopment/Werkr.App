@@ -1,0 +1,21 @@
+.dag-editor-canvas-container {
+    position: relative;
+}
+
+.dag-editor-canvas {
+    width: 100%;
+    min-height: 500px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    background-color: var(--bs-body-bg);
+}
+
+.dag-editor-minimap {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+    background: var(--bs-body-bg);
+    opacity: 0.9;
+}

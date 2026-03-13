@@ -30,3 +30,27 @@ export interface LayoutConfig {
   ranksep: number;
   align: "UL" | "UR" | "DL" | "DR" | undefined;
 }
+
+// ── Editor-specific types (Phase 5) ──
+
+/** Extended DTO for editor mode — includes mutable step configuration fields from the server. */
+export interface EditorDagNodeDto extends DagNodeDto {
+  taskId?: number;
+  inputVariableName?: string | null;
+  outputVariableName?: string | null;
+  dependencyMode?: string;
+  conditionExpression?: string | null;
+  maxIterations?: number;
+}
+
+/** Extended node data for editor mode — adds mutable step configuration fields. */
+export interface EditorNodeData extends WerkrNodeData {
+  tempId?: number;
+  taskId: number;
+  inputVariableName?: string | null;
+  outputVariableName?: string | null;
+  dependencyMode?: string;
+  conditionExpression?: string | null;
+  maxIterations?: number;
+  actionType?: string;
+}

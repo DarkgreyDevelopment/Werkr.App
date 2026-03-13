@@ -1,0 +1,600 @@
+@page "/workflows/{Id:long}/dag-editor"
+@page "/workflows/new/dag-editor"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthState
+@inject ILogger<DagEditor> Logger
+
+<PageTitle>Werkr - @( IsNewMode ? "New" : "Edit" ) Workflow</PageTitle>
+
+<h1>@( IsNewMode ? "New" : "Edit" ) Workflow</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( !string.IsNullOrWhiteSpace( _successMessage ) ) {
+    <StatusBanner Visible="true" Level="success" Title="Success" Message="@_successMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading workflow…" />
+} else if ( _model is not null ) {
+    @* ── Draft Restore Prompt ── *@
+    @if ( _hasDraft && !_draftDismissed ) {
+        <div class="alert alert-info d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-clock-history me-2"></i>An unsaved draft was found.</span>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-primary" @onclick="RestoreDraftAsync">Restore</button>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="DismissDraftAsync">Dismiss</button>
+            </div>
+        </div>
+    }
+
+    @* ── Toolbar ── *@
+    <EditorToolbar DirtyCount="_dirtyCount"
+                   IsSaving="_isSaving"
+                   IsValidating="_isValidating"
+                   Direction="_direction"
+                   ZoomLevel="_zoomLevel"
+                   OnSave="SaveAsync"
+                   OnUndo="UndoAsync"
+                   OnRedo="RedoAsync"
+                   OnValidate="ValidateDagAsync"
+                   OnAutoLayout="AutoLayoutAsync"
+                   OnZoomIn="ZoomInAsync"
+                   OnZoomOut="ZoomOutAsync"
+                   OnZoomFit="ZoomFitAsync"
+                   OnDirectionChanged="SetDirectionAsync" />
+
+    @* ── Workflow Metadata (collapsible) ── *@
+    <details class="card mb-3">
+        <summary class="card-header d-flex align-items-center">
+            <i class="bi bi-chevron-right me-2 details-chevron"></i>
+            <h5 class="mb-0 d-inline">Workflow Details</h5>
+        </summary>
+        <div class="card-body">
+            <EditForm Model="_model" OnValidSubmit="SaveMetadataAsync" FormName="EditWorkflowMeta">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="wf-name">Name</label>
+                        <InputText id="wf-name" class="form-control" @bind-Value="_model!.Name" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="wf-desc">Description</label>
+                        <InputTextArea id="wf-desc" class="form-control" rows="2" @bind-Value="_model!.Description" />
+                    </div>
+                    <div class="col-md-3">
+                        <ToggleSwitch @bind-Value="_model!.Enabled" Label="Enabled" />
+                    </div>
+                    <div class="col-md-9">
+                        <label class="form-label">Target Tags</label>
+                        <TagInput @bind-Value="_model!.TargetTags" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-outline-primary btn-sm mt-3" disabled="@_isSavingMeta">
+                    @if ( _isSavingMeta ) {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    Save Metadata
+                </button>
+            </EditForm>
+        </div>
+    </details>
+
+    @* ── DAG Validation ── *@
+    @if ( _dagResult is not null ) {
+        <div class="mb-3">
+            @if ( _dagResult.IsValid ) {
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>DAG Valid</span>
+            } else {
+                <div class="alert alert-danger py-2">
+                    <strong>DAG Invalid:</strong>
+                    <ul class="mb-0 mt-1">
+                        @foreach ( string err in _dagResult.Errors ) {
+                            <li>@err</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    }
+
+    @* ── Editor Layout: Palette | Canvas | Config Panel ── *@
+    <div class="dag-editor-layout d-flex" style="height: calc(100vh - 320px); min-height: 400px;">
+        @* ── Step Palette (left) ── *@
+        <StepPalette OnPaletteDragStart="HandlePaletteDragStartAsync" />
+
+        @* ── Canvas (center) ── *@
+        <DagEditorCanvas @ref="_canvas"
+                         WorkflowId="@Id"
+                         UserId="@_userId"
+                         OnNodeSelected="HandleNodeSelectedAsync"
+                         OnNodeDeselected="HandleNodeDeselectedAsync"
+                         OnNodeDropped="HandleNodeDroppedAsync"
+                         OnSaveRequested="SaveAsync"
+                         OnCycleDetected="HandleCycleDetectedAsync"
+                         OnDirtyCountChanged="HandleDirtyCountChangedAsync"
+                         OnZoomChanged="HandleZoomChanged" />
+
+        @* ── Config Panel (right) ── *@
+        <NodeConfigPanel SelectedStepId="_selectedStepId"
+                         Tasks="_tasks"
+                         Dependencies="_selectedStepDependencies"
+                         TaskId="_selectedTaskId"
+                         TaskName="@_selectedTaskName"
+                         ControlStatement="@_selectedControlStatement"
+                         ConditionExpression="@_selectedConditionExpression"
+                         MaxIterations="_selectedMaxIterations"
+                         DependencyMode="@_selectedDependencyMode"
+                         InputVariableName="@_selectedInputVariable"
+                         OutputVariableName="@_selectedOutputVariable"
+                         OnFieldChanged="HandleFieldChangedAsync"
+                         OnClose="HandleConfigPanelClose"
+                         OnDelete="HandleDeleteSelectedAsync"
+                         OnEditTaskRequested="HandleEditTaskAsync"
+                         OnCreateTaskRequested="HandleCreateTaskAsync"
+                         OnRemoveDependency="HandleRemoveDependencyAsync" />
+    </div>
+
+    @* ── Status Bar ── *@
+    <div class="d-flex align-items-center gap-3 mt-2 small text-muted">
+        <span>Steps: @_stepCount</span>
+        <span>Edges: @_edgeCount</span>
+        @if ( _lastSaved.HasValue ) {
+            <span>Last saved: @_lastSaved.Value.ToString( "HH:mm:ss" )</span>
+        }
+    </div>
+
+    <TaskSetupModal @ref="_taskSetupModal" WorkflowId="Id" OnTaskCreated="OnTaskCreatedAsync" OnTaskUpdated="OnTaskUpdatedAsync" />
+}
+
+@code {
+    [Parameter] public long Id { get; set; }
+
+    private bool IsNewMode => Id == 0;
+
+    // ── State ──
+    private WorkflowDto? _workflow;
+    private WorkflowFormModel? _model;
+    private List<TaskDto>? _tasks;
+    private DagValidationResult? _dagResult;
+    private DagEditorCanvas? _canvas;
+    private TaskSetupModal? _taskSetupModal;
+
+    private string _userId = "";
+    private string? _errorMessage;
+    private string? _successMessage;
+    private bool _isLoading;
+    private bool _isSaving;
+    private bool _isSavingMeta;
+    private bool _isValidating;
+    private bool _hasDraft;
+    private bool _draftDismissed;
+    private string _direction = "LR";
+    private double _zoomLevel = 1.0;
+    private int _dirtyCount;
+    private int _stepCount;
+    private int _edgeCount;
+    private DateTime? _lastSaved;
+
+    // ── Selected Node State ──
+    private long? _selectedStepId;
+    private long _selectedTaskId;
+    private string _selectedTaskName = "";
+    private string _selectedControlStatement = "Default";
+    private string? _selectedConditionExpression;
+    private int _selectedMaxIterations = 100;
+    private string _selectedDependencyMode = "All";
+    private string? _selectedInputVariable;
+    private string? _selectedOutputVariable;
+    private IReadOnlyList<long>? _selectedStepDependencies;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
+
+    protected override async Task OnInitializedAsync( ) {
+        AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
+        _userId = authState.User.Identity?.Name ?? "unknown";
+
+        if ( IsNewMode ) {
+            _breadcrumbs = [new( "Workflows", "/workflows" ), new( "New Editor" )];
+            _model = new WorkflowFormModel( );
+            await LoadReferenceDataAsync( );
+        } else {
+            await LoadAsync( );
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync( bool firstRender ) {
+        if ( firstRender && _canvas?.Interop is not null && !IsNewMode ) {
+            _hasDraft = await _canvas.Interop.CheckDraftAsync( _userId, Id );
+            if ( _hasDraft ) {
+                StateHasChanged( );
+            }
+        }
+    }
+
+    private async Task LoadReferenceDataAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load tasks: {ex.Message}";
+        }
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/workflows/{Id}" );
+            if ( _workflow is null ) {
+                _errorMessage = "Workflow not found.";
+                return;
+            }
+
+            _breadcrumbs = [
+                new( "Workflows", "/workflows" ),
+                new( _workflow.Name, $"/workflows/{Id}" ),
+                new( "Editor" )
+            ];
+
+            _model = new WorkflowFormModel {
+                Name = _workflow.Name,
+                Description = _workflow.Description,
+                Enabled = _workflow.Enabled,
+                TargetTags = _workflow.TargetTags ?? [],
+            };
+
+            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            _stepCount = _workflow.Steps.Count;
+            _edgeCount = _workflow.Steps.Sum( s => s.Dependencies.Count );
+
+            // Load graph into canvas after initial render
+            if ( _canvas?.Interop is not null ) {
+                await LoadGraphIntoCanvasAsync( );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load workflow: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadGraphIntoCanvasAsync( ) {
+        if ( _canvas?.Interop is null || _workflow is null ) return;
+
+        object[] nodes = _workflow.Steps.Select( step => (object) new {
+            stepId = step.Id,
+            stepLabel = $"Step #{step.Order}",
+            taskName = step.TaskName ?? $"Task {step.TaskId}",
+            controlStatement = step.ControlStatement,
+            order = step.Order,
+            taskId = step.TaskId,
+            inputVariableName = step.InputVariableName,
+            outputVariableName = step.OutputVariableName,
+            dependencyMode = step.DependencyMode,
+            conditionExpression = step.ConditionExpression,
+            maxIterations = step.MaxIterations,
+        } ).ToArray( );
+
+        object[] edges = _workflow.Steps
+            .SelectMany( step => step.Dependencies.Select( dep => (object) new {
+                sourceStepId = dep.DependsOnStepId,
+                targetStepId = step.Id,
+            } ) )
+            .ToArray( );
+
+        await _canvas.Interop.LoadGraphAsync( nodes, edges );
+    }
+
+    // ── Toolbar Actions ──
+
+    private async Task SaveAsync( ) {
+        if ( _canvas?.Interop is null || _isSaving ) return;
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try {
+            string changesetJson = await _canvas.Interop.GetChangesetJsonAsync( );
+            if ( string.IsNullOrEmpty( changesetJson ) || changesetJson == "{}" ) {
+                _successMessage = "No changes to save.";
+                return;
+            }
+
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PostAsync(
+                $"/api/workflows/{Id}/steps/batch",
+                new StringContent( changesetJson, System.Text.Encoding.UTF8, "application/json" ) );
+
+            if ( response.IsSuccessStatusCode ) {
+                await _canvas.Interop.ClearChangesetAsync( );
+                _lastSaved = DateTime.Now;
+                _successMessage = "Changes saved.";
+                await LoadAsync( );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Save failed: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Save failed: {ex.Message}";
+        } finally {
+            _isSaving = false;
+        }
+    }
+
+    private async Task UndoAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.UndoAsync( );
+        }
+    }
+
+    private async Task RedoAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.RedoAsync( );
+        }
+    }
+
+    private async Task ValidateDagAsync( ) {
+        if ( IsNewMode ) return;
+        _isValidating = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            HttpResponseMessage response = await client.PostAsync( $"/api/workflows/{Id}/validate", null );
+            _dagResult = await response.Content.ReadFromJsonAsync<DagValidationResult>( );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Validation failed: {ex.Message}";
+        } finally {
+            _isValidating = false;
+        }
+    }
+
+    private async Task AutoLayoutAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.AutoLayoutAsync( );
+        }
+    }
+
+    private async Task SetDirectionAsync( string direction ) {
+        _direction = direction;
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.SetLayoutDirectionAsync( direction );
+        }
+    }
+
+    private async Task ZoomInAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.ZoomToAsync( _zoomLevel * 1.2 );
+        }
+    }
+
+    private async Task ZoomOutAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.ZoomToAsync( _zoomLevel / 1.2 );
+        }
+    }
+
+    private async Task ZoomFitAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.ZoomToFitAsync( );
+        }
+    }
+
+    // ── Save Metadata (separate from batch step save) ──
+
+    private async Task SaveMetadataAsync( ) {
+        if ( _model is null ) return;
+        _isSavingMeta = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            if ( IsNewMode ) {
+                WorkflowCreateRequest createRequest = new(
+                    Name: _model.Name,
+                    Description: _model.Description,
+                    Enabled: _model.Enabled,
+                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
+
+                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/workflows", createRequest );
+                if ( !response.IsSuccessStatusCode ) {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to create workflow: {body}";
+                    return;
+                }
+
+                WorkflowDto? created = await response.Content.ReadFromJsonAsync<WorkflowDto>( );
+                if ( created is null || created.Id == 0 ) {
+                    _errorMessage = "Failed to create workflow: no ID returned.";
+                    return;
+                }
+
+                _successMessage = "Workflow created. Redirecting to editor…";
+                Navigation.NavigateTo( $"/workflows/{created.Id}/dag-editor" );
+            } else {
+                WorkflowUpdateRequest request = new(
+                    Name: _model.Name,
+                    Description: _model.Description,
+                    Enabled: _model.Enabled,
+                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
+
+                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/workflows/{Id}", request );
+                if ( response.IsSuccessStatusCode ) {
+                    _successMessage = "Metadata saved.";
+                } else {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to save metadata: {body}";
+                }
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to save metadata: {ex.Message}";
+        } finally {
+            _isSavingMeta = false;
+        }
+    }
+
+    // ── Draft Management ──
+
+    private async Task RestoreDraftAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.RestoreDraftAsync( _userId, Id );
+        }
+        _draftDismissed = true;
+    }
+
+    private async Task DismissDraftAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.DismissDraftAsync( _userId, Id );
+        }
+        _draftDismissed = true;
+    }
+
+    // ── Canvas Event Handlers ──
+
+    private Task HandleNodeSelectedAsync( long stepId ) {
+        _selectedStepId = stepId;
+
+        WorkflowStepDto? step = _workflow?.Steps.FirstOrDefault( s => s.Id == stepId );
+        if ( step is not null ) {
+            _selectedTaskId = step.TaskId;
+            _selectedTaskName = step.TaskName ?? $"Task #{step.TaskId}";
+            _selectedControlStatement = step.ControlStatement;
+            _selectedConditionExpression = step.ConditionExpression;
+            _selectedMaxIterations = step.MaxIterations;
+            _selectedDependencyMode = step.DependencyMode;
+            _selectedInputVariable = step.InputVariableName;
+            _selectedOutputVariable = step.OutputVariableName;
+            _selectedStepDependencies = step.Dependencies.Select( d => d.DependsOnStepId ).ToList( );
+        } else {
+            // New node (temp ID) — set defaults
+            _selectedTaskId = 0;
+            _selectedTaskName = "";
+            _selectedControlStatement = "Default";
+            _selectedConditionExpression = null;
+            _selectedMaxIterations = 100;
+            _selectedDependencyMode = "All";
+            _selectedInputVariable = null;
+            _selectedOutputVariable = null;
+            _selectedStepDependencies = [];
+        }
+
+        StateHasChanged( );
+        return Task.CompletedTask;
+    }
+
+    private Task HandleNodeDeselectedAsync( ) {
+        _selectedStepId = null;
+        StateHasChanged( );
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleNodeDroppedAsync( (string ActionType, double X, double Y) args ) {
+        // A node was dropped from the palette. The JS side creates a temp node;
+        // we track it for the config panel if needed.
+        _stepCount++;
+        _dirtyCount++;
+        await Task.CompletedTask;
+        StateHasChanged( );
+    }
+
+    private Task HandleCycleDetectedAsync( (string SourceId, string TargetId) args ) {
+        _errorMessage = $"Connection rejected: would create a cycle ({args.SourceId} → {args.TargetId}).";
+        StateHasChanged( );
+        return Task.CompletedTask;
+    }
+
+    private Task HandleDirtyCountChangedAsync( int dirtyCount ) {
+        _dirtyCount = dirtyCount;
+        StateHasChanged( );
+        return Task.CompletedTask;
+    }
+
+    private void HandleZoomChanged( double zoom ) {
+        _zoomLevel = zoom;
+        InvokeAsync( StateHasChanged );
+    }
+
+    // ── Palette Drag ──
+
+    private async Task HandlePaletteDragStartAsync( (string ActionType, double ClientX, double ClientY) args ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.StartPaletteDragAsync( args.ActionType, args.ClientX, args.ClientY );
+        }
+    }
+
+    // ── Config Panel ──
+
+    private async Task HandleFieldChangedAsync( (string Field, object? Value) args ) {
+        if ( _selectedStepId is null || _canvas?.Interop is null ) return;
+
+        Dictionary<string, object?> fields = new( ) { [args.Field] = args.Value };
+        await _canvas.Interop.UpdateNodeDataAsync( _selectedStepId.Value, fields );
+    }
+
+    private Task HandleConfigPanelClose( ) {
+        _selectedStepId = null;
+        StateHasChanged( );
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleDeleteSelectedAsync( ) {
+        if ( _selectedStepId is null || _canvas?.Interop is null ) return;
+        await _canvas.Interop.RemoveNodesAsync( [_selectedStepId.Value] );
+        _selectedStepId = null;
+        StateHasChanged( );
+    }
+
+    private void HandleEditTaskAsync( ) {
+        TaskDto? task = _tasks?.FirstOrDefault( t => t.Id == _selectedTaskId );
+        if ( task is not null ) {
+            _taskSetupModal?.Show( task );
+        }
+    }
+
+    private void HandleCreateTaskAsync( ) {
+        _taskSetupModal?.Show( );
+    }
+
+    private async Task HandleRemoveDependencyAsync( long depStepId ) {
+        // Removing a dependency updates the graph via JS changeset
+        if ( _selectedStepId is null || _canvas?.Interop is null ) return;
+        // The changeset tracks this — for now, rebuild the graph to reflect it
+        await LoadAsync( );
+    }
+
+    // ── Task Modal Callbacks ──
+
+    private async Task OnTaskCreatedAsync( TaskDto task ) {
+        if ( _selectedStepId.HasValue && _canvas?.Interop is not null ) {
+            await _canvas.Interop.UpdateNodeDataAsync( _selectedStepId.Value,
+                new Dictionary<string, object?> { ["taskId"] = task.Id, ["taskName"] = task.Name } );
+            _selectedTaskId = task.Id;
+            _selectedTaskName = task.Name;
+        }
+        await LoadReferenceDataAsync( );
+    }
+
+    private async Task OnTaskUpdatedAsync( TaskDto task ) {
+        await LoadReferenceDataAsync( );
+        if ( _selectedTaskId == task.Id ) {
+            _selectedTaskName = task.Name;
+        }
+    }
+
+    // ── Models ──
+
+    private sealed class WorkflowFormModel {
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public bool Enabled { get; set; } = true;
+        public string[] TargetTags { get; set; } = [];
+    }
+}

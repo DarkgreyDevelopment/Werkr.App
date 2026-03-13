@@ -1,4 +1,5 @@
-import { Graph, Selection, Snapline, MiniMap } from "@antv/x6";
+import { Graph, Selection, Snapline, MiniMap, History, Keyboard, Dnd } from "@antv/x6";
+import { wouldCreateCycle } from "./cycle-detection";
 
 export interface GraphOptions {
   containerId: string;
@@ -6,8 +7,13 @@ export interface GraphOptions {
   readonly: boolean;
 }
 
+export interface GraphResult {
+  graph: Graph;
+  dnd?: Dnd;
+}
+
 /** Create and configure an X6 Graph instance with all plugins enabled. */
-export function createGraph( options: GraphOptions ): Graph {
+export function createGraph( options: GraphOptions ): GraphResult {
   const container = document.getElementById( options.containerId );
   if ( !container ) {
     throw new Error( `DAG container '#${options.containerId}' not found.` );
@@ -33,11 +39,26 @@ export function createGraph( options: GraphOptions ): Graph {
       maxScale: 3,
     },
 
-    // Node interaction — read-only in Phase 4
+    // Node interaction — read-only in Phase 4, editable in Phase 5
     interacting: {
       nodeMovable: !options.readonly,
       edgeMovable: false,
       edgeLabelMovable: false,
+    },
+
+    // Connection validation (editor mode only)
+    connecting: options.readonly ? undefined : {
+      snap: { radius: 30 },
+      allowBlank: false,
+      allowLoop: false,
+      allowMulti: false,
+      highlight: true,
+      validateEdge( { edge } ): boolean {
+        const sourceId = edge.getSourceCellId();
+        const targetId = edge.getTargetCellId();
+        if ( !sourceId || !targetId || sourceId === targetId ) return false;
+        return !wouldCreateCycle( graph as Graph, sourceId, targetId );
+      },
     },
   } );
 
@@ -66,5 +87,19 @@ export function createGraph( options: GraphOptions ): Graph {
     } ) );
   }
 
-  return graph;
+  // Editor-only plugins (Phase 5)
+  let dnd: Dnd | undefined;
+  if ( !options.readonly ) {
+    graph.use( new History( { enabled: true } ) );
+
+    graph.use( new Keyboard( {
+      enabled: true,
+      global: false,
+    } ) );
+
+    dnd = new Dnd( { target: graph } );
+    graph.use( dnd );
+  }
+
+  return { graph, dnd };
 }

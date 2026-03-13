@@ -4,14 +4,16 @@ using Werkr.Common.Models;
 namespace Werkr.Server.Helpers;
 
 /// <summary>
-/// Typed JS interop wrapper for the AntV X6 DAG canvas.
+/// Typed JS interop wrapper for the read-only AntV X6 DAG canvas.
 /// Manages <see cref="IJSObjectReference"/> lifecycle and DotNetObjectReference callbacks.
 /// </summary>
-public sealed class DagJsInterop : IAsyncDisposable {
+public sealed class DagJsInterop : GraphJsInteropBase<DagJsInterop> {
 
-    private readonly IJSRuntime _js;
-    private IJSObjectReference? _module;
-    private DotNetObjectReference<DagJsInterop>? _dotNetRef;
+    /// <inheritdoc/>
+    protected override string ModulePath => "/js/dist/dag-readonly.js";
+
+    /// <inheritdoc/>
+    protected override string DestroyFunctionName => "destroyGraph";
 
     /// <summary>Raised when a user clicks a DAG node (passes the step ID).</summary>
     public event Func<long, Task>? OnNodeClicked;
@@ -23,64 +25,47 @@ public sealed class DagJsInterop : IAsyncDisposable {
     public event Func<double, Task>? OnZoomChanged;
 
     /// <summary>Creates a new interop wrapper using the specified JS runtime.</summary>
-    public DagJsInterop( IJSRuntime js ) {
-        _js = js;
-    }
+    public DagJsInterop( IJSRuntime js ) : base( js ) { }
 
     /// <summary>Load the DAG JS module and create the X6 graph instance.</summary>
     public async Task InitAsync( string containerId, string minimapContainerId ) {
-        _module = await _js.InvokeAsync<IJSObjectReference>(
-            "import", "/js/dist/dag-readonly.js" );
-        _dotNetRef = DotNetObjectReference.Create( this );
-        await _module.InvokeVoidAsync( "initGraph", containerId, minimapContainerId, _dotNetRef );
+        await LoadModuleAsync( );
+        await InvokeVoidAsync( "initGraph", containerId, minimapContainerId, DotNetRef );
     }
 
     /// <summary>Load nodes and edges into the graph with Dagre layout.</summary>
     public async Task LoadGraphAsync( DagNodeDto[] nodes, DagEdgeDto[] edges ) {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync( "loadGraph", nodes, edges );
+        await InvokeVoidAsync( "loadGraph", nodes, edges );
     }
 
     /// <summary>Update the execution status of a single node (for SignalR incremental updates).</summary>
     public async Task UpdateNodeStatusAsync( long stepId, string status ) {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync( "updateNodeStatus", stepId, status );
+        await InvokeVoidAsync( "updateNodeStatus", stepId, status );
     }
 
     /// <summary>Apply execution status to all nodes from a status dictionary.</summary>
     public async Task ApplyAllStatusesAsync( Dictionary<long, string> statuses ) {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync( "applyAllStatuses", statuses );
+        await InvokeVoidAsync( "applyAllStatuses", statuses );
     }
 
     /// <summary>Clear all execution status overlays.</summary>
     public async Task ClearStatusesAsync( ) {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync( "clearStatuses" );
+        await InvokeVoidAsync( "clearStatuses" );
     }
 
     /// <summary>Zoom to fit all content in the viewport.</summary>
     public async Task ZoomToFitAsync( ) {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync( "zoomToFit" );
+        await InvokeVoidAsync( "zoomToFit" );
     }
 
     /// <summary>Zoom to a specific scale level.</summary>
     public async Task ZoomToAsync( double scale ) {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync( "zoomTo", scale );
+        await InvokeVoidAsync( "zoomTo", scale );
     }
 
     /// <summary>Switch layout direction (LR ↔ TB) and re-layout.</summary>
     public async Task SetLayoutDirectionAsync( string direction ) {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync( "setLayoutDirection", direction );
-    }
-
-    /// <summary>Destroy the graph and clean up JS resources.</summary>
-    public async Task DestroyAsync( ) {
-        if (_module is null) return;
-        await _module.InvokeVoidAsync( "destroyGraph" );
+        await InvokeVoidAsync( "setLayoutDirection", direction );
     }
 
     /// <summary>Callback invoked from JS when a user clicks a DAG node.</summary>
@@ -105,18 +90,5 @@ public sealed class DagJsInterop : IAsyncDisposable {
         if (OnZoomChanged is not null) {
             await OnZoomChanged.Invoke( zoom );
         }
-    }
-
-    /// <inheritdoc/>
-    public async ValueTask DisposeAsync( ) {
-        if (_module is not null) {
-            try {
-                await DestroyAsync( );
-                await _module.DisposeAsync( );
-            } catch (JSDisconnectedException) {
-                // Circuit disconnected — JS cleanup not possible, safe to ignore
-            }
-        }
-        _dotNetRef?.Dispose( );
     }
 }

@@ -28,4 +28,9 @@ await Promise.all([
     entryPoints: ["src/dag/dag-readonly.ts"],
     outfile: "../wwwroot/js/dist/dag-readonly.js",
   }),
+  build({
+    ...shared,
+    entryPoints: ["src/dag/dag-editor.ts"],
+    outfile: "../wwwroot/js/dist/dag-editor.js",
+  }),
 ]);

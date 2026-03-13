@@ -1,0 +1,68 @@
+@rendermode InteractiveServer
+@using Werkr.Common.Models.Actions
+
+<div class="step-palette d-flex flex-column h-100">
+    <div class="px-3 py-2 border-bottom">
+        <h6 class="mb-1">Step Palette</h6>
+        <input type="text"
+               class="form-control form-control-sm"
+               placeholder="Search actions…"
+               @bind="_searchTerm"
+               @bind:event="oninput" />
+    </div>
+
+    <div class="flex-grow-1 overflow-auto px-2 py-2">
+        @foreach ( (string category, IReadOnlyList<ActionFormDescriptor> actions) in FilteredGroups ) {
+            <div class="mb-2">
+                <small class="text-uppercase text-muted fw-semibold d-block mb-1 px-1">@category</small>
+                @foreach ( ActionFormDescriptor action in actions ) {
+                    <div class="palette-item d-flex align-items-center gap-2 px-2 py-1 rounded"
+                         draggable="true"
+                         @onmousedown="( e ) => HandleDragStart( action.Key, e )"
+                         title="@action.Description">
+                        <i class="bi @GetCategoryIcon( category ) text-muted"></i>
+                        <span class="small text-truncate">@action.DisplayName</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<(string ActionType, double ClientX, double ClientY)> OnPaletteDragStart { get; set; }
+
+    private string _searchTerm = "";
+
+    private IEnumerable<(string Category, IReadOnlyList<ActionFormDescriptor> Actions)> FilteredGroups {
+        get {
+            if (string.IsNullOrWhiteSpace( _searchTerm )) {
+                return ActionRegistry.Grouped;
+            }
+
+            string term = _searchTerm.Trim( );
+            return ActionRegistry.Grouped
+                .Select( g => (g.Category, (IReadOnlyList<ActionFormDescriptor>) g.Actions
+                    .Where( a => a.DisplayName.Contains( term, StringComparison.OrdinalIgnoreCase )
+                        || a.Category.Contains( term, StringComparison.OrdinalIgnoreCase ) )
+                    .ToList( )) )
+                .Where( g => g.Item2.Count > 0 );
+        }
+    }
+
+    private async Task HandleDragStart( string actionType, MouseEventArgs e ) {
+        await OnPaletteDragStart.InvokeAsync( (actionType, e.ClientX, e.ClientY) );
+    }
+
+    private static string GetCategoryIcon( string category ) => category switch {
+        "File" => "bi-file-earmark",
+        "Network" => "bi-globe",
+        "Process" => "bi-terminal",
+        "Archive" => "bi-file-zip",
+        "Data" => "bi-database",
+        "Security" => "bi-shield-lock",
+        "System" => "bi-gear",
+        "Text" => "bi-file-text",
+        _ => "bi-puzzle"
+    };
+}
