@@ -1,0 +1,442 @@
+{
+	"version": "2.0.0",
+	"inputs": [
+		{
+			"id": "migrationName",
+			"type": "promptString",
+			"description": "Name for the EF Core migration",
+			"default": "migration"
+		}
+	],
+	"tasks": [
+		{
+			"label": "verify:restore",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"restore",
+				"Werkr.slnx"
+			],
+			"group": "build",
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"reveal": "silent",
+				"revealProblems": "onProblem",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:build",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"build",
+				"Werkr.slnx"
+			],
+			"group": "build",
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"reveal": "silent",
+				"revealProblems": "onProblem",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:format",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"format",
+				"Werkr.slnx"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "silent",
+				"revealProblems": "onProblem",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:test-unit",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--project",
+				"src/Test/Werkr.Tests.Data/Werkr.Tests.Data.csproj"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:test-integration",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--project",
+				"src/Test/Werkr.Tests.Server/Werkr.Tests.Server.csproj"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:test-e2e",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--project",
+				"src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:start-apphost",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"run",
+				"--project",
+				"src/Werkr.AppHost/Werkr.AppHost.csproj"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:docker-check",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"docker",
+				"compose",
+				"config"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:docker-build",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-File",
+				"${workspaceFolder}/scripts/docker-build.ps1"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "docker:start",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"docker",
+				"compose",
+				"up",
+				"-d"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "docker:stop",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"docker",
+				"compose",
+				"down"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "docker:restart",
+			"dependsOn": [
+				"docker:stop",
+				"docker:start"
+			],
+			"dependsOrder": "sequence",
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "ef:app:postgres",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"ef",
+				"migrations",
+				"add",
+				"${input:migrationName}",
+				"--project",
+				"src/Werkr.Data",
+				"--startup-project",
+				"src/Werkr.Api",
+				"--context",
+				"PostgresWerkrDbContext",
+				"--output-dir",
+				"Migrations/Postgres"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "ef:app:sqlite",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"ef",
+				"migrations",
+				"add",
+				"${input:migrationName}",
+				"--project",
+				"src/Werkr.Data",
+				"--startup-project",
+				"src/Werkr.Api",
+				"--context",
+				"SqliteWerkrDbContext",
+				"--output-dir",
+				"Migrations/Sqlite"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "ef:app:both",
+			"dependsOn": [
+				"ef:app:postgres",
+				"ef:app:sqlite"
+			],
+			"dependsOrder": "sequence",
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "ef:identity:postgres",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"ef",
+				"migrations",
+				"add",
+				"${input:migrationName}",
+				"--project",
+				"src/Werkr.Data.Identity",
+				"--startup-project",
+				"src/Werkr.Server",
+				"--context",
+				"PostgresWerkrIdentityDbContext",
+				"--output-dir",
+				"Migrations/Postgres"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "ef:identity:sqlite",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"ef",
+				"migrations",
+				"add",
+				"${input:migrationName}",
+				"--project",
+				"src/Werkr.Data.Identity",
+				"--startup-project",
+				"src/Werkr.Server",
+				"--context",
+				"SqliteWerkrIdentityDbContext",
+				"--output-dir",
+				"Migrations/Sqlite"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "ef:identity:both",
+			"dependsOn": [
+				"ef:identity:postgres",
+				"ef:identity:sqlite"
+			],
+			"dependsOrder": "sequence",
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "ef:all",
+			"dependsOn": [
+				"ef:app:both",
+				"ef:identity:both"
+			],
+			"dependsOrder": "sequence",
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:build-server",
+			"type": "shell",
+			"command": "pwsh --noprofile -c 'dotnet build src/Werkr.Server/Werkr.Server.csproj'"
+		},
+		{
+			"label": "verify:test-e2e-verbose",
+			"type": "shell",
+			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj --verbosity normal 2>&1 | tail -50'"
+		},
+		{
+			"label": "verify:test-e2e-failures",
+			"type": "shell",
+			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj -- --report-trx 2>&1 | grep -i -E \"failed|error|FAIL\" | head -20'"
+		},
+		{
+			"label": "verify:e2e-fail-detail",
+			"type": "shell",
+			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj --no-build 2>&1 | grep -i -E \"failed|FAIL\" | head -20'"
+		},
+		{
+			"label": "verify:e2e-tail",
+			"type": "shell",
+			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj --no-build 2>&1 | tail -30'"
+		}
+	]
+}
