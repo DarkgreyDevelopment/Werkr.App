@@ -9,7 +9,7 @@ namespace Werkr.Server.Helpers;
 public sealed class DagEditorJsInterop : GraphJsInteropBase<DagEditorJsInterop> {
 
     /// <inheritdoc/>
-    protected override string ModulePath => "/js/dist/dag-editor.js";
+    protected override string ModulePath => "/js/dist/dag/dag-editor.js";
 
     /// <inheritdoc/>
     protected override string DestroyFunctionName => "destroyEditor";
@@ -140,6 +140,56 @@ public sealed class DagEditorJsInterop : GraphJsInteropBase<DagEditorJsInterop> 
     /// <summary>Dismiss (delete) the saved draft.</summary>
     public async Task DismissDraftAsync( string userId, long workflowId ) {
         await InvokeVoidAsync( "dismissDraft", userId, workflowId );
+    }
+
+    /// <summary>Export the graph as SVG and return the SVG markup.</summary>
+    public async Task<string> ExportSvgAsync( ) {
+        return await InvokeAsync<string>( "exportSvgAsync" );
+    }
+
+    /// <summary>Export the graph as PNG (triggers browser download).</summary>
+    public async Task ExportPngAsync( ) {
+        await InvokeVoidAsync( "exportPngAsync" );
+    }
+
+    /// <summary>Copy the selected nodes to the internal clipboard.</summary>
+    public async Task CopySelectionAsync( ) {
+        await InvokeVoidAsync( "copySelection" );
+    }
+
+    /// <summary>Paste nodes from the internal clipboard.</summary>
+    public async Task PasteAsync( ) {
+        await InvokeVoidAsync( "pasteSelection" );
+    }
+
+    /// <summary>Toggle dot-grid visibility on the editor canvas.</summary>
+    public async Task SetGridVisibleAsync( bool visible ) {
+        await InvokeVoidAsync( "setGridVisible", visible );
+    }
+
+    /// <summary>Add a sticky note annotation to the editor canvas.</summary>
+    public async Task AddAnnotationAsync( object annotation ) {
+        await InvokeVoidAsync( "addAnnotation", annotation );
+    }
+
+    /// <summary>Remove an annotation from the editor canvas.</summary>
+    public async Task RemoveAnnotationAsync( string id ) {
+        await InvokeVoidAsync( "removeAnnotation", id );
+    }
+
+    /// <summary>Update an existing annotation's properties.</summary>
+    public async Task UpdateAnnotationAsync( string id, object fields ) {
+        await InvokeVoidAsync( "updateAnnotation", id, fields );
+    }
+
+    /// <summary>Load annotations from JSON.</summary>
+    public async Task LoadAnnotationsAsync( string annotationsJson ) {
+        await InvokeVoidAsync( "loadAnnotations", annotationsJson );
+    }
+
+    /// <summary>Serialize all annotations on the canvas to JSON.</summary>
+    public async Task<string> GetAnnotationsJsonAsync( ) {
+        return await InvokeAsync<string>( "getAnnotationsJson" );
     }
 
     // ── JS→.NET Callbacks ──

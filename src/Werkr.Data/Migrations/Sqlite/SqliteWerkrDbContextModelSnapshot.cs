@@ -1028,6 +1028,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
+                    b.Property<string>("Annotations")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("annotations");
+
                     b.Property<string>("Created")
                         .IsRequired()
                         .HasColumnType("TEXT")

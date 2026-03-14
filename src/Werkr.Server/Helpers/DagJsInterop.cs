@@ -10,7 +10,7 @@ namespace Werkr.Server.Helpers;
 public sealed class DagJsInterop : GraphJsInteropBase<DagJsInterop> {
 
     /// <inheritdoc/>
-    protected override string ModulePath => "/js/dist/dag-readonly.js";
+    protected override string ModulePath => "/js/dist/dag/dag-readonly.js";
 
     /// <inheritdoc/>
     protected override string DestroyFunctionName => "destroyGraph";
@@ -66,6 +66,21 @@ public sealed class DagJsInterop : GraphJsInteropBase<DagJsInterop> {
     /// <summary>Switch layout direction (LR ↔ TB) and re-layout.</summary>
     public async Task SetLayoutDirectionAsync( string direction ) {
         await InvokeVoidAsync( "setLayoutDirection", direction );
+    }
+
+    /// <summary>Export the graph as SVG and return the SVG markup.</summary>
+    public async Task<string> ExportSvgAsync( ) {
+        return await InvokeAsync<string>( "exportSvgAsync" );
+    }
+
+    /// <summary>Export the graph as PNG (triggers browser download).</summary>
+    public async Task ExportPngAsync( ) {
+        await InvokeVoidAsync( "exportPngAsync" );
+    }
+
+    /// <summary>Load annotation nodes from JSON onto the read-only canvas.</summary>
+    public async Task LoadAnnotationsAsync( string annotationsJson ) {
+        await InvokeVoidAsync( "loadAnnotations", annotationsJson );
     }
 
     /// <summary>Callback invoked from JS when a user clicks a DAG node.</summary>

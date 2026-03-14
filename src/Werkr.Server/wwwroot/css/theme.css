@@ -78,6 +78,7 @@ body.dark-theme {
     --werkr-node-text:        #ffffff;
     --werkr-node-text-muted:  rgba(255, 255, 255, 0.8);
     --werkr-parallel-group-bg: rgba(108,117,125,0.12);
+    --werkr-snapline:         #17a2b8;
 
     background-color: var(--body-bg);
     color: var(--body-content-color);
@@ -129,6 +130,7 @@ body.light-theme {
     --werkr-node-text:        #ffffff;
     --werkr-node-text-muted:  rgba(255, 255, 255, 0.8);
     --werkr-parallel-group-bg: rgba(108,117,125,0.08);
+    --werkr-snapline:         #0dcaf0;
 
     background-color: var(--body-bg);
     color: var(--body-content-color);

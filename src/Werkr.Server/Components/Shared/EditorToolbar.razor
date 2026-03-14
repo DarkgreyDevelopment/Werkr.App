@@ -84,6 +84,33 @@
 
     <small class="text-muted">@( ZoomLevel.ToString( "P0" ) )</small>
 
+    <div class="vr"></div>
+
+    @* ── Export ── *@
+    <div class="btn-group btn-group-sm" role="group" aria-label="Export">
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnExportSvg" title="Export SVG">
+            <i class="bi bi-filetype-svg"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnExportPng" title="Export PNG">
+            <i class="bi bi-filetype-png"></i>
+        </button>
+    </div>
+
+    <div class="vr"></div>
+
+    @* ── Grid Toggle ── *@
+    <button type="button"
+            class="btn btn-sm @( GridVisible ? "btn-info" : "btn-outline-secondary" )"
+            @onclick="OnToggleGrid"
+            title="Toggle grid">
+        <i class="bi bi-grid-3x3"></i>
+    </button>
+
+    @* ── Add Annotation ── *@
+    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnAddAnnotation" title="Add Sticky Note">
+        <i class="bi bi-sticky"></i>
+    </button>
+
     @* ── Spacer ── *@
     <div class="flex-grow-1"></div>
 
@@ -115,4 +142,9 @@
     [Parameter] public EventCallback OnZoomOut { get; set; }
     [Parameter] public EventCallback OnZoomFit { get; set; }
     [Parameter] public EventCallback<string> OnDirectionChanged { get; set; }
+    [Parameter] public EventCallback OnExportSvg { get; set; }
+    [Parameter] public EventCallback OnExportPng { get; set; }
+    [Parameter] public bool GridVisible { get; set; }
+    [Parameter] public EventCallback OnToggleGrid { get; set; }
+    [Parameter] public EventCallback OnAddAnnotation { get; set; }
 }

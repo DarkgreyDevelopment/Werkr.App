@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Werkr.Common.Models;
 using Werkr.Data.Entities.Workflows;
 
@@ -25,6 +26,9 @@ internal static class WorkflowMapper {
             Description = request.Description ?? string.Empty,
             Enabled = request.Enabled,
             TargetTags = request.TargetTags,
+            Annotations = request.Annotations is { Count: > 0 }
+                ? JsonSerializer.Serialize( request.Annotations )
+                : null,
         };
 
     /// <summary>Maps a <see cref="Workflow"/> entity to a <see cref="WorkflowDto"/>.</summary>
@@ -35,7 +39,8 @@ internal static class WorkflowMapper {
             Description: workflow.Description,
             Enabled: workflow.Enabled,
             Steps: [.. workflow.Steps.Select( ToStepDto )],
-            TargetTags: workflow.TargetTags );
+            TargetTags: workflow.TargetTags,
+            Annotations: DeserializeAnnotations( workflow.Annotations ) );
 
     /// <summary>Maps a <see cref="WorkflowStep"/> entity to a <see cref="WorkflowStepDto"/>.</summary>
     public static WorkflowStepDto ToStepDto( WorkflowStep step ) =>
@@ -138,4 +143,13 @@ internal static class WorkflowMapper {
             ProducedByJobId: variable.ProducedByJobId,
             Source: variable.Source.ToString( ),
             Created: variable.Created );
+
+    private static List<AnnotationDto>? DeserializeAnnotations( string? json ) {
+        if ( string.IsNullOrWhiteSpace( json ) ) return null;
+        try {
+            return JsonSerializer.Deserialize<List<AnnotationDto>>( json );
+        } catch ( JsonException ) {
+            return null;
+        }
+    }
 }

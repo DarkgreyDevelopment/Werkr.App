@@ -12,13 +12,16 @@ import {
 import { registerWerkrNode, NODE_WIDTH, NODE_HEIGHT } from "./werkr-node";
 import { werkrEdgeDefaults } from "./werkr-edge";
 import { renderParallelLanes } from "./parallel-lanes";
+import { exportSvg as doExportSvg, exportPng as doExportPng } from "./export-handler";
+import { registerAnnotationShape } from "./annotation-node";
 
 let graph: Graph | null = null;
 let dotNetRef: DotNetObjectReference | null = null;
 let currentDirection: "LR" | "TB" = "LR";
 
-// Register custom node shape on module load
+// Register custom node shapes on module load
 registerWerkrNode();
+registerAnnotationShape();
 
 /**
  * Initialize the X6 graph in the given container.
@@ -183,4 +186,40 @@ export function destroyGraph(): void {
   graph?.dispose();
   graph = null;
   dotNetRef = null;
+}
+
+/** Export the graph as SVG. Returns the SVG markup string. */
+export async function exportSvgAsync(): Promise<string> {
+  if ( !graph ) return "";
+  return doExportSvg( graph );
+}
+
+/** Export the graph as PNG (triggers file download). */
+export async function exportPngAsync(): Promise<void> {
+  if ( !graph ) return;
+  await doExportPng( graph );
+}
+
+/** Load annotation nodes from JSON onto the read-only canvas. */
+export function loadAnnotations( annotationsJson: string ): void {
+  if ( !graph || !annotationsJson ) return;
+  try {
+    const annotations = JSON.parse( annotationsJson ) as Array<{
+      id: string; text: string; x: number; y: number;
+      width: number; height: number; color: string;
+    }>;
+    for ( const ann of annotations ) {
+      graph.addNode( {
+        id: `annotation-${ann.id}`,
+        shape: "werkr-annotation",
+        x: ann.x,
+        y: ann.y,
+        width: ann.width,
+        height: ann.height,
+        data: { id: ann.id, text: ann.text, color: ann.color, isAnnotation: true },
+      } );
+    }
+  } catch {
+    // Silently skip invalid annotation JSON
+  }
 }

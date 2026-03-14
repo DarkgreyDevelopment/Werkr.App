@@ -15,6 +15,9 @@ import {
 import { registerWerkrNode, NODE_WIDTH, NODE_HEIGHT } from "./werkr-node";
 import { werkrEdgeDefaults } from "./werkr-edge";
 import { renderParallelLanes } from "./parallel-lanes";
+import { exportSvg as doExportSvg, exportPng as doExportPng } from "./export-handler";
+import { copySelection as doCopy, pasteSelection as doPaste } from "./clipboard-handler";
+import { registerAnnotationShape } from "./annotation-node";
 
 let graph: Graph | null = null;
 let dndPlugin: Dnd | null = null;
@@ -26,8 +29,9 @@ let currentUserId: string = "";
 let currentWorkflowId: number = 0;
 let dndHandler: ReturnType<typeof setupDnd> | null = null;
 
-// Register custom node shape on module load
+// Register custom node shapes on module load
 registerWerkrNode();
+registerAnnotationShape();
 
 /**
  * Initialize the X6 graph in editor mode.
@@ -339,6 +343,117 @@ export function restoreDraft( userId: string, workflowId: number ): string | nul
 /** Clear the draft from localStorage. */
 export function dismissDraft( userId: string, workflowId: number ): void {
   clearDraft( userId, workflowId );
+}
+
+/** Export the graph as SVG. Returns the SVG markup string. */
+export async function exportSvgAsync(): Promise<string> {
+  if ( !graph ) return "";
+  return doExportSvg( graph );
+}
+
+/** Export the graph as PNG (triggers file download). */
+export async function exportPngAsync(): Promise<void> {
+  if ( !graph ) return;
+  await doExportPng( graph );
+}
+
+/** Copy the current selection to the clipboard. */
+export function copySelection(): void {
+  if ( !graph ) return;
+  doCopy( graph );
+}
+
+/** Paste from the clipboard onto the canvas. */
+export function pasteSelection(): void {
+  if ( !graph || !dotNetRef ) return;
+  doPaste( graph, changeset );
+  dotNetRef.invokeMethodAsync( "OnGraphDirtyChangedCallback", changeset.getDirtyCount() );
+}
+
+/** Toggle dot-grid visibility on the editor canvas. */
+export function setGridVisible( visible: boolean ): void {
+  if ( !graph ) return;
+  if ( visible ) {
+    graph.showGrid();
+  } else {
+    graph.hideGrid();
+  }
+}
+
+/** Add a sticky note annotation to the editor canvas. */
+export function addAnnotation( annotation: {
+  id: string; text: string; x: number; y: number;
+  width: number; height: number; color: string;
+} ): void {
+  if ( !graph ) return;
+  graph.addNode( {
+    id: `annotation-${annotation.id}`,
+    shape: "werkr-annotation",
+    x: annotation.x,
+    y: annotation.y,
+    width: annotation.width,
+    height: annotation.height,
+    data: { id: annotation.id, text: annotation.text, color: annotation.color, isAnnotation: true },
+  } );
+}
+
+/** Remove an annotation from the editor canvas. */
+export function removeAnnotation( id: string ): void {
+  if ( !graph ) return;
+  const node = graph.getCellById( `annotation-${id}` );
+  if ( node ) graph.removeCell( node );
+}
+
+/** Update an existing annotation's properties. */
+export function updateAnnotation( id: string, fields: { text?: string; color?: string } ): void {
+  if ( !graph ) return;
+  const node = graph.getCellById( `annotation-${id}` );
+  if ( !node || !node.isNode() ) return;
+  const data = node.getData() ?? {};
+  if ( fields.text !== undefined ) data.text = fields.text;
+  if ( fields.color !== undefined ) data.color = fields.color;
+  node.setData( data );
+}
+
+/** Load annotations from JSON. */
+export function loadAnnotations( annotationsJson: string ): void {
+  if ( !graph || !annotationsJson ) return;
+  try {
+    const annotations = JSON.parse( annotationsJson ) as Array<{
+      id: string; text: string; x: number; y: number;
+      width: number; height: number; color: string;
+    }>;
+    for ( const ann of annotations ) {
+      addAnnotation( ann );
+    }
+  } catch {
+    // Silently skip invalid annotation JSON
+  }
+}
+
+/** Serialize all annotations on the canvas to JSON. */
+export function getAnnotationsJson(): string {
+  if ( !graph ) return "[]";
+  const annotations: Array<{
+    id: string; text: string; x: number; y: number;
+    width: number; height: number; color: string;
+  }> = [];
+  for ( const node of graph.getNodes() ) {
+    const data = node.getData<{ isAnnotation?: boolean; id?: string; text?: string; color?: string }>();
+    if ( !data?.isAnnotation ) continue;
+    const pos = node.getPosition();
+    const size = node.getSize();
+    annotations.push( {
+      id: data.id ?? "",
+      text: data.text ?? "",
+      x: pos.x,
+      y: pos.y,
+      width: size.width,
+      height: size.height,
+      color: data.color ?? "#fef3cd",
+    } );
+  }
+  return JSON.stringify( annotations );
 }
 
 /** Destroy the editor and clean up all resources. */

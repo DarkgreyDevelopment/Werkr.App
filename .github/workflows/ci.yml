@@ -40,6 +40,25 @@ jobs:
           echo "assemblySemFileVer=$(echo $VERSION_JSON | jq -r '.AssemblySemFileVer')" >> $GITHUB_OUTPUT
           echo "informationalVersion=$(echo $VERSION_JSON | jq -r '.InformationalVersion')" >> $GITHUB_OUTPUT
 
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/Werkr.Server/graph-ui/package-lock.json
+
+      - name: Install graph-ui dependencies
+        run: npm ci --prefix src/Werkr.Server/graph-ui
+
+      - name: Run JS tests
+        run: npm test --prefix src/Werkr.Server/graph-ui
+
+      - name: Build JS bundles (production)
+        run: npm run build:prod --prefix src/Werkr.Server/graph-ui
+
+      - name: Check bundle sizes
+        run: node src/Werkr.Server/graph-ui/scripts/check-bundle-size.mjs
+
       - name: Restore dependencies
         run: |
           # Backup lock files before restore

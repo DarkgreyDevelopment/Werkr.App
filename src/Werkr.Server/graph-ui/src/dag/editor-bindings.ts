@@ -3,6 +3,7 @@ import type { DotNetObjectReference } from "../types/dotnet-interop";
 import type { EditorNodeData } from "./dag-types";
 import { wouldCreateCycle } from "./cycle-detection";
 import { Changeset } from "./changeset";
+import { copySelection, pasteSelection } from "./clipboard-handler";
 
 let zoomDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -187,6 +188,19 @@ export function bindKeyboardShortcuts(
   graph.bindKey( "shift+down", () => nudge( 0, 10 ) );
   graph.bindKey( "shift+left", () => nudge( -10, 0 ) );
   graph.bindKey( "shift+right", () => nudge( 10, 0 ) );
+
+  // Copy selection (Ctrl+C)
+  graph.bindKey( "ctrl+c", ( e ) => {
+    e.preventDefault();
+    copySelection( graph );
+  } );
+
+  // Paste selection (Ctrl+V)
+  graph.bindKey( "ctrl+v", ( e ) => {
+    e.preventDefault();
+    pasteSelection( graph, changeset );
+    notifyDirty( dotNetRef, changeset );
+  } );
 
   // Duplicate selected nodes (Ctrl+D)
   graph.bindKey( "ctrl+d", ( e ) => {

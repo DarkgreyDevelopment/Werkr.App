@@ -1042,6 +1042,10 @@ namespace Werkr.Data.Migrations.Postgres
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("Annotations")
+                        .HasColumnType("text")
+                        .HasColumnName("annotations");
+
                     b.Property<string>("Created")
                         .IsRequired()
                         .HasColumnType("text")

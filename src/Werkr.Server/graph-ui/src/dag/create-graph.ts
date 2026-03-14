@@ -23,7 +23,15 @@ export function createGraph( options: GraphOptions ): GraphResult {
     container,
     autoResize: true,
     background: { color: "transparent" },
-    grid: false,
+    grid: {
+      visible: false,
+      size: 10,
+      type: "dot",
+      args: {
+        color: "rgba(128, 128, 128, 0.3)",
+        thickness: 1,
+      },
+    },
 
     // Panning via mouse drag
     panning: {

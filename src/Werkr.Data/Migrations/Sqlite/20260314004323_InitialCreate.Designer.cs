@@ -12,7 +12,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteWerkrDbContext))]
-    [Migration("20260312235927_InitialCreate")]
+    [Migration("20260314004323_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -1030,6 +1030,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasColumnName("id");
+
+                    b.Property<string>("Annotations")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("annotations");
 
                     b.Property<string>("Created")
                         .IsRequired()

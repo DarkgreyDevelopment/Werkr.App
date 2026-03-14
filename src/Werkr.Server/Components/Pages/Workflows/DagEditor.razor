@@ -40,6 +40,7 @@
                    IsValidating="_isValidating"
                    Direction="_direction"
                    ZoomLevel="_zoomLevel"
+                   GridVisible="_gridVisible"
                    OnSave="SaveAsync"
                    OnUndo="UndoAsync"
                    OnRedo="RedoAsync"
@@ -48,7 +49,11 @@
                    OnZoomIn="ZoomInAsync"
                    OnZoomOut="ZoomOutAsync"
                    OnZoomFit="ZoomFitAsync"
-                   OnDirectionChanged="SetDirectionAsync" />
+                   OnDirectionChanged="SetDirectionAsync"
+                   OnExportSvg="ExportSvgAsync"
+                   OnExportPng="ExportPngAsync"
+                   OnToggleGrid="ToggleGridAsync"
+                   OnAddAnnotation="AddAnnotationAsync" />
 
     @* ── Workflow Metadata (collapsible) ── *@
     <details class="card mb-3">
@@ -180,6 +185,7 @@
     private int _stepCount;
     private int _edgeCount;
     private DateTime? _lastSaved;
+    private bool _gridVisible;
 
     // ── Selected Node State ──
     private long? _selectedStepId;
@@ -194,6 +200,8 @@
     private IReadOnlyList<long>? _selectedStepDependencies;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
+
+    private static readonly System.Text.Json.JsonSerializerOptions s_jsonWeb = new( System.Text.Json.JsonSerializerDefaults.Web );
 
     protected override async Task OnInitializedAsync( ) {
         AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
@@ -290,6 +298,12 @@
             .ToArray( );
 
         await _canvas.Interop.LoadGraphAsync( nodes, edges );
+
+        // Load annotations if present
+        if ( _workflow.Annotations is { Count: > 0 } ) {
+            string annotationsJson = System.Text.Json.JsonSerializer.Serialize( _workflow.Annotations, s_jsonWeb );
+            await _canvas.Interop.LoadAnnotationsAsync( annotationsJson );
+        }
     }
 
     // ── Toolbar Actions ──
@@ -386,6 +400,39 @@
         }
     }
 
+    private async Task ExportSvgAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.ExportSvgAsync( );
+        }
+    }
+
+    private async Task ExportPngAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.ExportPngAsync( );
+        }
+    }
+
+    private async Task ToggleGridAsync( ) {
+        _gridVisible = !_gridVisible;
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.SetGridVisibleAsync( _gridVisible );
+        }
+    }
+
+    private async Task AddAnnotationAsync( ) {
+        if ( _canvas?.Interop is not null ) {
+            await _canvas.Interop.AddAnnotationAsync( new {
+                id = Guid.NewGuid().ToString( ),
+                text = "New note",
+                x = 100,
+                y = 100,
+                width = 200,
+                height = 120,
+                color = "#fef3cd",
+            } );
+        }
+    }
+
     // ── Save Metadata (separate from batch step save) ──
 
     private async Task SaveMetadataAsync( ) {
@@ -420,11 +467,21 @@
                 _successMessage = "Workflow created. Redirecting to editor…";
                 Navigation.NavigateTo( $"/workflows/{created.Id}/dag-editor" );
             } else {
+                // Collect annotations from the canvas
+                List<AnnotationDto>? annotations = null;
+                if ( _canvas?.Interop is not null ) {
+                    string annotationsJson = await _canvas.Interop.GetAnnotationsJsonAsync( );
+                    if ( !string.IsNullOrEmpty( annotationsJson ) && annotationsJson != "[]" ) {
+                        annotations = System.Text.Json.JsonSerializer.Deserialize<List<AnnotationDto>>( annotationsJson, s_jsonWeb );
+                    }
+                }
+
                 WorkflowUpdateRequest request = new(
                     Name: _model.Name,
                     Description: _model.Description,
                     Enabled: _model.Enabled,
-                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
+                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null,
+                    Annotations: annotations );
 
                 HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/workflows/{Id}", request );
                 if ( response.IsSuccessStatusCode ) {

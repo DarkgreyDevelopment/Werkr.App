@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Api.Models;
 using Werkr.Api.Services;
@@ -17,7 +18,7 @@ namespace Werkr.Api.Endpoints;
 /// <summary>
 /// Extension methods for mapping workflow REST endpoints to the application.
 /// </summary>
-internal static class WorkflowEndpoints {
+internal static partial class WorkflowEndpoints {
 
     /// <summary>Maps all workflow-related REST endpoints.</summary>
     public static WebApplication MapWorkflowEndpoints( this WebApplication app ) {
@@ -85,6 +86,38 @@ internal static class WorkflowEndpoints {
             CancellationToken ct
         ) => {
             try {
+                // Validate annotations
+                if ( request.Annotations is { Count: > 50 } ) {
+                    return Results.BadRequest( new { message = "Maximum 50 annotations allowed." } );
+                }
+
+                if ( request.Annotations is not null ) {
+                    string serialized = JsonSerializer.Serialize( request.Annotations );
+                    if ( serialized.Length > 65536 ) {
+                        return Results.BadRequest( new { message = "Annotations JSON exceeds 64 KB limit." } );
+                    }
+
+                    // Strip HTML tags from annotation text for XSS safety
+                    List<AnnotationDto> sanitized = [];
+                    foreach ( AnnotationDto ann in request.Annotations ) {
+                        string cleanText = StripHtmlTags( ann.Text );
+                        sanitized.Add( ann with { Text = cleanText } );
+                    }
+                    // Validate annotation fields explicitly (DataAnnotations are not auto-enforced in Minimal APIs)
+                    foreach ( AnnotationDto ann in sanitized ) {
+                        if ( ann.Text.Length > 500 )
+                            return Results.BadRequest( new { message = $"Annotation text exceeds 500 characters (id: {ann.Id})." } );
+                        if ( ann.X < -10000 || ann.X > 50000 || ann.Y < -10000 || ann.Y > 50000 )
+                            return Results.BadRequest( new { message = $"Annotation position out of bounds (id: {ann.Id})." } );
+                        if ( ann.Width < 80 || ann.Width > 800 || ann.Height < 40 || ann.Height > 600 )
+                            return Results.BadRequest( new { message = $"Annotation dimensions out of bounds (id: {ann.Id})." } );
+                        if ( !HexColorRegex().IsMatch( ann.Color ) )
+                            return Results.BadRequest( new { message = $"Annotation color must be a hex color (id: {ann.Id})." } );
+                    }
+
+                    request = request with { Annotations = sanitized };
+                }
+
                 Workflow entity = WorkflowMapper.ToEntity( id, request );
                 Workflow updated = await workflowService.UpdateAsync( entity, ct );
                 return Results.Ok( WorkflowMapper.ToDto( updated ) );
@@ -846,4 +879,13 @@ internal static class WorkflowEndpoints {
         .WithName( "GetLatestRunStatus" )
         .RequireAuthorization( Policies.CanRead );
     }
+
+    [GeneratedRegex( @"<[^>]+>" )]
+    private static partial Regex HtmlTagRegex();
+
+    [GeneratedRegex( @"^#[0-9a-fA-F]{6}$" )]
+    private static partial Regex HexColorRegex();
+
+    private static string StripHtmlTags( string input ) =>
+        string.IsNullOrEmpty( input ) ? input : HtmlTagRegex().Replace( input, string.Empty );
 }

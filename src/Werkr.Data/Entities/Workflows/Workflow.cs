@@ -31,6 +31,9 @@ public class Workflow : ConcurrencyBase, IKey<long> {
     /// <summary>Agent targeting tags for workflow-level override.</summary>
     public string[]? TargetTags { get; set; }
 
+    /// <summary>JSON-serialized annotation cards for the DAG canvas (sticky notes).</summary>
+    public string? Annotations { get; set; }
+
     /// <summary>Navigation property for workflow steps.</summary>
     public ICollection<WorkflowStep> Steps { get; set; } = [];
 

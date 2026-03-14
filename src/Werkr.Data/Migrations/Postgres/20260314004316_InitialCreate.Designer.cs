@@ -12,7 +12,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Postgres
 {
     [DbContext(typeof(PostgresWerkrDbContext))]
-    [Migration("20260312235920_InitialCreate")]
+    [Migration("20260314004316_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -1044,6 +1044,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Annotations")
+                        .HasColumnType("text")
+                        .HasColumnName("annotations");
 
                     b.Property<string>("Created")
                         .IsRequired()
