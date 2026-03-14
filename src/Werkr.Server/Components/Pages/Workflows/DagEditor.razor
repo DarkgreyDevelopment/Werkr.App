@@ -154,6 +154,9 @@
         @if ( _lastSaved.HasValue ) {
             <span>Last saved: @_lastSaved.Value.ToString( "HH:mm:ss" )</span>
         }
+        <span class="ms-auto badge @( _selectedStepId.HasValue ? "bg-success" : "bg-secondary" )">
+            DEBUG selectedStepId=@( _selectedStepId?.ToString() ?? "null" )
+        </span>
     </div>
 
     <TaskSetupModal @ref="_taskSetupModal" WorkflowId="Id" OnTaskCreated="OnTaskCreatedAsync" OnTaskUpdated="OnTaskUpdatedAsync" />
@@ -186,6 +189,8 @@
     private int _dirtyCount;
     private int _stepCount;
     private int _edgeCount;
+    private long _nextTempStepId = -1;
+    private int _annotationCount;
     private DateTime? _lastSaved;
     private bool _gridVisible;
 
@@ -423,11 +428,14 @@
 
     private async Task AddAnnotationAsync( ) {
         if ( _canvas?.Interop is not null ) {
+            _annotationCount++;
+            double offsetX = 100 + ( ( _annotationCount - 1 ) * 30 );
+            double offsetY = 100 + ( ( _annotationCount - 1 ) * 25 );
             await _canvas.Interop.AddAnnotationAsync( new {
                 id = Guid.NewGuid().ToString( ),
                 text = "New note",
-                x = 100,
-                y = 100,
+                x = offsetX,
+                y = offsetY,
                 width = 200,
                 height = 120,
                 color = "#fef3cd",
@@ -518,7 +526,8 @@
 
     // ── Canvas Event Handlers ──
 
-    private Task HandleNodeSelectedAsync( long stepId ) {
+    private async Task HandleNodeSelectedAsync( long stepId ) {
+        Logger.LogInformation( "[DagEditor] HandleNodeSelectedAsync stepId={StepId}", stepId );
         _selectedStepId = stepId;
 
         WorkflowStepDto? step = _workflow?.Steps.FirstOrDefault( s => s.Id == stepId );
@@ -545,35 +554,57 @@
             _selectedStepDependencies = [];
         }
 
-        StateHasChanged( );
-        return Task.CompletedTask;
+        await InvokeAsync( StateHasChanged );
     }
 
-    private Task HandleNodeDeselectedAsync( ) {
+    private async Task HandleNodeDeselectedAsync( ) {
+        Logger.LogInformation( "[DagEditor] HandleNodeDeselectedAsync" );
         _selectedStepId = null;
-        StateHasChanged( );
-        return Task.CompletedTask;
+        await InvokeAsync( StateHasChanged );
     }
 
     private async Task HandleNodeDroppedAsync( (string ActionType, double X, double Y) args ) {
-        // A node was dropped from the palette. The JS side creates a temp node;
-        // we track it for the config panel if needed.
+        Logger.LogInformation( "[DagEditor] HandleNodeDroppedAsync actionType={ActionType} x={X} y={Y}", args.ActionType, args.X, args.Y );
+        if ( _canvas?.Interop is null ) return;
+
+        long tempId = _nextTempStepId--;
         _stepCount++;
-        _dirtyCount++;
-        await Task.CompletedTask;
-        StateHasChanged( );
+
+        var data = new {
+            stepId = tempId,
+            stepLabel = args.ActionType,
+            taskName = "Unassigned",
+            controlStatement = "Default",
+            order = _stepCount,
+            taskId = 0,
+            actionType = args.ActionType
+        };
+
+        await _canvas.Interop.AddNodeAsync( tempId, data, args.X, args.Y );
+
+        // Select the new node so the config panel opens immediately.
+        _selectedStepId = tempId;
+        _selectedTaskId = 0;
+        _selectedTaskName = "";
+        _selectedControlStatement = "Default";
+        _selectedConditionExpression = null;
+        _selectedMaxIterations = 100;
+        _selectedDependencyMode = "All";
+        _selectedInputVariable = null;
+        _selectedOutputVariable = null;
+        _selectedStepDependencies = [];
+
+        await InvokeAsync( StateHasChanged );
     }
 
-    private Task HandleCycleDetectedAsync( (string SourceId, string TargetId) args ) {
+    private async Task HandleCycleDetectedAsync( (string SourceId, string TargetId) args ) {
         _errorMessage = $"Connection rejected: would create a cycle ({args.SourceId} → {args.TargetId}).";
-        StateHasChanged( );
-        return Task.CompletedTask;
+        await InvokeAsync( StateHasChanged );
     }
 
-    private Task HandleDirtyCountChangedAsync( int dirtyCount ) {
+    private async Task HandleDirtyCountChangedAsync( int dirtyCount ) {
         _dirtyCount = dirtyCount;
-        StateHasChanged( );
-        return Task.CompletedTask;
+        await InvokeAsync( StateHasChanged );
     }
 
     private void HandleZoomChanged( double zoom ) {

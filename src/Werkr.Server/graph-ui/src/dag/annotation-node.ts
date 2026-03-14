@@ -29,8 +29,10 @@ function buildAnnotationDom( data: AnnotationData ): HTMLElement {
   wrapper.style.color = "#333";
   wrapper.style.overflow = "hidden";
   wrapper.style.wordWrap = "break-word";
-  wrapper.style.cursor = "default";
+  wrapper.style.cursor = "move";
   wrapper.style.boxShadow = "0 1px 3px rgba(0,0,0,0.15)";
+  // Let mouse events pass through to the SVG layer so the graph can handle dragging
+  wrapper.style.pointerEvents = "none";
 
   const textEl = document.createElement( "div" );
   textEl.className = "werkr-annotation-text";

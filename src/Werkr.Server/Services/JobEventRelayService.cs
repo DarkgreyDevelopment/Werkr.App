@@ -65,8 +65,7 @@ public sealed partial class JobEventRelayService(
     /// Opens the SSE stream and dispatches events to SignalR groups.
     /// </summary>
     private async Task ConsumeStreamAsync( CancellationToken ct ) {
-        HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
-        client.Timeout = Timeout.InfiniteTimeSpan;
+        HttpClient client = _httpClientFactory.CreateClient( "ApiServiceSse" );
 
         using HttpRequestMessage request = new( HttpMethod.Get, "/api/events/workflow-runs" );
         request.Headers.Accept.Add( new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue( "text/event-stream" ) );

@@ -63,6 +63,7 @@
 
     private async Task HandleNodeDroppedAsync( string actionType, double x, double y ) {
         await OnNodeDropped.InvokeAsync( (actionType, x, y) );
+        await InvokeAsync( StateHasChanged );
     }
 
     private async Task HandleSaveRequestedAsync( ) {

@@ -33,6 +33,17 @@ let dndHandler: ReturnType<typeof setupDnd> | null = null;
 registerWerkrNode();
 registerAnnotationShape();
 
+/** Focus the graph container so keyboard shortcuts (Delete, etc.) work. */
+function focusGraphContainer(): void {
+  if ( !graph ) return;
+  const container = graph.container;
+  if ( container && !container.getAttribute( "tabindex" ) ) {
+    container.setAttribute( "tabindex", "-1" );
+    container.style.outline = "none";
+  }
+  container?.focus();
+}
+
 /**
  * Initialize the X6 graph in editor mode.
  * Called from C# DagEditorJsInterop.InitEditorAsync().
@@ -178,6 +189,7 @@ export function addNode(
   y: number
 ): void {
   if ( !graph ) return;
+  console.log( "[werkr-dag] addNode stepId=", stepId, "x=", x, "y=", y );
 
   const node = graph.addNode( {
     id: `step-${stepId}`,
@@ -224,8 +236,14 @@ export function addNode(
   node.setPortProp( "in", "attrs/circle/magnet", true );
   node.setPortProp( "out", "attrs/circle/magnet", true );
 
+  // Select the new node so Delete/Backspace can target it
+  graph.select( node );
+
   changeset.addStep( stepId, data.taskId, data.order, { x, y } );
   dotNetRef?.invokeMethodAsync( "OnGraphDirtyChangedCallback", changeset.getDirtyCount() );
+
+  // Focus the graph container so keyboard shortcuts work
+  focusGraphContainer();
 }
 
 /** Remove nodes by their step IDs. */
@@ -387,6 +405,7 @@ export function addAnnotation( annotation: {
   width: number; height: number; color: string;
 } ): void {
   if ( !graph ) return;
+  console.log( "[werkr-dag] addAnnotation", annotation.id, "x=", annotation.x, "y=", annotation.y );
   graph.addNode( {
     id: `annotation-${annotation.id}`,
     shape: "werkr-annotation",

@@ -130,17 +130,29 @@ public class Program {
             _ = builder.Services.AddTransient<AuthForwardingHandler>( );
 
             // General-purpose HttpClient for the API service via service discovery.
-            // Override the global standard resilience handler with SSE-friendly timeouts
-            // so long-lived SSE connections (JobEventRelayService) are not killed by the
-            // default 10s attempt / 30s total timeout.
+            // The default standard resilience handler (10s attempt / 30s total) from
+            // ServiceDefaults is appropriate for normal request–response calls.
             _ = builder.Services.AddHttpClient( "ApiService", client => {
                 client.BaseAddress = new Uri( "https://api" );
             } )
+            .AddHttpMessageHandler<AuthForwardingHandler>( );
+
+            // Dedicated SSE client for the long-lived event stream consumed by
+            // JobEventRelayService. Resilience handlers are intentionally omitted
+            // (the service manages its own reconnect loop with backoff) because the
+            // default 10s attempt timeout kills SSE connections immediately.
+            _ = builder.Services.AddHttpClient( "ApiServiceSse", client => {
+                client.BaseAddress = new Uri( "https://api" );
+                client.Timeout = Timeout.InfiniteTimeSpan;
+            } )
             .AddHttpMessageHandler<AuthForwardingHandler>( )
-            .AddStandardResilienceHandler( options => {
-                options.AttemptTimeout.Timeout = Timeout.InfiniteTimeSpan;
-                options.TotalRequestTimeout.Timeout = Timeout.InfiniteTimeSpan;
-                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds( 60 );
+            .ConfigureAdditionalHttpMessageHandlers( ( handlers, _ ) => {
+                // Strip all resilience handlers added by ConfigureHttpClientDefaults
+                for (int i = handlers.Count - 1; i >= 0; i--) {
+                    if (handlers[i].GetType( ).FullName?.Contains( "Resilience", StringComparison.Ordinal ) == true) {
+                        handlers.RemoveAt( i );
+                    }
+                }
             } );
 
             // Background health monitor — keeps agent DB status in sync with actual reachability

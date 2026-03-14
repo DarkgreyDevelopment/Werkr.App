@@ -57,12 +57,14 @@
     <div class="btn-group btn-group-sm" role="group" aria-label="Layout direction">
         <button type="button"
                 class="btn @( Direction == "LR" ? "btn-primary" : "btn-outline-secondary" )"
-                @onclick='( ) => OnDirectionChanged.InvokeAsync( "LR" )'>
+                @onclick='( ) => OnDirectionChanged.InvokeAsync( "LR" )'
+                title="Layout left to right">
             LR
         </button>
         <button type="button"
                 class="btn @( Direction == "TB" ? "btn-primary" : "btn-outline-secondary" )"
-                @onclick='( ) => OnDirectionChanged.InvokeAsync( "TB" )'>
+                @onclick='( ) => OnDirectionChanged.InvokeAsync( "TB" )'
+                title="Layout top to bottom">
             TB
         </button>
     </div>

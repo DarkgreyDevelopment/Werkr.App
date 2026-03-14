@@ -7,6 +7,18 @@ import { copySelection, pasteSelection } from "./clipboard-handler";
 
 let zoomDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+// ── Blank-click suppression ──
+// Shape.HTML nodes render inside <foreignObject> in SVG. Safari (and sometimes
+// Chrome) fires BOTH node:click AND blank:click for the same physical click on
+// a Shape.HTML node, because the foreignObject click propagates to the SVG
+// background. Timing-based approaches fail because the blank:click can be
+// delayed by hundreds of milliseconds (Blazor Server round-trip + DOM patching).
+//
+// Strategy: When blank:click fires, we geometrically check whether the click
+// coordinates fall inside any existing node's bounding box. If they do, the
+// blank:click is a ghost event from foreignObject propagation and is suppressed.
+// This is deterministic and has zero timing dependencies.
+
 /**
  * Bind editor-specific X6 graph events to .NET callbacks and changeset tracking.
  * Handles: node move, edge connect/remove, node selection, keyboard shortcuts.
@@ -21,25 +33,35 @@ export function bindEditorEvents(
     const data = node.getData<{ stepId?: number; isLane?: boolean }>();
     if ( data?.isLane ) return;
     if ( data?.stepId != null ) {
+      console.log( "[werkr-dag] node:click stepId=", data.stepId );
+      graph.cleanSelection();
+      graph.select( node );
       dotNetRef.invokeMethodAsync( "OnNodeSelectedCallback", data.stepId );
     }
+    // Focus the graph container so keyboard shortcuts (Delete/Backspace) work
+    const container = graph.container;
+    if ( container && !container.getAttribute( "tabindex" ) ) {
+      container.setAttribute( "tabindex", "-1" );
+      container.style.outline = "none";
+    }
+    container?.focus();
   } );
 
-  // ── Selection changed → C# callback ──
-  graph.on( "selection:changed", ( { selected } ) => {
-    const stepIds: number[] = [];
-    for ( const cell of selected ) {
-      if ( cell.isNode() ) {
-        const data = cell.getData<{ stepId?: number; isLane?: boolean }>();
-        if ( data?.isLane ) continue;
-        if ( data?.stepId != null ) {
-          stepIds.push( data.stepId );
-        }
+  // ── Click on blank canvas → deselect (unless click is inside a node bbox) ──
+  // Ghost blank:click events from foreignObject propagation will have coordinates
+  // that fall inside the clicked node's bounding box. Genuine blank clicks will
+  // have coordinates that are outside all nodes.
+  graph.on( "blank:click", ( { x, y }: { e: MouseEvent; x: number; y: number } ) => {
+    for ( const node of graph.getNodes() ) {
+      const bbox = node.getBBox();
+      if ( bbox.containsPoint( { x, y } ) ) {
+        console.log( "[werkr-dag] blank:click SUPPRESSED — inside node bbox at", x, y );
+        return;
       }
     }
-    if ( stepIds.length === 0 ) {
-      dotNetRef.invokeMethodAsync( "OnNodeDeselectedCallback" );
-    }
+    console.log( "[werkr-dag] blank:click → deselecting (genuine blank at", x, y, ")" );
+    graph.cleanSelection();
+    dotNetRef.invokeMethodAsync( "OnNodeDeselectedCallback" );
   } );
 
   // ── Zoom changed → C# callback (debounced 100ms) ──

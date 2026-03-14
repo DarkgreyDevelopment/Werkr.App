@@ -72,7 +72,7 @@
                 @if (_isEditingName) {
                     <div class="mb-2">
                         <label class="form-label fw-bold">Connection Name</label>
-                        <InputText class="form-control" @bind-Value="_editedName" />
+                        <input class="form-control" @bind="_editedName" />
                     </div>
                     <button class="btn btn-primary me-2" @onclick="SaveNameAsync">Save</button>
                     <button class="btn btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
@@ -85,7 +85,7 @@
                 @if (_isEditingUrl) {
                     <div class="mb-2">
                         <label class="form-label fw-bold">Remote URL</label>
-                        <InputText class="form-control" @bind-Value="_editedUrl" placeholder="https://agent-host:port" />
+                        <input class="form-control" @bind="_editedUrl" placeholder="https://agent-host:port" />
                         <div class="form-text">Changing the URL will drop the cached gRPC channel and reconnect.</div>
                     </div>
                     <button class="btn btn-primary me-2" @onclick="SaveUrlAsync">Save URL</button>

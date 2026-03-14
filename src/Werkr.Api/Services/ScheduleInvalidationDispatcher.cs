@@ -80,7 +80,7 @@ public sealed partial class ScheduleInvalidationDispatcher(
         // Find all connected agents
         List<RegisteredConnection> agents = await db.RegisteredConnections
             .AsNoTracking( )
-            .Where( c => !c.IsServer && c.Status == ConnectionStatus.Connected )
+            .Where( c => c.IsServer && c.Status == ConnectionStatus.Connected )
             .ToListAsync( ct );
 
         // Filter agents whose tags overlap with the affected tasks' TargetTags

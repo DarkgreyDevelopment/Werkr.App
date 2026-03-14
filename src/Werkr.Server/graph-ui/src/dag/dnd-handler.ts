@@ -1,6 +1,7 @@
 import type { Graph, Dnd } from "@antv/x6";
 import type { DotNetObjectReference } from "../types/dotnet-interop";
 
+
 /**
  * Set up drag-and-drop integration for the step palette.
  * The palette renders draggable divs in Blazor; this module wires the X6 Dnd plugin
@@ -45,6 +46,7 @@ export function setupDnd(
     const data = node.getData<{ actionType?: string }>();
     if ( data?.actionType && !data.hasOwnProperty( "stepId" ) ) {
       const pos = node.getPosition();
+      console.log( "[werkr-dag] node:added (dnd drop)", data.actionType, pos.x, pos.y );
       // Remove the placeholder — .NET will call addNode with proper data
       graph.removeNode( node.id );
       dotNetRef.invokeMethodAsync( "OnNodeDroppedCallback", data.actionType, pos.x, pos.y );

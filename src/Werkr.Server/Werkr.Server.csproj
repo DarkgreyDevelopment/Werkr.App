@@ -24,9 +24,10 @@
 
   <Target Name="NpmInstall"
           BeforeTargets="BuildGraphUi"
-          Inputs="$(MSBuildProjectDirectory)/graph-ui/package-lock.json"
+          Inputs="$(MSBuildProjectDirectory)/graph-ui/package.json"
           Outputs="$(BaseIntermediateOutputPath)graph-ui-npm.stamp">
-    <Exec Command="npm ci --prefix graph-ui"
+    <RemoveDir Directories="$(MSBuildProjectDirectory)/graph-ui/node_modules" />
+    <Exec Command="npm install --prefix graph-ui"
           WorkingDirectory="$(MSBuildProjectDirectory)"
           StandardOutputImportance="low" />
     <Touch Files="$(BaseIntermediateOutputPath)graph-ui-npm.stamp"
