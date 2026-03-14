@@ -150,6 +150,11 @@ public partial class SystemShellOperator( ILogger<SystemShellOperator> logger ) 
 
             await process.WaitForExitAsync( cancellationToken );
 
+            // The synchronous WaitForExit() ensures all redirected stdout/stderr
+            // events have been fully processed before we read ExitCode or
+            // complete the channel writer.
+            process.WaitForExit( );
+
             int exitCode = process.ExitCode;
 
             if (exitCode != 0) {

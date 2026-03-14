@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Werkr.Data.Entities.Interfaces;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
+using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Data.Entities.Tasks;
 
@@ -68,6 +69,9 @@ public class WerkrJob : ConcurrencyBase, IKey<Guid> {
     /// </summary>
     public Guid? ScheduleId { get; set; }
 
+    /// <summary>Foreign key to the workflow step that produced this job. Null for standalone task jobs.</summary>
+    public long? StepId { get; set; }
+
     /// <summary>Navigation property to the source task.</summary>
     [ForeignKey( nameof( TaskId ) )]
     public WerkrTask? Task { get; set; }
@@ -83,4 +87,8 @@ public class WerkrJob : ConcurrencyBase, IKey<Guid> {
     /// <summary>Navigation property to the schedule that triggered this job.</summary>
     [ForeignKey( nameof( ScheduleId ) )]
     public DbSchedule? Schedule { get; set; }
+
+    /// <summary>Navigation property to the workflow step.</summary>
+    [ForeignKey( nameof( StepId ) )]
+    public WorkflowStep? Step { get; set; }
 }

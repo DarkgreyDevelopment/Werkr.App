@@ -1,0 +1,617 @@
+@using System.ComponentModel.DataAnnotations
+@using Werkr.Common.Models.Holidays
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpClientFactory
+
+@if ( _isVisible ) {
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@( IsEditing ? "Edit Schedule" : "Create New Schedule" )</h5>
+                    <button type="button" class="btn-close" @onclick="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+                        <div class="alert alert-danger">@_errorMessage</div>
+                    }
+
+                    <EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="ScheduleSetupModal">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        @* ── Basic Information ── *@
+                        <h6>Basic Information</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <InputText class="form-control" @bind-Value="_model.Name" />
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Stop Task After (minutes)</label>
+                                <InputNumber class="form-control" @bind-Value="_model.StopTaskAfterMinutes" />
+                            </div>
+                        </div>
+
+                        @* ── Start Date & Time ── *@
+                        <h6>Start Date &amp; Time</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Date</label>
+                                <InputDate class="form-control" @bind-Value="_model.StartDate" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Time</label>
+                                <InputDate class="form-control" Type="InputDateType.Time" @bind-Value="_model.StartTime" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Time Zone</label>
+                                <InputSelect class="form-select" @bind-Value="_model.TimeZoneId">
+                                    @foreach ( TimeZoneInfo zone in s_timeZones ) {
+                                        <option value="@zone.Id">@zone.DisplayName</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        @* ── Recurrence ── *@
+                        <h6>Recurrence</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <InputSelect class="form-select" @bind-Value="_model.RecurrenceType">
+                                <option value="None">One-time (no recurrence)</option>
+                                <option value="Daily">Daily</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="Monthly">Monthly</option>
+                            </InputSelect>
+                        </div>
+
+                        @if ( _model.RecurrenceType == "Daily" ) {
+                            <div class="mb-3">
+                                <label class="form-label">Every N days</label>
+                                <InputNumber class="form-control" @bind-Value="_model.DayInterval" />
+                            </div>
+                        }
+
+                        @if ( _model.RecurrenceType == "Weekly" ) {
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Every N weeks</label>
+                                    <InputNumber class="form-control" @bind-Value="_model.WeekInterval" />
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">Days of Week</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach ( (string label, int flag) in s_daysOfWeek ) {
+                                            int f = flag;
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="@($"sched-dow-{f}")"
+                                                       checked="@( ( _model.DaysOfWeek & f ) != 0 )"
+                                                       @onchange="e => { if ((bool)(e.Value ?? false)) _model.DaysOfWeek |= f; else _model.DaysOfWeek &= ~f; }" />
+                                                <label class="form-check-label" for="@($"sched-dow-{f}")">@label</label>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if ( _model.RecurrenceType == "Monthly" ) {
+                            <div class="mb-3">
+                                <label class="form-label">Months of Year</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach ( (string label, int flag) in s_months ) {
+                                        int f = flag;
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="@($"sched-moy-{f}")"
+                                                   checked="@( ( _model.MonthsOfYear & f ) != 0 )"
+                                                   @onchange="e => { if ((bool)(e.Value ?? false)) _model.MonthsOfYear |= f; else _model.MonthsOfYear &= ~f; }" />
+                                            <label class="form-check-label" for="@($"sched-moy-{f}")">@label</label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Monthly Mode</label>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" id="sched-monthMode-day" name="schedMonthMode"
+                                               checked="@( _model.MonthlyMode == "DayNumbers" )"
+                                               @onchange='() => _model.MonthlyMode = "DayNumbers"' />
+                                        <label class="form-check-label" for="sched-monthMode-day">Day Numbers</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" id="sched-monthMode-weekday" name="schedMonthMode"
+                                               checked="@( _model.MonthlyMode == "WeekAndDay" )"
+                                               @onchange='() => _model.MonthlyMode = "WeekAndDay"' />
+                                        <label class="form-check-label" for="sched-monthMode-weekday">Week and Day</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if ( _model.MonthlyMode == "DayNumbers" ) {
+                                <div class="mb-3">
+                                    <label class="form-label">Day Numbers (comma-separated, -31 to 31 excl. 0)</label>
+                                    <InputText class="form-control" @bind-Value="_model.DayNumbers" placeholder="1,15,-1" />
+                                    <div class="form-text">Negative values count from end of month (-1 = last day).</div>
+                                </div>
+                            } else {
+                                <div class="mb-3">
+                                    <label class="form-label">Week Number Within Month</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach ( (string label, int flag) in s_weekNumbers ) {
+                                            int f = flag;
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="@($"sched-wn-{f}")"
+                                                       checked="@( ( _model.MonthlyWeekNumber & f ) != 0 )"
+                                                       @onchange="e => { if ((bool)(e.Value ?? false)) _model.MonthlyWeekNumber |= f; else _model.MonthlyWeekNumber &= ~f; }" />
+                                                <label class="form-check-label" for="@($"sched-wn-{f}")">@label</label>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Days of Week</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach ( (string label, int flag) in s_daysOfWeek ) {
+                                            int f = flag;
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="@($"sched-mdow-{f}")"
+                                                       checked="@( ( _model.MonthlyDaysOfWeek & f ) != 0 )"
+                                                       @onchange="e => { if ((bool)(e.Value ?? false)) _model.MonthlyDaysOfWeek |= f; else _model.MonthlyDaysOfWeek &= ~f; }" />
+                                                <label class="form-check-label" for="@($"sched-mdow-{f}")">@label</label>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        @* ── Expiration ── *@
+                        <h6>Expiration (optional)</h6>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="sched-hasExpiration"
+                                   checked="@_model.HasExpiration"
+                                   @onchange="e => _model.HasExpiration = (bool)(e.Value ?? false)" />
+                            <label class="form-check-label" for="sched-hasExpiration">Set an expiration</label>
+                        </div>
+                        @if ( _model.HasExpiration ) {
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Expiration Date</label>
+                                    <InputDate class="form-control" @bind-Value="_model.ExpirationDate" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Expiration Time</label>
+                                    <InputDate class="form-control" Type="InputDateType.Time" @bind-Value="_model.ExpirationTime" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Time Zone</label>
+                                    <InputSelect class="form-select" @bind-Value="_model.ExpirationTimeZoneId">
+                                        @foreach ( TimeZoneInfo zone in s_timeZones ) {
+                                            <option value="@zone.Id">@zone.DisplayName</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        }
+
+                        @* ── Repeat Options ── *@
+                        <h6>Repeat Options (optional)</h6>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="sched-hasRepeat"
+                                   checked="@_model.HasRepeat"
+                                   @onchange="e => _model.HasRepeat = (bool)(e.Value ?? false)" />
+                            <label class="form-check-label" for="sched-hasRepeat">Enable repeat within occurrence window</label>
+                        </div>
+                        @if ( _model.HasRepeat ) {
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Repeat Interval (minutes)</label>
+                                    <InputNumber class="form-control" @bind-Value="_model.RepeatIntervalMinutes" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Repeat Duration (minutes)</label>
+                                    <InputNumber class="form-control" @bind-Value="_model.RepeatDurationMinutes" />
+                                </div>
+                            </div>
+                        }
+
+                        @* ── Holiday Calendar ── *@
+                        <h6>Holiday Calendar (optional)</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Calendar</label>
+                                <select class="form-select" @bind="_selectedCalendarId">
+                                    <option value="">None</option>
+                                    @if ( _availableCalendars is not null ) {
+                                        @foreach ( HolidayCalendarSummaryDto cal in _availableCalendars ) {
+                                            <option value="@cal.Id">@cal.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            @if ( !string.IsNullOrEmpty( _selectedCalendarId ) ) {
+                                <div class="col-md-4">
+                                    <label class="form-label">Mode</label>
+                                    <select class="form-select" @bind="_selectedCalendarMode">
+                                        <option value="Blocklist">Blocklist (exclude holidays)</option>
+                                        <option value="Allowlist">Allowlist (only on holidays)</option>
+                                    </select>
+                                </div>
+                            }
+                        </div>
+
+                        @* ── Suppressed Occurrences (edit mode + calendar attached) ── *@
+                        @if ( IsEditing && !string.IsNullOrEmpty( _selectedCalendarId ) ) {
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Suppressed Occurrences</label>
+                                <div>
+                                    <button type="button" class="btn btn-outline-info btn-sm mb-2" @onclick="LoadAuditLogAsync">Refresh</button>
+                                </div>
+                                @if ( _auditLogs is not null && _auditLogs.Count > 0 ) {
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped">
+                                            <thead><tr><th>Date/Time (UTC)</th><th>Holiday</th><th>Calendar</th><th>Mode</th></tr></thead>
+                                            <tbody>
+                                                @foreach ( ScheduleAuditLogDto log in _auditLogs ) {
+                                                    <tr>
+                                                        <td>@log.OccurrenceUtcTime.ToString( "G" )</td>
+                                                        <td>@log.HolidayName</td>
+                                                        <td>@log.CalendarName</td>
+                                                        <td><span class="badge bg-secondary">@log.Mode</span></td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                } else if ( _auditLogs is not null ) {
+                                    <p class="text-muted">No suppressed occurrences recorded yet.</p>
+                                }
+                            </div>
+                        }
+
+                        @* ── Occurrence Preview ── *@
+                        <h6>Occurrence Preview</h6>
+                        <p class="text-muted mb-2">Preview the next 10 occurrences based on the current settings.</p>
+                        <button type="button" class="btn btn-outline-info btn-sm mb-3" @onclick="ComputePreviewAsync" disabled="@_isPreviewLoading">
+                            @if ( _isPreviewLoading ) {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            }
+                            Generate Preview
+                        </button>
+                        @if ( _previewOccurrences is not null && _previewOccurrences.Count > 0 ) {
+                            <ol class="list-group list-group-numbered mb-3">
+                                @foreach ( DateTime occ in _previewOccurrences ) {
+                                    <li class="list-group-item py-1">@occ.ToLocalTime().ToString( "G" )</li>
+                                }
+                            </ol>
+                        } else if ( _previewOccurrences is not null ) {
+                            <p class="text-muted">No occurrences found within the preview window.</p>
+                        }
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                                @if ( _isSaving ) {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                }
+                                @( IsEditing ? "Save Changes" : "Create Schedule" )
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="Close">Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public EventCallback<ScheduleDto> OnScheduleCreated { get; set; }
+
+    [Parameter]
+    public EventCallback<ScheduleDto> OnScheduleUpdated { get; set; }
+
+    private bool _isVisible;
+    private bool _isSaving;
+    private bool _isPreviewLoading;
+    private string? _errorMessage;
+    private ScheduleFormModel _model = new( );
+    private Guid? _editScheduleId;
+    private List<DateTime>? _previewOccurrences;
+
+    // Holiday calendar
+    private List<HolidayCalendarSummaryDto>? _availableCalendars;
+    private string _selectedCalendarId = "";
+    private string _selectedCalendarMode = "Blocklist";
+    private List<ScheduleAuditLogDto>? _auditLogs;
+
+    private bool IsEditing => _editScheduleId is not null;
+
+    private static readonly (string Label, int Flag)[] s_daysOfWeek = [
+        ("Sun", 1), ("Mon", 2), ("Tue", 4), ("Wed", 8), ("Thu", 16), ("Fri", 32), ("Sat", 64)
+    ];
+
+    private static readonly (string Label, int Flag)[] s_months = [
+        ("Jan", 1), ("Feb", 2), ("Mar", 4), ("Apr", 8),
+        ("May", 16), ("Jun", 32), ("Jul", 64), ("Aug", 128),
+        ("Sep", 256), ("Oct", 512), ("Nov", 1024), ("Dec", 2048)
+    ];
+
+    private static readonly (string Label, int Flag)[] s_weekNumbers = [
+        ("1st", 1), ("2nd", 2), ("3rd", 4), ("4th", 8), ("5th", 16), ("6th", 32)
+    ];
+
+    private static readonly IReadOnlyList<TimeZoneInfo> s_timeZones =
+        TimeZoneInfo.GetSystemTimeZones( ).OrderBy( tz => tz.BaseUtcOffset ).ToList( );
+
+    public async Task Show( ) {
+        _model = new ScheduleFormModel( );
+        _editScheduleId = null;
+        _isVisible = true;
+        _isSaving = false;
+        _isPreviewLoading = false;
+        _errorMessage = null;
+        _previewOccurrences = null;
+        _selectedCalendarId = "";
+        _selectedCalendarMode = "Blocklist";
+        _auditLogs = null;
+        await LoadCalendarsAsync( );
+        StateHasChanged( );
+    }
+
+    public async Task Show( ScheduleDto existingSchedule ) {
+        _model = ScheduleFormModel.FromDto( existingSchedule );
+        _editScheduleId = existingSchedule.Id;
+        _isVisible = true;
+        _isSaving = false;
+        _isPreviewLoading = false;
+        _errorMessage = null;
+        _previewOccurrences = null;
+        _selectedCalendarId = "";
+        _selectedCalendarMode = "Blocklist";
+        _auditLogs = null;
+        await LoadCalendarsAsync( );
+        await LoadHolidayCalendarLinkAsync( );
+        StateHasChanged( );
+    }
+
+    private void Close( ) {
+        _isVisible = false;
+        StateHasChanged( );
+    }
+
+    private async Task LoadCalendarsAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _availableCalendars = await client.GetFromJsonAsync<List<HolidayCalendarSummaryDto>>( "/api/holiday-calendars" );
+        } catch {
+            // Non-critical: calendar list not loaded
+        }
+    }
+
+    private async Task LoadHolidayCalendarLinkAsync( ) {
+        if ( _editScheduleId is null ) return;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            ScheduleHolidayCalendarDto? link = await client.GetFromJsonAsync<ScheduleHolidayCalendarDto>(
+                $"/api/schedules/{_editScheduleId}/holiday-calendar" );
+            if ( link is not null ) {
+                _selectedCalendarId = link.CalendarId.ToString( );
+                _selectedCalendarMode = link.Mode;
+                await LoadAuditLogAsync( );
+            }
+        } catch {
+            // No calendar attached — OK
+        }
+    }
+
+    private async Task LoadAuditLogAsync( ) {
+        if ( _editScheduleId is null ) return;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            DateTime from = DateTime.UtcNow.AddDays( -30 );
+            DateTime to = DateTime.UtcNow;
+            string url = $"/api/schedules/{_editScheduleId}/audit-log?from={from:O}&to={to:O}";
+            _auditLogs = await client.GetFromJsonAsync<List<ScheduleAuditLogDto>>( url ) ?? [];
+        } catch {
+            _auditLogs = [];
+        }
+    }
+
+    private async Task SubmitAsync( ) {
+        _isSaving = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            if ( IsEditing ) {
+                ScheduleUpdateRequest request = _model.ToUpdateRequest( );
+                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/schedules/{_editScheduleId}", request );
+                if ( response.IsSuccessStatusCode ) {
+                    await SaveHolidayCalendarAsync( client, _editScheduleId!.Value );
+                    ScheduleDto? updated = await client.GetFromJsonAsync<ScheduleDto>( $"/api/schedules/{_editScheduleId}" );
+                    _isVisible = false;
+                    if ( updated is not null ) {
+                        await OnScheduleUpdated.InvokeAsync( updated );
+                    }
+                } else {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to update schedule: {body}";
+                }
+            } else {
+                ScheduleCreateRequest request = _model.ToCreateRequest( );
+                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/schedules", request );
+                if ( response.IsSuccessStatusCode ) {
+                    ScheduleDto? created = await response.Content.ReadFromJsonAsync<ScheduleDto>( );
+                    if ( created is not null ) {
+                        await SaveHolidayCalendarAsync( client, created.Id );
+                    }
+                    _isVisible = false;
+                    if ( created is not null ) {
+                        await OnScheduleCreated.InvokeAsync( created );
+                    }
+                } else {
+                    string body = await response.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to create schedule: {body}";
+                }
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = IsEditing
+                ? $"Failed to update schedule: {ex.Message}"
+                : $"Failed to create schedule: {ex.Message}";
+        } finally {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SaveHolidayCalendarAsync( HttpClient client, Guid scheduleId ) {
+        if ( !string.IsNullOrEmpty( _selectedCalendarId ) && Guid.TryParse( _selectedCalendarId, out Guid calId ) ) {
+            AttachHolidayCalendarRequest attachReq = new( calId, _selectedCalendarMode );
+            _ = await client.PutAsJsonAsync( $"/api/schedules/{scheduleId}/holiday-calendar", attachReq );
+        } else if ( IsEditing ) {
+            _ = await client.DeleteAsync( $"/api/schedules/{scheduleId}/holiday-calendar" );
+        }
+    }
+
+    private void ComputePreviewAsync( ) {
+        _isPreviewLoading = true;
+        _previewOccurrences = null;
+        try {
+            _previewOccurrences = SchedulePreviewCalculator.Calculate( _model.ToCreateRequest( ), 10 );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Preview failed: {ex.Message}";
+        } finally {
+            _isPreviewLoading = false;
+        }
+    }
+
+    private sealed class ScheduleFormModel {
+        [Required( ErrorMessage = "Name is required." )]
+        [StringLength( 200, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 200 characters." )]
+        public string Name { get; set; } = "";
+
+        [Range( 1, 1440, ErrorMessage = "Stop after must be between 1 and 1440 minutes." )]
+        public long StopTaskAfterMinutes { get; set; } = 60;
+
+        [Required]
+        public DateOnly StartDate { get; set; } = DateOnly.FromDateTime( DateTime.Today );
+
+        [Required]
+        public TimeOnly StartTime { get; set; } = new( 8, 0 );
+
+        [Required( ErrorMessage = "Time zone is required." )]
+        public string TimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
+
+        public string RecurrenceType { get; set; } = "None";
+
+        [Range( 1, 365, ErrorMessage = "Day interval must be between 1 and 365." )]
+        public int DayInterval { get; set; } = 1;
+
+        [Range( 1, 52, ErrorMessage = "Week interval must be between 1 and 52." )]
+        public int WeekInterval { get; set; } = 1;
+
+        public int DaysOfWeek { get; set; }
+        public int MonthsOfYear { get; set; }
+        public string MonthlyMode { get; set; } = "DayNumbers";
+        public string DayNumbers { get; set; } = "";
+        public int MonthlyWeekNumber { get; set; }
+        public int MonthlyDaysOfWeek { get; set; }
+        public bool HasExpiration { get; set; }
+        public DateOnly ExpirationDate { get; set; } = DateOnly.FromDateTime( DateTime.Today.AddYears( 1 ) );
+        public TimeOnly ExpirationTime { get; set; } = new( 23, 59 );
+        public string ExpirationTimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
+        public bool HasRepeat { get; set; }
+
+        [Range( 1, 1440, ErrorMessage = "Repeat interval must be between 1 and 1440 minutes." )]
+        public int RepeatIntervalMinutes { get; set; } = 15;
+
+        [Range( 1, 1440, ErrorMessage = "Repeat duration must be between 1 and 1440 minutes." )]
+        public int RepeatDurationMinutes { get; set; } = 60;
+
+        public static ScheduleFormModel FromDto( ScheduleDto dto ) {
+            string recType = dto.DailyRecurrence is not null ? "Daily"
+                : dto.WeeklyRecurrence is not null ? "Weekly"
+                : dto.MonthlyRecurrence is not null ? "Monthly"
+                : "None";
+
+            return new ScheduleFormModel {
+                Name = dto.Name,
+                StopTaskAfterMinutes = dto.StopTaskAfterMinutes,
+                StartDate = dto.StartDateTime?.Date ?? DateOnly.FromDateTime( DateTime.Today ),
+                StartTime = dto.StartDateTime?.Time ?? new TimeOnly( 8, 0 ),
+                TimeZoneId = dto.StartDateTime?.TimeZoneId ?? TimeZoneInfo.Local.Id,
+                RecurrenceType = recType,
+                DayInterval = dto.DailyRecurrence?.DayInterval ?? 1,
+                WeekInterval = dto.WeeklyRecurrence?.WeekInterval ?? 1,
+                DaysOfWeek = dto.WeeklyRecurrence?.DaysOfWeek ?? 0,
+                MonthsOfYear = dto.MonthlyRecurrence?.MonthsOfYear ?? 0,
+                MonthlyMode = dto.MonthlyRecurrence?.WeekNumber is not null ? "WeekAndDay" : "DayNumbers",
+                DayNumbers = dto.MonthlyRecurrence?.DayNumbers is not null
+                    ? string.Join( ", ", dto.MonthlyRecurrence.DayNumbers )
+                    : "",
+                MonthlyWeekNumber = dto.MonthlyRecurrence?.WeekNumber ?? 0,
+                MonthlyDaysOfWeek = dto.MonthlyRecurrence?.DaysOfWeek ?? 0,
+                HasExpiration = dto.Expiration is not null,
+                ExpirationDate = dto.Expiration?.Date ?? DateOnly.FromDateTime( DateTime.Today.AddYears( 1 ) ),
+                ExpirationTime = dto.Expiration?.Time ?? new TimeOnly( 23, 59 ),
+                ExpirationTimeZoneId = dto.Expiration?.TimeZoneId ?? TimeZoneInfo.Local.Id,
+                HasRepeat = dto.RepeatOptions is not null,
+                RepeatIntervalMinutes = dto.RepeatOptions?.RepeatIntervalMinutes ?? 15,
+                RepeatDurationMinutes = dto.RepeatOptions?.RepeatDurationMinutes ?? 60,
+            };
+        }
+
+        public ScheduleCreateRequest ToCreateRequest( ) {
+            return new ScheduleCreateRequest(
+                Name: Name,
+                StopTaskAfterMinutes: StopTaskAfterMinutes,
+                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId ),
+                Expiration: HasExpiration
+                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId )
+                    : null,
+                DailyRecurrence: RecurrenceType == "Daily" ? new DailyRecurrenceDto( DayInterval ) : null,
+                WeeklyRecurrence: RecurrenceType == "Weekly" ? new WeeklyRecurrenceDto( WeekInterval, DaysOfWeek ) : null,
+                MonthlyRecurrence: RecurrenceType == "Monthly"
+                    ? new MonthlyRecurrenceDto(
+                        MonthlyMode == "DayNumbers" ? ParseDayNumbers( DayNumbers ) : null,
+                        MonthsOfYear,
+                        MonthlyMode == "WeekAndDay" ? MonthlyWeekNumber : null,
+                        MonthlyMode == "WeekAndDay" ? MonthlyDaysOfWeek : null )
+                    : null,
+                RepeatOptions: HasRepeat
+                    ? new RepeatOptionsDto( RepeatIntervalMinutes, RepeatDurationMinutes )
+                    : null );
+        }
+
+        public ScheduleUpdateRequest ToUpdateRequest( ) {
+            return new ScheduleUpdateRequest(
+                Name: Name,
+                StopTaskAfterMinutes: StopTaskAfterMinutes,
+                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId ),
+                Expiration: HasExpiration
+                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId )
+                    : null,
+                DailyRecurrence: RecurrenceType == "Daily" ? new DailyRecurrenceDto( DayInterval ) : null,
+                WeeklyRecurrence: RecurrenceType == "Weekly" ? new WeeklyRecurrenceDto( WeekInterval, DaysOfWeek ) : null,
+                MonthlyRecurrence: RecurrenceType == "Monthly"
+                    ? new MonthlyRecurrenceDto(
+                        MonthlyMode == "DayNumbers" ? ParseDayNumbers( DayNumbers ) : null,
+                        MonthsOfYear,
+                        MonthlyMode == "WeekAndDay" ? MonthlyWeekNumber : null,
+                        MonthlyMode == "WeekAndDay" ? MonthlyDaysOfWeek : null )
+                    : null,
+                RepeatOptions: HasRepeat
+                    ? new RepeatOptionsDto( RepeatIntervalMinutes, RepeatDurationMinutes )
+                    : null );
+        }
+
+        private static int[]? ParseDayNumbers( string input ) {
+            if ( string.IsNullOrWhiteSpace( input ) ) return null;
+            return input.Split( ',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries )
+                .Select( int.Parse )
+                .ToArray( );
+        }
+    }
+}

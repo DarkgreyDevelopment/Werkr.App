@@ -1,25 +1,9 @@
 namespace Werkr.Server.Helpers;
 
 /// <summary>
-/// Consolidated UI helpers for agent status display.
-/// Replaces duplicated <see cref="GetStatusBadgeClass"/>, <see cref="FormatAvailability"/>,
-/// and <see cref="FormatRelativeTime"/> methods spread across multiple pages.
+/// Consolidated UI helpers for agent display formatting.
 /// </summary>
 public static class AgentDisplayHelper {
-
-    /// <summary>
-    /// Returns the Bootstrap badge CSS class for a given agent status string.
-    /// </summary>
-    public static string GetStatusBadgeClass( string status ) =>
-        status switch {
-            "Connected" => "bg-success",
-            "Disconnected" => "bg-warning text-dark",
-            "Error" => "bg-danger",
-            "Revoked" => "bg-secondary",
-            "Unreachable" => "bg-danger",
-            "Registered" => "bg-info",
-            _ => "bg-info"
-        };
 
     /// <summary>
     /// Formats an operator availability nullable boolean as a display string.

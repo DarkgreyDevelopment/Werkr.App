@@ -1,0 +1,73 @@
+@using Werkr.Common.Models
+@using Werkr.Server.Helpers
+
+@if ( Steps is null || Steps.Count == 0 ) {
+    <EmptyState Message="No steps defined for this workflow." />
+} else {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Step ID</th>
+                    <th>Task</th>
+                    <th>Control</th>
+                    <th>Dependencies</th>
+                    @if ( StepStatuses is not null ) {
+                        <th>Status</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( WorkflowStepDto step in Steps.OrderBy( s => s.Order ) ) {
+                    <tr class="@( _selectedStepId == step.Id ? "table-active" : "" )"
+                        style="cursor:pointer"
+                        @onclick="( ) => SelectStep( step )">
+                        <td>@step.Order</td>
+                        <td>@step.Id</td>
+                        <td>@( step.TaskName ?? $"Task #{step.TaskId}" )</td>
+                        <td><code>@step.ControlStatement</code></td>
+                        <td>
+                            @if ( step.Dependencies.Count > 0 ) {
+                                @foreach ( StepDependencyDto dep in step.Dependencies ) {
+                                    <span class="badge bg-secondary me-1">Step @dep.DependsOnStepId</span>
+                                }
+                            } else {
+                                <span class="text-muted">None</span>
+                            }
+                        </td>
+                        @if ( StepStatuses is not null ) {
+                            <td>
+                                @if ( StepStatuses.TryGetValue( step.Id, out StepExecutionStatus status ) ) {
+                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( status.ToString( ) )">
+                                        @status
+                                    </span>
+                                } else {
+                                    <span class="badge bg-secondary">Not Run</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<WorkflowStepDto>? Steps { get; set; }
+
+    [Parameter]
+    public IReadOnlyDictionary<long, StepExecutionStatus>? StepStatuses { get; set; }
+
+    [Parameter]
+    public EventCallback<WorkflowStepDto> OnStepSelected { get; set; }
+
+    private long? _selectedStepId;
+
+    private async Task SelectStep( WorkflowStepDto step ) {
+        _selectedStepId = step.Id;
+        await OnStepSelected.InvokeAsync( step );
+    }
+}

@@ -21,7 +21,7 @@
         <div class="card mb-3">
             <div class="card-body">
                 <h5 class="card-title">@_agent.ConnectionName</h5>
-                <span class="badge @GetStatusBadgeClass( _agent.Status )">@_agent.Status</span>
+                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( _agent.Status )">@_agent.Status</span>
                 <dl class="row mt-3 mb-0">
                     <dt class="col-sm-3">Connection ID</dt>
                     <dd class="col-sm-9"><code>@_agent.Id</code></dd>
@@ -72,7 +72,7 @@
                 @if (_isEditingName) {
                     <div class="mb-2">
                         <label class="form-label fw-bold">Connection Name</label>
-                        <InputText class="form-control" @bind-Value="_editedName" />
+                        <input class="form-control" @bind="_editedName" />
                     </div>
                     <button class="btn btn-primary me-2" @onclick="SaveNameAsync">Save</button>
                     <button class="btn btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
@@ -85,7 +85,7 @@
                 @if (_isEditingUrl) {
                     <div class="mb-2">
                         <label class="form-label fw-bold">Remote URL</label>
-                        <InputText class="form-control" @bind-Value="_editedUrl" placeholder="https://agent-host:port" />
+                        <input class="form-control" @bind="_editedUrl" placeholder="https://agent-host:port" />
                         <div class="form-text">Changing the URL will drop the cached gRPC channel and reconnect.</div>
                     </div>
                     <button class="btn btn-primary me-2" @onclick="SaveUrlAsync">Save URL</button>
@@ -260,5 +260,5 @@
     }
 
     private static string FormatAvailability( bool? value ) => AgentDisplayHelper.FormatAvailability( value );
-    private static string GetStatusBadgeClass( string status ) => AgentDisplayHelper.GetStatusBadgeClass( status );
+
 }

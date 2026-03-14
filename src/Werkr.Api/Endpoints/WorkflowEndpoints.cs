@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Api.Models;
 using Werkr.Api.Services;
@@ -17,7 +18,7 @@ namespace Werkr.Api.Endpoints;
 /// <summary>
 /// Extension methods for mapping workflow REST endpoints to the application.
 /// </summary>
-internal static class WorkflowEndpoints {
+internal static partial class WorkflowEndpoints {
 
     /// <summary>Maps all workflow-related REST endpoints.</summary>
     public static WebApplication MapWorkflowEndpoints( this WebApplication app ) {
@@ -26,6 +27,7 @@ internal static class WorkflowEndpoints {
         MapStepDependencies( app );
         MapWorkflowSchedules( app );
         MapWorkflowExecution( app );
+        MapWorkflowDashboard( app );
         return app;
     }
 
@@ -84,6 +86,45 @@ internal static class WorkflowEndpoints {
             CancellationToken ct
         ) => {
             try {
+                // Validate annotations
+                if (request.Annotations is { Count: > 50 }) {
+                    return Results.BadRequest( new { message = "Maximum 50 annotations allowed." } );
+                }
+
+                if (request.Annotations is not null) {
+                    string serialized = JsonSerializer.Serialize( request.Annotations );
+                    if (serialized.Length > 65536) {
+                        return Results.BadRequest( new { message = "Annotations JSON exceeds 64 KB limit." } );
+                    }
+
+                    // Strip HTML tags from annotation text for XSS safety
+                    List<AnnotationDto> sanitized = [];
+                    foreach (AnnotationDto ann in request.Annotations) {
+                        string cleanText = StripHtmlTags( ann.Text );
+                        sanitized.Add( ann with { Text = cleanText } );
+                    }
+                    // Validate annotation fields explicitly (DataAnnotations are not auto-enforced in Minimal APIs)
+                    foreach (AnnotationDto ann in sanitized) {
+                        if (ann.Text.Length > 500) {
+                            return Results.BadRequest( new { message = $"Annotation text exceeds 500 characters (id: {ann.Id})." } );
+                        }
+
+                        if (ann.X < -10000 || ann.X > 50000 || ann.Y < -10000 || ann.Y > 50000) {
+                            return Results.BadRequest( new { message = $"Annotation position out of bounds (id: {ann.Id})." } );
+                        }
+
+                        if (ann.Width < 80 || ann.Width > 800 || ann.Height < 40 || ann.Height > 600) {
+                            return Results.BadRequest( new { message = $"Annotation dimensions out of bounds (id: {ann.Id})." } );
+                        }
+
+                        if (!HexColorRegex( ).IsMatch( ann.Color )) {
+                            return Results.BadRequest( new { message = $"Annotation color must be a hex color (id: {ann.Id})." } );
+                        }
+                    }
+
+                    request = request with { Annotations = sanitized };
+                }
+
                 Workflow entity = WorkflowMapper.ToEntity( id, request );
                 Workflow updated = await workflowService.UpdateAsync( entity, ct );
                 return Results.Ok( WorkflowMapper.ToDto( updated ) );
@@ -205,6 +246,81 @@ internal static class WorkflowEndpoints {
         } )
         .WithName( "RemoveWorkflowStep" )
         .RequireAuthorization( Policies.CanDelete );
+
+        _ = app.MapPost( "/api/workflows/{workflowId}/steps/batch", async (
+            long workflowId,
+            WorkflowStepBatchRequest request,
+            WorkflowService workflowService,
+            Microsoft.AspNetCore.Http.HttpContext httpContext,
+            CancellationToken ct
+        ) => {
+            // Dynamic per-operation-type authorization
+            Microsoft.AspNetCore.Authorization.IAuthorizationService authService =
+                httpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Authorization.IAuthorizationService>();
+
+            bool needsCreate = request.Operations.Any( o =>
+                string.Equals( o.OperationType, "Add", StringComparison.OrdinalIgnoreCase ) );
+            bool needsUpdate = request.Operations.Any( o =>
+                string.Equals( o.OperationType, "Update", StringComparison.OrdinalIgnoreCase ) );
+            bool needsDelete = request.Operations.Any( o =>
+                string.Equals( o.OperationType, "Delete", StringComparison.OrdinalIgnoreCase ) );
+
+            // Check dependency changes too
+            foreach (StepBatchOperation op in request.Operations) {
+                if (op.DependencyChanges is null) {
+                    continue;
+                }
+
+                foreach (DependencyBatchItem dep in op.DependencyChanges) {
+                    if (string.Equals( dep.OperationType, "Add", StringComparison.OrdinalIgnoreCase )) {
+                        needsCreate = true;
+                    } else if (string.Equals( dep.OperationType, "Delete", StringComparison.OrdinalIgnoreCase )) {
+                        needsDelete = true;
+                    }
+                }
+            }
+
+            List<string> missingPolicies = [];
+            if (needsCreate) {
+                Microsoft.AspNetCore.Authorization.AuthorizationResult result =
+                    await authService.AuthorizeAsync( httpContext.User, null, Policies.CanCreate );
+                if (!result.Succeeded) {
+                    missingPolicies.Add( Policies.CanCreate );
+                }
+            }
+            if (needsUpdate) {
+                Microsoft.AspNetCore.Authorization.AuthorizationResult result =
+                    await authService.AuthorizeAsync( httpContext.User, null, Policies.CanUpdate );
+                if (!result.Succeeded) {
+                    missingPolicies.Add( Policies.CanUpdate );
+                }
+            }
+            if (needsDelete) {
+                Microsoft.AspNetCore.Authorization.AuthorizationResult result =
+                    await authService.AuthorizeAsync( httpContext.User, null, Policies.CanDelete );
+                if (!result.Succeeded) {
+                    missingPolicies.Add( Policies.CanDelete );
+                }
+            }
+
+            if (missingPolicies.Count > 0) {
+                return Results.Forbid( );
+            }
+
+            try {
+                WorkflowStepBatchResponse response =
+                    await workflowService.BatchUpdateStepsAsync( workflowId, request, ct );
+                return response.Success
+                    ? Results.Ok( response )
+                    : Results.BadRequest( response );
+            } catch (KeyNotFoundException) {
+                return Results.NotFound( );
+            } catch (Exception ex) when (ex is FormatException or ArgumentException) {
+                return Results.BadRequest( new { message = ex.Message } );
+            }
+        } )
+        .WithName( "BatchUpdateWorkflowSteps" )
+        .RequireAuthorization( Policies.CanRead );
     }
 
     // ── Step Dependencies ──
@@ -410,6 +526,29 @@ internal static class WorkflowEndpoints {
         .WithName( "GetWorkflowRuns" )
         .RequireAuthorization( Policies.CanRead );
 
+        // Global workflow runs across all workflows (for the top-level Workflow Runs page)
+        _ = app.MapGet( "/api/workflows/runs", async (
+            int? limit,
+            WerkrDbContext dbContext,
+            CancellationToken ct
+        ) => {
+            List<WorkflowRunDto> dtos = await dbContext.WorkflowRuns.AsNoTracking( )
+                .Include( r => r.Workflow )
+                .OrderByDescending( r => r.StartTime )
+                .Take( limit ?? 50 )
+                .Select( r => new WorkflowRunDto(
+                    r.Id,
+                    r.WorkflowId,
+                    r.StartTime,
+                    r.EndTime,
+                    r.Status.ToString( ),
+                    r.Workflow != null ? r.Workflow.Name : null ) )
+                .ToListAsync( ct );
+            return Results.Ok( dtos );
+        } )
+        .WithName( "GetAllWorkflowRuns" )
+        .RequireAuthorization( Policies.CanRead );
+
         _ = app.MapGet( "/api/workflows/runs/{runId}", async (
             Guid runId,
             WerkrDbContext dbContext,
@@ -417,6 +556,7 @@ internal static class WorkflowEndpoints {
         ) => {
             WorkflowRun? run = await dbContext.WorkflowRuns.AsNoTracking( )
                 .Include( r => r.Jobs )
+                .Include( r => r.StepExecutions )
                 .FirstOrDefaultAsync( r => r.Id == runId, ct );
             return run is null
                 ? Results.NotFound( )
@@ -469,5 +609,298 @@ internal static class WorkflowEndpoints {
         .WithName( "StreamWorkflowRunUpdates" )
         .RequireAuthorization( Policies.CanRead )
         .ExcludeFromDescription( );
+
+        // Step execution history for a run (all attempts)
+        _ = app.MapGet( "/api/workflows/runs/{runId:guid}/step-executions", async (
+            Guid runId,
+            WerkrDbContext dbContext,
+            CancellationToken ct
+        ) => {
+            List<WorkflowStepExecution> executions = await dbContext.WorkflowStepExecutions
+                .AsNoTracking( )
+                .Where( e => e.WorkflowRunId == runId )
+                .OrderBy( e => e.StepId )
+                .ThenBy( e => e.Attempt )
+                .ToListAsync( ct );
+            return Results.Ok( executions.Select( WorkflowMapper.ToStepExecutionDto ) );
+        } )
+        .WithName( "GetStepExecutions" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapPost( "/api/workflows/{id}/runs/{runId:guid}/retry-from/{stepId:long}", async (
+            long id,
+            Guid runId,
+            long stepId,
+            RetryFromFailedRequest? request,
+            RetryFromFailedService retryService,
+            ScheduleInvalidationDispatcher invalidationDispatcher,
+            CancellationToken ct
+        ) => {
+            try {
+                RetryFromFailedService.RetryResult result = await retryService.RetryAsync(
+                    id, runId, stepId, request?.VariableOverrides, ct );
+
+                await invalidationDispatcher.InvalidateAsync( result.ScheduleId, ct );
+
+                return Results.Accepted( $"/api/workflows/runs/{runId}",
+                    new { result.RunId, result.RetryFromStepId, result.ResetStepCount } );
+            } catch (InvalidOperationException ex) {
+                return Results.Conflict( new { message = ex.Message } );
+            } catch (KeyNotFoundException ex) {
+                return Results.NotFound( new { message = ex.Message } );
+            }
+        } )
+        .WithName( "RetryFromFailed" )
+        .RequireAuthorization( Policies.CanExecute );
     }
+
+    // ── Workflow Dashboard ──
+
+    /// <summary>
+    /// Registers aggregated dashboard and latest-run-status endpoints.
+    /// </summary>
+    private static void MapWorkflowDashboard( WebApplication app ) {
+
+        _ = app.MapGet( "/api/workflows/dashboard", async (
+            int? page,
+            int? pageSize,
+            string? search,
+            string? tag,
+            string? status,
+            bool? enabled,
+            int? recentRunCount,
+            WerkrDbContext dbContext,
+            ScheduleService scheduleService,
+            ILogger<Program> logger,
+            CancellationToken ct
+        ) => {
+            int pageVal = Math.Max( 1, page ?? 1 );
+            int pageSizeVal = Math.Clamp( pageSize ?? 25, 1, 100 );
+            int sparklineCount = Math.Clamp( recentRunCount ?? 10, 1, 50 );
+
+            // Query 1 — Paginated workflow summaries
+            IQueryable<Workflow> query = dbContext.Workflows.AsNoTracking( );
+
+            if (!string.IsNullOrWhiteSpace( search )) {
+                query = query.Where( w => w.Name.Contains( search ) );
+            }
+
+            if (enabled.HasValue) {
+                query = query.Where( w => w.Enabled == enabled.Value );
+            }
+
+            if (!string.IsNullOrWhiteSpace( tag )) {
+                query = query.Where( w => w.TargetTags != null && w.TargetTags.Contains( tag ) );
+            }
+
+            bool hasStatusFilter = !string.IsNullOrWhiteSpace( status );
+            int totalCount = await query.CountAsync( ct );
+
+            IQueryable<Workflow> orderedQuery = query.OrderBy( w => w.Name );
+
+            // When status filter is active, fetch all rows so we can filter
+            // in memory before paginating; otherwise paginate at DB level.
+            if (!hasStatusFilter) {
+                orderedQuery = orderedQuery
+                    .Skip( (pageVal - 1) * pageSizeVal )
+                    .Take( pageSizeVal );
+            }
+
+            var summaries = await orderedQuery
+                .Select( w => new {
+                    w.Id,
+                    w.Name,
+                    w.Description,
+                    w.Enabled,
+                    w.TargetTags,
+                    StepCount = w.Steps.Count,
+                    RunCount = w.Runs.Count,
+                    LastRun = w.Runs
+                        .OrderByDescending( r => r.StartTime )
+                        .Select( r => new { r.Id, r.Status, r.StartTime, r.EndTime } )
+                        .FirstOrDefault( )
+                } )
+                .ToListAsync( ct );
+
+            // Apply last-run status filter in memory (status is an enum stored as int)
+            if (hasStatusFilter) {
+                summaries = [.. summaries
+                    .Where( s => s.LastRun is not null
+                        && s.LastRun.Status.ToString( ).Equals( status, StringComparison.OrdinalIgnoreCase ) )];
+                totalCount = summaries.Count;
+                summaries = [.. summaries
+                    .Skip( (pageVal - 1) * pageSizeVal )
+                    .Take( pageSizeVal )];
+            }
+
+            List<long> workflowIds = [.. summaries.Select( w => w.Id )];
+
+            // Query 2 — Sparkline data (recent runs for the page of workflow IDs)
+            List<WorkflowRun> recentRuns;
+            try {
+                recentRuns = await dbContext.WorkflowRuns.AsNoTracking( )
+                    .Where( r => workflowIds.Contains( r.WorkflowId ) )
+                    .GroupBy( r => r.WorkflowId )
+                    .SelectMany( g => g.OrderByDescending( r => r.StartTime ).Take( sparklineCount ) )
+                    .ToListAsync( ct );
+            } catch (Exception ex) {
+                // Fallback: EF provider may not support GroupBy+SelectMany+Take
+                logger.LogWarning( ex, "Sparkline GroupBy query failed; falling back to in-memory grouping" );
+                recentRuns = await dbContext.WorkflowRuns.AsNoTracking( )
+                    .Where( r => workflowIds.Contains( r.WorkflowId ) )
+                    .OrderByDescending( r => r.StartTime )
+                    .ToListAsync( ct );
+                recentRuns = [.. recentRuns
+                    .GroupBy( r => r.WorkflowId )
+                    .SelectMany( g => g.Take( sparklineCount ) )];
+            }
+
+            ILookup<long, RunSparklineDto> sparklineByWorkflow = recentRuns
+                .OrderBy( r => r.StartTime )
+                .ToLookup(
+                    r => r.WorkflowId,
+                    r => new RunSparklineDto(
+                        RunId: r.Id,
+                        Status: r.Status.ToString( ),
+                        DurationSeconds: r.EndTime.HasValue
+                            ? ( r.EndTime.Value - r.StartTime ).TotalSeconds
+                            : null ) );
+
+            // Schedule computation — next scheduled run per workflow
+            List<WorkflowSchedule> scheduleLinks = await dbContext.WorkflowSchedules.AsNoTracking( )
+                .Where( ws => workflowIds.Contains( ws.WorkflowId ) )
+                .ToListAsync( ct );
+
+            Dictionary<long, DateTime?> nextScheduledByWorkflow = [];
+            DateTime utcNow = DateTime.UtcNow;
+            DateTime windowEnd = utcNow.AddDays( 30 );
+
+            ILookup<long, Guid> scheduleIdsByWorkflow = scheduleLinks
+                .ToLookup( ws => ws.WorkflowId, ws => ws.ScheduleId );
+
+            foreach (long wfId in workflowIds) {
+                DateTime? earliest = null;
+                foreach (Guid scheduleId in scheduleIdsByWorkflow[wfId]) {
+                    Schedule? schedule = await scheduleService.GetByIdAsync( scheduleId, ct );
+                    if (schedule is null) {
+                        continue;
+                    }
+
+                    try {
+                        IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
+                            schedule, windowEnd );
+                        DateTime? next = occurrences.FirstOrDefault( o => o > utcNow );
+                        if (next.HasValue && next.Value != default
+                            && (!earliest.HasValue || next.Value < earliest.Value)) {
+                            earliest = next;
+                        }
+                    } catch {
+                        // Schedule may be misconfigured — skip it
+                    }
+                }
+                nextScheduledByWorkflow[wfId] = earliest;
+            }
+
+            // Assemble response
+            List<WorkflowDashboardDto> items = [.. summaries.Select( s => new WorkflowDashboardDto(
+                Id: s.Id,
+                Name: s.Name,
+                Description: s.Description,
+                Enabled: s.Enabled,
+                TargetTags: s.TargetTags,
+                StepCount: s.StepCount,
+                RunCount: s.RunCount,
+                LastRun: s.LastRun is not null
+                    ? new WorkflowRunSummaryDto(
+                        Id: s.LastRun.Id,
+                        Status: s.LastRun.Status.ToString( ),
+                        StartTime: s.LastRun.StartTime,
+                        EndTime: s.LastRun.EndTime )
+                    : null,
+                RecentRuns: [.. sparklineByWorkflow[s.Id]],
+                NextScheduledRun: nextScheduledByWorkflow.GetValueOrDefault( s.Id )
+            ) )];
+
+            return Results.Ok( new WorkflowDashboardPageDto(
+                Items: items,
+                TotalCount: totalCount,
+                Page: pageVal,
+                PageSize: pageSizeVal ) );
+        } )
+        .WithName( "GetWorkflowDashboard" )
+        .RequireAuthorization( Policies.CanRead );
+
+        _ = app.MapGet( "/api/workflows/{id}/latest-run-status", async (
+            long id,
+            WerkrDbContext dbContext,
+            ILogger<Program> logger,
+            CancellationToken ct
+        ) => {
+            var latestRun = await dbContext.WorkflowRuns.AsNoTracking( )
+                .Where( r => r.WorkflowId == id )
+                .OrderByDescending( r => r.StartTime )
+                .Select( r => new { r.Id, r.Status, r.StartTime, r.EndTime } )
+                .FirstOrDefaultAsync( ct );
+
+            if (latestRun is null) {
+                return Results.Ok( new WorkflowLatestRunStatusDto(
+                    RunId: null,
+                    RunStatus: null,
+                    RunStartTime: null,
+                    RunEndTime: null,
+                    Steps: [] ) );
+            }
+
+            List<StepStatusSummaryDto> steps;
+            try {
+                steps = await dbContext.WorkflowStepExecutions.AsNoTracking( )
+                    .Where( e => e.WorkflowRunId == latestRun.Id )
+                    .GroupBy( e => e.StepId )
+                    .Select( g => g.OrderByDescending( e => e.Attempt ).First( ) )
+                    .Select( e => new StepStatusSummaryDto(
+                        StepId: e.StepId,
+                        Status: e.Status.ToString( ),
+                        StartTime: e.StartTime,
+                        EndTime: e.EndTime,
+                        ExitCode: e.Job != null ? e.Job.ExitCode : null ) )
+                    .ToListAsync( ct );
+            } catch (Exception ex) {
+                // Fallback: EF provider (e.g. SQLite) may not support GroupBy+First
+                logger.LogWarning( ex, "Latest-run-status GroupBy query failed; falling back to in-memory grouping" );
+                List<WorkflowStepExecution> allExecs = await dbContext.WorkflowStepExecutions
+                    .AsNoTracking( )
+                    .Include( e => e.Job )
+                    .Where( e => e.WorkflowRunId == latestRun.Id )
+                    .OrderByDescending( e => e.Attempt )
+                    .ToListAsync( ct );
+                steps = [.. allExecs
+                    .GroupBy( e => e.StepId )
+                    .Select( g => g.First( ) )
+                    .Select( e => new StepStatusSummaryDto(
+                        StepId: e.StepId,
+                        Status: e.Status.ToString( ),
+                        StartTime: e.StartTime,
+                        EndTime: e.EndTime,
+                        ExitCode: e.Job?.ExitCode ) )];
+            }
+
+            return Results.Ok( new WorkflowLatestRunStatusDto(
+                RunId: latestRun.Id,
+                RunStatus: latestRun.Status.ToString( ),
+                RunStartTime: latestRun.StartTime,
+                RunEndTime: latestRun.EndTime,
+                Steps: steps ) );
+        } )
+        .WithName( "GetLatestRunStatus" )
+        .RequireAuthorization( Policies.CanRead );
+    }
+
+    [GeneratedRegex( @"<[^>]+>" )]
+    private static partial Regex HtmlTagRegex( );
+
+    [GeneratedRegex( @"^#[0-9a-fA-F]{6}$" )]
+    private static partial Regex HexColorRegex( );
+
+    private static string StripHtmlTags( string input ) =>
+        string.IsNullOrEmpty( input ) ? input : HtmlTagRegex( ).Replace( input, string.Empty );
 }

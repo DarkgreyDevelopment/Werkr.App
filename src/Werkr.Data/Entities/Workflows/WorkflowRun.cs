@@ -37,4 +37,7 @@ public class WorkflowRun : ConcurrencyBase, IKey<Guid> {
 
     /// <summary>Navigation to runtime variable values for this run.</summary>
     public ICollection<WorkflowRunVariable> RunVariables { get; set; } = [];
+
+    /// <summary>Navigation to step execution records for this run.</summary>
+    public ICollection<WorkflowStepExecution> StepExecutions { get; set; } = [];
 }

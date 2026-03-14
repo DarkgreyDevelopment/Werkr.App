@@ -1,0 +1,8 @@
+.sparkline-running {
+    animation: sparkline-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes sparkline-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}

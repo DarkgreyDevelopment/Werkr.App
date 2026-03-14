@@ -1,0 +1,93 @@
+@* Step detail side panel — shows I/O, log preview, and variables for a selected step. *@
+@using Werkr.Server.Services
+
+@inject IHttpClientFactory HttpClientFactory
+
+@if ( Step is not null ) {
+    <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Step #@Step.StepId — @Step.Status</strong>
+            <button type="button" class="btn-close" @onclick="( ) => OnClose.InvokeAsync( )"></button>
+        </div>
+        <div class="card-body overflow-auto">
+            <dl class="row mb-2">
+                <dt class="col-sm-5">Step ID</dt>
+                <dd class="col-sm-7">@Step.StepId</dd>
+
+                <dt class="col-sm-5">Attempt</dt>
+                <dd class="col-sm-7">@Step.Attempt</dd>
+
+                <dt class="col-sm-5">Status</dt>
+                <dd class="col-sm-7">
+                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( Step.Status )">@Step.Status</span>
+                </dd>
+
+                @if ( Step.StartTime.HasValue ) {
+                    <dt class="col-sm-5">Started</dt>
+                    <dd class="col-sm-7">@Step.StartTime.Value.ToString( "G" )</dd>
+                }
+
+                @if ( Step.EndTime.HasValue ) {
+                    <dt class="col-sm-5">Ended</dt>
+                    <dd class="col-sm-7">@Step.EndTime.Value.ToString( "G" )</dd>
+                }
+
+                @if ( Step.JobId.HasValue ) {
+                    <dt class="col-sm-5">Job</dt>
+                    <dd class="col-sm-7"><a href="/jobs/@Step.JobId">@Step.JobId.Value.ToString( )[..8]…</a></dd>
+                }
+
+                @if ( !string.IsNullOrWhiteSpace( Step.ErrorMessage ) ) {
+                    <dt class="col-sm-5">Error</dt>
+                    <dd class="col-sm-7 text-danger">@Step.ErrorMessage</dd>
+                }
+
+                @if ( !string.IsNullOrWhiteSpace( Step.SkipReason ) ) {
+                    <dt class="col-sm-5">Skip Reason</dt>
+                    <dd class="col-sm-7 text-muted">@Step.SkipReason</dd>
+                }
+            </dl>
+
+            @if ( Job is not null && !string.IsNullOrWhiteSpace( Job.Output ) ) {
+                <h6>Output Preview</h6>
+                <pre class="bg-dark text-light p-2 rounded" style="max-height:200px;overflow:auto;font-size:0.8rem;">@Job.Output</pre>
+            }
+
+            @if ( Step.JobId.HasValue ) {
+                <button class="btn btn-sm btn-outline-primary mt-2" @onclick="FetchFullLogAsync" disabled="@_fetchingLog">
+                    @( _fetchingLog ? "Loading…" : "Fetch Full Log" )
+                </button>
+                @if ( _fullLog is not null ) {
+                    <pre class="bg-dark text-light p-2 rounded mt-2" style="max-height:400px;overflow:auto;font-size:0.75rem;">@_fullLog</pre>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public StepExecutionDto? Step { get; set; }
+    [Parameter] public JobDto? Job { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string? _fullLog;
+    private bool _fetchingLog;
+
+    protected override void OnParametersSet( ) {
+        // Reset full log when step changes
+        _fullLog = null;
+    }
+
+    private async Task FetchFullLogAsync( ) {
+        if ( Step?.JobId is null ) return;
+        _fetchingLog = true;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _fullLog = await client.GetStringAsync( $"/api/jobs/{Step.JobId}/output" );
+        } catch {
+            _fullLog = "Failed to fetch log.";
+        } finally {
+            _fetchingLog = false;
+        }
+    }
+}

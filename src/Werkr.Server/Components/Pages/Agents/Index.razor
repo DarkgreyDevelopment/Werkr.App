@@ -23,11 +23,14 @@
     </button>
 </div>
 
+<FilterBar PageKey="agents" Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
+
 @if ( !string.IsNullOrEmpty( _errorMessage ) ) {
     <div class="alert alert-danger">@_errorMessage</div>
 }
 
-@if ( _agents is not null && _agents.Count > 0 ) {
+@if ( _agents is not null && FilteredAgents.Count > 0 ) {
     <div class="table-responsive">
         <table class="table table-striped">
             <thead>
@@ -41,12 +44,12 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ( AgentListDto agent in _agents ) {
+                @foreach ( AgentListDto agent in FilteredAgents ) {
                     <tr>
                         <td><a href="/agents/@agent.Id">@agent.ConnectionName</a></td>
                         <td><code>@agent.RemoteUrl</code></td>
                         <td>
-                            <span class="badge @GetStatusBadgeClass( agent.Status )">@agent.Status</span>
+                            <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( agent.Status )">@agent.Status</span>
                         </td>
                         <td>@( agent.LastSeen?.ToString( "g" ) ?? "—" )</td>
                         <td>@agent.RegisteredAt.ToString( "g" )</td>
@@ -78,12 +81,27 @@
 
 @code {
     private List<AgentListDto>? _agents;
+    private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
         new( "Task List", "/" ),
         new( "Agents" )
     ];
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "search", "Name", FilterFieldType.Text ),
+        new FilterField( "status", "Status", FilterFieldType.Dropdown,
+            ["Connected", "Disconnected", "Unreachable", "Revoked"] ),
+    ] );
+
+    private List<AgentListDto> FilteredAgents => ( _agents ?? [] )
+        .Where( a =>
+            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "search" ) )
+              || a.ConnectionName.Contains( _activeCriteria.Get( "search" )!, StringComparison.OrdinalIgnoreCase ) )
+            && ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "status" ) )
+              || a.Status.Equals( _activeCriteria.Get( "status" )!, StringComparison.OrdinalIgnoreCase ) ) )
+        .ToList( );
 
     /// <inheritdoc />
     protected override async Task OnInitializedAsync( ) {
@@ -117,6 +135,14 @@
         }
     }
 
-    private static string GetStatusBadgeClass( string status ) => AgentDisplayHelper.GetStatusBadgeClass( status );
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAgents( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAgents( );
+    }
 
 }

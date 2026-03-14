@@ -1,5 +1,6 @@
 ﻿@page "/schedules"
 @rendermode InteractiveServer
+@using Werkr.Common.Models
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
@@ -12,9 +13,9 @@
 <p>Manage recurring execution schedules for tasks and workflows.</p>
 
 <div class="mb-3">
-    <a href="/schedules/create" class="btn btn-primary">
+    <button class="btn btn-primary" @onclick="OpenCreateScheduleAsync">
         <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Schedule
-    </a>
+    </button>
     <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
         @if ( _isLoading ) {
             <span class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -23,13 +24,16 @@
     </button>
 </div>
 
+<FilterBar PageKey="schedules" Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
+
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
 }
 
 @if ( _isLoading && _schedules is null ) {
     <LoadingSpinner Message="Loading schedules…" />
-} else if ( _schedules is not null && _schedules.Count > 0 ) {
+} else if ( _schedules is not null && FilteredSchedules.Count > 0 ) {
     <div class="table-responsive">
         <table class="table table-striped align-middle">
             <thead>
@@ -44,18 +48,18 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ( ScheduleDto s in _schedules ) {
+                @foreach ( ScheduleDto s in FilteredSchedules ) {
                     <tr>
-                        <td><a href="/schedules/@s.Id">@s.Name</a></td>
+                        <td><button class="btn btn-link p-0" @onclick="() => EditScheduleAsync( s )">@s.Name</button></td>
                         <td>@DescribeRecurrence( s )</td>
                         <td>@FormatStart( s.StartDateTime )</td>
                         <td>@FormatExpiration( s.Expiration )</td>
                         <td>
-                            <span class="badge @GetStatusBadgeClass( s )">@GetStatus( s )</span>
+                            <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( GetStatus( s ) )">@GetStatus( s )</span>
                         </td>
                         <td>@GetNextOccurrence( s.Id )</td>
                         <td class="text-end">
-                            <a class="btn btn-outline-primary btn-sm me-1" href="/schedules/@s.Id">Edit</a>
+                            <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => EditScheduleAsync( s )">Edit</button>
                             <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( s )">Delete</button>
                         </td>
                     </tr>
@@ -73,14 +77,31 @@
                ConfirmButtonText="Delete"
                OnConfirmed="DeleteConfirmedAsync" />
 
+<ScheduleSetupModal @ref="_scheduleSetupModal" OnScheduleCreated="OnScheduleCreatedAsync" OnScheduleUpdated="OnScheduleUpdatedAsync" />
+
 @code {
     private List<ScheduleDto>? _schedules;
     private Dictionary<Guid, DateTime?> _nextOccurrences = new( );
+    private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
     private ConfirmDialog _confirmDialog = default!;
+    private ScheduleSetupModal? _scheduleSetupModal;
     private Guid _pendingDeleteId;
     private string _deleteMessage = "";
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "search", "Name", FilterFieldType.Text ),
+        new FilterField( "enabled", "Status", FilterFieldType.Dropdown, ["Active", "Expired"] ),
+    ] );
+
+    private List<ScheduleDto> FilteredSchedules => ( _schedules ?? [] )
+        .Where( s =>
+            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "search" ) )
+              || s.Name.Contains( _activeCriteria.Get( "search" )!, StringComparison.OrdinalIgnoreCase ) )
+            && ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "enabled" ) )
+              || GetStatus( s ).Equals( _activeCriteria.Get( "enabled" )!, StringComparison.OrdinalIgnoreCase ) ) )
+        .ToList( );
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
         new( "Task List", "/" ),
@@ -167,9 +188,6 @@
         return "Active";
     }
 
-    private static string GetStatusBadgeClass( ScheduleDto s ) =>
-        GetStatus( s ) == "Active" ? "bg-success" : "bg-secondary";
-
     private string GetNextOccurrence( Guid scheduleId ) {
         if ( _nextOccurrences.TryGetValue( scheduleId, out DateTime? next ) && next.HasValue ) {
             return next.Value.ToLocalTime( ).ToString( "g" );
@@ -178,4 +196,30 @@
     }
 
     private sealed record OccurrencePreview( Guid ScheduleId, DateTime WindowEnd, List<DateTime>? Occurrences );
+
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
+    }
+
+    private async Task EditScheduleAsync( ScheduleDto schedule ) {
+        if ( _scheduleSetupModal is not null ) await _scheduleSetupModal.Show( schedule );
+    }
+
+    private async Task OpenCreateScheduleAsync( ) {
+        if ( _scheduleSetupModal is not null ) await _scheduleSetupModal.Show( );
+    }
+
+    private async Task OnScheduleCreatedAsync( ScheduleDto schedule ) {
+        await LoadAsync( );
+    }
+
+    private async Task OnScheduleUpdatedAsync( ScheduleDto schedule ) {
+        await LoadAsync( );
+    }
 }

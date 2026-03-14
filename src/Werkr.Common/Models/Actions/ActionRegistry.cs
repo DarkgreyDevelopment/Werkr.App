@@ -323,6 +323,50 @@ public static class ActionRegistry {
                           HelpText: "The JSON value to set or merge. Required for Set and Merge operations." ),
                  ] ),
         ] ),
+
+        // ── Shell operations ─────────────────────────────────────────
+        new( "ShellCommand", "Shell Command", "Execute a system shell command (bash/cmd).",
+            "Shell", typeof( ShellCommandParameters ), [
+            new( "Content", "Command", FieldType.TextArea, Required: true,
+                 Placeholder: "echo 'Hello, World!'",
+                 HelpText: "The shell command to execute." ),
+            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "30", Min: 1,
+                 HelpText: "Maximum execution time in minutes." ),
+        ] ),
+
+        new( "ShellScript", "Shell Script", "Execute a shell script file (bash/sh).",
+            "Shell", typeof( ShellScriptParameters ), [
+            new( "ScriptPath", "Script Path", FieldType.Text, Required: true,
+                 Placeholder: "/path/to/script.sh",
+                 HelpText: "Path to the shell script file." ),
+            new( "Arguments", "Arguments", FieldType.Text,
+                 Placeholder: "--flag value",
+                 HelpText: "Optional arguments to pass to the script." ),
+            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "30", Min: 1,
+                 HelpText: "Maximum execution time in minutes." ),
+        ] ),
+
+        // ── PowerShell operations ────────────────────────────────────
+        new( "PowerShellCommand", "PowerShell Command", "Execute an inline PowerShell command or script block.",
+            "PowerShell", typeof( PowerShellCommandParameters ), [
+            new( "Content", "Command", FieldType.TextArea, Required: true,
+                 Placeholder: "Get-Process | Where-Object { $_.CPU -gt 100 }",
+                 HelpText: "The PowerShell command or script block to execute." ),
+            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "30", Min: 1,
+                 HelpText: "Maximum execution time in minutes." ),
+        ] ),
+
+        new( "PowerShellScript", "PowerShell Script", "Execute a PowerShell script file (.ps1).",
+            "PowerShell", typeof( PowerShellScriptParameters ), [
+            new( "ScriptPath", "Script Path", FieldType.Text, Required: true,
+                 Placeholder: "C:\\scripts\\deploy.ps1",
+                 HelpText: "Path to the PowerShell script file." ),
+            new( "Arguments", "Arguments", FieldType.Text,
+                 Placeholder: "-Environment Production -Verbose",
+                 HelpText: "Optional arguments to pass to the script." ),
+            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "30", Min: 1,
+                 HelpText: "Maximum execution time in minutes." ),
+        ] ),
     ];
 
     /// <summary>Fast lookup by action key (case-insensitive).</summary>

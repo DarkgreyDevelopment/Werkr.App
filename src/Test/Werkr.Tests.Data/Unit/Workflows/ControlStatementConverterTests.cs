@@ -48,9 +48,9 @@ public class ControlStatementConverterTests {
 
         // Arrange — create a workflow and task to host the step
         Workflow workflow = new( ) { Name = "RoundTrip_WF", Description = "test" };
-        _dbContext.Workflows.Add( workflow );
+        _ = _dbContext.Workflows.Add( workflow );
         WerkrTask task = new( ) { Name = "RoundTrip_Task", ActionType = TaskActionType.ShellCommand, Content = "echo test", TargetTags = ["test"] };
-        _dbContext.Tasks.Add( task );
+        _ = _dbContext.Tasks.Add( task );
         _ = await _dbContext.SaveChangesAsync( ct );
 
         WorkflowStep step = new( ) {
@@ -59,7 +59,7 @@ public class ControlStatementConverterTests {
             Order = 0,
             ControlStatement = ControlStatement.Default,
         };
-        _dbContext.WorkflowSteps.Add( step );
+        _ = _dbContext.WorkflowSteps.Add( step );
         _ = await _dbContext.SaveChangesAsync( ct );
 
         // Detach so the next query hits the database
@@ -92,9 +92,9 @@ public class ControlStatementConverterTests {
         CancellationToken ct = TestContext.CancellationToken;
 
         Workflow workflow = new( ) { Name = $"RoundTrip_{value}", Description = "test" };
-        _dbContext.Workflows.Add( workflow );
+        _ = _dbContext.Workflows.Add( workflow );
         WerkrTask task = new( ) { Name = $"Task_{value}", ActionType = TaskActionType.ShellCommand, Content = "echo test", TargetTags = ["test"] };
-        _dbContext.Tasks.Add( task );
+        _ = _dbContext.Tasks.Add( task );
         _ = await _dbContext.SaveChangesAsync( ct );
 
         WorkflowStep step = new( ) {
@@ -105,7 +105,7 @@ public class ControlStatementConverterTests {
             ConditionExpression = value is ControlStatement.If or ControlStatement.ElseIf or ControlStatement.While or ControlStatement.Do
                 ? "$? -eq $true" : null,
         };
-        _dbContext.WorkflowSteps.Add( step );
+        _ = _dbContext.WorkflowSteps.Add( step );
         _ = await _dbContext.SaveChangesAsync( ct );
 
         _dbContext.ChangeTracker.Clear( );
@@ -129,9 +129,9 @@ public class ControlStatementConverterTests {
         CancellationToken ct = TestContext.CancellationToken;
 
         Workflow workflow = new( ) { Name = "Legacy_WF", Description = "test" };
-        _dbContext.Workflows.Add( workflow );
+        _ = _dbContext.Workflows.Add( workflow );
         WerkrTask task = new( ) { Name = "Legacy_Task", ActionType = TaskActionType.ShellCommand, Content = "echo test", TargetTags = ["test"] };
-        _dbContext.Tasks.Add( task );
+        _ = _dbContext.Tasks.Add( task );
         _ = await _dbContext.SaveChangesAsync( ct );
 
         // Insert a step with "Default" first (to get a valid row)
@@ -141,7 +141,7 @@ public class ControlStatementConverterTests {
             Order = 0,
             ControlStatement = ControlStatement.Default,
         };
-        _dbContext.WorkflowSteps.Add( step );
+        _ = _dbContext.WorkflowSteps.Add( step );
         _ = await _dbContext.SaveChangesAsync( ct );
 
         // Manually overwrite the stored string to the legacy "Sequential" value

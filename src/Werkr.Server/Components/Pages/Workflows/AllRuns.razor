@@ -1,0 +1,150 @@
+@page "/workflows/runs"
+@using Werkr.Server.Services
+@rendermode InteractiveServer
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IHttpClientFactory HttpClientFactory
+@inject ServerConfigCache ConfigCache
+
+<PageTitle>Werkr - Workflow Runs</PageTitle>
+
+<h1>Workflow Runs</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<div class="mb-3">
+    <button class="btn btn-outline-secondary" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+<FilterBar PageKey="all-workflow-runs"
+           Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync"
+           OnFilterCleared="OnFilterClearedAsync" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _runs is null ) {
+    <LoadingSpinner Message="Loading runs…" />
+} else if ( _runs is not null && FilteredRuns.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Run ID</th>
+                    <th>Workflow</th>
+                    <th>Started</th>
+                    <th>Ended</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( WorkflowRunDto run in FilteredRuns ) {
+                    <tr>
+                        <td><a href="/workflows/runs/@run.Id">@run.Id.ToString()[..8]…</a></td>
+                        <td><a href="/workflows/@run.WorkflowId">@( run.WorkflowName ?? $"#{run.WorkflowId}" )</a></td>
+                        <td>@run.StartTime.ToString( "g" )</td>
+                        <td>@( run.EndTime?.ToString( "g" ) ?? "—" )</td>
+                        <td>
+                            <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( run.Status )">@run.Status</span>
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm" href="/workflows/runs/@run.Id">Details</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( !_isLoading ) {
+    <EmptyState Message="No workflow runs recorded yet." />
+}
+
+@code {
+    private List<WorkflowRunDto>? _runs;
+    private FilterCriteria? _activeCriteria;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _disposed;
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _cts;
+
+    private static readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Workflows", "/workflows" ),
+        new( "All Runs" )
+    ];
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Running", "Completed", "Failed", "Skipped"] ),
+        new FilterField( "since", "Since", FilterFieldType.Date ),
+        new FilterField( "until", "Until", FilterFieldType.Date ),
+    ] );
+
+    private List<WorkflowRunDto> FilteredRuns => ( _runs ?? [] )
+        .Where( r =>
+            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "status" ) )
+              || r.Status.Equals( _activeCriteria.Get( "status" ), StringComparison.OrdinalIgnoreCase ) )
+            && ( !DateTime.TryParse( _activeCriteria?.Get( "since" ), out DateTime since )
+              || r.StartTime >= since )
+            && ( !DateTime.TryParse( _activeCriteria?.Get( "until" ), out DateTime until )
+              || r.StartTime <= until.AddDays( 1 ) ) )
+        .ToList( );
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+
+        _cts = new CancellationTokenSource( );
+        _refreshTimer = new PeriodicTimer( TimeSpan.FromSeconds( ConfigCache.RunDetailPollingIntervalSeconds ) );
+        _ = AutoRefreshAsync( _cts.Token );
+    }
+
+    private async Task AutoRefreshAsync( CancellationToken ct ) {
+        if ( _refreshTimer is null ) return;
+        try {
+            while ( await _refreshTimer.WaitForNextTickAsync( ct ) ) {
+                if ( _disposed ) return;
+                await LoadAsync( );
+                await InvokeAsync( StateHasChanged );
+            }
+        } catch ( OperationCanceledException ) { }
+        catch ( ObjectDisposedException ) { }
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _runs = await client.GetFromJsonAsync<List<WorkflowRunDto>>(
+                "/api/workflows/runs?limit=50" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load runs: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    public ValueTask DisposeAsync( ) {
+        _disposed = true;
+        _cts?.Cancel( );
+        _cts?.Dispose( );
+        _refreshTimer?.Dispose( );
+        return ValueTask.CompletedTask;
+    }
+
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
+    }
+}

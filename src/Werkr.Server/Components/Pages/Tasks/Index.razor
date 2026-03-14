@@ -1,5 +1,6 @@
 ﻿@page "/tasks"
 @rendermode InteractiveServer
+@using Werkr.Common.Models
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
@@ -23,25 +24,8 @@
     </button>
 </div>
 
-<div class="d-flex flex-wrap gap-2 mb-3">
-    <input type="text" class="form-control form-control-sm" style="max-width: 250px;"
-           placeholder="Filter by name…" @bind="_filterText" @bind:event="oninput" />
-    <select class="form-select form-select-sm" style="max-width: 180px;" @bind="_filterActionType">
-        <option value="">All Action Types</option>
-        <option value="PowerShellCommand">PowerShell Command</option>
-        <option value="PowerShellScript">PowerShell Script</option>
-        <option value="ShellCommand">Shell Command</option>
-        <option value="ShellScript">Shell Script</option>
-        <option value="Action">Action</option>
-    </select>
-    <select class="form-select form-select-sm" style="max-width: 140px;" @bind="_filterEnabled">
-        <option value="">All</option>
-        <option value="enabled">Enabled</option>
-        <option value="disabled">Disabled</option>
-    </select>
-    <input type="text" class="form-control form-control-sm" style="max-width: 200px;"
-           placeholder="Filter by tag…" @bind="_filterTag" @bind:event="oninput" />
-</div>
+<FilterBar PageKey="tasks" Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
@@ -103,30 +87,35 @@
 
 @code {
     private List<TaskDto>? _tasks;
+    private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
     private bool _isRunning;
-    private string _filterText = "";
-    private string _filterActionType = "";
-    private string _filterEnabled = "";
-    private string _filterTag = "";
     private ConfirmDialog _confirmDialog = default!;
     private long _pendingDeleteId;
     private string _deleteMessage = "";
 
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "search", "Name", FilterFieldType.Text ),
+        new FilterField( "actionType", "Action Type", FilterFieldType.Dropdown,
+            ["PowerShellCommand", "PowerShellScript", "ShellCommand", "ShellScript", "Action"] ),
+        new FilterField( "enabled", "Enabled", FilterFieldType.Dropdown, ["Enabled", "Disabled"] ),
+        new FilterField( "tag", "Tag", FilterFieldType.Text ),
+    ] );
+
     private List<TaskDto> FilteredTasks => ( _tasks ?? [] )
         .Where( t =>
-            ( string.IsNullOrWhiteSpace( _filterText )
-              || t.Name.Contains( _filterText, StringComparison.OrdinalIgnoreCase ) )
-            && ( string.IsNullOrWhiteSpace( _filterActionType )
-              || t.ActionType.Equals( _filterActionType, StringComparison.OrdinalIgnoreCase ) )
-            && ( _filterEnabled switch {
-                "enabled" => t.Enabled,
-                "disabled" => !t.Enabled,
+            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "search" ) )
+              || t.Name.Contains( _activeCriteria.Get( "search" )!, StringComparison.OrdinalIgnoreCase ) )
+            && ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "actionType" ) )
+              || t.ActionType.Equals( _activeCriteria.Get( "actionType" )!, StringComparison.OrdinalIgnoreCase ) )
+            && ( _activeCriteria?.Get( "enabled" ) switch {
+                "Enabled" => t.Enabled,
+                "Disabled" => !t.Enabled,
                 _ => true
             } )
-            && ( string.IsNullOrWhiteSpace( _filterTag )
-              || t.TargetTags.Any( tag => tag.Contains( _filterTag, StringComparison.OrdinalIgnoreCase ) ) ) )
+            && ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "tag" ) )
+              || t.TargetTags.Any( tag => tag.Contains( _activeCriteria.Get( "tag" )!, StringComparison.OrdinalIgnoreCase ) ) ) )
         .ToList( );
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
@@ -186,5 +175,15 @@
         } finally {
             _isRunning = false;
         }
+    }
+
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
     }
 }

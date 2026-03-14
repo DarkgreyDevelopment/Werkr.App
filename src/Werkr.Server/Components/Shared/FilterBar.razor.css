@@ -1,0 +1,50 @@
+/* FilterBar — universal filter bar layout */
+
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+}
+
+.filter-bar-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem;
+    flex: 1 1 auto;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+    max-width: 200px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.25rem;
+    align-self: flex-end;
+}
+
+.filter-bar-saved {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.saved-filter-select {
+    min-width: 160px;
+    max-width: 220px;
+}
+
+.filter-save-dialog {
+    width: 100%;
+}

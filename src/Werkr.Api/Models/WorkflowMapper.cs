@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Werkr.Common.Models;
 using Werkr.Data.Entities.Workflows;
 
@@ -25,6 +26,9 @@ internal static class WorkflowMapper {
             Description = request.Description ?? string.Empty,
             Enabled = request.Enabled,
             TargetTags = request.TargetTags,
+            Annotations = request.Annotations is { Count: > 0 }
+                ? JsonSerializer.Serialize( request.Annotations )
+                : null,
         };
 
     /// <summary>Maps a <see cref="Workflow"/> entity to a <see cref="WorkflowDto"/>.</summary>
@@ -35,7 +39,8 @@ internal static class WorkflowMapper {
             Description: workflow.Description,
             Enabled: workflow.Enabled,
             Steps: [.. workflow.Steps.Select( ToStepDto )],
-            TargetTags: workflow.TargetTags );
+            TargetTags: workflow.TargetTags,
+            Annotations: DeserializeAnnotations( workflow.Annotations ) );
 
     /// <summary>Maps a <see cref="WorkflowStep"/> entity to a <see cref="WorkflowStepDto"/>.</summary>
     public static WorkflowStepDto ToStepDto( WorkflowStep step ) =>
@@ -51,7 +56,8 @@ internal static class WorkflowMapper {
             DependencyMode: step.DependencyMode.ToString( ),
             Dependencies: [.. step.Dependencies.Select( ToDepDto )],
             InputVariableName: step.InputVariableName,
-            OutputVariableName: step.OutputVariableName );
+            OutputVariableName: step.OutputVariableName,
+            TaskName: step.Task?.Name );
 
     /// <summary>Maps a <see cref="WorkflowStepDependency"/> to a <see cref="StepDependencyDto"/>.</summary>
     public static StepDependencyDto ToDepDto( WorkflowStepDependency dep ) =>
@@ -81,7 +87,7 @@ internal static class WorkflowMapper {
             EndTime: run.EndTime,
             Status: run.Status.ToString( ) );
 
-    /// <summary>Maps a <see cref="WorkflowRun"/> entity (with Jobs) to a <see cref="WorkflowRunDetailDto"/>.</summary>
+    /// <summary>Maps a <see cref="WorkflowRun"/> entity (with Jobs and StepExecutions) to a <see cref="WorkflowRunDetailDto"/>.</summary>
     public static WorkflowRunDetailDto ToRunDetailDto( WorkflowRun run ) =>
         new(
             Id: run.Id,
@@ -89,7 +95,24 @@ internal static class WorkflowMapper {
             StartTime: run.StartTime,
             EndTime: run.EndTime,
             Status: run.Status.ToString( ),
-            Jobs: [.. run.Jobs.Select( TaskMapper.ToJobDto )] );
+            Jobs: [.. run.Jobs.Select( TaskMapper.ToJobDto )],
+            StepExecutions: run.StepExecutions is not null
+                ? [.. run.StepExecutions.Select( ToStepExecutionDto )]
+                : [] );
+
+    /// <summary>Maps a <see cref="WorkflowStepExecution"/> entity to a <see cref="StepExecutionDto"/>.</summary>
+    public static StepExecutionDto ToStepExecutionDto( WorkflowStepExecution execution ) =>
+        new(
+            Id: execution.Id,
+            WorkflowRunId: execution.WorkflowRunId,
+            StepId: execution.StepId,
+            Attempt: execution.Attempt,
+            Status: execution.Status.ToString( ),
+            StartTime: execution.StartTime,
+            EndTime: execution.EndTime,
+            JobId: execution.JobId,
+            ErrorMessage: execution.ErrorMessage,
+            SkipReason: execution.SkipReason );
 
     /// <summary>Maps a <see cref="WorkflowVariable"/> entity to a <see cref="WorkflowVariableDto"/>.</summary>
     public static WorkflowVariableDto ToVariableDto( WorkflowVariable variable ) =>
@@ -120,4 +143,16 @@ internal static class WorkflowMapper {
             ProducedByJobId: variable.ProducedByJobId,
             Source: variable.Source.ToString( ),
             Created: variable.Created );
+
+    private static List<AnnotationDto>? DeserializeAnnotations( string? json ) {
+        if (string.IsNullOrWhiteSpace( json )) {
+            return null;
+        }
+
+        try {
+            return JsonSerializer.Deserialize<List<AnnotationDto>>( json );
+        } catch (JsonException) {
+            return null;
+        }
+    }
 }

@@ -97,7 +97,10 @@ public class UrlValidatorTests {
 
         UnauthorizedAccessException ex = Assert.ThrowsExactly<UnauthorizedAccessException>(
             ( ) => validator.ValidateUrl( "/api/data" ) );
-        Assert.Contains( "absolute", ex.Message );
+        // On Unix, Uri.TryCreate parses "/api/data" as file:///api/data (hitting scheme check).
+        // On Windows, it fails to parse (hitting the absolute-URI check).
+        bool matchesAbsoluteOrScheme = ex.Message.Contains( "absolute" ) || ex.Message.Contains( "scheme" );
+        Assert.IsTrue( matchesAbsoluteOrScheme, $"Expected 'absolute' or 'scheme' in message: {ex.Message}" );
     }
 
     // ══════════════════════════════════════════════════════════════════════════════

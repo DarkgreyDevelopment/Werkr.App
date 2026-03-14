@@ -104,14 +104,11 @@ public sealed partial class ScheduleSyncGrpcService(
         foreach (WorkflowSchedule ws in workflowSchedules) {
             Workflow workflow = ws.Workflow!;
             // If workflow has TargetTags, use those for agent matching; otherwise fall back to per-task tags
-            bool anyMatch;
-            if (workflow.TargetTags is { Length: > 0 }) {
-                anyMatch = workflow.TargetTags.Any( tag => agentTags.Contains( tag.Trim( ) ) );
-            } else {
-                anyMatch = workflow.Steps.Any( step =>
+            bool anyMatch = workflow.TargetTags is { Length: > 0 }
+                ? workflow.TargetTags.Any( tag => agentTags.Contains( tag.Trim( ) ) )
+                : workflow.Steps.Any( step =>
                     step.Task is not null &&
                     step.Task.TargetTags.Any( tag => agentTags.Contains( tag.Trim( ) ) ) );
-            }
             if (!anyMatch) {
                 continue;
             }

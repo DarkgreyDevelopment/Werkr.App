@@ -111,17 +111,49 @@ public class Program {
 
             _ = builder.Services.AddOutputCache( );
 
+            // SignalR — real-time workflow run event push to browser
+            _ = builder.Services.AddSignalR( );
+
+            // SSE-to-SignalR relay — bridges API workflow events to hub groups
+            _ = builder.Services.AddSingleton<JobEventRelayService>( );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<JobEventRelayService>( ) );
+            _ = builder.Services.AddHealthChecks( )
+                .AddCheck<JobEventRelayService>( "sse-relay" );
+
             // Server configuration cache — reads config from the DB instead of appsettings
             _ = builder.Services.AddSingleton<ServerConfigCache>( );
+
+            // Saved filter service — localStorage CRUD for personal filter views
+            _ = builder.Services.AddScoped<SavedFilterService>( );
 
             // Auth forwarding handler — self-mints JWT for outgoing API requests
             _ = builder.Services.AddTransient<AuthForwardingHandler>( );
 
-            // General-purpose HttpClient for the API service via service discovery
+            // General-purpose HttpClient for the API service via service discovery.
+            // The default standard resilience handler (10s attempt / 30s total) from
+            // ServiceDefaults is appropriate for normal request–response calls.
             _ = builder.Services.AddHttpClient( "ApiService", client => {
                 client.BaseAddress = new Uri( "https://api" );
             } )
             .AddHttpMessageHandler<AuthForwardingHandler>( );
+
+            // Dedicated SSE client for the long-lived event stream consumed by
+            // JobEventRelayService. Resilience handlers are intentionally omitted
+            // (the service manages its own reconnect loop with backoff) because the
+            // default 10s attempt timeout kills SSE connections immediately.
+            _ = builder.Services.AddHttpClient( "ApiServiceSse", client => {
+                client.BaseAddress = new Uri( "https://api" );
+                client.Timeout = Timeout.InfiniteTimeSpan;
+            } )
+            .AddHttpMessageHandler<AuthForwardingHandler>( )
+            .ConfigureAdditionalHttpMessageHandlers( ( handlers, _ ) => {
+                // Strip all resilience handlers added by ConfigureHttpClientDefaults
+                for (int i = handlers.Count - 1; i >= 0; i--) {
+                    if (handlers[i].GetType( ).FullName?.Contains( "Resilience", StringComparison.Ordinal ) == true) {
+                        handlers.RemoveAt( i );
+                    }
+                }
+            } );
 
             // Background health monitor — keeps agent DB status in sync with actual reachability
             _ = builder.Services.AddHostedService<AgentHealthMonitorService>( );
@@ -165,6 +197,9 @@ public class Program {
                 .AddInteractiveServerRenderMode( );
 
             _ = app.MapDefaultEndpoints( );
+
+            // SignalR hub — workflow run real-time events
+            _ = app.MapHub<Werkr.Server.Hubs.WorkflowRunHub>( "/hubs/workflow-run" );
 
             // Auth endpoints — token exchange and API key management (Decision A1)
             _ = app.MapAuthEndpoints( );
