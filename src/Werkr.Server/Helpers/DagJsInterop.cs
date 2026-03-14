@@ -7,7 +7,8 @@ namespace Werkr.Server.Helpers;
 /// Typed JS interop wrapper for the read-only AntV X6 DAG canvas.
 /// Manages <see cref="IJSObjectReference"/> lifecycle and DotNetObjectReference callbacks.
 /// </summary>
-public sealed class DagJsInterop : GraphJsInteropBase<DagJsInterop> {
+/// <remarks>Creates a new interop wrapper using the specified JS runtime.</remarks>
+public sealed class DagJsInterop( IJSRuntime js ) : GraphJsInteropBase<DagJsInterop>( js ) {
 
     /// <inheritdoc/>
     protected override string ModulePath => "/js/dist/dag/dag-readonly.js";
@@ -23,9 +24,6 @@ public sealed class DagJsInterop : GraphJsInteropBase<DagJsInterop> {
 
     /// <summary>Raised when the zoom level changes.</summary>
     public event Func<double, Task>? OnZoomChanged;
-
-    /// <summary>Creates a new interop wrapper using the specified JS runtime.</summary>
-    public DagJsInterop( IJSRuntime js ) : base( js ) { }
 
     /// <summary>Load the DAG JS module and create the X6 graph instance.</summary>
     public async Task InitAsync( string containerId, string minimapContainerId ) {

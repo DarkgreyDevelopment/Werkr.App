@@ -51,18 +51,18 @@ public sealed partial class OutputStreamingGrpcService(
 
         /// <summary>Maximum log events published per second per run.</summary>
         private const int MaxEventsPerSecond = 50;
-        private static readonly long TickInterval = TimeSpan.TicksPerSecond / MaxEventsPerSecond;
+        private static readonly long s_tickInterval = TimeSpan.TicksPerSecond / MaxEventsPerSecond;
 
         /// <summary>
         /// Attempts to acquire a publish permit. Returns true if within rate limit.
         /// On true after drops, returns the count of dropped lines for batching notice.
         /// </summary>
         public bool TryAcquire( out int droppedSinceLastPublish ) {
-            long now = Environment.TickCount64 * TimeSpan.TicksPerMillisecond / TimeSpan.TicksPerMillisecond;
+            _ = Environment.TickCount64 * TimeSpan.TicksPerMillisecond / TimeSpan.TicksPerMillisecond;
             long nowTicks = DateTime.UtcNow.Ticks;
             long last = Interlocked.Read( ref _lastPublishTicks );
 
-            if (nowTicks - last >= TickInterval) {
+            if (nowTicks - last >= s_tickInterval) {
                 _ = Interlocked.Exchange( ref _lastPublishTicks, nowTicks );
                 droppedSinceLastPublish = Interlocked.Exchange( ref _droppedCount, 0 );
                 return true;

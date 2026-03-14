@@ -216,19 +216,15 @@ public sealed partial class JobEventRelayService(
     }
 
     private static DateTime ParseTimestamp( JsonElement root ) {
-        if (root.TryGetProperty( "timestamp", out JsonElement ts ) && ts.TryGetDateTime( out DateTime dt )) {
-            return dt;
-        }
-        return DateTime.UtcNow;
+        return root.TryGetProperty( "timestamp", out JsonElement ts ) && ts.TryGetDateTime( out DateTime dt ) ? dt : DateTime.UtcNow;
     }
 
     private static Guid? ParseGuid( JsonElement root, string propertyName ) {
-        if (root.TryGetProperty( propertyName, out JsonElement el ) &&
+        return root.TryGetProperty( propertyName, out JsonElement el ) &&
             el.ValueKind == JsonValueKind.String &&
-            Guid.TryParse( el.GetString( ), out Guid g )) {
-            return g;
-        }
-        return null;
+            Guid.TryParse( el.GetString( ), out Guid g )
+            ? g
+            : null;
     }
 
     /// <inheritdoc/>

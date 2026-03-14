@@ -87,32 +87,39 @@ internal static partial class WorkflowEndpoints {
         ) => {
             try {
                 // Validate annotations
-                if ( request.Annotations is { Count: > 50 } ) {
+                if (request.Annotations is { Count: > 50 }) {
                     return Results.BadRequest( new { message = "Maximum 50 annotations allowed." } );
                 }
 
-                if ( request.Annotations is not null ) {
+                if (request.Annotations is not null) {
                     string serialized = JsonSerializer.Serialize( request.Annotations );
-                    if ( serialized.Length > 65536 ) {
+                    if (serialized.Length > 65536) {
                         return Results.BadRequest( new { message = "Annotations JSON exceeds 64 KB limit." } );
                     }
 
                     // Strip HTML tags from annotation text for XSS safety
                     List<AnnotationDto> sanitized = [];
-                    foreach ( AnnotationDto ann in request.Annotations ) {
+                    foreach (AnnotationDto ann in request.Annotations) {
                         string cleanText = StripHtmlTags( ann.Text );
                         sanitized.Add( ann with { Text = cleanText } );
                     }
                     // Validate annotation fields explicitly (DataAnnotations are not auto-enforced in Minimal APIs)
-                    foreach ( AnnotationDto ann in sanitized ) {
-                        if ( ann.Text.Length > 500 )
+                    foreach (AnnotationDto ann in sanitized) {
+                        if (ann.Text.Length > 500) {
                             return Results.BadRequest( new { message = $"Annotation text exceeds 500 characters (id: {ann.Id})." } );
-                        if ( ann.X < -10000 || ann.X > 50000 || ann.Y < -10000 || ann.Y > 50000 )
+                        }
+
+                        if (ann.X < -10000 || ann.X > 50000 || ann.Y < -10000 || ann.Y > 50000) {
                             return Results.BadRequest( new { message = $"Annotation position out of bounds (id: {ann.Id})." } );
-                        if ( ann.Width < 80 || ann.Width > 800 || ann.Height < 40 || ann.Height > 600 )
+                        }
+
+                        if (ann.Width < 80 || ann.Width > 800 || ann.Height < 40 || ann.Height > 600) {
                             return Results.BadRequest( new { message = $"Annotation dimensions out of bounds (id: {ann.Id})." } );
-                        if ( !HexColorRegex().IsMatch( ann.Color ) )
+                        }
+
+                        if (!HexColorRegex( ).IsMatch( ann.Color )) {
                             return Results.BadRequest( new { message = $"Annotation color must be a hex color (id: {ann.Id})." } );
+                        }
                     }
 
                     request = request with { Annotations = sanitized };
@@ -260,7 +267,10 @@ internal static partial class WorkflowEndpoints {
 
             // Check dependency changes too
             foreach (StepBatchOperation op in request.Operations) {
-                if (op.DependencyChanges is null) continue;
+                if (op.DependencyChanges is null) {
+                    continue;
+                }
+
                 foreach (DependencyBatchItem dep in op.DependencyChanges) {
                     if (string.Equals( dep.OperationType, "Add", StringComparison.OrdinalIgnoreCase )) {
                         needsCreate = true;
@@ -274,21 +284,27 @@ internal static partial class WorkflowEndpoints {
             if (needsCreate) {
                 Microsoft.AspNetCore.Authorization.AuthorizationResult result =
                     await authService.AuthorizeAsync( httpContext.User, null, Policies.CanCreate );
-                if (!result.Succeeded) missingPolicies.Add( Policies.CanCreate );
+                if (!result.Succeeded) {
+                    missingPolicies.Add( Policies.CanCreate );
+                }
             }
             if (needsUpdate) {
                 Microsoft.AspNetCore.Authorization.AuthorizationResult result =
                     await authService.AuthorizeAsync( httpContext.User, null, Policies.CanUpdate );
-                if (!result.Succeeded) missingPolicies.Add( Policies.CanUpdate );
+                if (!result.Succeeded) {
+                    missingPolicies.Add( Policies.CanUpdate );
+                }
             }
             if (needsDelete) {
                 Microsoft.AspNetCore.Authorization.AuthorizationResult result =
                     await authService.AuthorizeAsync( httpContext.User, null, Policies.CanDelete );
-                if (!result.Succeeded) missingPolicies.Add( Policies.CanDelete );
+                if (!result.Succeeded) {
+                    missingPolicies.Add( Policies.CanDelete );
+                }
             }
 
             if (missingPolicies.Count > 0) {
-                return Results.Forbid();
+                return Results.Forbid( );
             }
 
             try {
@@ -298,7 +314,7 @@ internal static partial class WorkflowEndpoints {
                     ? Results.Ok( response )
                     : Results.BadRequest( response );
             } catch (KeyNotFoundException) {
-                return Results.NotFound();
+                return Results.NotFound( );
             } catch (Exception ex) when (ex is FormatException or ArgumentException) {
                 return Results.BadRequest( new { message = ex.Message } );
             }
@@ -665,15 +681,15 @@ internal static partial class WorkflowEndpoints {
             // Query 1 — Paginated workflow summaries
             IQueryable<Workflow> query = dbContext.Workflows.AsNoTracking( );
 
-            if ( !string.IsNullOrWhiteSpace( search ) ) {
+            if (!string.IsNullOrWhiteSpace( search )) {
                 query = query.Where( w => w.Name.Contains( search ) );
             }
 
-            if ( enabled.HasValue ) {
+            if (enabled.HasValue) {
                 query = query.Where( w => w.Enabled == enabled.Value );
             }
 
-            if ( !string.IsNullOrWhiteSpace( tag ) ) {
+            if (!string.IsNullOrWhiteSpace( tag )) {
                 query = query.Where( w => w.TargetTags != null && w.TargetTags.Contains( tag ) );
             }
 
@@ -684,9 +700,9 @@ internal static partial class WorkflowEndpoints {
 
             // When status filter is active, fetch all rows so we can filter
             // in memory before paginating; otherwise paginate at DB level.
-            if ( !hasStatusFilter ) {
+            if (!hasStatusFilter) {
                 orderedQuery = orderedQuery
-                    .Skip( ( pageVal - 1 ) * pageSizeVal )
+                    .Skip( (pageVal - 1) * pageSizeVal )
                     .Take( pageSizeVal );
             }
 
@@ -707,19 +723,17 @@ internal static partial class WorkflowEndpoints {
                 .ToListAsync( ct );
 
             // Apply last-run status filter in memory (status is an enum stored as int)
-            if ( hasStatusFilter ) {
-                summaries = summaries
+            if (hasStatusFilter) {
+                summaries = [.. summaries
                     .Where( s => s.LastRun is not null
-                        && s.LastRun.Status.ToString( ).Equals( status, StringComparison.OrdinalIgnoreCase ) )
-                    .ToList( );
+                        && s.LastRun.Status.ToString( ).Equals( status, StringComparison.OrdinalIgnoreCase ) )];
                 totalCount = summaries.Count;
-                summaries = summaries
-                    .Skip( ( pageVal - 1 ) * pageSizeVal )
-                    .Take( pageSizeVal )
-                    .ToList( );
+                summaries = [.. summaries
+                    .Skip( (pageVal - 1) * pageSizeVal )
+                    .Take( pageSizeVal )];
             }
 
-            List<long> workflowIds = summaries.Select( w => w.Id ).ToList( );
+            List<long> workflowIds = [.. summaries.Select( w => w.Id )];
 
             // Query 2 — Sparkline data (recent runs for the page of workflow IDs)
             List<WorkflowRun> recentRuns;
@@ -729,17 +743,16 @@ internal static partial class WorkflowEndpoints {
                     .GroupBy( r => r.WorkflowId )
                     .SelectMany( g => g.OrderByDescending( r => r.StartTime ).Take( sparklineCount ) )
                     .ToListAsync( ct );
-            } catch ( Exception ex ) {
+            } catch (Exception ex) {
                 // Fallback: EF provider may not support GroupBy+SelectMany+Take
                 logger.LogWarning( ex, "Sparkline GroupBy query failed; falling back to in-memory grouping" );
                 recentRuns = await dbContext.WorkflowRuns.AsNoTracking( )
                     .Where( r => workflowIds.Contains( r.WorkflowId ) )
                     .OrderByDescending( r => r.StartTime )
                     .ToListAsync( ct );
-                recentRuns = recentRuns
+                recentRuns = [.. recentRuns
                     .GroupBy( r => r.WorkflowId )
-                    .SelectMany( g => g.Take( sparklineCount ) )
-                    .ToList( );
+                    .SelectMany( g => g.Take( sparklineCount ) )];
             }
 
             ILookup<long, RunSparklineDto> sparklineByWorkflow = recentRuns
@@ -765,17 +778,20 @@ internal static partial class WorkflowEndpoints {
             ILookup<long, Guid> scheduleIdsByWorkflow = scheduleLinks
                 .ToLookup( ws => ws.WorkflowId, ws => ws.ScheduleId );
 
-            foreach ( long wfId in workflowIds ) {
+            foreach (long wfId in workflowIds) {
                 DateTime? earliest = null;
-                foreach ( Guid scheduleId in scheduleIdsByWorkflow[wfId] ) {
+                foreach (Guid scheduleId in scheduleIdsByWorkflow[wfId]) {
                     Schedule? schedule = await scheduleService.GetByIdAsync( scheduleId, ct );
-                    if ( schedule is null ) continue;
+                    if (schedule is null) {
+                        continue;
+                    }
+
                     try {
                         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences(
                             schedule, windowEnd );
                         DateTime? next = occurrences.FirstOrDefault( o => o > utcNow );
-                        if ( next.HasValue && next.Value != default
-                            && ( !earliest.HasValue || next.Value < earliest.Value ) ) {
+                        if (next.HasValue && next.Value != default
+                            && (!earliest.HasValue || next.Value < earliest.Value)) {
                             earliest = next;
                         }
                     } catch {
@@ -786,7 +802,7 @@ internal static partial class WorkflowEndpoints {
             }
 
             // Assemble response
-            List<WorkflowDashboardDto> items = summaries.Select( s => new WorkflowDashboardDto(
+            List<WorkflowDashboardDto> items = [.. summaries.Select( s => new WorkflowDashboardDto(
                 Id: s.Id,
                 Name: s.Name,
                 Description: s.Description,
@@ -801,9 +817,9 @@ internal static partial class WorkflowEndpoints {
                         StartTime: s.LastRun.StartTime,
                         EndTime: s.LastRun.EndTime )
                     : null,
-                RecentRuns: sparklineByWorkflow[s.Id].ToList( ),
+                RecentRuns: [.. sparklineByWorkflow[s.Id]],
                 NextScheduledRun: nextScheduledByWorkflow.GetValueOrDefault( s.Id )
-            ) ).ToList( );
+            ) )];
 
             return Results.Ok( new WorkflowDashboardPageDto(
                 Items: items,
@@ -826,7 +842,7 @@ internal static partial class WorkflowEndpoints {
                 .Select( r => new { r.Id, r.Status, r.StartTime, r.EndTime } )
                 .FirstOrDefaultAsync( ct );
 
-            if ( latestRun is null ) {
+            if (latestRun is null) {
                 return Results.Ok( new WorkflowLatestRunStatusDto(
                     RunId: null,
                     RunStatus: null,
@@ -848,7 +864,7 @@ internal static partial class WorkflowEndpoints {
                         EndTime: e.EndTime,
                         ExitCode: e.Job != null ? e.Job.ExitCode : null ) )
                     .ToListAsync( ct );
-            } catch ( Exception ex ) {
+            } catch (Exception ex) {
                 // Fallback: EF provider (e.g. SQLite) may not support GroupBy+First
                 logger.LogWarning( ex, "Latest-run-status GroupBy query failed; falling back to in-memory grouping" );
                 List<WorkflowStepExecution> allExecs = await dbContext.WorkflowStepExecutions
@@ -857,7 +873,7 @@ internal static partial class WorkflowEndpoints {
                     .Where( e => e.WorkflowRunId == latestRun.Id )
                     .OrderByDescending( e => e.Attempt )
                     .ToListAsync( ct );
-                steps = allExecs
+                steps = [.. allExecs
                     .GroupBy( e => e.StepId )
                     .Select( g => g.First( ) )
                     .Select( e => new StepStatusSummaryDto(
@@ -865,8 +881,7 @@ internal static partial class WorkflowEndpoints {
                         Status: e.Status.ToString( ),
                         StartTime: e.StartTime,
                         EndTime: e.EndTime,
-                        ExitCode: e.Job != null ? e.Job.ExitCode : null ) )
-                    .ToList( );
+                        ExitCode: e.Job?.ExitCode ) )];
             }
 
             return Results.Ok( new WorkflowLatestRunStatusDto(
@@ -881,11 +896,11 @@ internal static partial class WorkflowEndpoints {
     }
 
     [GeneratedRegex( @"<[^>]+>" )]
-    private static partial Regex HtmlTagRegex();
+    private static partial Regex HtmlTagRegex( );
 
     [GeneratedRegex( @"^#[0-9a-fA-F]{6}$" )]
-    private static partial Regex HexColorRegex();
+    private static partial Regex HexColorRegex( );
 
     private static string StripHtmlTags( string input ) =>
-        string.IsNullOrEmpty( input ) ? input : HtmlTagRegex().Replace( input, string.Empty );
+        string.IsNullOrEmpty( input ) ? input : HtmlTagRegex( ).Replace( input, string.Empty );
 }

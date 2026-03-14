@@ -1,4 +1,3 @@
-using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -254,7 +253,7 @@ public partial class InitialCreate : Migration {
             name: "ix_role_permissions_role_id_permission",
             schema: "werkr_identity",
             table: "role_permissions",
-            columns: new[] { "role_id", "permission" },
+            columns: ["role_id", "permission"],
             unique: true );
 
         _ = migrationBuilder.CreateIndex(

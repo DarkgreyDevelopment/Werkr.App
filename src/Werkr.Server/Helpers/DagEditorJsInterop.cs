@@ -6,7 +6,8 @@ namespace Werkr.Server.Helpers;
 /// Typed JS interop wrapper for the interactive DAG editor canvas.
 /// Loads <c>dag-editor.js</c> and exposes editor-specific operations plus JS→.NET callbacks.
 /// </summary>
-public sealed class DagEditorJsInterop : GraphJsInteropBase<DagEditorJsInterop> {
+/// <remarks>Creates a new editor interop wrapper using the specified JS runtime.</remarks>
+public sealed class DagEditorJsInterop( IJSRuntime js ) : GraphJsInteropBase<DagEditorJsInterop>( js ) {
 
     /// <inheritdoc/>
     protected override string ModulePath => "/js/dist/dag/dag-editor.js";
@@ -37,9 +38,6 @@ public sealed class DagEditorJsInterop : GraphJsInteropBase<DagEditorJsInterop> 
 
     /// <summary>Raised when the zoom level changes.</summary>
     public event Func<double, Task>? OnZoomChanged;
-
-    /// <summary>Creates a new editor interop wrapper using the specified JS runtime.</summary>
-    public DagEditorJsInterop( IJSRuntime js ) : base( js ) { }
 
     /// <summary>Load the editor JS module and create the editable X6 graph instance.</summary>
     public async Task InitEditorAsync( string containerId, string minimapContainerId, string userId, long workflowId ) {

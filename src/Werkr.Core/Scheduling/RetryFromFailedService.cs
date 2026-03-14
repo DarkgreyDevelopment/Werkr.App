@@ -149,7 +149,7 @@ public sealed partial class RetryFromFailedService(
             .Where( d => d.Step!.WorkflowId == workflowId )
             .ToListAsync( ct );
 
-        Dictionary<long, List<long>> adjacency = new( );
+        Dictionary<long, List<long>> adjacency = [];
         foreach (WorkflowStepDependency dep in allDeps) {
             if (!adjacency.TryGetValue( dep.DependsOnStepId, out List<long>? dependents )) {
                 dependents = [];
@@ -169,7 +169,10 @@ public sealed partial class RetryFromFailedService(
 
         while (queue.Count > 0) {
             long current = queue.Dequeue( );
-            if (!downstream.Add( current )) continue;
+            if (!downstream.Add( current )) {
+                continue;
+            }
+
             if (adjacency.TryGetValue( current, out List<long>? next )) {
                 foreach (long s in next) {
                     if (!downstream.Contains( s )) {

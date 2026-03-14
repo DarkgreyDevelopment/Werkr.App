@@ -142,8 +142,7 @@ public sealed partial class OutputStreamingService(
 
                 // Drain the peer task so it doesn't leak as unobserved.
                 Task peer = completed == readTask ? writeTask : readTask;
-                try { await peer; }
-                catch (Exception peerEx) {
+                try { await peer; } catch (Exception peerEx) {
                     logger.LogDebug( peerEx, "Peer stream task ended during reconnection." );
                 }
 

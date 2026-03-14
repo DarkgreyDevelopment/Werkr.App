@@ -498,11 +498,10 @@ public sealed partial class WorkflowService(
         }
 
         // Verify all positive StepIds belong to this workflow
-        List<long> positiveStepIds = request.Operations
+        List<long> positiveStepIds = [.. request.Operations
             .Where( o => o.StepId > 0 )
             .Select( o => o.StepId )
-            .Distinct( )
-            .ToList( );
+            .Distinct( )];
 
         if (positiveStepIds.Count > 0) {
             List<long> existingIds = await dbContext.WorkflowSteps
@@ -510,7 +509,7 @@ public sealed partial class WorkflowService(
                 .Select( s => s.Id )
                 .ToListAsync( ct );
 
-            List<long> invalid = positiveStepIds.Except( existingIds ).ToList( );
+            List<long> invalid = [.. positiveStepIds.Except( existingIds )];
             if (invalid.Count > 0) {
                 return new WorkflowStepBatchResponse( false, [],
                     [$"Step IDs do not belong to workflow {workflowId}: {string.Join( ", ", invalid )}"] );
@@ -523,9 +522,7 @@ public sealed partial class WorkflowService(
             List<StepIdMapping> mappings = [];
 
             // ── Phase 1: Process "Add" operations ──
-            List<StepBatchOperation> adds = request.Operations
-                .Where( o => string.Equals( o.OperationType, "Add", StringComparison.OrdinalIgnoreCase ) )
-                .ToList( );
+            List<StepBatchOperation> adds = [.. request.Operations.Where( o => string.Equals( o.OperationType, "Add", StringComparison.OrdinalIgnoreCase ) )];
 
             foreach (StepBatchOperation add in adds) {
                 if (add.TaskId is null) {
@@ -566,9 +563,7 @@ public sealed partial class WorkflowService(
             long ResolveId( long id ) => id < 0 && tempToReal.TryGetValue( id, out long real ) ? real : id;
 
             // ── Phase 2: Process "Update" operations ──
-            List<StepBatchOperation> updates = request.Operations
-                .Where( o => string.Equals( o.OperationType, "Update", StringComparison.OrdinalIgnoreCase ) )
-                .ToList( );
+            List<StepBatchOperation> updates = [.. request.Operations.Where( o => string.Equals( o.OperationType, "Update", StringComparison.OrdinalIgnoreCase ) )];
 
             foreach (StepBatchOperation update in updates) {
                 long realId = ResolveId( update.StepId );
@@ -592,7 +587,9 @@ public sealed partial class WorkflowService(
 
             // ── Phase 3: Process dependency changes ──
             foreach (StepBatchOperation op in request.Operations) {
-                if (op.DependencyChanges is null) continue;
+                if (op.DependencyChanges is null) {
+                    continue;
+                }
 
                 long realStepId = ResolveId( op.StepId );
 
@@ -600,11 +597,15 @@ public sealed partial class WorkflowService(
                     long realDepId = ResolveId( depChange.DependsOnStepId );
 
                     if (string.Equals( depChange.OperationType, "Add", StringComparison.OrdinalIgnoreCase )) {
-                        if (realStepId == realDepId) continue;
+                        if (realStepId == realDepId) {
+                            continue;
+                        }
 
                         bool alreadyExists = await dbContext.WorkflowStepDependencies
                             .AnyAsync( d => d.StepId == realStepId && d.DependsOnStepId == realDepId, ct );
-                        if (alreadyExists) continue;
+                        if (alreadyExists) {
+                            continue;
+                        }
 
                         _ = dbContext.WorkflowStepDependencies.Add( new WorkflowStepDependency {
                             StepId = realStepId,
@@ -621,9 +622,7 @@ public sealed partial class WorkflowService(
             }
 
             // ── Phase 4: Process "Delete" operations (after deps cleaned up) ──
-            List<StepBatchOperation> deletes = request.Operations
-                .Where( o => string.Equals( o.OperationType, "Delete", StringComparison.OrdinalIgnoreCase ) )
-                .ToList( );
+            List<StepBatchOperation> deletes = [.. request.Operations.Where( o => string.Equals( o.OperationType, "Delete", StringComparison.OrdinalIgnoreCase ) )];
 
             foreach (StepBatchOperation delete in deletes) {
                 long realId = ResolveId( delete.StepId );

@@ -4,7 +4,7 @@ namespace Werkr.Common.Models;
 public sealed class FilterCriteria {
 
     /// <summary>Filter values keyed by <see cref="FilterField.Key"/>.</summary>
-    public Dictionary<string, string?> Values { get; set; } = new( );
+    public Dictionary<string, string?> Values { get; set; } = [];
 
     /// <summary>Gets the value for the given <paramref name="key"/>, or <see langword="null"/> if absent.</summary>
     public string? Get( string key )

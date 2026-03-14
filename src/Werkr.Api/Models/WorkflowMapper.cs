@@ -145,10 +145,13 @@ internal static class WorkflowMapper {
             Created: variable.Created );
 
     private static List<AnnotationDto>? DeserializeAnnotations( string? json ) {
-        if ( string.IsNullOrWhiteSpace( json ) ) return null;
+        if (string.IsNullOrWhiteSpace( json )) {
+            return null;
+        }
+
         try {
             return JsonSerializer.Deserialize<List<AnnotationDto>>( json );
-        } catch ( JsonException ) {
+        } catch (JsonException) {
             return null;
         }
     }
