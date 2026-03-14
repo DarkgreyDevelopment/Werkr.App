@@ -59,6 +59,7 @@ export function initEditor(
 
   bindEditorEvents( graph, dotNetRef, changeset );
   bindKeyboardShortcuts( graph, dotNetRef, changeset );
+  enableBeforeUnloadGuard();
 
   if ( dndPlugin ) {
     dndHandler = setupDnd( graph, dndPlugin, dotNetRef );
@@ -456,8 +457,27 @@ export function getAnnotationsJson(): string {
   return JSON.stringify( annotations );
 }
 
+/** Handler for beforeunload — warns users about unsaved changes. */
+function onBeforeUnload( e: BeforeUnloadEvent ): void {
+  if ( !changeset.isEmpty() ) {
+    e.preventDefault();
+  }
+}
+
+/** Activate the beforeunload guard. Called once during init. */
+export function enableBeforeUnloadGuard(): void {
+  window.addEventListener( "beforeunload", onBeforeUnload );
+}
+
+/** Deactivate the beforeunload guard. Called during destroy. */
+export function disableBeforeUnloadGuard(): void {
+  window.removeEventListener( "beforeunload", onBeforeUnload );
+}
+
 /** Destroy the editor and clean up all resources. */
 export function destroyEditor(): void {
+  disableBeforeUnloadGuard();
+
   if ( draftTimer ) {
     clearInterval( draftTimer );
     draftTimer = null;

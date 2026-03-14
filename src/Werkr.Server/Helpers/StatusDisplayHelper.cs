@@ -35,15 +35,4 @@ public static class StatusDisplayHelper {
             _ => "bg-secondary",
         };
 
-    /// <summary>
-    /// Returns the CSS <c>var()</c> expression for a DAG node's control statement fill.
-    /// </summary>
-    public static string GetNodeFillVar( string? controlStatement ) =>
-        controlStatement?.Trim( ).ToLowerInvariant( ) switch {
-            "default" => "var(--werkr-node-default)",
-            "if" or "elseif" => "var(--werkr-node-conditional)",
-            "else" => "var(--werkr-node-fallback)",
-            "while" or "do" => "var(--werkr-node-loop)",
-            _ => "var(--werkr-node-unknown)",
-        };
 }

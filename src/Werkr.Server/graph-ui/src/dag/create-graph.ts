@@ -25,7 +25,7 @@ export function createGraph( options: GraphOptions ): GraphResult {
     background: { color: "transparent" },
     grid: {
       visible: false,
-      size: 10,
+      size: 20,
       type: "dot",
       args: {
         color: "rgba(128, 128, 128, 0.3)",

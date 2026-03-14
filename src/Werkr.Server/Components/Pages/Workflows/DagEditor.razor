@@ -1,5 +1,7 @@
 @page "/workflows/{Id:long}/dag-editor"
+@page "/workflows/{Id:long}/edit"
 @page "/workflows/new/dag-editor"
+@page "/workflows/new/edit"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject IHttpClientFactory HttpClientFactory

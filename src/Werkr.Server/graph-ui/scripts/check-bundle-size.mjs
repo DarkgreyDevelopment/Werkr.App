@@ -9,7 +9,7 @@ import { resolve, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BUDGET_BYTES = 500 * 1024; // 500 KB gzipped total
+const BUDGET_BYTES = 250 * 1024; // 250 KB gzipped total
 const DIST_DIR = resolve(__dirname, "../../wwwroot/js/dist");
 const META_PATH = resolve(DIST_DIR, "meta.json");
 
