@@ -13,7 +13,7 @@
 <p>Browse execution history across all tasks. Use the filters to narrow results.</p>
 
 <FilterBar PageKey="jobs" Definition="_filterDefinition"
-           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
+           OnFilterApplied="OnFilterApplied" OnFilterCleared="OnFilterCleared" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
@@ -149,12 +149,12 @@
         return int.TryParse( limitStr, out int parsed ) && parsed > 0 ? parsed : 50;
     }
 
-    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+    private async Task OnFilterApplied( FilterCriteria criteria ) {
         _activeCriteria = criteria;
         await LoadAsync( );
     }
 
-    private async Task OnFilterClearedAsync( ) {
+    private async Task OnFilterCleared( ) {
         _activeCriteria = null;
         await LoadAsync( );
     }

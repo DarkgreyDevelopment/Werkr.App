@@ -27,8 +27,8 @@
 
 <FilterBar PageKey="runs"
            Definition="_filterDefinition"
-           OnFilterApplied="OnFilterAppliedAsync"
-           OnFilterCleared="OnFilterClearedAsync" />
+           OnFilterApplied="OnFilterApplied"
+           OnFilterCleared="OnFilterCleared" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
@@ -95,7 +95,7 @@
             && ( !DateTime.TryParseExact( _activeCriteria?.Get( "since" ), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime since )
               || r.StartTime >= since )
             && ( !DateTime.TryParseExact( _activeCriteria?.Get( "until" ), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime until )
-              || r.StartTime <= until.AddDays( 1 ) ) )
+              || r.StartTime < until.AddDays( 1 ) ) )
         .ToList( );
 
     protected override async Task OnInitializedAsync( ) {
@@ -145,13 +145,11 @@
         return ValueTask.CompletedTask;
     }
 
-    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+    private void OnFilterApplied( FilterCriteria criteria ) {
         _activeCriteria = criteria;
-        await LoadAsync( );
     }
 
-    private async Task OnFilterClearedAsync( ) {
+    private void OnFilterCleared( ) {
         _activeCriteria = null;
-        await LoadAsync( );
     }
 }

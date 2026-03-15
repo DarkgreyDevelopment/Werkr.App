@@ -25,7 +25,7 @@
 </div>
 
 <FilterBar PageKey="tasks" Definition="_filterDefinition"
-           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
+           OnFilterApplied="OnFilterApplied" OnFilterCleared="OnFilterCleared" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
@@ -177,13 +177,11 @@
         }
     }
 
-    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+    private void OnFilterApplied( FilterCriteria criteria ) {
         _activeCriteria = criteria;
-        await LoadAsync( );
     }
 
-    private async Task OnFilterClearedAsync( ) {
+    private void OnFilterCleared( ) {
         _activeCriteria = null;
-        await LoadAsync( );
     }
 }

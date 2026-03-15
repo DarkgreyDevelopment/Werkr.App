@@ -29,6 +29,7 @@
     private TimelineJsInterop? _interop;
     private string? _errorMessage;
     private bool _initialized;
+    private Guid? _lastFetchedRunId;
     private IReadOnlyList<StepExecutionDto> _effectiveExecutions = [];
     private IReadOnlyList<WorkflowStepDto> _effectiveSteps = [];
 
@@ -36,14 +37,19 @@
         if ( StepExecutions.Count > 0 || RunId is null ) {
             _effectiveExecutions = StepExecutions;
             _effectiveSteps = Steps;
+            await ReloadTimelineItemsAsync( );
             return;
         }
+
+        // Avoid redundant API calls when RunId hasn't changed.
+        if ( RunId == _lastFetchedRunId ) return;
 
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             WorkflowRunDetailDto? detail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
                 $"/api/workflows/runs/{RunId}" );
             if ( detail is not null ) {
+                _lastFetchedRunId = RunId;
                 _effectiveExecutions = detail.StepExecutions;
                 // Fetch workflow steps if not provided
                 if ( Steps.Count == 0 ) {
@@ -53,6 +59,7 @@
                 } else {
                     _effectiveSteps = Steps;
                 }
+                await ReloadTimelineItemsAsync( );
             }
         } catch ( Exception ex ) {
             Logger.LogWarning( ex, "Failed to fetch run detail for RunId {RunId}.", RunId );
@@ -78,6 +85,13 @@
             _errorMessage = "Timeline view could not be loaded. Try refreshing the page.";
             StateHasChanged( );
         }
+    }
+
+    /// <summary>Reload timeline items after data changes, if the interop is ready.</summary>
+    private async Task ReloadTimelineItemsAsync( ) {
+        if ( _interop is null || !_initialized ) return;
+        GanttItemDto[] items = MapExecutionsToItems( );
+        await _interop.LoadItemsAsync( items );
     }
 
     /// <summary>Called by parent RunDetail.razor to forward SignalR step status events.</summary>

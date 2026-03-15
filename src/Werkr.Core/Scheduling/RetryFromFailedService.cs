@@ -42,7 +42,7 @@ public sealed partial class RetryFromFailedService(
 
         // Step 1: Atomic status transition via compare-and-swap
         int rowsAffected = await dbContext.WorkflowRuns
-            .Where( r => r.Id == runId && r.Status == WorkflowRunStatus.Failed )
+            .Where(r => r.Id == runId && r.WorkflowId == workflowId && r.Status == WorkflowRunStatus.Failed)
             .ExecuteUpdateAsync( s => s
                 .SetProperty( r => r.Status, WorkflowRunStatus.Running )
                 .SetProperty( r => r.EndTime, (DateTime?)null )
@@ -50,7 +50,7 @@ public sealed partial class RetryFromFailedService(
                 ct );
 
         if (rowsAffected == 0) {
-            throw new InvalidOperationException( "Run is not in Failed status. Cannot retry." );
+            throw new InvalidOperationException( "Run is not in Failed status or does not belong to this workflow. Cannot retry." );
         }
 
         // Step 2: Validate step belongs to workflow

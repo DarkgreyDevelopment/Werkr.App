@@ -65,14 +65,20 @@ public sealed partial class ScheduleInvalidationDispatcher(
         foreach (WerkrTask task in affectedTasks) {
             if (task.TargetTags is { Length: > 0 }) {
                 foreach (string tag in task.TargetTags) {
-                    _ = allTargetTags.Add( tag );
+                    string trimmed = tag.Trim();
+                    if (trimmed.Length > 0) {
+                        _ = allTargetTags.Add( trimmed );
+                    }
                 }
             }
         }
         foreach (Workflow workflow in affectedWorkflows) {
             if (workflow.TargetTags is { Length: > 0 }) {
                 foreach (string tag in workflow.TargetTags) {
-                    _ = allTargetTags.Add( tag );
+                    string trimmed = tag.Trim();
+                    if (trimmed.Length > 0) {
+                        _ = allTargetTags.Add( trimmed );
+                    }
                 }
             }
         }

@@ -141,9 +141,8 @@ public class Program {
             // Dedicated SSE client for the long-lived event stream consumed by
             // JobEventRelayService. The global ConfigureHttpClientDefaults in
             // ServiceDefaults adds a standard resilience pipeline (10s attempt timeout)
-            // to all clients. We must strip those handlers for the SSE client because
-            // they immediately kill long-lived event streams. The service manages its
-            // own reconnect loop with exponential backoff.
+            // to all clients. We strip those handlers for the SSE client and add back
+            // a correctly-configured pipeline with infinite timeouts.
             // Note: ResilienceHandler is a public type from Microsoft.Extensions.Http.Resilience.
             _ = builder.Services.AddHttpClient( "ApiServiceSse", client => {
                 client.BaseAddress = new Uri( "https://api" );
@@ -151,12 +150,23 @@ public class Program {
             } )
             .AddHttpMessageHandler<AuthForwardingHandler>( )
             .ConfigureAdditionalHttpMessageHandlers( ( handlers, _ ) => {
-                // Strip all resilience handlers added by ConfigureHttpClientDefaults
+                // Remove the global default resilience pipeline (10s attempt timeout)
+                // added by ConfigureHttpClientDefaults — it kills long-lived SSE
+                // connections. We add back a correctly-configured pipeline below.
+                // IMPORTANT: This must run BEFORE AddStandardResilienceHandler so the
+                // strip removes the DEFAULT handler, not the one we're about to add.
                 for (int i = handlers.Count - 1; i >= 0; i--) {
                     if (handlers[i] is ResilienceHandler) {
                         handlers.RemoveAt( i );
                     }
                 }
+            } )
+            .AddStandardResilienceHandler( options => {
+                // SSE streams are indefinitely long-lived; disable timeout-based
+                // cancellation. The JobEventRelayService manages its own reconnect
+                // loop with exponential backoff (1s → 30s) and exposes a health check.
+                options.AttemptTimeout.Timeout = Timeout.InfiniteTimeSpan;
+                options.TotalRequestTimeout.Timeout = Timeout.InfiniteTimeSpan;
             } );
 
             // Background health monitor — keeps agent DB status in sync with actual reachability
