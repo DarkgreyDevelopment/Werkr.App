@@ -1,4 +1,5 @@
 @page "/workflows/runs"
+@using System.Globalization
 @using Werkr.Server.Services
 @rendermode InteractiveServer
 @attribute [Authorize]
@@ -90,9 +91,9 @@
         .Where( r =>
             ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "status" ) )
               || r.Status.Equals( _activeCriteria.Get( "status" ), StringComparison.OrdinalIgnoreCase ) )
-            && ( !DateTime.TryParse( _activeCriteria?.Get( "since" ), out DateTime since )
+            && ( !DateTime.TryParseExact( _activeCriteria?.Get( "since" ), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime since )
               || r.StartTime >= since )
-            && ( !DateTime.TryParse( _activeCriteria?.Get( "until" ), out DateTime until )
+            && ( !DateTime.TryParseExact( _activeCriteria?.Get( "until" ), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime until )
               || r.StartTime <= until.AddDays( 1 ) ) )
         .ToList( );
 

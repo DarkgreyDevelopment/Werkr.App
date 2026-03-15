@@ -137,8 +137,8 @@ public class WerkrDbContext : DbContext {
                 );
             allowedPathsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -192,8 +192,8 @@ public class WerkrDbContext : DbContext {
                 );
             prop.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -206,8 +206,8 @@ public class WerkrDbContext : DbContext {
                 );
             allowedPathsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -222,8 +222,8 @@ public class WerkrDbContext : DbContext {
                 );
             targetTagsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -252,8 +252,8 @@ public class WerkrDbContext : DbContext {
                 );
             targetTagsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]?>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? null : v.ToArray( )
                 )
             );

@@ -59,10 +59,12 @@ public sealed partial class RetryFromFailedService(
             ?? throw new KeyNotFoundException( $"Step {stepId} not found in workflow {workflowId}." );
 
         // Step 3: Validate target step has a Failed execution
-        WorkflowStepExecution? failedExecution = await dbContext.WorkflowStepExecutions
+        bool hasFailed = await dbContext.WorkflowStepExecutions
             .Where( e => e.WorkflowRunId == runId && e.StepId == stepId && e.Status == StepExecutionStatus.Failed )
-            .OrderByDescending( e => e.Attempt )
-            .FirstOrDefaultAsync( ct ) ?? throw new InvalidOperationException( $"Step {stepId} does not have a Failed execution in this run." );
+            .AnyAsync(ct);
+        if (!hasFailed) {
+            throw new InvalidOperationException( $"Step {stepId} does not have a Failed execution in this run." );
+        }
 
         // Step 4: Compute downstream steps (transitive dependents from the target step)
         HashSet<long> stepsToReset = await ComputeDownstreamStepsAsync( workflowId, stepId, ct );
@@ -89,10 +91,16 @@ public sealed partial class RetryFromFailedService(
 
         // Step 6: Apply variable overrides
         if (variableOverrides is { Count: > 0 }) {
+            List<string> variableNames = [.. variableOverrides.Keys];
+
+            Dictionary<string, int> maxVersions = await dbContext.Set<WorkflowRunVariable>()
+                .Where(v => v.WorkflowRunId == runId && variableNames.Contains(v.VariableName))
+                .GroupBy(v => v.VariableName)
+                .Select(g => new { VariableName = g.Key, MaxVersion = g.Max(v => v.Version) })
+                .ToDictionaryAsync(x => x.VariableName, x => x.MaxVersion, ct);
+
             foreach (KeyValuePair<string, string> kvp in variableOverrides) {
-                int maxVersion = await dbContext.Set<WorkflowRunVariable>( )
-                    .Where( v => v.WorkflowRunId == runId && v.VariableName == kvp.Key )
-                    .MaxAsync( v => (int?)v.Version, ct ) ?? 0;
+                _ = maxVersions.TryGetValue( kvp.Key, out int maxVersion );
 
                 WorkflowRunVariable overrideVar = new( ) {
                     WorkflowRunId = runId,

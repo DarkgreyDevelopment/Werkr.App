@@ -28,11 +28,13 @@ public sealed partial class WorkflowEventBroadcaster( ILogger<WorkflowEventBroad
                 SingleWriter = false,
             } );
 
+        int count;
         lock (_lock) {
             _subscribers.Add( channel.Writer );
+            count = _subscribers.Count;
         }
 
-        LogSubscribed( _subscribers.Count );
+        LogSubscribed( count );
 
         return new WorkflowEventSubscription( channel.Reader, ( ) => Unsubscribe( channel.Writer ) );
     }
@@ -58,12 +60,14 @@ public sealed partial class WorkflowEventBroadcaster( ILogger<WorkflowEventBroad
     }
 
     private void Unsubscribe( ChannelWriter<WorkflowEvent> writer ) {
+        int count;
         lock (_lock) {
             _ = _subscribers.Remove( writer );
+            count = _subscribers.Count;
         }
 
         _ = writer.TryComplete( );
-        LogUnsubscribed( _subscribers.Count );
+        LogUnsubscribed( count );
     }
 
     [LoggerMessage( Level = LogLevel.Debug,

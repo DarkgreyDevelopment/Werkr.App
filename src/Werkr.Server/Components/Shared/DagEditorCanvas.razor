@@ -79,9 +79,8 @@
         await InvokeAsync( StateHasChanged );
     }
 
-    private Task HandleZoomChangedAsync( double zoom ) {
-        OnZoomChanged.InvokeAsync( zoom );
-        return Task.CompletedTask;
+    private async Task HandleZoomChangedAsync( double zoom ) {
+        await OnZoomChanged.InvokeAsync( zoom );
     }
 
     public async ValueTask DisposeAsync( ) {

@@ -10,7 +10,10 @@ namespace Werkr.Api.Endpoints;
 /// <summary>Maps CRUD endpoints for server-synced saved filters.</summary>
 internal static class FilterEndpoints {
 
-    private static readonly HashSet<string> s_validPageKeys = ["runs", "workflows", "jobs", "agents", "schedules", "tasks"];
+    private static readonly HashSet<string> s_validPageKeys = [
+        "runs", "workflows", "jobs", "agents", "schedules", "tasks",
+        "all-workflow-runs", "workflow-dashboard"
+    ];
 
     /// <summary>Maps the saved-filter endpoints at <c>/api/filters/{pageKey}</c>.</summary>
     public static WebApplication MapFilterEndpoints( this WebApplication app ) {
@@ -103,7 +106,7 @@ internal static class FilterEndpoints {
                 IsOwner = true
             } );
         } )
-        .RequireAuthorization( Policies.CanRead );
+        .RequireAuthorization( Policies.CanCreate );
 
         // PUT /api/filters/{pageKey}/{id} — update own filter
         _ = app.MapPut( "/api/filters/{pageKey}/{id}", async (
@@ -161,7 +164,7 @@ internal static class FilterEndpoints {
                 IsOwner = true
             } );
         } )
-        .RequireAuthorization( Policies.CanRead );
+        .RequireAuthorization( Policies.CanUpdate );
 
         // DELETE /api/filters/{pageKey}/{id} — delete own filter
         _ = app.MapDelete( "/api/filters/{pageKey}/{id}", async (
@@ -196,7 +199,7 @@ internal static class FilterEndpoints {
 
             return Results.NoContent( );
         } )
-        .RequireAuthorization( Policies.CanRead );
+        .RequireAuthorization( Policies.CanDelete );
 
         // PUT /api/filters/{pageKey}/{id}/share — toggle shared visibility (admin only)
         _ = app.MapPut( "/api/filters/{pageKey}/{id}/share", async (

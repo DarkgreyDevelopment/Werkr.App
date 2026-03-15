@@ -139,9 +139,12 @@ public class Program {
             .AddHttpMessageHandler<AuthForwardingHandler>( );
 
             // Dedicated SSE client for the long-lived event stream consumed by
-            // JobEventRelayService. Resilience handlers are intentionally omitted
-            // (the service manages its own reconnect loop with backoff) because the
-            // default 10s attempt timeout kills SSE connections immediately.
+            // JobEventRelayService. The global ConfigureHttpClientDefaults in
+            // ServiceDefaults adds a standard resilience pipeline (10s attempt timeout)
+            // to all clients. We must strip those handlers for the SSE client because
+            // they immediately kill long-lived event streams. The service manages its
+            // own reconnect loop with exponential backoff.
+            // Note: ResilienceHandler is a public type from Microsoft.Extensions.Http.Resilience.
             _ = builder.Services.AddHttpClient( "ApiServiceSse", client => {
                 client.BaseAddress = new Uri( "https://api" );
                 client.Timeout = Timeout.InfiniteTimeSpan;
