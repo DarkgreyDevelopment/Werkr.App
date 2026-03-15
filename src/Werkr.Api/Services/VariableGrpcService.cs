@@ -1,3 +1,4 @@
+using System.Globalization;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -259,8 +260,9 @@ public sealed partial class VariableGrpcService(
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid workflow_run_id." ) );
         }
 
-        DateTime endTime = DateTime.TryParse( inner.EndTime, out DateTime et )
-            ? DateTime.SpecifyKind( et, DateTimeKind.Utc )
+        DateTime endTime = DateTime.TryParse(inner.EndTime, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime et)
+            ? et
             : DateTime.UtcNow;
 
         WorkflowRun? run = await dbContext.WorkflowRuns

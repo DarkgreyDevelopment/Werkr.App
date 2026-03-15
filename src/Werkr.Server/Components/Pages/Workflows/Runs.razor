@@ -1,5 +1,4 @@
 ﻿@page "/workflows/{WorkflowId:long}/runs"
-@using System.Globalization
 @using Werkr.Common.Models
 @using Werkr.Server.Services
 @rendermode InteractiveServer
@@ -89,13 +88,7 @@
     ] );
 
     private List<WorkflowRunDto> FilteredRuns => ( _runs ?? [] )
-        .Where( r =>
-            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "status" ) )
-              || r.Status.Equals( _activeCriteria.Get( "status" ), StringComparison.OrdinalIgnoreCase ) )
-            && ( !DateTime.TryParseExact( _activeCriteria?.Get( "since" ), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime since )
-              || r.StartTime >= since )
-            && ( !DateTime.TryParseExact( _activeCriteria?.Get( "until" ), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime until )
-              || r.StartTime < until.AddDays( 1 ) ) )
+        .Where( r => FilterHelper.MatchesRunFilter( r, _activeCriteria ) )
         .ToList( );
 
     protected override async Task OnInitializedAsync( ) {

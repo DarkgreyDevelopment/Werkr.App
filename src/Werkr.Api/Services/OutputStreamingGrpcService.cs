@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading.Channels;
 using Grpc.Core;
 using Werkr.Common.Protos;
@@ -51,25 +52,39 @@ public sealed partial class OutputStreamingGrpcService(
 
         /// <summary>Maximum log events published per second per run.</summary>
         private const int MaxEventsPerSecond = 50;
-        private static readonly long s_tickInterval = TimeSpan.TicksPerSecond / MaxEventsPerSecond;
+        private static readonly long s_tickInterval = Stopwatch.Frequency / MaxEventsPerSecond;
 
         /// <summary>
         /// Attempts to acquire a publish permit. Returns true if within rate limit.
         /// On true after drops, returns the count of dropped lines for batching notice.
+        /// Uses a CAS loop with monotonic <see cref="Stopwatch"/> timestamps for
+        /// atomic, drift-free rate limiting under concurrency.
         /// </summary>
         public bool TryAcquire( out int droppedSinceLastPublish ) {
-            long nowTicks = DateTime.UtcNow.Ticks;
-            long last = Interlocked.Read( ref _lastPublishTicks );
+            long nowTicks = Stopwatch.GetTimestamp();
 
-            if (nowTicks - last >= s_tickInterval) {
-                _ = Interlocked.Exchange( ref _lastPublishTicks, nowTicks );
-                droppedSinceLastPublish = Interlocked.Exchange( ref _droppedCount, 0 );
-                return true;
+            while (true)
+            {
+                long last = Interlocked.Read(ref _lastPublishTicks);
+
+                if (nowTicks - last < s_tickInterval)
+                {
+                    _ = Interlocked.Increment(ref _droppedCount);
+                    droppedSinceLastPublish = 0;
+                    return false;
+                }
+
+                long original = Interlocked.CompareExchange(
+                    ref _lastPublishTicks, nowTicks, last);
+
+                if (original == last)
+                {
+                    droppedSinceLastPublish = Interlocked.Exchange(ref _droppedCount, 0);
+                    return true;
+                }
+
+                nowTicks = Stopwatch.GetTimestamp();
             }
-
-            _ = Interlocked.Increment( ref _droppedCount );
-            droppedSinceLastPublish = 0;
-            return false;
         }
     }
 

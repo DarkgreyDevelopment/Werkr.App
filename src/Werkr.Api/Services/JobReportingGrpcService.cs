@@ -1,3 +1,4 @@
+using System.Globalization;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Models;
@@ -58,11 +59,13 @@ public sealed partial class JobReportingGrpcService(
             : ErrorCategory.Unknown;
 
         // Parse timestamps
-        DateTime startTime = DateTime.TryParse( inner.StartTime, out DateTime st )
-            ? DateTime.SpecifyKind( st, DateTimeKind.Utc )
+        DateTime startTime = DateTime.TryParse(inner.StartTime, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime st)
+            ? st
             : DateTime.UtcNow;
-        DateTime? endTime = DateTime.TryParse( inner.EndTime, out DateTime et )
-            ? DateTime.SpecifyKind( et, DateTimeKind.Utc )
+        DateTime? endTime = DateTime.TryParse(inner.EndTime, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime et)
+            ? et
             : null;
 
         // Parse workflow run ID if provided
@@ -240,8 +243,9 @@ public sealed partial class JobReportingGrpcService(
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid workflow_run_id." ) );
         }
 
-        DateTime startTime = DateTime.TryParse( inner.StartTime, out DateTime st )
-            ? DateTime.SpecifyKind( st, DateTimeKind.Utc )
+        DateTime startTime = DateTime.TryParse(inner.StartTime, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime st)
+            ? st
             : DateTime.UtcNow;
 
         // Determine attempt number (previous max + 1 for retries)

@@ -29,6 +29,7 @@
                             <td class="text-center p-1" role="button" tabindex="0"
                                 @onclick="( ) => OnCellSelected.InvokeAsync( ( run.RunId, step.Id ) )"
                                 @onkeydown="( e ) => HandleCellKeyDown( e, run.RunId, step.Id )"
+                                @onkeydown:preventDefault="true"
                                 title="@status"
                                 aria-label="@step.Name — @status">
                                 <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( status )">
