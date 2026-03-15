@@ -140,13 +140,7 @@
     }
 
     private static string GetAgentStatusBadgeClass( string? status ) =>
-        status switch {
-            "Connected" => "bg-success",
-            "Disconnected" => "bg-danger",
-            "Revoked" => "bg-secondary",
-            "Error" => "bg-danger",
-            _ => "bg-secondary"
-        };
+        StatusDisplayHelper.GetStatusBadgeClass( status );
 
     private async Task ExecuteCommand( ) {
         if (string.IsNullOrWhiteSpace( _command )) {

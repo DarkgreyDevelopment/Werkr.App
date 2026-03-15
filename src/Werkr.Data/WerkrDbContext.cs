@@ -607,7 +607,19 @@ public class WerkrDbContext : DbContext {
     private sealed class ControlStatementStringConverter( )
         : ValueConverter<ControlStatement, string>(
             v => v == ControlStatement.Default ? "Default" : v.ToString( ),
-            v => v == "Sequential" ? ControlStatement.Default : Enum.Parse<ControlStatement>( v ) );
+            v => ParseControlStatement( v ) ) {
+        private static ControlStatement ParseControlStatement( string v ) =>
+            v switch {
+                "Sequential" or "Parallel" => ControlStatement.Default,
+                "ConditionalIf" => ControlStatement.If,
+                "ConditionalElseIf" => ControlStatement.ElseIf,
+                "ConditionalWhile" => ControlStatement.While,
+                "ConditionalDo" => ControlStatement.Do,
+                _ => Enum.TryParse<ControlStatement>( v, ignoreCase: true, out ControlStatement parsed )
+                    ? parsed
+                    : ControlStatement.Default,
+            };
+    }
 
     private sealed class DependencyModeStringConverter( )
         : ValueConverter<DependencyMode, string>(

@@ -157,4 +157,76 @@ public class ControlStatementConverterTests {
         // Assert — converter maps "Sequential" → Default
         Assert.AreEqual( ControlStatement.Default, loaded.ControlStatement );
     }
+
+    /// <summary>
+    /// Verifies that all legacy database string values from the old ControlStatement enum
+    /// are correctly mapped to the current enum members by the converter.
+    /// </summary>
+    [TestMethod]
+    [DataRow( "Parallel", ControlStatement.Default )]
+    [DataRow( "ConditionalIf", ControlStatement.If )]
+    [DataRow( "ConditionalElseIf", ControlStatement.ElseIf )]
+    [DataRow( "ConditionalWhile", ControlStatement.While )]
+    [DataRow( "ConditionalDo", ControlStatement.Do )]
+    public async Task LegacyValues_ReadAs_CorrectEnum( string legacyString, ControlStatement expected ) {
+        CancellationToken ct = TestContext.CancellationToken;
+
+        Workflow workflow = new() { Name = $"Legacy_{legacyString}", Description = "test" };
+        _ = _dbContext.Workflows.Add( workflow );
+        WerkrTask task = new() { Name = $"Task_{legacyString}", ActionType = TaskActionType.ShellCommand, Content = "echo test", TargetTags = ["test"] };
+        _ = _dbContext.Tasks.Add( task );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        WorkflowStep step = new()
+        {
+            WorkflowId = workflow.Id,
+            TaskId = task.Id,
+            Order = 0,
+            ControlStatement = ControlStatement.Default,
+        };
+        _ = _dbContext.WorkflowSteps.Add( step );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        long stepId = step.Id;
+        _ = await _dbContext.Database.ExecuteSqlAsync(
+            $"UPDATE workflow_steps SET control_statement = {legacyString} WHERE id = {stepId}", ct );
+
+        _dbContext.ChangeTracker.Clear( );
+
+        WorkflowStep loaded = await _dbContext.WorkflowSteps.SingleAsync(s => s.Id == step.Id, ct);
+        Assert.AreEqual( expected, loaded.ControlStatement );
+    }
+
+    /// <summary>
+    /// Verifies that an unrecognized string in the database falls back to <see cref="ControlStatement.Default"/>.
+    /// </summary>
+    [TestMethod]
+    public async Task UnknownString_FallsBackTo_Default( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+
+        Workflow workflow = new() { Name = "Unknown_WF", Description = "test" };
+        _ = _dbContext.Workflows.Add( workflow );
+        WerkrTask task = new() { Name = "Unknown_Task", ActionType = TaskActionType.ShellCommand, Content = "echo test", TargetTags = ["test"] };
+        _ = _dbContext.Tasks.Add( task );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        WorkflowStep step = new()
+        {
+            WorkflowId = workflow.Id,
+            TaskId = task.Id,
+            Order = 0,
+            ControlStatement = ControlStatement.Default,
+        };
+        _ = _dbContext.WorkflowSteps.Add( step );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        long stepId = step.Id;
+        _ = await _dbContext.Database.ExecuteSqlAsync(
+            $"UPDATE workflow_steps SET control_statement = 'Bogus' WHERE id = {stepId}", ct );
+
+        _dbContext.ChangeTracker.Clear( );
+
+        WorkflowStep loaded = await _dbContext.WorkflowSteps.SingleAsync(s => s.Id == step.Id, ct);
+        Assert.AreEqual( ControlStatement.Default, loaded.ControlStatement );
+    }
 }

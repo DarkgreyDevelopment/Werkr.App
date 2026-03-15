@@ -99,6 +99,9 @@ docker-compose.override.yml
 # Aspire publish output
 aspire-output/
 
+# User-specific project files
+*.user
+
 # Secrets directory
 secrets/
 

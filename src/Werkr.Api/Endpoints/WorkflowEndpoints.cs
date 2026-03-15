@@ -384,17 +384,13 @@ internal static partial class WorkflowEndpoints {
             ScheduleService scheduleService,
             CancellationToken ct
         ) => {
-            List<WorkflowSchedule> links = await dbContext.WorkflowSchedules.AsNoTracking( )
+            List<Guid> scheduleIds = await dbContext.WorkflowSchedules.AsNoTracking()
                 .Where( ws => ws.WorkflowId == workflowId )
+                .Select(ws => ws.ScheduleId)
                 .ToListAsync( ct );
 
-            List<ScheduleDto> dtos = [];
-            foreach (WorkflowSchedule ws in links) {
-                Schedule? schedule = await scheduleService.GetByIdAsync( ws.ScheduleId, ct );
-                if (schedule is not null) {
-                    dtos.Add( ScheduleMapper.ToDto( schedule ) );
-                }
-            }
+            IReadOnlyList<Schedule> schedules = await scheduleService.GetByIdsAsync(scheduleIds, ct);
+            List<ScheduleDto> dtos = [.. schedules.Select(ScheduleMapper.ToDto)];
             return Results.Ok( dtos );
         } )
         .WithName( "GetWorkflowSchedules" )
@@ -778,11 +774,14 @@ internal static partial class WorkflowEndpoints {
             ILookup<long, Guid> scheduleIdsByWorkflow = scheduleLinks
                 .ToLookup( ws => ws.WorkflowId, ws => ws.ScheduleId );
 
+            List<Guid> allScheduleIds = [.. scheduleLinks.Select(ws => ws.ScheduleId).Distinct()];
+            Dictionary<Guid, Schedule> schedulesById = (await scheduleService.GetByIdsAsync(allScheduleIds, ct))
+                .ToDictionary(s => s.DbSchedule.Id);
+
             foreach (long wfId in workflowIds) {
                 DateTime? earliest = null;
                 foreach (Guid scheduleId in scheduleIdsByWorkflow[wfId]) {
-                    Schedule? schedule = await scheduleService.GetByIdAsync( scheduleId, ct );
-                    if (schedule is null) {
+                    if (!schedulesById.TryGetValue( scheduleId, out Schedule? schedule )) {
                         continue;
                     }
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
 using Serilog;
 using Serilog.Settings.Configuration;
 using Werkr.Common;
@@ -149,7 +150,7 @@ public class Program {
             .ConfigureAdditionalHttpMessageHandlers( ( handlers, _ ) => {
                 // Strip all resilience handlers added by ConfigureHttpClientDefaults
                 for (int i = handlers.Count - 1; i >= 0; i--) {
-                    if (handlers[i].GetType( ).FullName?.Contains( "Resilience", StringComparison.Ordinal ) == true) {
+                    if (handlers[i] is ResilienceHandler) {
                         handlers.RemoveAt( i );
                     }
                 }

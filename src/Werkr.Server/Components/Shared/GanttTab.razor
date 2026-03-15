@@ -88,11 +88,16 @@
         string className = StatusToClassName( dto.Status );
         string tooltip = BuildTooltip( stepName, dto.Status, dto.RuntimeSeconds );
 
+        string startIso = ( dto.StartTime ?? dto.Timestamp ).ToString( "o" );
+        string? endIso = dto.Status is "Completed" or "Failed" or "Skipped"
+            ? ( dto.EndTime ?? dto.Timestamp ).ToString( "o" )
+            : null;
+
         GanttItemDto item = new(
-            Id: $"{dto.StepId}-1",
+            Id: $"{dto.StepId}-{dto.Attempt}",
             Content: stepName,
-            Start: dto.Timestamp.ToString( "o" ),
-            End: dto.Status is "Completed" or "Failed" or "Skipped" ? dto.Timestamp.ToString( "o" ) : null,
+            Start: startIso,
+            End: endIso,
             ClassName: className,
             Title: tooltip
         );

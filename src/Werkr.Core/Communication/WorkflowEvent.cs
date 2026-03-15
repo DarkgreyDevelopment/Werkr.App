@@ -12,25 +12,29 @@ public abstract record WorkflowEvent(
 /// <summary>Fired when a workflow step begins execution.</summary>
 public sealed record StepStartedEvent(
     Guid WorkflowRunId, long StepId, string StepName,
-    long TaskId, DateTime Timestamp
+    long TaskId, DateTime Timestamp,
+    int Attempt = 1, DateTime? StartTime = null
 ) : WorkflowEvent( WorkflowRunId, Timestamp );
 
 /// <summary>Fired when a workflow step completes successfully.</summary>
 public sealed record StepCompletedEvent(
     Guid WorkflowRunId, long StepId, string StepName,
-    Guid JobId, int ExitCode, double RuntimeSeconds, DateTime Timestamp
+    Guid JobId, int ExitCode, double RuntimeSeconds, DateTime Timestamp,
+    int Attempt = 1, DateTime? StartTime = null, DateTime? EndTime = null
 ) : WorkflowEvent( WorkflowRunId, Timestamp );
 
 /// <summary>Fired when a workflow step fails.</summary>
 public sealed record StepFailedEvent(
     Guid WorkflowRunId, long StepId, string StepName,
-    Guid JobId, int ExitCode, string? ErrorMessage, DateTime Timestamp
+    Guid JobId, int ExitCode, string? ErrorMessage, DateTime Timestamp,
+    int Attempt = 1, DateTime? StartTime = null, DateTime? EndTime = null
 ) : WorkflowEvent( WorkflowRunId, Timestamp );
 
 /// <summary>Fired when a workflow step is skipped by control flow evaluation.</summary>
 public sealed record StepSkippedEvent(
     Guid WorkflowRunId, long StepId, string StepName,
-    string Reason, DateTime Timestamp
+    string Reason, DateTime Timestamp,
+    int Attempt = 1
 ) : WorkflowEvent( WorkflowRunId, Timestamp );
 
 /// <summary>Fired when a workflow run completes (success or failure).</summary>

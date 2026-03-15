@@ -133,7 +133,10 @@ public sealed partial class JobEventRelayService(
                             root.GetProperty( "stepName" ).GetString( ) ?? "",
                             "Started",
                             null, null, null, null,
-                            ParseTimestamp( root )
+                            ParseTimestamp( root ),
+                            Attempt: root.TryGetProperty( "attempt", out JsonElement ssA ) ? ssA.GetInt32( ) : 1,
+                            StartTime: root.TryGetProperty( "startTime", out JsonElement ssSt ) && ssSt.ValueKind != JsonValueKind.Null
+                                ? ssSt.GetDateTime( ) : null
                         ), ct );
                     break;
 
@@ -148,7 +151,12 @@ public sealed partial class JobEventRelayService(
                             root.GetProperty( "exitCode" ).GetInt32( ),
                             root.GetProperty( "runtimeSeconds" ).GetDouble( ),
                             null,
-                            ParseTimestamp( root )
+                            ParseTimestamp( root ),
+                            Attempt: root.TryGetProperty( "attempt", out JsonElement scA ) ? scA.GetInt32( ) : 1,
+                            StartTime: root.TryGetProperty( "startTime", out JsonElement scSt ) && scSt.ValueKind != JsonValueKind.Null
+                                ? scSt.GetDateTime( ) : null,
+                            EndTime: root.TryGetProperty( "endTime", out JsonElement scEt ) && scEt.ValueKind != JsonValueKind.Null
+                                ? scEt.GetDateTime( ) : null
                         ), ct );
                     break;
 
@@ -163,7 +171,12 @@ public sealed partial class JobEventRelayService(
                             root.GetProperty( "exitCode" ).GetInt32( ),
                             null,
                             root.GetProperty( "errorMessage" ).GetString( ),
-                            ParseTimestamp( root )
+                            ParseTimestamp( root ),
+                            Attempt: root.TryGetProperty( "attempt", out JsonElement sfA ) ? sfA.GetInt32( ) : 1,
+                            StartTime: root.TryGetProperty( "startTime", out JsonElement sfSt ) && sfSt.ValueKind != JsonValueKind.Null
+                                ? sfSt.GetDateTime( ) : null,
+                            EndTime: root.TryGetProperty( "endTime", out JsonElement sfEt ) && sfEt.ValueKind != JsonValueKind.Null
+                                ? sfEt.GetDateTime( ) : null
                         ), ct );
                     break;
 
@@ -176,7 +189,8 @@ public sealed partial class JobEventRelayService(
                             "Skipped",
                             null, null, null,
                             root.GetProperty( "reason" ).GetString( ),
-                            ParseTimestamp( root )
+                            ParseTimestamp( root ),
+                            Attempt: root.TryGetProperty( "attempt", out JsonElement skA ) ? skA.GetInt32( ) : 1
                         ), ct );
                     break;
 

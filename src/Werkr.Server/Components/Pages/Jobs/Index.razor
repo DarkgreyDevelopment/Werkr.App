@@ -1,5 +1,6 @@
 ﻿@page "/jobs"
 @rendermode InteractiveServer
+@using System.Globalization
 @using Werkr.Common.Models
 @attribute [Authorize]
 @inject IHttpClientFactory HttpClientFactory
@@ -133,11 +134,11 @@
             queryParams.Add( "success=false" );
 
         string? sinceStr = _activeCriteria?.Get( "since" );
-        if ( DateTime.TryParse( sinceStr, out DateTime since ) )
+        if ( DateTime.TryParseExact( sinceStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime since ) )
             queryParams.Add( $"since={since:O}" );
 
         string? untilStr = _activeCriteria?.Get( "until" );
-        if ( DateTime.TryParse( untilStr, out DateTime until ) )
+        if ( DateTime.TryParseExact( untilStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime until ) )
             queryParams.Add( $"until={until:O}" );
 
         return $"/api/jobs?{string.Join( "&", queryParams )}";

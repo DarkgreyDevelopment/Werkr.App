@@ -179,7 +179,10 @@ public sealed partial class JobReportingGrpcService(
                     JobId: job.Id,
                     ExitCode: inner.ExitCode,
                     RuntimeSeconds: inner.RuntimeSeconds,
-                    Timestamp: DateTime.UtcNow
+                    Timestamp: DateTime.UtcNow,
+                    Attempt: stepExecution?.Attempt ?? 1,
+                    StartTime: stepExecution?.StartTime,
+                    EndTime: stepExecution?.EndTime
                 ) );
             } else {
                 workflowBroadcaster.Publish( new StepFailedEvent(
@@ -189,7 +192,10 @@ public sealed partial class JobReportingGrpcService(
                     JobId: job.Id,
                     ExitCode: inner.ExitCode,
                     ErrorMessage: inner.OutputPreview,
-                    Timestamp: DateTime.UtcNow
+                    Timestamp: DateTime.UtcNow,
+                    Attempt: stepExecution?.Attempt ?? 1,
+                    StartTime: stepExecution?.StartTime,
+                    EndTime: stepExecution?.EndTime
                 ) );
             }
         }
@@ -260,7 +266,9 @@ public sealed partial class JobReportingGrpcService(
             StepId: inner.StepId,
             StepName: inner.StepName,
             TaskId: inner.TaskId,
-            Timestamp: DateTime.UtcNow
+            Timestamp: DateTime.UtcNow,
+            Attempt: attempt,
+            StartTime: startTime
         ) );
 
         StepEventResponse response = new( ) { Accepted = true };
@@ -303,7 +311,8 @@ public sealed partial class JobReportingGrpcService(
             StepId: inner.StepId,
             StepName: inner.StepName,
             Reason: inner.Reason,
-            Timestamp: DateTime.UtcNow
+            Timestamp: DateTime.UtcNow,
+            Attempt: maxAttempt + 1
         ) );
 
         StepEventResponse response = new( ) { Accepted = true };

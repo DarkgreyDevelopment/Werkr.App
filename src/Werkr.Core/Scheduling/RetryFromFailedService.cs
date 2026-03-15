@@ -69,10 +69,14 @@ public sealed partial class RetryFromFailedService(
         _ = stepsToReset.Add( stepId ); // Include the target step itself
 
         // Step 5: Reset step executions — insert new rows with incremented attempt
+        Dictionary<long, int> maxAttempts = await dbContext.WorkflowStepExecutions
+            .Where(e => e.WorkflowRunId == runId && stepsToReset.Contains(e.StepId))
+            .GroupBy(e => e.StepId)
+            .Select(g => new { StepId = g.Key, Max = g.Max(e => e.Attempt) })
+            .ToDictionaryAsync(x => x.StepId, x => x.Max, ct);
+
         foreach (long resetStepId in stepsToReset) {
-            int maxAttempt = await dbContext.WorkflowStepExecutions
-                .Where( e => e.WorkflowRunId == runId && e.StepId == resetStepId )
-                .MaxAsync( e => (int?)e.Attempt, ct ) ?? 0;
+            _ = maxAttempts.TryGetValue( resetStepId, out int maxAttempt );
 
             WorkflowStepExecution pendingExecution = new( ) {
                 WorkflowRunId = runId,

@@ -58,7 +58,6 @@ public sealed partial class OutputStreamingGrpcService(
         /// On true after drops, returns the count of dropped lines for batching notice.
         /// </summary>
         public bool TryAcquire( out int droppedSinceLastPublish ) {
-            _ = Environment.TickCount64 * TimeSpan.TicksPerMillisecond / TimeSpan.TicksPerMillisecond;
             long nowTicks = DateTime.UtcNow.Ticks;
             long last = Interlocked.Read( ref _lastPublishTicks );
 

@@ -5,7 +5,10 @@ public sealed record StepStatusDto(
     Guid RunId, long StepId, string StepName,
     string Status,
     Guid? JobId, int? ExitCode, double? RuntimeSeconds,
-    string? ErrorMessage, DateTime Timestamp );
+    string? ErrorMessage, DateTime Timestamp,
+    int Attempt = 1,
+    DateTime? StartTime = null,
+    DateTime? EndTime = null );
 
 /// <summary>DTO pushed to clients when a run completes or fails.</summary>
 public sealed record RunStatusDto(
