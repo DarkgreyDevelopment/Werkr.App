@@ -63,13 +63,11 @@ public sealed partial class OutputStreamingGrpcService(
         public bool TryAcquire( out int droppedSinceLastPublish ) {
             long nowTicks = Stopwatch.GetTimestamp();
 
-            while (true)
-            {
+            while (true) {
                 long last = Interlocked.Read(ref _lastPublishTicks);
 
-                if (nowTicks - last < s_tickInterval)
-                {
-                    _ = Interlocked.Increment(ref _droppedCount);
+                if (nowTicks - last < s_tickInterval) {
+                    _ = Interlocked.Increment( ref _droppedCount );
                     droppedSinceLastPublish = 0;
                     return false;
                 }
@@ -77,13 +75,12 @@ public sealed partial class OutputStreamingGrpcService(
                 long original = Interlocked.CompareExchange(
                     ref _lastPublishTicks, nowTicks, last);
 
-                if (original == last)
-                {
-                    droppedSinceLastPublish = Interlocked.Exchange(ref _droppedCount, 0);
+                if (original == last) {
+                    droppedSinceLastPublish = Interlocked.Exchange( ref _droppedCount, 0 );
                     return true;
                 }
 
-                nowTicks = Stopwatch.GetTimestamp();
+                nowTicks = Stopwatch.GetTimestamp( );
             }
         }
     }

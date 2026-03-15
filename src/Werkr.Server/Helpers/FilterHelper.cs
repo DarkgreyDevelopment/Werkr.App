@@ -16,19 +16,22 @@ public static class FilterHelper {
     /// Used by Runs.razor and AllRuns.razor.
     /// </summary>
     public static bool MatchesRunFilter( WorkflowRunDto run, FilterCriteria? criteria ) {
-        if (criteria is null) return true;
+        if (criteria is null) {
+            return true;
+        }
 
         string? status = criteria.Get( "status" );
         if (!string.IsNullOrWhiteSpace( status )
-             && !run.Status.Equals( status, StringComparison.OrdinalIgnoreCase ))
+             && !run.Status.Equals( status, StringComparison.OrdinalIgnoreCase )) {
             return false;
+        }
 
         DateTime? since = TryParseFilterDate( criteria.Get( "since" ) );
-        if (since.HasValue && run.StartTime < since.Value) return false;
+        if (since.HasValue && run.StartTime < since.Value) {
+            return false;
+        }
 
         DateTime? until = TryParseFilterDate( criteria.Get( "until" ) );
-        if (until.HasValue && run.StartTime >= until.Value.AddDays( 1 )) return false;
-
-        return true;
+        return !until.HasValue || run.StartTime < until.Value.AddDays( 1 );
     }
 }

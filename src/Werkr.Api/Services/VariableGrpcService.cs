@@ -322,43 +322,36 @@ public sealed partial class VariableGrpcService(
 
         // Return the latest attempt per step, selected in the database
         List<WorkflowStepExecution> executions;
-        try
-        {
+        try {
             executions = await dbContext.WorkflowStepExecutions
-                .Where(se => se.WorkflowRunId == runId)
-                .GroupBy(se => se.StepId)
-                .Select(g => g.OrderByDescending(se => se.Attempt).First())
-                .ToListAsync(context.CancellationToken);
-        }
-        catch (Exception ex)
-        {
+                .Where( se => se.WorkflowRunId == runId )
+                .GroupBy( se => se.StepId )
+                .Select( g => g.OrderByDescending( se => se.Attempt ).First( ) )
+                .ToListAsync( context.CancellationToken );
+        } catch (Exception ex) {
             // Fallback: EF provider (e.g. SQLite) may not support GroupBy+First
-            logger.LogWarning(ex, "GroupBy+First failed; falling back to in-memory grouping.");
+            logger.LogWarning( ex, "GroupBy+First failed; falling back to in-memory grouping." );
             List<WorkflowStepExecution> all = await dbContext.WorkflowStepExecutions
                 .Where(se => se.WorkflowRunId == runId)
                 .OrderByDescending(se => se.Attempt)
                 .ToListAsync(context.CancellationToken);
             HashSet<long> seen = [];
             executions = [];
-            foreach (WorkflowStepExecution exec in all)
-            {
-                if (seen.Add(exec.StepId))
-                {
-                    executions.Add(exec);
+            foreach (WorkflowStepExecution exec in all) {
+                if (seen.Add( exec.StepId )) {
+                    executions.Add( exec );
                 }
             }
         }
 
         GetStepExecutionsResponse response = new( );
 
-        foreach (WorkflowStepExecution exec in executions)
-        {
-            response.Entries.Add(new StepExecutionEntry
-            {
+        foreach (WorkflowStepExecution exec in executions) {
+            response.Entries.Add( new StepExecutionEntry {
                 StepId = exec.StepId,
                 Attempt = exec.Attempt,
-                Status = exec.Status.ToString(),
-            });
+                Status = exec.Status.ToString( ),
+            } );
         }
 
         return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );

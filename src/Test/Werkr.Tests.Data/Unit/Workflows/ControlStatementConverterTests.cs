@@ -168,7 +168,7 @@ public class ControlStatementConverterTests {
     [DataRow( "ConditionalElseIf", ControlStatement.ElseIf )]
     [DataRow( "ConditionalWhile", ControlStatement.While )]
     [DataRow( "ConditionalDo", ControlStatement.Do )]
-    [DataRow("ConditionalElse", ControlStatement.Else)]
+    [DataRow( "ConditionalElse", ControlStatement.Else )]
     public async Task LegacyValues_ReadAs_CorrectEnum( string legacyString, ControlStatement expected ) {
         CancellationToken ct = TestContext.CancellationToken;
 

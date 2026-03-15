@@ -135,8 +135,7 @@ public class ConditionBuilderTests : BunitContext {
     /// (raw mode does not restrict to known patterns).
     /// </summary>
     [TestMethod]
-    public void ApplyRaw_CustomExpression_FiresCallback()
-    {
+    public void ApplyRaw_CustomExpression_FiresCallback( ) {
         string? captured = null;
         IRenderedComponent<ConditionBuilder> cut = Render<ConditionBuilder>( parameters =>
             parameters.Add( p => p.Expression, null )
@@ -146,14 +145,14 @@ public class ConditionBuilderTests : BunitContext {
         cut.Find( "button.btn-outline-secondary" ).Click( );
 
         // Type a custom expression not matching known patterns
-        cut.Find("input[type=text]").Input("custom_var > 42");
+        cut.Find( "input[type=text]" ).Input( "custom_var > 42" );
 
         // Click Apply
         IReadOnlyList<AngleSharp.Dom.IElement> buttons = cut.FindAll( "button.btn-outline-primary" );
         buttons[^1].Click( );
 
         // Callback should have been fired with the custom expression
-        Assert.AreEqual("custom_var > 42", captured);
+        Assert.AreEqual( "custom_var > 42", captured );
     }
 
     /// <summary>
