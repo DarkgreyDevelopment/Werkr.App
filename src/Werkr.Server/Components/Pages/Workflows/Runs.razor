@@ -33,9 +33,11 @@
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
 }
 
+@{ var filteredRuns = FilteredRuns; }
+
 @if ( _isLoading && _runs is null ) {
     <LoadingSpinner Message="Loading runs…" />
-} else if ( _runs is not null && FilteredRuns.Count > 0 ) {
+} else if ( _runs is not null && filteredRuns.Count > 0 ) {
     <div class="table-responsive">
         <table class="table table-striped align-middle">
             <thead>
@@ -48,7 +50,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ( WorkflowRunDto run in FilteredRuns ) {
+                @foreach ( WorkflowRunDto run in filteredRuns ) {
                     <tr>
                         <td><a href="/workflows/runs/@run.Id">@run.Id.ToString()[..8]…</a></td>
                         <td>@run.StartTime.ToString( "g" )</td>

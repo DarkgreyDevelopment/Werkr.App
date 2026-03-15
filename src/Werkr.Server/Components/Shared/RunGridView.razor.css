@@ -4,7 +4,7 @@
     z-index: 1;
 }
 
-.run-grid-table td[role="button"]:hover {
+.run-grid-table button:hover {
     background-color: var(--bs-tertiary-bg);
     cursor: pointer;
 }

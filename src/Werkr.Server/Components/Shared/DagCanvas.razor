@@ -103,13 +103,11 @@
             }
         }
 
-        // Always (re)apply statuses when provided, regardless of reference identity
-        if ( StepStatuses is not null && StepStatuses.Count > 0 ) {
-            try {
-                await ApplyStatusesAsync( );
-            } catch ( Exception ex ) {
-                Logger.LogError( ex, "Failed to update DAG status overlay." );
-            }
+        // Always (re)apply or clear statuses when parameters change
+        try {
+            await ApplyStatusesAsync( );
+        } catch ( Exception ex ) {
+            Logger.LogError( ex, "Failed to update DAG status overlay." );
         }
     }
 
