@@ -71,7 +71,6 @@
     private string _direction = "LR";
     private double _zoomLevel = 1.0;
     private IReadOnlyList<WorkflowStepDto>? _previousSteps;
-    private IReadOnlyDictionary<long, StepExecutionStatus>? _previousStatuses;
 
     protected override async Task OnAfterRenderAsync( bool firstRender ) {
         if ( !firstRender || _initialized ) return;
@@ -104,9 +103,8 @@
             }
         }
 
-        // If only statuses changed, update the overlay
-        if ( !ReferenceEquals( StepStatuses, _previousStatuses ) ) {
-            _previousStatuses = StepStatuses;
+        // Always (re)apply statuses when provided, regardless of reference identity
+        if ( StepStatuses is not null && StepStatuses.Count > 0 ) {
             try {
                 await ApplyStatusesAsync( );
             } catch ( Exception ex ) {

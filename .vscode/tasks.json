@@ -436,7 +436,12 @@
 		{
 			"label": "verify:e2e-tail",
 			"type": "shell",
-			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj --no-build 2>&1 | tail -30'"
+			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj'"
+		},
+		{
+			"label": "verify:test-server",
+			"type": "shell",
+			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Server/Werkr.Tests.Server.csproj'"
 		}
 	]
 }

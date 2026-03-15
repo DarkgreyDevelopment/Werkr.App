@@ -4,9 +4,6 @@
     <div class="mb-2">
         <label class="form-label">Condition Expression (Raw)</label>
         <input type="text" class="form-control font-monospace" @bind="_rawExpression" @bind:event="oninput" />
-        @if ( !string.IsNullOrWhiteSpace( _validationError ) ) {
-            <div class="text-danger small mt-1">@_validationError</div>
-        }
     </div>
     <button type="button" class="btn btn-sm btn-outline-secondary mb-2" @onclick="SwitchToStructured">
         Switch to Structured
@@ -88,7 +85,6 @@
 
     private bool _isAdvanced;
     private string _rawExpression = "";
-    private string? _validationError;
 
     private string _expressionType = "ExitCode";
     private string _operator = "==";
@@ -135,17 +131,11 @@
     }
 
     private async Task ApplyRawExpression( ) {
-        _validationError = null;
         string trimmed = _rawExpression.Trim( );
 
         if ( string.IsNullOrWhiteSpace( trimmed ) ) {
             Expression = null;
             await ExpressionChanged.InvokeAsync( null );
-            return;
-        }
-
-        if ( !SuccessPattern.IsMatch( trimmed ) && !ExitCodePattern.IsMatch( trimmed ) ) {
-            _validationError = "Expression must match '$exitCode <op> N' or '$? -eq $true/$false'.";
             return;
         }
 
@@ -157,12 +147,10 @@
     private void SwitchToAdvanced( ) {
         _isAdvanced = true;
         _rawExpression = Expression ?? "";
-        _validationError = null;
     }
 
     private void SwitchToStructured( ) {
         _isAdvanced = false;
-        _validationError = null;
         if ( !string.IsNullOrWhiteSpace( _rawExpression ) ) {
             ParseExistingExpression( _rawExpression );
         }

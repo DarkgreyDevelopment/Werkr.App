@@ -131,10 +131,12 @@ public class ConditionBuilderTests : BunitContext {
     }
 
     /// <summary>
-    /// Verifies that an invalid raw expression shows a validation error and does not fire the callback.
+    /// Verifies that a custom raw expression is accepted and fires the callback
+    /// (raw mode does not restrict to known patterns).
     /// </summary>
     [TestMethod]
-    public void ApplyRaw_InvalidExpression_ShowsError( ) {
+    public void ApplyRaw_CustomExpression_FiresCallback()
+    {
         string? captured = null;
         IRenderedComponent<ConditionBuilder> cut = Render<ConditionBuilder>( parameters =>
             parameters.Add( p => p.Expression, null )
@@ -143,20 +145,15 @@ public class ConditionBuilderTests : BunitContext {
         // Switch to advanced mode
         cut.Find( "button.btn-outline-secondary" ).Click( );
 
-        // Type an invalid expression
-        cut.Find( "input[type=text]" ).Input( "invalid garbage" );
+        // Type a custom expression not matching known patterns
+        cut.Find("input[type=text]").Input("custom_var > 42");
 
         // Click Apply
         IReadOnlyList<AngleSharp.Dom.IElement> buttons = cut.FindAll( "button.btn-outline-primary" );
         buttons[^1].Click( );
 
-        // Should show validation error
-        AngleSharp.Dom.IElement errorDiv = cut.Find( ".text-danger" );
-        Assert.IsNotNull( errorDiv );
-        Assert.IsFalse( string.IsNullOrWhiteSpace( errorDiv.TextContent ) );
-
-        // Callback should NOT have been fired (expression stays null)
-        Assert.IsNull( captured );
+        // Callback should have been fired with the custom expression
+        Assert.AreEqual("custom_var > 42", captured);
     }
 
     /// <summary>

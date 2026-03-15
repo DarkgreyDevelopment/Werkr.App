@@ -26,15 +26,16 @@
                         </td>
                         @foreach ( RunGridEntry run in Runs ) {
                             string status = GetCellStatus( run, step.Id );
-                            <td class="text-center p-1" role="button" tabindex="0"
-                                @onclick="( ) => OnCellSelected.InvokeAsync( ( run.RunId, step.Id ) )"
-                                @onkeydown="( e ) => HandleCellKeyDown( e, run.RunId, step.Id )"
-                                @onkeydown:preventDefault="true"
-                                title="@status"
-                                aria-label="@step.Name — @status">
-                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( status )">
-                                    @GetStatusIcon( status )
-                                </span>
+                            <td class="text-center p-1">
+                                <button type="button"
+                                        class="btn btn-sm p-0 border-0 bg-transparent"
+                                        @onclick="( ) => OnCellSelected.InvokeAsync( ( run.RunId, step.Id ) )"
+                                        title="@status"
+                                        aria-label="@step.Name — @status">
+                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( status )">
+                                        @GetStatusIcon( status )
+                                    </span>
+                                </button>
                             </td>
                         }
                     </tr>
@@ -61,12 +62,6 @@
 
     private static string GetCellStatus( RunGridEntry run, long stepId ) =>
         run.StepStatuses.TryGetValue( stepId, out string? s ) ? s : "Pending";
-
-    private async Task HandleCellKeyDown( KeyboardEventArgs e, Guid runId, long stepId ) {
-        if (e.Key is "Enter" or " ") {
-            await OnCellSelected.InvokeAsync( (runId, stepId) );
-        }
-    }
 
     private static string GetStatusIcon( string status ) => status switch {
         "Completed" => "✓",

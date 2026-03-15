@@ -128,20 +128,15 @@ public sealed partial class OutputStreamingGrpcService(
 
                     RunLogRateState rateState = _logRateState.GetOrAdd( workflowRunId, _ => new RunLogRateState( ) );
                     if (rateState.TryAcquire( out int dropped )) {
+                        string lineText = message.Line.Text;
                         if (dropped > 0) {
-                            workflowBroadcaster.Publish( new LogAppendedEvent(
-                                WorkflowRunId: workflowRunId,
-                                StepId: message.StepId,
-                                JobId: jobId,
-                                Line: $"... {dropped} lines batched ...",
-                                Timestamp: DateTime.UtcNow
-                            ) );
+                            lineText = $"... {dropped} lines batched ...\n{lineText}";
                         }
                         workflowBroadcaster.Publish( new LogAppendedEvent(
                             WorkflowRunId: workflowRunId,
                             StepId: message.StepId,
                             JobId: jobId,
-                            Line: message.Line.Text,
+                            Line: lineText,
                             Timestamp: DateTime.UtcNow
                         ) );
                     }

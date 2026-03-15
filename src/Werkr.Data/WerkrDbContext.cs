@@ -613,6 +613,7 @@ public class WerkrDbContext : DbContext {
                 "Sequential" or "Parallel" => ControlStatement.Default,
                 "ConditionalIf" => ControlStatement.If,
                 "ConditionalElseIf" => ControlStatement.ElseIf,
+                "ConditionalElse" => ControlStatement.Else,
                 "ConditionalWhile" => ControlStatement.While,
                 "ConditionalDo" => ControlStatement.Do,
                 _ => Enum.TryParse<ControlStatement>( v, ignoreCase: true, out ControlStatement parsed )

@@ -17,8 +17,8 @@ public sealed partial class WorkflowEventBroadcaster( ILogger<WorkflowEventBroad
 
     /// <summary>
     /// Creates a new subscription. The caller reads from the returned
-    /// <see cref="ChannelReader{T}"/> and must call <see cref="Unsubscribe"/>
-    /// (or dispose the <see cref="WorkflowEventSubscription"/>) when done.
+    /// <see cref="ChannelReader{T}"/> and must dispose the returned
+    /// <see cref="WorkflowEventSubscription"/> when done.
     /// </summary>
     public WorkflowEventSubscription Subscribe( ) {
         Channel<WorkflowEvent> channel = Channel.CreateBounded<WorkflowEvent>(
