@@ -103,13 +103,12 @@
                             <td>@(key.ExpiresUtc?.ToString( "yyyy-MM-dd HH:mm" ) ?? "Never")</td>
                             <td>@(key.LastUsedUtc?.ToString( "yyyy-MM-dd HH:mm" ) ?? "—")</td>
                             <td>
-                                @if ( key.IsRevoked ) {
-                                    <span class="badge bg-danger">Revoked</span>
-                                } else if ( key.ExpiresUtc.HasValue && key.ExpiresUtc.Value < DateTime.UtcNow ) {
-                                    <span class="badge bg-warning text-dark">Expired</span>
-                                } else {
-                                    <span class="badge bg-success">Active</span>
+                                @{
+                                    string apiKeyStatus = key.IsRevoked ? "Revoked"
+                                        : ( key.ExpiresUtc.HasValue && key.ExpiresUtc.Value < DateTime.UtcNow ) ? "Expired"
+                                        : "Active";
                                 }
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( apiKeyStatus )">@apiKeyStatus</span>
                             </td>
                             <td>
                                 @if ( !key.IsRevoked ) {

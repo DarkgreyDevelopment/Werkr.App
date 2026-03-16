@@ -37,15 +37,15 @@ public class ActionParameterEditorTests : BunitContext {
     }
 
     /// <summary>
-    /// Verifies that all 27 action options appear in the dropdown.
+    /// Verifies that all 31 action options appear in the dropdown.
     /// </summary>
     [TestMethod]
-    public void Renders_All_TwentySeven_Actions_In_Dropdown( ) {
+    public void Renders_All_ThirtyOne_Actions_In_Dropdown( ) {
         IRenderedComponent<ActionParameterEditor> cut = Render<ActionParameterEditor>( );
 
         // All <option> except the "— select action —" placeholder
         IReadOnlyList<AngleSharp.Dom.IElement> options = cut.FindAll( "select#actionSubType option[value]:not([value=''])" );
-        Assert.HasCount( 27, options, "Should list all 27 actions." );
+        Assert.HasCount( 31, options, "Should list all 31 actions." );
     }
 
     /// <summary>

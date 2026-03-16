@@ -50,9 +50,16 @@
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 Executing...
             </span>
-        } else {
+        } else if (_agentStatus is "Connected") {
             <span class="badge bg-success">Ready</span>
+        } else {
+            <span class="badge bg-secondary">Not Ready</span>
         }
+
+        @* Agent connection status — derived from the health monitor *@
+        <span class="badge @GetAgentStatusBadgeClass( _agentStatus )">
+            @(_agentStatus ?? "Unknown")
+        </span>
     </div>
 
     @* Output Area — fills remaining height *@
@@ -102,6 +109,7 @@
     private bool _isExecuting;
     private CancellationTokenSource? _cts;
     private ElementReference _outputDiv;
+    private string? _agentStatus;
 
     // StatusBanner state
     private bool _hasError;
@@ -118,6 +126,21 @@
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true
     };
+
+    protected override async Task OnParametersSetAsync( ) {
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            AgentDetailDto? agent = await client.GetFromJsonAsync<AgentDetailDto>(
+                $"/api/agents/{AgentId}" );
+            _agentStatus = agent?.Status;
+        } catch (Exception ex) {
+            Logger.LogWarning( ex, "Failed to load agent status for {AgentId}.", AgentId );
+            _agentStatus = "Unknown";
+        }
+    }
+
+    private static string GetAgentStatusBadgeClass( string? status ) =>
+        StatusDisplayHelper.GetStatusBadgeClass( status );
 
     private async Task ExecuteCommand( ) {
         if (string.IsNullOrWhiteSpace( _command )) {
@@ -148,7 +171,7 @@
         _cts = new CancellationTokenSource( );
 
         try {
-            using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            using HttpClient client = HttpClientFactory.CreateClient( "ApiServiceSse" );
 
             // Map OperatorType to TaskActionType int for the new unified execution model
             int actionType = parsedType switch {
@@ -168,7 +191,8 @@
             using HttpResponseMessage response = await client.SendAsync(
                 httpRequest, HttpCompletionOption.ResponseHeadersRead, _cts.Token );
 
-            if (response.IsSuccessStatusCode) {
+            if (response.IsSuccessStatusCode
+                && response.Content.Headers.ContentType?.MediaType == "text/event-stream") {
                 await using System.IO.Stream stream = await response.Content.ReadAsStreamAsync( _cts.Token );
                 using System.IO.StreamReader reader = new( stream );
 
@@ -250,6 +274,13 @@
 
                     // empty line = end of event (already handled above)
                 }
+            } else if (response.IsSuccessStatusCode) {
+                // 202 Accepted — task created but no agent output stream is available
+                _outputLines.Add( new OutputLine( "Warning",
+                    "Task submitted but the agent's output stream is not connected. Output will not appear in real time.",
+                    DateTime.UtcNow.ToString( "O" ) ) );
+                ShowError( "warning", "No Live Output",
+                    "The agent's output stream is not connected. The command was submitted but output cannot be displayed." );
             } else {
                 string body = await response.Content.ReadAsStringAsync( _cts.Token );
                 string msg = string.IsNullOrWhiteSpace( body )

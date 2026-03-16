@@ -3,116 +3,57 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'docs/**'
+      - 'src/**/*.csproj'
+      - '.github/workflows/DocFX_gh-pages.yml'
+
+permissions:
+  contents: write
+
 jobs:
-  document:
-    runs-on: windows-latest
-    env:
-      DOTNET_NOLOGO: true
-      DOCFX_SOURCE_BRANCH_NAME: ${{ github.ref }}
-    strategy:
-      matrix:
-        dotnet-version: [ '7.0.x' ]
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v2
-      - name: Check out Werkr.Common
-        uses: actions/checkout@v2
-        with:
-          repository: DarkgreyDevelopment/Werkr.Common
-          path: src/Werkr.Common
-          token: ${{ secrets.CI_TOKEN }}
-      - name: Check out Werkr.Common.Configuration
-        uses: actions/checkout@v2
-        with:
-          repository: DarkgreyDevelopment/Werkr.Common.Configuration
-          path: src/Werkr.Common.Configuration
-          token: ${{ secrets.CI_TOKEN }}
-      - name: Check out Werkr.Installers
-        uses: actions/checkout@v2
-        with:
-          repository: DarkgreyDevelopment/Werkr.Installers
-          path: src/Werkr.Installers
-          token: ${{ secrets.CI_TOKEN }}
-      - name: Check out Werkr.Server
-        uses: actions/checkout@v2
-        with:
-          repository: DarkgreyDevelopment/Werkr.Server
-          path: src/Werkr.Server
-          token: ${{ secrets.CI_TOKEN }}
-      - name: Check out Werkr.Agent
-        uses: actions/checkout@v2
-        with:
-          repository: DarkgreyDevelopment/Werkr.Agent
-          path: src/Werkr.Agent
-          token: ${{ secrets.CI_TOKEN }}
-      - name: Get DocFX
-        shell: pwsh
-        run: |
-          $IWRParams = @{
-            Uri     = "https://github.com/dotnet/docfx/releases/download/v2.59.4/docfx.zip"
-            OutFile = '${{ github.workspace }}/docfx.zip'
-            Method  = 'Get'
-          }
-          Invoke-WebRequest @IWRParams
-          Expand-Archive -Path '${{ github.workspace }}/docfx.zip' -DestinationPath '${{ github.workspace }}/docfx'
-      - name: Custom File processing.
-        shell: pwsh
-        run: |
-          $DocsPath = '${{ github.workspace }}/docs'
-          $CopyParams = @{
-            Verbose     = $true
-            Force       = $true
-          }
-          copy-item -Path '${{ github.workspace }}/LICENSE' -Destination "$DocsPath/LICENSE.md" @CopyParams
-          copy-item -Path '${{ github.workspace }}/README.md' -Destination "$DocsPath/index.md" @CopyParams
-          copy-Item -Path '${{ github.workspace }}/docs/docfx/*' -Destination $DocsPath -Exclude README.md -Verbose -Recurse
-      - name: Generate Documentation and build site.
-        shell: pwsh
-        run: |
-          Write-Host "`nGenerating API documentation:"
-          & '${{ github.workspace }}/docfx/docfx.exe' metadata '${{ github.workspace }}/docs/docfx.json'
-          Write-Host "`nCreating docfx site:"
-          & '${{ github.workspace }}/docfx/docfx.exe' '${{ github.workspace }}/docs/docfx.json'
-      - name: Compress Site for upload as Artifact.
-        shell: pwsh
-        run: |
-          $CopyToSiteParams = @{
-            Destination = '${{ github.workspace }}/docs/_site'
-            Verbose     = $true
-          }
-          copy-item -Path '${{ github.workspace }}/docs/CNAME' @CopyToSiteParams
-          copy-item -Path '${{ github.workspace }}/docs/_config.yml' @CopyToSiteParams
-          Write-Host "`nCompressing Site for Artifact Upload"
-          Compress-Archive -Path '${{ github.workspace }}/docs/_site' -DestinationPath '${{ github.workspace }}/docs/_site.zip'
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v1
-        with:
-          name: site
-          path: ${{ github.workspace }}/docs/_site.zip
-  publish:
-    needs: document
+  build-and-publish:
     runs-on: ubuntu-latest
     env:
       DOTNET_NOLOGO: true
-      DOCFX_SOURCE_BRANCH_NAME: ${{ github.ref }}
-    strategy:
-      matrix:
-        dotnet-version: [ '7.0.x' ]
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Download Artifacts
-        uses: actions/download-artifact@v1
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          name: site
-          path: ${{ github.workspace }}/download
-      - name: Verify WorkSpace Contents
-        shell: pwsh
+          global-json-file: global.json
+
+      - name: Install DocFX
+        run: dotnet tool install -g docfx --version 2.78.3
+
+      - name: Prepare documentation sources
         run: |
-          Write-Host "`Extracting Site."
-          Expand-Archive -Path '${{ github.workspace }}/download/_site.zip' -DestinationPath '${{ github.workspace }}'
-      - name: Publish Site Content
+          cp LICENSE docs/LICENSE.md
+          cp README.md docs/index.md
+          cp -r docs/docfx/* docs/ 2>/dev/null || true
+
+      - name: Generate API metadata
+        run: docfx metadata docs/docfx.json
+
+      - name: Build documentation site
+        run: docfx docs/docfx.json
+
+      - name: Copy CNAME and config
+        run: |
+          cp docs/CNAME docs/_site/ 2>/dev/null || true
+          cp docs/_config.yml docs/_site/ 2>/dev/null || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docfx-site
+          path: docs/_site
+
+      - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          BRANCH: gh-pages
-          FOLDER: ${{ github.workspace }}/_site
+          branch: gh-pages
+          folder: docs/_site

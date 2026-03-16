@@ -13,5 +13,6 @@ public sealed record WorkflowStepDto(
     string DependencyMode,
     IReadOnlyList<StepDependencyDto> Dependencies,
     string? InputVariableName = null,
-    string? OutputVariableName = null
+    string? OutputVariableName = null,
+    string? TaskName = null
 );

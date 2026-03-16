@@ -18,7 +18,7 @@ namespace Werkr.Data.Migrations.Postgres
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("werkr")
-                .HasAnnotation("ProductVersion", "10.0.3")
+                .HasAnnotation("ProductVersion", "10.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -737,6 +737,70 @@ namespace Werkr.Data.Migrations.Postgres
                     b.ToTable("weekly_recurrence", "werkr");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Settings.SavedFilter", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Created")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CriteriaJson")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("criteria_json");
+
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_shared");
+
+                    b.Property<string>("LastUpdated")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("PageKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("page_key");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_saved_filters");
+
+                    b.HasIndex("PageKey", "IsShared")
+                        .HasDatabaseName("ix_saved_filters_page_key_is_shared");
+
+                    b.HasIndex("PageKey", "OwnerId")
+                        .HasDatabaseName("ix_saved_filters_page_key_owner_id");
+
+                    b.ToTable("saved_filters", "werkr");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>
                 {
                     b.Property<long>("TaskId")
@@ -822,6 +886,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("start_time");
 
+                    b.Property<long?>("StepId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("step_id");
+
                     b.Property<bool>("Success")
                         .HasColumnType("boolean")
                         .HasColumnName("success");
@@ -854,11 +922,14 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("ScheduleId")
                         .HasDatabaseName("ix_jobs_schedule_id");
 
+                    b.HasIndex("StepId")
+                        .HasDatabaseName("ix_jobs_step_id");
+
                     b.HasIndex("TaskId")
                         .HasDatabaseName("ix_jobs_task_id");
 
-                    b.HasIndex("WorkflowRunId")
-                        .HasDatabaseName("ix_jobs_workflow_run_id");
+                    b.HasIndex("WorkflowRunId", "StepId")
+                        .HasDatabaseName("IX_jobs_WorkflowRunId_StepId");
 
                     b.ToTable("jobs", "werkr");
                 });
@@ -971,6 +1042,10 @@ namespace Werkr.Data.Migrations.Postgres
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("Annotations")
+                        .HasColumnType("text")
+                        .HasColumnName("annotations");
+
                     b.Property<string>("Created")
                         .IsRequired()
                         .HasColumnType("text")
@@ -996,6 +1071,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
+
+                    b.Property<string>("TargetTags")
+                        .HasColumnType("text")
+                        .HasColumnName("target_tags");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
@@ -1254,6 +1333,88 @@ namespace Werkr.Data.Migrations.Postgres
                     b.ToTable("workflow_step_dependencies", "werkr");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStepExecution", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt");
+
+                    b.Property<string>("Created")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created");
+
+                    b.Property<string>("EndTime")
+                        .HasColumnType("text")
+                        .HasColumnName("end_time");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<string>("LastUpdated")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("SkipReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("skip_reason");
+
+                    b.Property<string>("StartTime")
+                        .HasColumnType("text")
+                        .HasColumnName("start_time");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<long>("StepId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("step_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<Guid>("WorkflowRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workflow_run_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflow_step_executions");
+
+                    b.HasIndex("JobId")
+                        .HasDatabaseName("ix_workflow_step_executions_job_id");
+
+                    b.HasIndex("StepId")
+                        .HasDatabaseName("ix_workflow_step_executions_step_id");
+
+                    b.HasIndex("WorkflowRunId")
+                        .HasDatabaseName("ix_workflow_step_executions_workflow_run_id");
+
+                    b.HasIndex("WorkflowRunId", "StepId", "Attempt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_workflow_step_executions_workflow_run_id_step_id_attempt");
+
+                    b.ToTable("workflow_step_executions", "werkr");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVariable", b =>
                 {
                     b.Property<long>("Id")
@@ -1477,6 +1638,12 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasForeignKey("ScheduleId")
                         .HasConstraintName("fk_jobs_schedules_schedule_id");
 
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowStep", "Step")
+                        .WithMany()
+                        .HasForeignKey("StepId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_jobs_workflow_steps_step_id");
+
                     b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
@@ -1492,6 +1659,8 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("AgentConnection");
 
                     b.Navigation("Schedule");
+
+                    b.Navigation("Step");
 
                     b.Navigation("Task");
 
@@ -1618,6 +1787,35 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Step");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStepExecution", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Tasks.WerkrJob", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflow_step_executions_jobs_job_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowStep", "Step")
+                        .WithMany()
+                        .HasForeignKey("StepId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_step_executions_workflow_steps_step_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowRun", "WorkflowRun")
+                        .WithMany("StepExecutions")
+                        .HasForeignKey("WorkflowRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_step_executions_workflow_runs_workflow_run_id");
+
+                    b.Navigation("Job");
+
+                    b.Navigation("Step");
+
+                    b.Navigation("WorkflowRun");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVariable", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
@@ -1688,6 +1886,8 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Jobs");
 
                     b.Navigation("RunVariables");
+
+                    b.Navigation("StepExecutions");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStep", b =>

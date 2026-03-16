@@ -9,6 +9,7 @@ using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Entities;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
+using Werkr.Data.Entities.Settings;
 using Werkr.Data.Entities.Tasks;
 using Werkr.Data.Entities.Workflows;
 
@@ -99,6 +100,12 @@ public class WerkrDbContext : DbContext {
     /// <summary>Workflow-to-schedule many-to-many join table.</summary>
     public DbSet<WorkflowSchedule> WorkflowSchedules => Set<WorkflowSchedule>( );
 
+    /// <summary>Per-run-per-step execution tracking (supports retry attempts).</summary>
+    public DbSet<WorkflowStepExecution> WorkflowStepExecutions => Set<WorkflowStepExecution>( );
+
+    /// <summary>Named saved filter views (personal and shared).</summary>
+    public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>( );
+
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
         base.OnModelCreating( modelBuilder );
@@ -130,8 +137,8 @@ public class WerkrDbContext : DbContext {
                 );
             allowedPathsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -185,8 +192,8 @@ public class WerkrDbContext : DbContext {
                 );
             prop.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -199,8 +206,8 @@ public class WerkrDbContext : DbContext {
                 );
             allowedPathsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -215,8 +222,8 @@ public class WerkrDbContext : DbContext {
                 );
             targetTagsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -231,6 +238,22 @@ public class WerkrDbContext : DbContext {
                 new ValueComparer<string[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item ) ),
+                    v => v == null ? null : v.ToArray( )
+                )
+            );
+        } );
+
+        // Workflow.TargetTags stored as JSON
+        _ = modelBuilder.Entity<Workflow>( entity => {
+            PropertyBuilder<string[]?> targetTagsProp = entity.Property( e => e.TargetTags )
+                .HasConversion(
+                    v => v == null ? null : JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
+                    v => v == null ? null : JsonSerializer.Deserialize<string[]>(v, (JsonSerializerOptions?)null)
+                );
+            targetTagsProp.Metadata.SetValueComparer(
+                new ValueComparer<string[]?>(
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? null : v.ToArray( )
                 )
             );
@@ -386,6 +409,46 @@ public class WerkrDbContext : DbContext {
                 .HasForeignKey( e => e.ProducedByJobId )
                 .OnDelete( DeleteBehavior.SetNull );
         } );
+
+        // WerkrJob — StepId FK and index
+        _ = modelBuilder.Entity<WerkrJob>( entity => {
+            _ = entity.HasIndex( e => new { e.WorkflowRunId, e.StepId } )
+                .HasDatabaseName( "IX_jobs_WorkflowRunId_StepId" );
+
+            _ = entity.HasOne( e => e.Step )
+                .WithMany( )
+                .HasForeignKey( e => e.StepId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // WorkflowStepExecution — per-run-per-step execution tracking
+        _ = modelBuilder.Entity<WorkflowStepExecution>( entity => {
+            _ = entity.HasIndex( e => new { e.WorkflowRunId, e.StepId, e.Attempt } )
+                .IsUnique( );
+
+            _ = entity.HasIndex( e => e.WorkflowRunId );
+
+            _ = entity.HasOne( e => e.WorkflowRun )
+                .WithMany( r => r.StepExecutions )
+                .HasForeignKey( e => e.WorkflowRunId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.Step )
+                .WithMany( )
+                .HasForeignKey( e => e.StepId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.Job )
+                .WithMany( )
+                .HasForeignKey( e => e.JobId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // SavedFilter — named filter views per page per user
+        _ = modelBuilder.Entity<SavedFilter>( entity => {
+            _ = entity.HasIndex( e => new { e.PageKey, e.OwnerId } );
+            _ = entity.HasIndex( e => new { e.PageKey, e.IsShared } );
+        } );
     }
 
     /// <inheritdoc/>
@@ -451,6 +514,10 @@ public class WerkrDbContext : DbContext {
         // VariableSource ↔ string
         _ = configurationBuilder.Properties<VariableSource>( )
             .HaveConversion<VariableSourceStringConverter>( );
+
+        // StepExecutionStatus ↔ string
+        _ = configurationBuilder.Properties<Common.Models.StepExecutionStatus>( )
+            .HaveConversion<StepExecutionStatusStringConverter>( );
     }
 
     /// <inheritdoc/>
@@ -539,8 +606,21 @@ public class WerkrDbContext : DbContext {
 
     private sealed class ControlStatementStringConverter( )
         : ValueConverter<ControlStatement, string>(
-            v => v.ToString( ),
-            v => Enum.Parse<ControlStatement>( v ) );
+            v => v == ControlStatement.Default ? "Default" : v.ToString( ),
+            v => ParseControlStatement( v ) ) {
+        private static ControlStatement ParseControlStatement( string v ) =>
+            v switch {
+                "Sequential" or "Parallel" => ControlStatement.Default,
+                "ConditionalIf" => ControlStatement.If,
+                "ConditionalElseIf" => ControlStatement.ElseIf,
+                "ConditionalElse" => ControlStatement.Else,
+                "ConditionalWhile" => ControlStatement.While,
+                "ConditionalDo" => ControlStatement.Do,
+                _ => Enum.TryParse<ControlStatement>( v, ignoreCase: true, out ControlStatement parsed )
+                    ? parsed
+                    : ControlStatement.Default,
+            };
+    }
 
     private sealed class DependencyModeStringConverter( )
         : ValueConverter<DependencyMode, string>(
@@ -571,4 +651,9 @@ public class WerkrDbContext : DbContext {
         : ValueConverter<VariableSource, string>(
             v => v.ToString( ),
             v => Enum.Parse<VariableSource>( v ) );
+
+    private sealed class StepExecutionStatusStringConverter( )
+        : ValueConverter<Common.Models.StepExecutionStatus, string>(
+            v => v.ToString( ),
+            v => Enum.Parse<Common.Models.StepExecutionStatus>( v ) );
 }

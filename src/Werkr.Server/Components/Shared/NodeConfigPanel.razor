@@ -1,0 +1,217 @@
+@rendermode InteractiveServer
+@using Werkr.Common.Models
+
+<div class="node-config-panel d-flex flex-column h-100 @( SelectedStepId.HasValue ? "open" : "" )">
+    @if ( SelectedStepId.HasValue ) {
+        <div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                @if ( SelectedStepId.Value < 0 ) {
+                    <span class="badge bg-info me-1">New</span>
+                }
+                Step @( SelectedStepId.Value < 0 ? $"(temp {SelectedStepId.Value})" : $"#{SelectedStepId.Value}" )
+            </h6>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="Close" title="Close">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+
+        <div class="flex-grow-1 overflow-auto px-3 py-2">
+            @* ── Task ── *@
+            <div class="mb-3">
+                <label class="form-label">Task</label>
+                @if ( SelectedStepId.Value < 0 ) {
+                    <div class="d-flex gap-1">
+                        <select class="form-select form-select-sm" value="@_taskId" @onchange="OnTaskIdChanged">
+                            <option value="0">— select task —</option>
+                            @if ( Tasks is not null ) {
+                                @foreach ( TaskDto t in Tasks ) {
+                                    <option value="@t.Id">@t.Name</option>
+                                }
+                            }
+                        </select>
+                        <button type="button" class="btn btn-outline-success btn-sm text-nowrap"
+                                @onclick="OnCreateTask"
+                                title="Create new task">
+                            + New
+                        </button>
+                    </div>
+                } else {
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="form-control-plaintext form-control-sm">@_taskName</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm text-nowrap"
+                                @onclick="OnEditTask">
+                            Edit Task
+                        </button>
+                    </div>
+                }
+            </div>
+
+            @* ── Control Statement ── *@
+            <div class="mb-3">
+                <label class="form-label">Control Statement</label>
+                <select class="form-select form-select-sm" value="@_controlStatement" @onchange="OnControlChanged">
+                    <option>Default</option>
+                    <option>If</option>
+                    <option>ElseIf</option>
+                    <option>Else</option>
+                    <option>While</option>
+                    <option>Do</option>
+                </select>
+            </div>
+
+            @* ── Condition ── *@
+            @if ( _controlStatement is "If" or "ElseIf" or "While" or "Do" ) {
+                <div class="mb-3">
+                    <label class="form-label">Condition Expression</label>
+                    <ConditionBuilder Expression="@_conditionExpression"
+                                      ExpressionChanged="@( async ( string? expr ) => { _conditionExpression = expr; await EmitFieldChange( "conditionExpression", expr ); } )" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Max Iterations</label>
+                    <input type="number" class="form-control form-control-sm"
+                           value="@_maxIterations"
+                           @onchange="OnMaxIterationsChanged" />
+                </div>
+            }
+
+            @* ── Dependency Mode ── *@
+            <div class="mb-3">
+                <label class="form-label">Dependency Mode</label>
+                <select class="form-select form-select-sm" value="@_dependencyMode" @onchange="OnDependencyModeChanged">
+                    <option>All</option>
+                    <option>Any</option>
+                </select>
+            </div>
+
+            @* ── Variable Names ── *@
+            <div class="mb-3">
+                <label class="form-label">Input Variable</label>
+                <input type="text" class="form-control form-control-sm"
+                       placeholder="Optional"
+                       value="@_inputVariableName"
+                       @onchange="OnInputVariableChanged" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Output Variable</label>
+                <input type="text" class="form-control form-control-sm"
+                       placeholder="Optional"
+                       value="@_outputVariableName"
+                       @onchange="OnOutputVariableChanged" />
+            </div>
+
+            @* ── Dependencies ── *@
+            @if ( Dependencies is { Count: > 0 } ) {
+                <div class="mb-3">
+                    <label class="form-label">Dependencies</label>
+                    <ul class="list-group list-group-flush">
+                        @foreach ( long depId in Dependencies ) {
+                            <li class="list-group-item list-group-item-sm d-flex justify-content-between align-items-center px-2 py-1">
+                                <span class="small">Step @depId</span>
+                                <button class="btn btn-outline-danger btn-sm py-0 px-1"
+                                        @onclick="( ) => OnRemoveDependency.InvokeAsync( depId )">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @* ── Delete ── *@
+            <div class="mt-4">
+                <button type="button" class="btn btn-outline-danger btn-sm w-100"
+                        @onclick="OnDeleteStep">
+                    <i class="bi bi-trash me-1"></i> Delete Step
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public long? SelectedStepId { get; set; }
+    [Parameter] public IReadOnlyList<TaskDto>? Tasks { get; set; }
+    [Parameter] public IReadOnlyList<long>? Dependencies { get; set; }
+
+    // Initial values set from parent on selection
+    [Parameter] public long TaskId { get; set; }
+    [Parameter] public string? TaskName { get; set; }
+    [Parameter] public string ControlStatement { get; set; } = "Default";
+    [Parameter] public string? ConditionExpression { get; set; }
+    [Parameter] public int MaxIterations { get; set; } = 100;
+    [Parameter] public string DependencyMode { get; set; } = "All";
+    [Parameter] public string? InputVariableName { get; set; }
+    [Parameter] public string? OutputVariableName { get; set; }
+
+    [Parameter] public EventCallback<(string Field, object? Value)> OnFieldChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnEditTaskRequested { get; set; }
+    [Parameter] public EventCallback OnCreateTaskRequested { get; set; }
+    [Parameter] public EventCallback<long> OnRemoveDependency { get; set; }
+
+    private long _taskId;
+    private string _taskName = "";
+    private string _controlStatement = "Default";
+    private string? _conditionExpression;
+    private int _maxIterations = 100;
+    private string _dependencyMode = "All";
+    private string? _inputVariableName;
+    private string? _outputVariableName;
+
+    protected override void OnParametersSet( ) {
+        _taskId = TaskId;
+        _taskName = TaskName ?? "";
+        _controlStatement = ControlStatement;
+        _conditionExpression = ConditionExpression;
+        _maxIterations = MaxIterations;
+        _dependencyMode = DependencyMode;
+        _inputVariableName = InputVariableName;
+        _outputVariableName = OutputVariableName;
+    }
+
+    private async Task Close( ) => await OnClose.InvokeAsync( );
+    private async Task OnDeleteStep( ) => await OnDelete.InvokeAsync( );
+    private async Task OnEditTask( ) => await OnEditTaskRequested.InvokeAsync( );
+    private async Task OnCreateTask( ) => await OnCreateTaskRequested.InvokeAsync( );
+
+    private async Task OnTaskIdChanged( ChangeEventArgs e ) {
+        if (long.TryParse( e.Value?.ToString( ), out long taskId )) {
+            _taskId = taskId;
+            await EmitFieldChange( "taskId", taskId );
+        }
+    }
+
+    private async Task OnControlChanged( ChangeEventArgs e ) {
+        _controlStatement = e.Value?.ToString( ) ?? "Default";
+        await EmitFieldChange( "controlStatement", _controlStatement );
+    }
+
+    private async Task OnMaxIterationsChanged( ChangeEventArgs e ) {
+        if (int.TryParse( e.Value?.ToString( ), out int val )) {
+            _maxIterations = val;
+            await EmitFieldChange( "maxIterations", val );
+        }
+    }
+
+    private async Task OnDependencyModeChanged( ChangeEventArgs e ) {
+        _dependencyMode = e.Value?.ToString( ) ?? "All";
+        await EmitFieldChange( "dependencyMode", _dependencyMode );
+    }
+
+    private async Task OnInputVariableChanged( ChangeEventArgs e ) {
+        _inputVariableName = e.Value?.ToString( );
+        await EmitFieldChange( "inputVariableName", _inputVariableName );
+    }
+
+    private async Task OnOutputVariableChanged( ChangeEventArgs e ) {
+        _outputVariableName = e.Value?.ToString( );
+        await EmitFieldChange( "outputVariableName", _outputVariableName );
+    }
+
+    private async Task EmitFieldChange( string field, object? value ) {
+        await OnFieldChanged.InvokeAsync( (field, value) );
+    }
+}

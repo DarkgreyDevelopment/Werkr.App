@@ -339,14 +339,27 @@ public sealed partial class ScheduleService(
     /// </summary>
     public async Task<IReadOnlyList<Schedule>> GetAllAsync( CancellationToken ct = default ) {
         List<DbSchedule> dbSchedules = await _db.Schedules.ToListAsync( ct );
-        List<Schedule> result = new( dbSchedules.Count );
-        foreach (DbSchedule dbSchedule in dbSchedules) {
-            result.Add( await BuildComposite(
-                dbSchedule,
-                ct
-            ) );
+        return await BuildCompositeBatch( dbSchedules, ct );
+    }
+
+    /// <summary>
+    /// Loads multiple <see cref="Schedule"/> composites by their IDs in batch queries
+    /// (one query per entity type instead of per schedule).
+    /// </summary>
+    public async Task<IReadOnlyList<Schedule>> GetByIdsAsync(
+        IEnumerable<Guid> scheduleIds,
+        CancellationToken ct = default
+    ) {
+        List<Guid> ids = [.. scheduleIds];
+        if (ids.Count == 0) {
+            return [];
         }
-        return result;
+
+        List<DbSchedule> dbSchedules = await _db.Schedules
+            .Where(s => ids.Contains(s.Id))
+            .ToListAsync(ct);
+
+        return await BuildCompositeBatch( dbSchedules, ct );
     }
 
     /// <summary>
@@ -376,6 +389,81 @@ public sealed partial class ScheduleService(
 
         return ScheduleCalculator.CalculateOccurrences(
             schedule, windowEnd, holidayDates, schedule.HolidayCalendarMode );
+    }
+
+    /// <summary>
+    /// Batch-assembles <see cref="Schedule"/> composites from multiple <see cref="DbSchedule"/> entities,
+    /// loading all sub-entities with one query per entity type.
+    /// </summary>
+    private async Task<IReadOnlyList<Schedule>> BuildCompositeBatch(
+        List<DbSchedule> dbSchedules,
+        CancellationToken ct
+    ) {
+        if (dbSchedules.Count == 0) {
+            return [];
+        }
+
+        List<Guid> ids = [.. dbSchedules.Select(s => s.Id)];
+
+        Dictionary<Guid, StartDateTimeInfo> starts = await _db.StartDateTimeInfos
+            .Where(e => ids.Contains(e.ScheduleId))
+            .ToDictionaryAsync(e => e.ScheduleId, ct);
+
+        Dictionary<Guid, ExpirationDateTimeInfo> expirations = await _db.ExpirationDateTimeInfos
+            .Where(e => ids.Contains(e.ScheduleId))
+            .ToDictionaryAsync(e => e.ScheduleId, ct);
+
+        Dictionary<Guid, ScheduleRepeatOptions> repeatOpts = await _db.ScheduleRepeatOptions
+            .Where(e => ids.Contains(e.ScheduleId))
+            .ToDictionaryAsync(e => e.ScheduleId, ct);
+
+        Dictionary<Guid, DailyRecurrence> dailies = await _db.DailyRecurrences
+            .Where(e => ids.Contains(e.ScheduleId))
+            .ToDictionaryAsync(e => e.ScheduleId, ct);
+
+        Dictionary<Guid, WeeklyRecurrence> weeklies = await _db.WeeklyRecurrences
+            .Where(e => ids.Contains(e.ScheduleId))
+            .ToDictionaryAsync(e => e.ScheduleId, ct);
+
+        Dictionary<Guid, MonthlyRecurrence> monthlies = await _db.MonthlyRecurrences
+            .Where(e => ids.Contains(e.ScheduleId))
+            .ToDictionaryAsync(e => e.ScheduleId, ct);
+
+        Dictionary<Guid, ScheduleHolidayCalendar> holidayLinks = await _db.ScheduleHolidayCalendars
+            .Where(shc => ids.Contains(shc.ScheduleId))
+            .ToDictionaryAsync(shc => shc.ScheduleId, ct);
+
+        // Load any referenced holiday calendars
+        List<Guid> calendarIds = [.. holidayLinks.Values.Select(l => l.HolidayCalendarId).Distinct()];
+        Dictionary<Guid, HolidayCalendar> calendars = calendarIds.Count > 0
+            ? await _db.HolidayCalendars
+                .Where(hc => calendarIds.Contains(hc.Id))
+                .ToDictionaryAsync(hc => hc.Id, ct)
+            : [];
+
+        List<Schedule> result = new(dbSchedules.Count);
+        foreach (DbSchedule db in dbSchedules) {
+            Guid id = db.Id;
+            Schedule schedule = new()
+            {
+                DbSchedule = db,
+                StartDateTime = starts.GetValueOrDefault(id),
+                Expiration = expirations.GetValueOrDefault(id),
+                RepeatOptions = repeatOpts.GetValueOrDefault(id),
+                DailyRecurrence = dailies.GetValueOrDefault(id),
+                WeeklyRecurrence = weeklies.GetValueOrDefault(id),
+                MonthlyRecurrence = monthlies.GetValueOrDefault(id),
+            };
+
+            if (holidayLinks.TryGetValue( id, out ScheduleHolidayCalendar? link )) {
+                schedule.HolidayCalendarMode = link.Mode;
+                _ = calendars.TryGetValue( link.HolidayCalendarId, out HolidayCalendar? cal );
+                schedule.HolidayCalendar = cal;
+            }
+
+            result.Add( schedule );
+        }
+        return result;
     }
 
     /// <summary>

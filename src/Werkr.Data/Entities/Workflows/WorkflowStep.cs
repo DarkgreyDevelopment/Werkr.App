@@ -28,13 +28,13 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
     public int Order { get; set; }
 
     /// <summary>Control flow statement type for this step.</summary>
-    public ControlStatement ControlStatement { get; set; } = ControlStatement.Sequential;
+    public ControlStatement ControlStatement { get; set; } = ControlStatement.Default;
 
     /// <summary>
     /// Condition expression evaluated against prior step results.
     /// Supports: <c>$exitCode == 0</c>, <c>$exitCode != 0</c>, <c>$exitCode &gt; N</c>,
     /// <c>$? -eq $true</c>, <c>$? -eq $false</c>, and custom expressions.
-    /// Null/empty = always true (for Sequential steps).
+    /// Null/empty = always true (for Default steps).
     /// </summary>
     [MaxLength( 2000 )]
     public string? ConditionExpression { get; set; }

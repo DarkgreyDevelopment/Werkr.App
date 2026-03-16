@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
 using Serilog;
 using Serilog.Settings.Configuration;
 using Werkr.Common;
@@ -111,17 +112,55 @@ public class Program {
 
             _ = builder.Services.AddOutputCache( );
 
+            // SignalR — real-time workflow run event push to browser
+            _ = builder.Services.AddSignalR( );
+
+            // SSE-to-SignalR relay — bridges API workflow events to hub groups
+            _ = builder.Services.AddSingleton<JobEventRelayService>( );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<JobEventRelayService>( ) );
+            _ = builder.Services.AddHealthChecks( )
+                .AddCheck<JobEventRelayService>( "sse-relay" );
+
             // Server configuration cache — reads config from the DB instead of appsettings
             _ = builder.Services.AddSingleton<ServerConfigCache>( );
+
+            // Saved filter service — localStorage CRUD for personal filter views
+            _ = builder.Services.AddScoped<SavedFilterService>( );
 
             // Auth forwarding handler — self-mints JWT for outgoing API requests
             _ = builder.Services.AddTransient<AuthForwardingHandler>( );
 
-            // General-purpose HttpClient for the API service via service discovery
+            // General-purpose HttpClient for the API service via service discovery.
+            // The default standard resilience handler (10s attempt / 30s total) from
+            // ServiceDefaults is appropriate for normal request–response calls.
             _ = builder.Services.AddHttpClient( "ApiService", client => {
                 client.BaseAddress = new Uri( "https://api" );
             } )
             .AddHttpMessageHandler<AuthForwardingHandler>( );
+
+            // Dedicated SSE client for the long-lived event stream consumed by
+            // JobEventRelayService. The global ConfigureHttpClientDefaults in
+            // ServiceDefaults adds a standard resilience pipeline (10s attempt timeout)
+            // to all clients. We strip those handlers for the SSE client because SSE
+            // streams are indefinitely long-lived and the resilience timeouts would
+            // kill the connection. JobEventRelayService manages its own reconnect loop
+            // with exponential backoff (1s → 30s) and exposes a health check.
+            // Note: ResilienceHandler is a public type from Microsoft.Extensions.Http.Resilience.
+            _ = builder.Services.AddHttpClient( "ApiServiceSse", client => {
+                client.BaseAddress = new Uri( "https://api" );
+                client.Timeout = Timeout.InfiniteTimeSpan;
+            } )
+            .AddHttpMessageHandler<AuthForwardingHandler>( )
+            .ConfigureAdditionalHttpMessageHandlers( ( handlers, _ ) => {
+                // Remove the global default resilience pipeline (10s attempt timeout)
+                // added by ConfigureHttpClientDefaults — it kills long-lived SSE
+                // connections.
+                for (int i = handlers.Count - 1; i >= 0; i--) {
+                    if (handlers[i] is ResilienceHandler) {
+                        handlers.RemoveAt( i );
+                    }
+                }
+            } );
 
             // Background health monitor — keeps agent DB status in sync with actual reachability
             _ = builder.Services.AddHostedService<AgentHealthMonitorService>( );
@@ -165,6 +204,9 @@ public class Program {
                 .AddInteractiveServerRenderMode( );
 
             _ = app.MapDefaultEndpoints( );
+
+            // SignalR hub — workflow run real-time events
+            _ = app.MapHub<Werkr.Server.Hubs.WorkflowRunHub>( "/hubs/workflow-run" );
 
             // Auth endpoints — token exchange and API key management (Decision A1)
             _ = app.MapAuthEndpoints( );

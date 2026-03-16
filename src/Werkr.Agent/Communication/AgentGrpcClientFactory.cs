@@ -16,9 +16,11 @@ namespace Werkr.Agent.Communication;
 /// Provides typed client accessors and <see cref="CallOptions"/> with bearer token authentication.
 /// </summary>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve <see cref="WerkrDbContext"/>.</param>
+/// <param name="configuration">Application configuration for optional URL overrides.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class AgentGrpcClientFactory(
     IServiceScopeFactory scopeFactory,
+    IConfiguration configuration,
     ILogger<AgentGrpcClientFactory> logger
 ) : IDisposable {
     /// <summary>
@@ -114,7 +116,11 @@ public sealed partial class AgentGrpcClientFactory(
         };
 
         TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromMinutes( 5 );
-        DateTime deadline = DateTime.UtcNow + effectiveTimeout;
+
+        // Infinite or non-positive timeouts mean no deadline (used by output streaming).
+        DateTime? deadline = effectiveTimeout <= TimeSpan.Zero
+            ? null
+            : DateTime.UtcNow + effectiveTimeout;
 
         return new CallOptions(
             headers: metadata,
@@ -202,15 +208,30 @@ public sealed partial class AgentGrpcClientFactory(
 
             _connection = await ResolveConnectionAsync( ct );
 
+            // Prefer explicit API URL from config/environment (e.g. Aspire-injected
+            // Werkr__ApiUrl) over the stored registration URL, which may be stale after
+            // port changes or Aspire restarts.
+            string targetUrl = _connection.RemoteUrl;
+            string? apiUrlOverride = configuration["Werkr:ApiUrl"];
+            if (!string.IsNullOrWhiteSpace( apiUrlOverride )) {
+                if (logger.IsEnabled( LogLevel.Information )
+                    && !string.Equals( apiUrlOverride, targetUrl, StringComparison.OrdinalIgnoreCase )) {
+                    logger.LogInformation(
+                        "Overriding stored RemoteUrl {StoredUrl} with configured ApiUrl {OverrideUrl}.",
+                        targetUrl, apiUrlOverride );
+                }
+                targetUrl = apiUrlOverride;
+            }
+
             _channel?.Dispose( );
-            _channel = GrpcChannel.ForAddress( _connection.RemoteUrl, new GrpcChannelOptions {
+            _channel = GrpcChannel.ForAddress( targetUrl, new GrpcChannelOptions {
                 HttpHandler = CreateHttpHandler( )
             } );
 
             if (logger.IsEnabled( LogLevel.Information )) {
                 logger.LogInformation(
                     "Created gRPC channel to Server at {Url} (Connection: {ConnectionId}).",
-                    _connection.RemoteUrl, _connection.Id.ToString( ) );
+                    targetUrl, _connection.Id.ToString( ) );
             }
         } finally {
             _ = _initLock.Release( );

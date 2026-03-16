@@ -51,13 +51,23 @@ internal static class ShellEndpoints {
             (long taskId, Guid scheduleId) = await runNowService.CreateEphemeralTaskAsync(
                 request.Command, actionType, agentTags, ct );
 
-            // Push invalidation so the agent picks it up immediately
-            await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
-
-            // Subscribe to the output stream from the agent
+            // Subscribe to the output stream BEFORE pushing invalidation so the
+            // agent's subscription is registered before execution can begin.
             string scheduleIdStr = scheduleId.ToString( );
             Channel<OutputMessage>? channel =
                 await outputStreaming.SubscribeAsync( taskId, scheduleIdStr );
+
+            // If no agent stream is available, wait briefly for a reconnecting
+            // agent before falling back to the non-streaming 202 response.
+            if (channel is null) {
+                for (int retry = 0; retry < 3 && channel is null; retry++) {
+                    await Task.Delay( 1000, ct );
+                    channel = await outputStreaming.SubscribeAsync( taskId, scheduleIdStr );
+                }
+            }
+
+            // Push invalidation so the agent picks it up immediately
+            await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
 
             if (channel is null) {
                 // No agent stream available yet — return 202 with IDs so client can poll

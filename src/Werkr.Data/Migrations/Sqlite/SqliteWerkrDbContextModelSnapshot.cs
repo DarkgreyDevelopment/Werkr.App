@@ -16,7 +16,7 @@ namespace Werkr.Data.Migrations.Sqlite
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.4");
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
                 {
@@ -729,6 +729,68 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.ToTable("weekly_recurrence", (string)null);
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Settings.SavedFilter", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Created")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CriteriaJson")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("criteria_json");
+
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_shared");
+
+                    b.Property<string>("LastUpdated")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("PageKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("page_key");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_saved_filters");
+
+                    b.HasIndex("PageKey", "IsShared")
+                        .HasDatabaseName("ix_saved_filters_page_key_is_shared");
+
+                    b.HasIndex("PageKey", "OwnerId")
+                        .HasDatabaseName("ix_saved_filters_page_key_owner_id");
+
+                    b.ToTable("saved_filters", (string)null);
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>
                 {
                     b.Property<long>("TaskId")
@@ -814,6 +876,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("start_time");
 
+                    b.Property<long?>("StepId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("step_id");
+
                     b.Property<bool>("Success")
                         .HasColumnType("INTEGER")
                         .HasColumnName("success");
@@ -846,11 +912,14 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.HasIndex("ScheduleId")
                         .HasDatabaseName("ix_jobs_schedule_id");
 
+                    b.HasIndex("StepId")
+                        .HasDatabaseName("ix_jobs_step_id");
+
                     b.HasIndex("TaskId")
                         .HasDatabaseName("ix_jobs_task_id");
 
-                    b.HasIndex("WorkflowRunId")
-                        .HasDatabaseName("ix_jobs_workflow_run_id");
+                    b.HasIndex("WorkflowRunId", "StepId")
+                        .HasDatabaseName("IX_jobs_WorkflowRunId_StepId");
 
                     b.ToTable("jobs", (string)null);
                 });
@@ -959,6 +1028,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
+                    b.Property<string>("Annotations")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("annotations");
+
                     b.Property<string>("Created")
                         .IsRequired()
                         .HasColumnType("TEXT")
@@ -984,6 +1057,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasMaxLength(256)
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
+
+                    b.Property<string>("TargetTags")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_tags");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
@@ -1238,6 +1315,86 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.ToTable("workflow_step_dependencies", (string)null);
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStepExecution", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempt");
+
+                    b.Property<string>("Created")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("EndTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("end_time");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error_message");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("job_id");
+
+                    b.Property<string>("LastUpdated")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("SkipReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("skip_reason");
+
+                    b.Property<string>("StartTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("start_time");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.Property<long>("StepId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("step_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.Property<Guid>("WorkflowRunId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("workflow_run_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflow_step_executions");
+
+                    b.HasIndex("JobId")
+                        .HasDatabaseName("ix_workflow_step_executions_job_id");
+
+                    b.HasIndex("StepId")
+                        .HasDatabaseName("ix_workflow_step_executions_step_id");
+
+                    b.HasIndex("WorkflowRunId")
+                        .HasDatabaseName("ix_workflow_step_executions_workflow_run_id");
+
+                    b.HasIndex("WorkflowRunId", "StepId", "Attempt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_workflow_step_executions_workflow_run_id_step_id_attempt");
+
+                    b.ToTable("workflow_step_executions", (string)null);
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVariable", b =>
                 {
                     b.Property<long>("Id")
@@ -1459,6 +1616,12 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasForeignKey("ScheduleId")
                         .HasConstraintName("fk_jobs_schedules_schedule_id");
 
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowStep", "Step")
+                        .WithMany()
+                        .HasForeignKey("StepId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_jobs_workflow_steps_step_id");
+
                     b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
@@ -1474,6 +1637,8 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("AgentConnection");
 
                     b.Navigation("Schedule");
+
+                    b.Navigation("Step");
 
                     b.Navigation("Task");
 
@@ -1600,6 +1765,35 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("Step");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStepExecution", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Tasks.WerkrJob", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflow_step_executions_jobs_job_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowStep", "Step")
+                        .WithMany()
+                        .HasForeignKey("StepId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_step_executions_workflow_steps_step_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowRun", "WorkflowRun")
+                        .WithMany("StepExecutions")
+                        .HasForeignKey("WorkflowRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_step_executions_workflow_runs_workflow_run_id");
+
+                    b.Navigation("Job");
+
+                    b.Navigation("Step");
+
+                    b.Navigation("WorkflowRun");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVariable", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
@@ -1670,6 +1864,8 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("Jobs");
 
                     b.Navigation("RunVariables");
+
+                    b.Navigation("StepExecutions");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStep", b =>

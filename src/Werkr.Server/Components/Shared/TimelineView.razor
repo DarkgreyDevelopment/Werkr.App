@@ -1,0 +1,48 @@
+@* Chronological event list with Temporal-style step grouping. *@
+
+@if ( StepExecutions is null || StepExecutions.Count == 0 ) {
+    <EmptyState Message="No step events recorded yet." />
+} else {
+    <div class="timeline-view">
+        @foreach ( IGrouping<long, StepExecutionDto> group in StepExecutions.GroupBy( e => e.StepId ).OrderBy( g => g.Min( e => e.StartTime ?? DateTime.MaxValue ) ) ) {
+            StepExecutionDto latest = group.OrderByDescending( e => e.Attempt ).First( );
+            <div class="card mb-2">
+                <div class="card-header d-flex justify-content-between align-items-center py-1 px-3 @GetHeaderClass( latest.Status )"
+                     role="button" @onclick="( ) => OnStepSelected.InvokeAsync( latest )">
+                    <span>
+                        <strong>Step #@group.Key</strong>
+                        <span class="badge ms-2 @StatusDisplayHelper.GetStatusBadgeClass( latest.Status )">@latest.Status</span>
+                    </span>
+                    @if ( latest.StartTime.HasValue ) {
+                        <small class="text-muted">@latest.StartTime.Value.ToString( "T" )</small>
+                    }
+                </div>
+                @if ( group.Count( ) > 1 ) {
+                    <ul class="list-group list-group-flush">
+                        @foreach ( StepExecutionDto attempt in group.OrderBy( e => e.Attempt ) ) {
+                            <li class="list-group-item py-1 px-3 small">
+                                Attempt @attempt.Attempt — @attempt.Status
+                                @if ( attempt.StartTime.HasValue ) {
+                                    <span class="text-muted ms-2">@attempt.StartTime.Value.ToString( "T" )</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<StepExecutionDto>? StepExecutions { get; set; }
+    [Parameter] public EventCallback<StepExecutionDto> OnStepSelected { get; set; }
+
+    private static string GetHeaderClass( string status ) => status switch {
+        "Running" => "border-start border-primary border-3",
+        "Completed" => "border-start border-success border-3",
+        "Failed" => "border-start border-danger border-3",
+        "Skipped" => "border-start border-secondary border-3",
+        _ => "border-start border-warning border-3",
+    };
+}

@@ -15,6 +15,12 @@ service VariableService {
   // cron-triggered workflows where no API-side run was pre-created.
   // Request envelope contains CreateWorkflowRunRequest; response contains CreateWorkflowRunResponse.
   rpc CreateWorkflowRun (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Agent calls when workflow run finishes (success or failure).
+  // Request envelope contains CompleteWorkflowRunRequest; response contains CompleteWorkflowRunResponse.
+  rpc CompleteWorkflowRun (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Returns step execution records for a workflow run (used by agent for retry skip logic).
+  // Request envelope contains GetStepExecutionsRequest; response contains GetStepExecutionsResponse.
+  rpc GetStepExecutions (EncryptedEnvelope) returns (EncryptedEnvelope);
 }
 
 message GetVariableRequest {
@@ -53,4 +59,31 @@ message CreateWorkflowRunResponse {
   bool accepted = 1;
   string workflow_run_id = 2;  // API-generated run ID
   string error = 3;            // non-empty on rejection
+}
+
+message CompleteWorkflowRunRequest {
+  string connection_id = 1;
+  string workflow_run_id = 2;
+  bool   success = 3;
+  string end_time = 4;         // ISO 8601 UTC
+  int64  failed_step_id = 5;   // Optional — which step caused failure
+}
+
+message CompleteWorkflowRunResponse {
+  bool accepted = 1;
+}
+
+message GetStepExecutionsRequest {
+  string connection_id = 1;
+  string workflow_run_id = 2;
+}
+
+message GetStepExecutionsResponse {
+  repeated StepExecutionEntry entries = 1;
+}
+
+message StepExecutionEntry {
+  int64  step_id = 1;
+  int32  attempt = 2;
+  string status = 3;           // "Pending", "Running", "Completed", "Failed", "Skipped"
 }

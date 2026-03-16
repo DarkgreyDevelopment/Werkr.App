@@ -1,0 +1,42 @@
+@* SVG sparkline showing recent run status and relative duration. *@
+
+@if ( Runs is not null && Runs.Count > 0 ) {
+    double maxDuration = Runs.Max( r => r.DurationSeconds ?? 1.0 );
+    if ( maxDuration <= 0 ) maxDuration = 1;
+    int barWidth = 8;
+    int gap = 2;
+    int height = 32;
+    int totalWidth = Runs.Count * ( barWidth + gap ) - gap;
+
+    <svg width="@totalWidth" height="@height" class="run-sparkline" style="vertical-align:middle;">
+        @for ( int i = 0; i < Runs.Count; i++ ) {
+            RunSummary run = Runs[i];
+            double pct = ( run.DurationSeconds ?? 0 ) / maxDuration;
+            int barHeight = Math.Max( 2, (int)( pct * height ) );
+            int x = i * ( barWidth + gap );
+            int y = height - barHeight;
+            string fill = GetFill( run.Status );
+            bool isRunning = run.Status == "Running";
+
+            <rect x="@x" y="@y" width="@barWidth" height="@barHeight" rx="1" fill="@fill"
+                  class="@( isRunning ? "sparkline-running" : "" )">
+                <title>@run.Status — @( run.DurationSeconds?.ToString( "F1" ) ?? "?" )s</title>
+            </rect>
+        }
+    </svg>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<RunSummary>? Runs { get; set; }
+
+    /// <summary>Lightweight run summary for sparkline rendering.</summary>
+    public sealed record RunSummary( Guid RunId, string Status, double? DurationSeconds );
+
+    private static string GetFill( string status ) => status switch {
+        "Completed" => "var(--werkr-success)",
+        "Failed" => "var(--werkr-failed)",
+        "Running" => "var(--werkr-running)",
+        "Skipped" => "var(--werkr-skipped)",
+        _ => "var(--werkr-pending)",
+    };
+}

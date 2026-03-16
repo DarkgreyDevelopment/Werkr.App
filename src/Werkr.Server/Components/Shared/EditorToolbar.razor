@@ -1,0 +1,153 @@
+@rendermode InteractiveServer
+
+<div class="editor-toolbar d-flex align-items-center gap-2 py-2 px-3 border-bottom bg-body-tertiary">
+    @* ── Save ── *@
+    <button type="button"
+            class="btn btn-sm @( DirtyCount > 0 ? "btn-primary" : "btn-outline-primary" )"
+            @onclick="OnSave"
+            disabled="@( IsSaving || DirtyCount == 0 )"
+            title="Save (Ctrl+S)">
+        @if ( IsSaving ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        } else {
+            <i class="bi bi-floppy"></i>
+        }
+        Save
+        @if ( DirtyCount > 0 ) {
+            <span class="badge bg-light text-primary ms-1">@DirtyCount</span>
+        }
+    </button>
+
+    <div class="vr"></div>
+
+    @* ── Undo / Redo ── *@
+    <div class="btn-group btn-group-sm" role="group" aria-label="Undo/Redo">
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnUndo" title="Undo (Ctrl+Z)" aria-label="Undo (Ctrl+Z)">
+            <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnRedo" title="Redo (Ctrl+Y)" aria-label="Redo (Ctrl+Y)">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </div>
+
+    <div class="vr"></div>
+
+    @* ── Validate ── *@
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            @onclick="OnValidate"
+            disabled="@IsValidating"
+            title="Validate DAG">
+        @if ( IsValidating ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        } else {
+            <i class="bi bi-check2-circle"></i>
+        }
+        Validate
+    </button>
+
+    @* ── Auto-Layout ── *@
+    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnAutoLayout" title="Auto-Layout" aria-label="Auto-Layout">
+        <i class="bi bi-diagram-3"></i>
+    </button>
+
+    <div class="vr"></div>
+
+    @* ── Layout Direction ── *@
+    <div class="btn-group btn-group-sm" role="group" aria-label="Layout direction">
+        <button type="button"
+                class="btn @( Direction == "LR" ? "btn-primary" : "btn-outline-secondary" )"
+                @onclick='( ) => OnDirectionChanged.InvokeAsync( "LR" )'
+                title="Layout left to right">
+            LR
+        </button>
+        <button type="button"
+                class="btn @( Direction == "TB" ? "btn-primary" : "btn-outline-secondary" )"
+                @onclick='( ) => OnDirectionChanged.InvokeAsync( "TB" )'
+                title="Layout top to bottom">
+            TB
+        </button>
+    </div>
+
+    <div class="vr"></div>
+
+    @* ── Zoom ── *@
+    <div class="btn-group btn-group-sm" role="group" aria-label="Zoom controls">
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnZoomIn" title="Zoom in" aria-label="Zoom in">
+            <i class="bi bi-zoom-in"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnZoomFit" title="Zoom to fit" aria-label="Zoom to fit">
+            <i class="bi bi-arrows-fullscreen"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnZoomOut" title="Zoom out" aria-label="Zoom out">
+            <i class="bi bi-zoom-out"></i>
+        </button>
+    </div>
+
+    <small class="text-muted">@( ZoomLevel.ToString( "P0" ) )</small>
+
+    <div class="vr"></div>
+
+    @* ── Export ── *@
+    <div class="btn-group btn-group-sm" role="group" aria-label="Export">
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnExportSvg" title="Export SVG" aria-label="Export SVG">
+            <i class="bi bi-filetype-svg"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="OnExportPng" title="Export PNG" aria-label="Export PNG">
+            <i class="bi bi-filetype-png"></i>
+        </button>
+    </div>
+
+    <div class="vr"></div>
+
+    @* ── Grid Toggle ── *@
+    <button type="button"
+            class="btn btn-sm @( GridVisible ? "btn-info" : "btn-outline-secondary" )"
+            @onclick="OnToggleGrid"
+            title="Toggle grid"
+            aria-label="Toggle grid">
+        <i class="bi bi-grid-3x3"></i>
+    </button>
+
+    @* ── Add Annotation ── *@
+    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnAddAnnotation" title="Add Sticky Note" aria-label="Add Sticky Note">
+        <i class="bi bi-sticky"></i>
+    </button>
+
+    @* ── Spacer ── *@
+    <div class="flex-grow-1"></div>
+
+    @* ── Dirty Indicator ── *@
+    @if ( DirtyCount > 0 ) {
+        <span class="badge bg-warning text-dark" title="Unsaved changes">
+            <i class="bi bi-pencil-fill me-1"></i> @DirtyCount unsaved
+        </span>
+    } else {
+        <span class="badge bg-secondary" title="All changes saved">
+            <i class="bi bi-check-lg me-1"></i> Saved
+        </span>
+    }
+</div>
+
+@code {
+    [Parameter] public int DirtyCount { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public bool IsValidating { get; set; }
+    [Parameter] public string Direction { get; set; } = "LR";
+    [Parameter] public double ZoomLevel { get; set; } = 1.0;
+
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnUndo { get; set; }
+    [Parameter] public EventCallback OnRedo { get; set; }
+    [Parameter] public EventCallback OnValidate { get; set; }
+    [Parameter] public EventCallback OnAutoLayout { get; set; }
+    [Parameter] public EventCallback OnZoomIn { get; set; }
+    [Parameter] public EventCallback OnZoomOut { get; set; }
+    [Parameter] public EventCallback OnZoomFit { get; set; }
+    [Parameter] public EventCallback<string> OnDirectionChanged { get; set; }
+    [Parameter] public EventCallback OnExportSvg { get; set; }
+    [Parameter] public EventCallback OnExportPng { get; set; }
+    [Parameter] public bool GridVisible { get; set; }
+    [Parameter] public EventCallback OnToggleGrid { get; set; }
+    [Parameter] public EventCallback OnAddAnnotation { get; set; }
+}

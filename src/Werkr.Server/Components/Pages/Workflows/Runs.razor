@@ -1,4 +1,5 @@
 ﻿@page "/workflows/{WorkflowId:long}/runs"
+@using Werkr.Common.Models
 @using Werkr.Server.Services
 @rendermode InteractiveServer
 @attribute [Authorize]
@@ -23,13 +24,20 @@
     </button>
 </div>
 
+<FilterBar PageKey="runs"
+           Definition="_filterDefinition"
+           OnFilterApplied="OnFilterApplied"
+           OnFilterCleared="OnFilterCleared" />
+
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
     <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
 }
 
+@{ var filteredRuns = FilteredRuns; }
+
 @if ( _isLoading && _runs is null ) {
     <LoadingSpinner Message="Loading runs…" />
-} else if ( _runs is not null && _runs.Count > 0 ) {
+} else if ( _runs is not null && filteredRuns.Count > 0 ) {
     <div class="table-responsive">
         <table class="table table-striped align-middle">
             <thead>
@@ -42,13 +50,13 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ( WorkflowRunDto run in _runs ) {
+                @foreach ( WorkflowRunDto run in filteredRuns ) {
                     <tr>
                         <td><a href="/workflows/runs/@run.Id">@run.Id.ToString()[..8]…</a></td>
                         <td>@run.StartTime.ToString( "g" )</td>
                         <td>@( run.EndTime?.ToString( "g" ) ?? "—" )</td>
                         <td>
-                            <span class="badge @RunStatusBadge( run.Status )">@run.Status</span>
+                            <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( run.Status )">@run.Status</span>
                         </td>
                         <td class="text-end">
                             <a class="btn btn-outline-primary btn-sm" href="/workflows/runs/@run.Id">Details</a>
@@ -66,6 +74,7 @@
     [Parameter] public long WorkflowId { get; set; }
 
     private List<WorkflowRunDto>? _runs;
+    private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
     private bool _disposed;
@@ -74,9 +83,18 @@
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
 
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Running", "Completed", "Failed", "Skipped"] ),
+        new FilterField( "since", "Since", FilterFieldType.Date ),
+        new FilterField( "until", "Until", FilterFieldType.Date ),
+    ] );
+
+    private List<WorkflowRunDto> FilteredRuns => ( _runs ?? [] )
+        .Where( r => FilterHelper.MatchesRunFilter( r, _activeCriteria ) )
+        .ToList( );
+
     protected override async Task OnInitializedAsync( ) {
         _breadcrumbs = [
-            new( "Task List", "/" ),
             new( "Workflows", "/workflows" ),
             new( $"Workflow {WorkflowId}", $"/workflows/{WorkflowId}" ),
             new( "Runs" )
@@ -114,19 +132,19 @@
         }
     }
 
-    private static string RunStatusBadge( string status ) => status switch {
-        "Completed" => "bg-success",
-        "Running" => "bg-primary",
-        "Failed" => "bg-danger",
-        "Cancelled" => "bg-warning text-dark",
-        _ => "bg-secondary"
-    };
-
     public ValueTask DisposeAsync( ) {
         _disposed = true;
         _cts?.Cancel( );
         _cts?.Dispose( );
         _refreshTimer?.Dispose( );
         return ValueTask.CompletedTask;
+    }
+
+    private void OnFilterApplied( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+    }
+
+    private void OnFilterCleared( ) {
+        _activeCriteria = null;
     }
 }

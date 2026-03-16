@@ -1,92 +1,9 @@
 ﻿@page "/workflows/create"
-@rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager Navigation
 
-<PageTitle>Werkr - New Workflow</PageTitle>
-
-<h1>Create Workflow</h1>
-<Breadcrumb Items="_breadcrumbs" />
-
-@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
-    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
-}
-
-<EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="CreateWorkflow">
-    <DataAnnotationsValidator />
-    <ValidationSummary class="text-danger" />
-
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">Workflow Details</h5>
-
-            <div class="mb-3">
-                <label class="form-label" for="name">Name</label>
-                <InputText id="name" class="form-control" @bind-Value="_model.Name" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" for="desc">Description</label>
-                <InputTextArea id="desc" class="form-control" rows="3" @bind-Value="_model.Description" />
-            </div>
-
-            <div class="mb-3">
-                <ToggleSwitch @bind-Value="_model.Enabled" Label="Enabled" />
-            </div>
-        </div>
-    </div>
-
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary" disabled="@_isSaving">
-            @if ( _isSaving ) {
-                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-            }
-            Create Workflow
-        </button>
-        <a href="/workflows" class="btn btn-outline-secondary">Cancel</a>
-    </div>
-</EditForm>
-
 @code {
-    private readonly WorkflowFormModel _model = new( );
-    private string? _errorMessage;
-    private bool _isSaving;
-
-    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
-        new( "Workflows", "/workflows" ),
-        new( "Create" )
-    ];
-
-    private async Task SubmitAsync( ) {
-        _isSaving = true;
-        _errorMessage = null;
-        try {
-            WorkflowCreateRequest request = new(
-                Name: _model.Name,
-                Description: _model.Description,
-                Enabled: _model.Enabled );
-
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/workflows", request );
-            if ( response.IsSuccessStatusCode ) {
-                WorkflowDto? created = await response.Content.ReadFromJsonAsync<WorkflowDto>( );
-                Navigation.NavigateTo( $"/workflows/{created?.Id ?? 0}" );
-            } else {
-                string body = await response.Content.ReadAsStringAsync( );
-                _errorMessage = $"Failed to create workflow: {body}";
-            }
-        } catch ( Exception ex ) {
-            _errorMessage = $"Failed to create workflow: {ex.Message}";
-        } finally {
-            _isSaving = false;
-        }
-    }
-
-    private sealed class WorkflowFormModel {
-        public string Name { get; set; } = "";
-        public string? Description { get; set; }
-        public bool Enabled { get; set; } = true;
+    protected override void OnInitialized( ) {
+        Navigation.NavigateTo( "/workflows/new/dag-editor", replace: true );
     }
 }

@@ -5,8 +5,10 @@ namespace Werkr.Data.Entities.Workflows;
 /// </summary>
 public enum ControlStatement {
 
-    /// <summary>Execute sequentially after dependencies complete.</summary>
-    Sequential = 0,
+    /// <summary>Default control flow. Step runs after dependencies complete.
+    /// Parallelism is implicit: steps at the same topological level with no
+    /// mutual dependencies execute concurrently.</summary>
+    Default = 0,
 
     /// <summary>Execute only if condition is true.</summary>
     If = 1,
