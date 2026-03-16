@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Grpc.Net.Client;
-using Werkr.Api.Protos;
 using Werkr.Common.Models;
+using Werkr.Common.Protos;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Cryptography.KeyInfo;
 using Werkr.Core.Registration.Models;
@@ -20,7 +20,7 @@ namespace Werkr.Agent.Registration;
 /// Creates a new <see cref="AgentRegistrationHandler"/>.
 /// </remarks>
 /// <param name="logger">Logger for diagnostics.</param>
-public class AgentRegistrationHandler( ILogger<AgentRegistrationHandler> logger ) {
+public partial class AgentRegistrationHandler( ILogger<AgentRegistrationHandler> logger ) {
 
     /// <summary>
     /// Processes a registration bundle pasted by the admin, generates the Agent's

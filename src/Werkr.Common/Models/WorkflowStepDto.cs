@@ -11,5 +11,8 @@ public sealed record WorkflowStepDto(
     int MaxIterations,
     Guid? AgentConnectionIdOverride,
     string DependencyMode,
-    IReadOnlyList<StepDependencyDto> Dependencies
+    IReadOnlyList<StepDependencyDto> Dependencies,
+    string? InputVariableName = null,
+    string? OutputVariableName = null,
+    string? TaskName = null
 );

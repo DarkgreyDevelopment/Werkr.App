@@ -8,30 +8,24 @@ namespace Werkr.Server.Services;
 /// via <c>PUT /api/agents/{id}/status</c>. This keeps the DB status in sync
 /// with actual reachability so all pages (not just the Dashboard) see accurate data.
 /// </summary>
-public sealed class AgentHealthMonitorService : BackgroundService {
+/// <remarks>Initializes the health monitor.</remarks>
+public sealed partial class AgentHealthMonitorService(
+    IHttpClientFactory httpClientFactory,
+    ServerConfigCache configCache,
+    ILogger<AgentHealthMonitorService> logger
+    ) : BackgroundService {
     /// <summary>
     /// Factory used to create instances of the <c>"ApiService"</c> named HTTP client which has the <see cref="Identity.AuthForwardingHandler"/> in its pipeline.
     /// </summary>
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     /// <summary>
     /// Cached server configuration from which the polling interval is read.
     /// </summary>
-    private readonly ServerConfigCache _configCache;
+    private readonly ServerConfigCache _configCache = configCache;
     /// <summary>
     /// Logger for informational, warning, and debug messages.
     /// </summary>
-    private readonly ILogger<AgentHealthMonitorService> _logger;
-
-    /// <summary>Initializes the health monitor.</summary>
-    public AgentHealthMonitorService(
-        IHttpClientFactory httpClientFactory,
-        ServerConfigCache configCache,
-        ILogger<AgentHealthMonitorService> logger
-    ) {
-        _httpClientFactory = httpClientFactory;
-        _configCache = configCache;
-        _logger = logger;
-    }
+    private readonly ILogger<AgentHealthMonitorService> _logger = logger;
 
     /// <inheritdoc/>
     protected override async Task ExecuteAsync( CancellationToken stoppingToken ) {
@@ -41,7 +35,7 @@ public sealed class AgentHealthMonitorService : BackgroundService {
         int intervalSeconds = _configCache.PollingIntervalSeconds;
         using PeriodicTimer timer = new( TimeSpan.FromSeconds( intervalSeconds ) );
 
-        _logger.LogInformation( "AgentHealthMonitorService started." );
+        LogServiceStarted( _logger );
 
         while (await timer.WaitForNextTickAsync( stoppingToken )) {
             try {
@@ -49,7 +43,7 @@ public sealed class AgentHealthMonitorService : BackgroundService {
             } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
                 break;
             } catch (Exception ex) {
-                _logger.LogWarning( ex, "Health monitor poll failed." );
+                LogPollFailed( _logger, ex );
             }
         }
     }
@@ -91,11 +85,27 @@ public sealed class AgentHealthMonitorService : BackgroundService {
                 );
 
                 if (!response.IsSuccessStatusCode) {
-                    _logger.LogDebug( "Failed to update agent status." );
+                    LogStatusUpdateFailed( _logger );
                 }
             } catch (Exception ex) {
-                _logger.LogDebug( ex, "Failed to update agent status." );
+                LogStatusUpdateFailedEx( _logger, ex );
             }
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Information,
+        Message = "AgentHealthMonitorService started." )]
+    private static partial void LogServiceStarted( ILogger logger );
+
+    [LoggerMessage( Level = LogLevel.Warning,
+        Message = "Health monitor poll failed." )]
+    private static partial void LogPollFailed( ILogger logger, Exception ex );
+
+    [LoggerMessage( Level = LogLevel.Debug,
+        Message = "Failed to update agent status." )]
+    private static partial void LogStatusUpdateFailed( ILogger logger );
+
+    [LoggerMessage( Level = LogLevel.Debug,
+        Message = "Failed to update agent status." )]
+    private static partial void LogStatusUpdateFailedEx( ILogger logger, Exception ex );
 }

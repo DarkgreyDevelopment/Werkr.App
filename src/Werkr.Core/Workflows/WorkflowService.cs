@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
-
+using Werkr.Common.Models;
 using Werkr.Data;
 using Werkr.Data.Entities.Workflows;
 
@@ -12,7 +13,7 @@ namespace Werkr.Core.Workflows;
 /// </summary>
 /// <param name="dbContext">Database context.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class WorkflowService(
+public sealed partial class WorkflowService(
     WerkrDbContext dbContext,
     ILogger<WorkflowService> logger
 ) {
@@ -76,6 +77,7 @@ public sealed class WorkflowService(
         existing.Name = workflow.Name;
         existing.Description = workflow.Description;
         existing.Enabled = workflow.Enabled;
+        existing.TargetTags = workflow.TargetTags;
 
         _ = await dbContext.SaveChangesAsync( ct );
 
@@ -228,6 +230,8 @@ public sealed class WorkflowService(
         existing.MaxIterations = step.MaxIterations;
         existing.AgentConnectionIdOverride = step.AgentConnectionIdOverride;
         existing.DependencyMode = step.DependencyMode;
+        existing.InputVariableName = step.InputVariableName;
+        existing.OutputVariableName = step.OutputVariableName;
 
         _ = await dbContext.SaveChangesAsync( ct );
         return existing;
@@ -354,8 +358,8 @@ public sealed class WorkflowService(
 
         foreach (WorkflowStep step in steps) {
             foreach (WorkflowStepDependency dep in step.Dependencies) {
-                if (adjacency.ContainsKey( dep.DependsOnStepId )) {
-                    adjacency[dep.DependsOnStepId].Add( step.Id );
+                if (adjacency.TryGetValue( dep.DependsOnStepId, out List<long>? value )) {
+                    value.Add( step.Id );
                     inDegree[step.Id]++;
                 }
             }
@@ -431,8 +435,8 @@ public sealed class WorkflowService(
 
         foreach (WorkflowStep step in steps) {
             foreach (WorkflowStepDependency dep in step.Dependencies) {
-                if (adjacency.ContainsKey( dep.DependsOnStepId )) {
-                    adjacency[dep.DependsOnStepId].Add( step.Id );
+                if (adjacency.TryGetValue( dep.DependsOnStepId, out List<long>? value )) {
+                    value.Add( step.Id );
                     inDegree[step.Id]++;
                 }
             }
@@ -465,6 +469,202 @@ public sealed class WorkflowService(
             ? throw new InvalidOperationException(
                 $"Cycle detected in workflow {workflowId}: processed {totalProcessed} of {steps.Count} steps." )
             : (IReadOnlyList<IReadOnlyList<WorkflowStep>>)levels;
+    }
+
+    /// <summary>
+    /// Atomically applies a batch of step add/update/delete operations and dependency changes
+    /// within a single database transaction. Validates the resulting DAG before committing.
+    /// </summary>
+    /// <param name="workflowId">The workflow to apply changes to.</param>
+    /// <param name="request">The batch request containing all operations.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Batch response with temp-to-real ID mappings and validation results.</returns>
+    public async Task<WorkflowStepBatchResponse> BatchUpdateStepsAsync(
+        long workflowId,
+        WorkflowStepBatchRequest request,
+        CancellationToken ct = default
+    ) {
+        if (request.Operations.Count == 0) {
+            return new WorkflowStepBatchResponse( true, [], [] );
+        }
+
+        // Verify workflow exists
+        bool workflowExists = await dbContext.Workflows.AnyAsync(
+            w => w.Id == workflowId,
+            ct
+        );
+        if (!workflowExists) {
+            return new WorkflowStepBatchResponse( false, [], [$"Workflow with Id={workflowId} was not found."] );
+        }
+
+        // Verify all positive StepIds belong to this workflow
+        List<long> positiveStepIds = [.. request.Operations
+            .Where( o => o.StepId > 0 )
+            .Select( o => o.StepId )
+            .Distinct( )];
+
+        if (positiveStepIds.Count > 0) {
+            List<long> existingIds = await dbContext.WorkflowSteps
+                .Where( s => s.WorkflowId == workflowId && positiveStepIds.Contains( s.Id ) )
+                .Select( s => s.Id )
+                .ToListAsync( ct );
+
+            List<long> invalid = [.. positiveStepIds.Except( existingIds )];
+            if (invalid.Count > 0) {
+                return new WorkflowStepBatchResponse( false, [],
+                    [$"Step IDs do not belong to workflow {workflowId}: {string.Join( ", ", invalid )}"] );
+            }
+        }
+
+        await using IDbContextTransaction tx = await dbContext.Database.BeginTransactionAsync( ct );
+        try {
+            Dictionary<long, long> tempToReal = [];
+            List<StepIdMapping> mappings = [];
+
+            // ── Phase 1: Process "Add" operations ──
+            List<StepBatchOperation> adds = [.. request.Operations.Where( o => string.Equals( o.OperationType, "Add", StringComparison.OrdinalIgnoreCase ) )];
+
+            foreach (StepBatchOperation add in adds) {
+                if (add.TaskId is null) {
+                    await tx.RollbackAsync( ct );
+                    return new WorkflowStepBatchResponse( false, [],
+                        [$"Add operation for temp step {add.StepId} is missing TaskId."] );
+                }
+
+                WorkflowStep step = new( ) {
+                    WorkflowId = workflowId,
+                    TaskId = add.TaskId.Value,
+                    Order = add.Order,
+                    ControlStatement = Enum.Parse<ControlStatement>( add.ControlStatement, ignoreCase: true ),
+                    ConditionExpression = add.ConditionExpression,
+                    MaxIterations = add.MaxIterations,
+                    AgentConnectionIdOverride = add.AgentConnectionIdOverride,
+                    DependencyMode = Enum.Parse<DependencyMode>( add.DependencyMode, ignoreCase: true ),
+                    InputVariableName = add.InputVariableName,
+                    OutputVariableName = add.OutputVariableName,
+                };
+
+                _ = dbContext.WorkflowSteps.Add( step );
+                _ = await dbContext.SaveChangesAsync( ct );
+
+                tempToReal[add.StepId] = step.Id;
+                mappings.Add( new StepIdMapping( add.StepId, step.Id ) );
+
+                if (logger.IsEnabled( LogLevel.Debug )) {
+                    logger.LogDebug( "Batch: created step {RealId} (temp {TempId}) in workflow {WorkflowId}.",
+                        step.Id.ToString( ),
+                        add.StepId.ToString( ),
+                        workflowId.ToString( )
+                    );
+                }
+            }
+
+            // Helper to resolve temp IDs to real IDs
+            long ResolveId( long id ) => id < 0 && tempToReal.TryGetValue( id, out long real ) ? real : id;
+
+            // ── Phase 2: Process "Update" operations ──
+            List<StepBatchOperation> updates = [.. request.Operations.Where( o => string.Equals( o.OperationType, "Update", StringComparison.OrdinalIgnoreCase ) )];
+
+            foreach (StepBatchOperation update in updates) {
+                long realId = ResolveId( update.StepId );
+                WorkflowStep existing = await dbContext.WorkflowSteps.FirstOrDefaultAsync(
+                    s => s.Id == realId,
+                    ct
+                ) ?? throw new KeyNotFoundException( $"Step {realId} not found during batch update." );
+
+                if (update.TaskId is not null) {
+                    existing.TaskId = update.TaskId.Value;
+                }
+                existing.Order = update.Order;
+                existing.ControlStatement = Enum.Parse<ControlStatement>( update.ControlStatement, ignoreCase: true );
+                existing.ConditionExpression = update.ConditionExpression;
+                existing.MaxIterations = update.MaxIterations;
+                existing.AgentConnectionIdOverride = update.AgentConnectionIdOverride;
+                existing.DependencyMode = Enum.Parse<DependencyMode>( update.DependencyMode, ignoreCase: true );
+                existing.InputVariableName = update.InputVariableName;
+                existing.OutputVariableName = update.OutputVariableName;
+            }
+
+            // ── Phase 3: Process dependency changes ──
+            foreach (StepBatchOperation op in request.Operations) {
+                if (op.DependencyChanges is null) {
+                    continue;
+                }
+
+                long realStepId = ResolveId( op.StepId );
+
+                foreach (DependencyBatchItem depChange in op.DependencyChanges) {
+                    long realDepId = ResolveId( depChange.DependsOnStepId );
+
+                    if (string.Equals( depChange.OperationType, "Add", StringComparison.OrdinalIgnoreCase )) {
+                        if (realStepId == realDepId) {
+                            continue;
+                        }
+
+                        bool alreadyExists = await dbContext.WorkflowStepDependencies
+                            .AnyAsync( d => d.StepId == realStepId && d.DependsOnStepId == realDepId, ct );
+                        if (alreadyExists) {
+                            continue;
+                        }
+
+                        _ = dbContext.WorkflowStepDependencies.Add( new WorkflowStepDependency {
+                            StepId = realStepId,
+                            DependsOnStepId = realDepId,
+                        } );
+                    } else if (string.Equals( depChange.OperationType, "Delete", StringComparison.OrdinalIgnoreCase )) {
+                        WorkflowStepDependency? dep = await dbContext.WorkflowStepDependencies
+                            .FirstOrDefaultAsync( d => d.StepId == realStepId && d.DependsOnStepId == realDepId, ct );
+                        if (dep is not null) {
+                            _ = dbContext.WorkflowStepDependencies.Remove( dep );
+                        }
+                    }
+                }
+            }
+
+            // ── Phase 4: Process "Delete" operations (after deps cleaned up) ──
+            List<StepBatchOperation> deletes = [.. request.Operations.Where( o => string.Equals( o.OperationType, "Delete", StringComparison.OrdinalIgnoreCase ) )];
+
+            foreach (StepBatchOperation delete in deletes) {
+                long realId = ResolveId( delete.StepId );
+                WorkflowStep? step = await dbContext.WorkflowSteps
+                    .FirstOrDefaultAsync( s => s.Id == realId, ct );
+                if (step is not null) {
+                    // Remove dependencies first
+                    List<WorkflowStepDependency> deps = await dbContext.WorkflowStepDependencies
+                        .Where( d => d.StepId == realId || d.DependsOnStepId == realId )
+                        .ToListAsync( ct );
+                    dbContext.WorkflowStepDependencies.RemoveRange( deps );
+                    _ = dbContext.WorkflowSteps.Remove( step );
+                }
+            }
+
+            _ = await dbContext.SaveChangesAsync( ct );
+
+            // ── Phase 5: Validate resulting DAG ──
+            try {
+                _ = await ValidateDagAsync( workflowId, ct );
+            } catch (InvalidOperationException ex) {
+                await tx.RollbackAsync( ct );
+                return new WorkflowStepBatchResponse( false, [], [ex.Message] );
+            }
+
+            await tx.CommitAsync( ct );
+
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation(
+                    "Batch completed for workflow {WorkflowId}: {AddCount} adds, {UpdateCount} updates, {DeleteCount} deletes.",
+                    workflowId.ToString( ),
+                    adds.Count.ToString( ),
+                    updates.Count.ToString( ),
+                    deletes.Count.ToString( )
+                );
+            }
+
+            return new WorkflowStepBatchResponse( true, mappings, [] );
+        } catch (Exception ex) when (ex is not InvalidOperationException) {
+            await tx.RollbackAsync( ct );
+            return new WorkflowStepBatchResponse( false, [], [ex.Message] );
+        }
     }
 
     /// <summary>Validates control flow constraints on a topologically sorted step list.</summary>

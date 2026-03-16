@@ -52,18 +52,80 @@ public sealed partial class RunNowService(
     }
 
     /// <summary>
-    /// Creates a one-time schedule linked to the specified workflow and returns the schedule ID.
-    /// The schedule fires immediately; the agent picks it up on the next sync/invalidation cycle.
+    /// Creates a one-time schedule linked to the specified workflow and returns the schedule ID
+    /// along with the API-generated <see cref="WorkflowRun"/> ID. Seeds initial variable values
+    /// (defaults and optional trigger parameters) into the run.
     /// </summary>
     /// <param name="workflowId">The ID of the workflow to run.</param>
+    /// <param name="triggerVariables">Optional per-execution variable overrides from manual trigger.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>The ID of the newly created one-time schedule.</returns>
+    /// <returns>A tuple of the schedule ID and the workflow run ID.</returns>
     /// <exception cref="KeyNotFoundException">Thrown when the workflow does not exist.</exception>
-    public async Task<Guid> CreateWorkflowRunNowAsync( long workflowId, CancellationToken ct = default ) {
+    public async Task<(Guid ScheduleId, Guid WorkflowRunId)> CreateWorkflowRunNowAsync(
+        long workflowId,
+        Dictionary<string, string>? triggerVariables = null,
+        CancellationToken ct = default
+    ) {
         Workflow workflow = await dbContext.Set<Workflow>( )
+            .Include(w => w.Variables)
+            .Include(w => w.Steps)
             .FirstOrDefaultAsync( w => w.Id == workflowId, ct )
             ?? throw new KeyNotFoundException( $"Workflow {workflowId} not found." );
 
+        // Create WorkflowRun entity (API-side, before agent picks up)
+        Guid workflowRunId = Guid.NewGuid();
+        WorkflowRun run = new()
+        {
+            Id = workflowRunId,
+            WorkflowId = workflowId,
+            StartTime = DateTime.UtcNow,
+            Status = WorkflowRunStatus.Running,
+        };
+        _ = dbContext.Set<WorkflowRun>( ).Add( run );
+
+        // Seed default variable values
+        foreach (WorkflowVariable variable in workflow.Variables) {
+            if (!string.IsNullOrWhiteSpace( variable.DefaultValue )) {
+                WorkflowRunVariable defaultEntry = new()
+                {
+                    WorkflowRunId = workflowRunId,
+                    VariableName = variable.Name,
+                    Value = variable.DefaultValue,
+                    Version = 1,
+                    Source = VariableSource.Default,
+                    Created = DateTime.UtcNow,
+                };
+                _ = dbContext.Set<WorkflowRunVariable>( ).Add( defaultEntry );
+            }
+        }
+
+        // Seed trigger parameter overrides (overwrite defaults with higher version)
+        if (triggerVariables is { Count: > 0 }) {
+            foreach (KeyValuePair<string, string> kvp in triggerVariables) {
+                // Determine next version: if a default was seeded above, version is 2; otherwise 1
+                bool hasDefault = workflow.Variables
+                    .Any(v => string.Equals(v.Name, kvp.Key, StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(v.DefaultValue));
+
+                WorkflowRunVariable triggerEntry = new()
+                {
+                    WorkflowRunId = workflowRunId,
+                    VariableName = kvp.Key,
+                    Value = kvp.Value,
+                    Version = hasDefault ? 2 : 1,
+                    Source = VariableSource.ManualInput,
+                    Created = DateTime.UtcNow,
+                };
+                _ = dbContext.Set<WorkflowRunVariable>( ).Add( triggerEntry );
+            }
+        }
+
+        _ = await dbContext.SaveChangesAsync( ct );
+
+        // Validate input variables are covered by defaults, trigger params, or upstream step outputs
+        ValidateInputVariableCoverage( workflow, triggerVariables );
+
+        // Create the one-time schedule
         DbSchedule schedule = CreateRunNowSchedule( $"Run Now – {workflow.Name}" );
         _ = dbContext.Schedules.Add( schedule );
         _ = await dbContext.SaveChangesAsync( ct );
@@ -76,12 +138,13 @@ public sealed partial class RunNowService(
             ScheduleId = schedule.Id,
             IsOneTime = true,
             CreatedAtUtc = DateTime.UtcNow,
+            WorkflowRunId = workflowRunId,
         };
         _ = dbContext.WorkflowSchedules.Add( link );
         _ = await dbContext.SaveChangesAsync( ct );
 
         LogRunNowCreated( logger, "workflow", workflowId, schedule.Id );
-        return schedule.Id;
+        return (schedule.Id, workflowRunId);
     }
 
     /// <summary>
@@ -168,4 +231,59 @@ public sealed partial class RunNowService(
         Message = "Created ephemeral task {TaskId} with schedule {ScheduleId}." )]
     private static partial void LogEphemeralCreated(
         ILogger logger, long taskId, Guid scheduleId );
+
+    /// <summary>
+    /// Validates that every <see cref="WorkflowStep.InputVariableName"/> is covered by either
+    /// a default value, a trigger parameter, or an upstream step's output variable.
+    /// Logs a warning for each uncovered input — does not throw.
+    /// </summary>
+    /// <param name="workflow">The workflow with Steps and Variables loaded.</param>
+    /// <param name="triggerVariables">Optional trigger parameter overrides.</param>
+    private void ValidateInputVariableCoverage(
+        Workflow workflow,
+        Dictionary<string, string>? triggerVariables
+    ) {
+        if (workflow.Steps is not { Count: > 0 }) {
+            return;
+        }
+
+        // Names that have a default value
+        HashSet<string> defaults = new(StringComparer.OrdinalIgnoreCase);
+        foreach (WorkflowVariable v in workflow.Variables) {
+            if (!string.IsNullOrWhiteSpace( v.DefaultValue )) {
+                _ = defaults.Add( v.Name );
+            }
+        }
+
+        // Names provided as trigger params
+        HashSet<string> triggers = triggerVariables is { Count: > 0 }
+            ? new(triggerVariables.Keys, StringComparer.OrdinalIgnoreCase)
+            : new(StringComparer.OrdinalIgnoreCase);
+
+        // Names produced by some step's output
+        HashSet<string> produced = new(StringComparer.OrdinalIgnoreCase);
+        foreach (WorkflowStep step in workflow.Steps) {
+            if (!string.IsNullOrWhiteSpace( step.OutputVariableName )) {
+                _ = produced.Add( step.OutputVariableName );
+            }
+        }
+
+        foreach (WorkflowStep step in workflow.Steps) {
+            if (string.IsNullOrWhiteSpace( step.InputVariableName )) {
+                continue;
+            }
+
+            string name = step.InputVariableName;
+            if (!defaults.Contains( name ) && !triggers.Contains( name ) && !produced.Contains( name )) {
+                LogUncoveredInputVariable( logger, step.Id, step.Order, name, workflow.Id );
+            }
+        }
+    }
+
+    [LoggerMessage( Level = LogLevel.Warning,
+        Message = "Workflow {WorkflowId} step {StepId} (order {StepOrder}) declares input variable '{VariableName}' " +
+                  "which has no default value, trigger parameter, or upstream step output. " +
+                  "The step will receive null at runtime." )]
+    private static partial void LogUncoveredInputVariable(
+        ILogger logger, long stepId, int stepOrder, string variableName, long workflowId );
 }

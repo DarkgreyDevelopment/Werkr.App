@@ -1,0 +1,14 @@
+.node-config-panel {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    border-left: 0 solid var(--bs-border-color);
+    background-color: var(--bs-body-bg);
+    transition: width 0.2s ease, min-width 0.2s ease, border-left-width 0.2s ease;
+}
+
+.node-config-panel.open {
+    width: 360px;
+    min-width: 360px;
+    border-left-width: 1px;
+}

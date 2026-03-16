@@ -11,25 +11,20 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>CopyFile</c> action - copies files or directories from source to destination.
 /// Supports wildcard file resolution and recursive directory copy.
 /// </summary>
-public sealed class CopyFileHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="CopyFileHandler"/>.</remarks>
+public sealed partial class CopyFileHandler(
+    IFilePathResolver resolver,
+    ILogger<CopyFileHandler> logger
+    ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<CopyFileHandler> _logger;
-
-    /// <summary>Creates a new <see cref="CopyFileHandler"/>.</summary>
-    public CopyFileHandler(
-        IFilePathResolver resolver,
-        ILogger<CopyFileHandler> logger
-    ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<CopyFileHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "CopyFile";
@@ -38,7 +33,8 @@ public sealed class CopyFileHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             CopyFileParameters p = parameters.Deserialize<CopyFileParameters>( ActionJson.SerializerOptions )
@@ -110,12 +106,9 @@ public sealed class CopyFileHandler : IActionHandler {
                 }
             }
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( destination, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError(
-                ex,
-                "CopyFile action failed"
-            );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create(
                     LogLevel.Error,
@@ -187,4 +180,7 @@ public sealed class CopyFileHandler : IActionHandler {
 
         return true;
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

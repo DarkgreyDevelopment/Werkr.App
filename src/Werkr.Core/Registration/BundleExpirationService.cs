@@ -2,9 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
 using Werkr.Common.Models;
 using Werkr.Data;
+using Werkr.Data.Entities.Registration;
 
 namespace Werkr.Core.Registration;
 
@@ -19,7 +19,7 @@ namespace Werkr.Core.Registration;
 /// <param name="scopeFactory">Service scope factory for creating database contexts.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <param name="interval">How often to check for expired bundles (default: 1 hour).</param>
-public class BundleExpirationService(
+public partial class BundleExpirationService(
     IServiceScopeFactory scopeFactory,
     ILogger<BundleExpirationService> logger,
     TimeSpan? interval = null
@@ -58,7 +58,7 @@ public class BundleExpirationService(
 
         DateTime now = DateTime.UtcNow;
 
-        List<Data.Entities.Registration.RegistrationBundle> staleBundles = await dbContext.RegistrationBundles
+        List<RegistrationBundle> staleBundles = await dbContext.RegistrationBundles
             .Where( b => b.Status == RegistrationStatus.Pending && b.ExpiresAt < now )
             .ToListAsync( ct );
 
@@ -66,7 +66,7 @@ public class BundleExpirationService(
             return;
         }
 
-        foreach (Data.Entities.Registration.RegistrationBundle bundle in staleBundles) {
+        foreach (RegistrationBundle bundle in staleBundles) {
             bundle.Status = RegistrationStatus.Expired;
         }
 

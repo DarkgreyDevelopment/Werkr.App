@@ -10,25 +10,20 @@ namespace Werkr.Agent.Operators.Actions;
 /// <summary>
 /// Handles the <c>CreateDirectory</c> action - creates a new directory (including parent directories).
 /// </summary>
-public sealed class CreateDirectoryHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="CreateDirectoryHandler"/>.</remarks>
+public sealed partial class CreateDirectoryHandler(
+    IFilePathResolver resolver,
+    ILogger<CreateDirectoryHandler> logger
+    ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<CreateDirectoryHandler> _logger;
-
-    /// <summary>Creates a new <see cref="CreateDirectoryHandler"/>.</summary>
-    public CreateDirectoryHandler(
-        IFilePathResolver resolver,
-        ILogger<CreateDirectoryHandler> logger
-    ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<CreateDirectoryHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "CreateDirectory";
@@ -37,7 +32,8 @@ public sealed class CreateDirectoryHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             CreateDirectoryParameters p = parameters
@@ -64,7 +60,7 @@ public sealed class CreateDirectoryHandler : IActionHandler {
                     ),
                     cancellationToken
                 );
-                return new ActionOperatorResult( Success: true );
+                return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( fullPath, ActionJson.SerializerOptions ) );
             }
 
             _ = Directory.CreateDirectory( fullPath );
@@ -77,12 +73,9 @@ public sealed class CreateDirectoryHandler : IActionHandler {
                 cancellationToken
             );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( fullPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError(
-                ex,
-                "CreateDirectory action failed"
-            );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create(
                     LogLevel.Error,
@@ -96,4 +89,7 @@ public sealed class CreateDirectoryHandler : IActionHandler {
             );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

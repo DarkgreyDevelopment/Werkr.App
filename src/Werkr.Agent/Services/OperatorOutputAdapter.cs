@@ -1,5 +1,4 @@
 using Grpc.Core;
-using Werkr.Agent.Protos;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 

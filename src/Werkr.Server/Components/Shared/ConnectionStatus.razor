@@ -1,0 +1,29 @@
+@* Connection status indicator for SignalR real-time updates. *@
+
+<span class="badge @GetStatusClass( )" title="@GetTooltip( )">
+    @GetLabel( )
+</span>
+
+@code {
+    /// <summary>Current connection state: Live, Reconnecting, or Polling.</summary>
+    [Parameter]
+    public string State { get; set; } = "Polling";
+
+    private string GetStatusClass( ) => State switch {
+        "Live" => "bg-success",
+        "Reconnecting" => "bg-warning text-dark",
+        _ => "bg-secondary",
+    };
+
+    private string GetLabel( ) => State switch {
+        "Live" => "Live",
+        "Reconnecting" => "Reconnecting…",
+        _ => "Polling",
+    };
+
+    private string GetTooltip( ) => State switch {
+        "Live" => "Connected via SignalR — receiving real-time updates.",
+        "Reconnecting" => "SignalR connection lost. Attempting to reconnect…",
+        _ => "Falling back to periodic polling.",
+    };
+}

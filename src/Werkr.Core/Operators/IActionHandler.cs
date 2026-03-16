@@ -30,6 +30,9 @@ public interface IActionHandler {
     /// <param name="output">
     /// Channel writer for streaming structured output lines back to the caller.
     /// </param>
+    /// <param name="inputVariableValue">
+    /// Optional JSON blob from the step's input variable, or <see langword="null"/> if no input is declared.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token for timeout/cancellation support.</param>
     /// <returns>
     /// An <see cref="ActionOperatorResult"/> indicating success or failure.
@@ -37,6 +40,7 @@ public interface IActionHandler {
     Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
+        string? inputVariableValue = null,
         CancellationToken cancellationToken = default
     );
 }

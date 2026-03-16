@@ -7,6 +7,7 @@ using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Tasks;
+using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Api.Services;
 
@@ -19,7 +20,7 @@ namespace Werkr.Api.Services;
 /// <param name="connectionManager">Manages gRPC channels to agents.</param>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve <see cref="WerkrDbContext"/>.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class ScheduleInvalidationDispatcher(
+public sealed partial class ScheduleInvalidationDispatcher(
     AgentConnectionManager connectionManager,
     IServiceScopeFactory scopeFactory,
     ILogger<ScheduleInvalidationDispatcher> logger
@@ -45,19 +46,39 @@ public sealed class ScheduleInvalidationDispatcher(
             .Select( ts => ts.Task! )
             .ToListAsync( ct );
 
-        if (affectedTasks.Count == 0) {
+        // Find workflows referencing this schedule to get their TargetTags
+        List<Workflow> affectedWorkflows = await db.WorkflowSchedules
+            .AsNoTracking( )
+            .Where( ws => ws.ScheduleId == scheduleId )
+            .Select( ws => ws.Workflow! )
+            .ToListAsync( ct );
+
+        if (affectedTasks.Count == 0 && affectedWorkflows.Count == 0) {
             if (logger.IsEnabled( LogLevel.Debug )) {
-                logger.LogDebug( "No tasks reference schedule {ScheduleId}. Skipping invalidation.", scheduleId );
+                logger.LogDebug( "No tasks or workflows reference schedule {ScheduleId}. Skipping invalidation.", scheduleId );
             }
             return;
         }
 
-        // Collect all unique target tags from affected tasks
+        // Collect all unique target tags from affected tasks and workflows
         HashSet<string> allTargetTags = new( StringComparer.OrdinalIgnoreCase );
         foreach (WerkrTask task in affectedTasks) {
             if (task.TargetTags is { Length: > 0 }) {
                 foreach (string tag in task.TargetTags) {
-                    _ = allTargetTags.Add( tag );
+                    string trimmed = tag.Trim();
+                    if (trimmed.Length > 0) {
+                        _ = allTargetTags.Add( trimmed );
+                    }
+                }
+            }
+        }
+        foreach (Workflow workflow in affectedWorkflows) {
+            if (workflow.TargetTags is { Length: > 0 }) {
+                foreach (string tag in workflow.TargetTags) {
+                    string trimmed = tag.Trim();
+                    if (trimmed.Length > 0) {
+                        _ = allTargetTags.Add( trimmed );
+                    }
                 }
             }
         }

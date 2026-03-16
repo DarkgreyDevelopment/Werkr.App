@@ -1,0 +1,158 @@
+@rendermode InteractiveServer
+
+@if ( _isAdvanced ) {
+    <div class="mb-2">
+        <label class="form-label">Condition Expression (Raw)</label>
+        <input type="text" class="form-control font-monospace" @bind="_rawExpression" @bind:event="oninput" />
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary mb-2" @onclick="SwitchToStructured">
+        Switch to Structured
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-primary mb-2 ms-1" @onclick="ApplyRawExpression">
+        Apply
+    </button>
+} else {
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label">Type</label>
+            <select class="form-select" @bind="_expressionType">
+                <option value="ExitCode">Exit Code</option>
+                <option value="SuccessStatus">Success Status</option>
+            </select>
+        </div>
+
+        @if ( _expressionType == "ExitCode" ) {
+            <div class="col-auto">
+                <label class="form-label">Operator</label>
+                <select class="form-select" @bind="_operator">
+                    <option value="==">==</option>
+                    <option value="!=">!=</option>
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                    <option value=">=">&gt;=</option>
+                    <option value="<=">&lt;=</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Value</label>
+                <input type="number" class="form-control" style="max-width: 120px;" @bind="_exitCodeValue" />
+            </div>
+        } else {
+            <div class="col-auto">
+                <label class="form-label">Expected</label>
+                <select class="form-select" @bind="_successValue">
+                    <option value="true">$true (success)</option>
+                    <option value="false">$false (failure)</option>
+                </select>
+            </div>
+        }
+
+        <div class="col-auto">
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="ApplyStructuredExpression">
+                Apply
+            </button>
+        </div>
+    </div>
+
+    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" @onclick="SwitchToAdvanced">
+        Advanced / Raw
+    </button>
+}
+
+@if ( !string.IsNullOrWhiteSpace( Expression ) ) {
+    <div class="mt-2">
+        <span class="badge bg-secondary font-monospace">@Expression</span>
+    </div>
+}
+
+<details class="mt-2">
+    <summary class="small text-muted">Supported expression patterns</summary>
+    <ul class="small mt-1">
+        <li><code>$? -eq $true</code> — previous step succeeded</li>
+        <li><code>$? -eq $false</code> — previous step failed</li>
+        <li><code>$exitCode == 0</code> — exit code equals value</li>
+        <li><code>$exitCode != 0</code> — exit code not equal</li>
+        <li><code>$exitCode &gt; N</code>, <code>&lt; N</code>, <code>&gt;= N</code>, <code>&lt;= N</code> — exit code comparisons</li>
+    </ul>
+</details>
+
+@code {
+    [Parameter]
+    public string? Expression { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ExpressionChanged { get; set; }
+
+    private bool _isAdvanced;
+    private string _rawExpression = "";
+
+    private string _expressionType = "ExitCode";
+    private string _operator = "==";
+    private int _exitCodeValue;
+    private string _successValue = "true";
+
+    private static readonly System.Text.RegularExpressions.Regex SuccessPattern =
+        new( @"^\$\?\s*-eq\s*\$(true|false)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase );
+
+    private static readonly System.Text.RegularExpressions.Regex ExitCodePattern =
+        new( @"^\$exitCode\s*(==|!=|>|<|>=|<=)\s*(-?\d+)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase );
+
+    protected override void OnParametersSet( ) {
+        if ( !string.IsNullOrWhiteSpace( Expression ) ) {
+            ParseExistingExpression( Expression );
+        }
+    }
+
+    private void ParseExistingExpression( string expression ) {
+        System.Text.RegularExpressions.Match successMatch = SuccessPattern.Match( expression.Trim( ) );
+        if ( successMatch.Success ) {
+            _expressionType = "SuccessStatus";
+            _successValue = successMatch.Groups[1].Value.ToLowerInvariant( );
+            return;
+        }
+
+        System.Text.RegularExpressions.Match exitMatch = ExitCodePattern.Match( expression.Trim( ) );
+        if ( exitMatch.Success ) {
+            _expressionType = "ExitCode";
+            _operator = exitMatch.Groups[1].Value;
+            if ( int.TryParse( exitMatch.Groups[2].Value, out int val ) ) {
+                _exitCodeValue = val;
+            }
+        }
+    }
+
+    private async Task ApplyStructuredExpression( ) {
+        string expr = _expressionType == "ExitCode"
+            ? $"$exitCode {_operator} {_exitCodeValue}"
+            : $"$? -eq ${_successValue}";
+
+        Expression = expr;
+        await ExpressionChanged.InvokeAsync( expr );
+    }
+
+    private async Task ApplyRawExpression( ) {
+        string trimmed = _rawExpression.Trim( );
+
+        if ( string.IsNullOrWhiteSpace( trimmed ) ) {
+            Expression = null;
+            await ExpressionChanged.InvokeAsync( null );
+            return;
+        }
+
+        Expression = trimmed;
+        _rawExpression = trimmed;
+        await ExpressionChanged.InvokeAsync( trimmed );
+    }
+
+    private void SwitchToAdvanced( ) {
+        _isAdvanced = true;
+        _rawExpression = Expression ?? "";
+    }
+
+    private void SwitchToStructured( ) {
+        _isAdvanced = false;
+        if ( !string.IsNullOrWhiteSpace( _rawExpression ) ) {
+            ParseExistingExpression( _rawExpression );
+        }
+    }
+}

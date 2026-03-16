@@ -28,6 +28,12 @@ public class Workflow : ConcurrencyBase, IKey<long> {
     /// <summary>Whether the workflow is enabled.</summary>
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Agent targeting tags for workflow-level override.</summary>
+    public string[]? TargetTags { get; set; }
+
+    /// <summary>JSON-serialized annotation cards for the DAG canvas (sticky notes).</summary>
+    public string? Annotations { get; set; }
+
     /// <summary>Navigation property for workflow steps.</summary>
     public ICollection<WorkflowStep> Steps { get; set; } = [];
 
@@ -36,6 +42,9 @@ public class Workflow : ConcurrencyBase, IKey<long> {
 
     /// <summary>Navigation property for workflow runs.</summary>
     public ICollection<WorkflowRun> Runs { get; set; } = [];
+
+    /// <summary>Navigation property for design-time variable definitions.</summary>
+    public ICollection<WorkflowVariable> Variables { get; set; } = [];
 
     /// <summary>Navigation property for schedule links (many-to-many via WorkflowSchedule).</summary>
     public ICollection<WorkflowSchedule> WorkflowSchedules { get; set; } = [];

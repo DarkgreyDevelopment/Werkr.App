@@ -9,18 +9,13 @@ namespace Werkr.Agent.Security;
 /// by all built-in action handlers. Delegates path validation to
 /// <see cref="IPathAllowlistValidator"/>.
 /// </summary>
-public sealed class FilePathResolver : IFilePathResolver {
+/// <remarks>Creates a new <see cref="FilePathResolver"/>.</remarks>
+public sealed class FilePathResolver( IPathAllowlistValidator pathValidator ) : IFilePathResolver {
 
-    private readonly IPathAllowlistValidator _pathValidator;
-    private readonly StringComparison _comparison;
-
-    /// <summary>Creates a new <see cref="FilePathResolver"/>.</summary>
-    public FilePathResolver( IPathAllowlistValidator pathValidator ) {
-        _pathValidator = pathValidator;
-        _comparison = RuntimeInformation.IsOSPlatform( OSPlatform.Windows )
+    private readonly IPathAllowlistValidator _pathValidator = pathValidator;
+    private readonly StringComparison _comparison = RuntimeInformation.IsOSPlatform( OSPlatform.Windows )
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
-    }
 
     /// <inheritdoc/>
     public string ResolveSinglePath( string path ) {

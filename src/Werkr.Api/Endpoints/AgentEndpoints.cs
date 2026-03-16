@@ -5,7 +5,6 @@ using Werkr.Api.Services;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
-
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Scheduling;

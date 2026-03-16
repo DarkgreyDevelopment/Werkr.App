@@ -57,6 +57,29 @@ body.dark-theme {
     --text-muted-color:     var(--grey-600);
     --badge-bg:             var(--grey-700);
 
+    /* ── Werkr Status Colors ── */
+    --werkr-success:          #28a745;
+    --werkr-failed:           #dc3545;
+    --werkr-running:          #ffc107;
+    --werkr-pending:          #6f42c1;
+    --werkr-skipped:          #6c757d;
+    --werkr-not-run:          #4a4a4a;
+
+    /* ── DAG Node Types ── */
+    --werkr-node-default:     #0d6efd;
+    --werkr-node-conditional: #6f42c1;
+    --werkr-node-fallback:    #9b59b6;
+    --werkr-node-loop:        #fd7e14;
+    --werkr-node-unknown:     #495057;
+
+    /* ── DAG Structural ── */
+    --werkr-edge-color:       #6c757d;
+    --werkr-node-stroke:      #495057;
+    --werkr-node-text:        #ffffff;
+    --werkr-node-text-muted:  rgba(255, 255, 255, 0.8);
+    --werkr-parallel-group-bg: rgba(108,117,125,0.12);
+    --werkr-snapline:         #17a2b8;
+
     background-color: var(--body-bg);
     color: var(--body-content-color);
 }
@@ -86,6 +109,29 @@ body.light-theme {
     --text-muted-color:     var(--grey-600);
     --badge-bg:             var(--grey-400);
 
+    /* ── Werkr Status Colors ── */
+    --werkr-success:          #198754;
+    --werkr-failed:           #dc3545;
+    --werkr-running:          #ffc107;
+    --werkr-pending:          #6f42c1;
+    --werkr-skipped:          #6c757d;
+    --werkr-not-run:          #e9ecef;
+
+    /* ── DAG Node Types ── */
+    --werkr-node-default:     #0d6efd;
+    --werkr-node-conditional: #6f42c1;
+    --werkr-node-fallback:    #9b59b6;
+    --werkr-node-loop:        #fd7e14;
+    --werkr-node-unknown:     #6c757d;
+
+    /* ── DAG Structural ── */
+    --werkr-edge-color:       #6c757d;
+    --werkr-node-stroke:      #6c757d;
+    --werkr-node-text:        #ffffff;
+    --werkr-node-text-muted:  rgba(255, 255, 255, 0.8);
+    --werkr-parallel-group-bg: rgba(108,117,125,0.08);
+    --werkr-snapline:         #0dcaf0;
+
     background-color: var(--body-bg);
     color: var(--body-content-color);
 }
@@ -98,6 +144,49 @@ body.light-theme {
     --bs-link-color: var(--link-color);
     --bs-link-hover-color: var(--link-color);
     --bs-border-color: var(--card-border);
+}
+
+/*
+ * Bootstrap 5.3 dark-mode variable bridge.
+ * Bootstrap gates its dark palette on [data-bs-theme="dark"], but Werkr uses
+ * body.dark-theme / body.light-theme classes.  Without these overrides every
+ * utility that reads --bs-*-bg-rgb (bg-body-tertiary, bg-body-secondary, …)
+ * keeps the light-mode default, producing white-on-white in dark mode.
+ */
+body.dark-theme {
+    --bs-body-bg-rgb: 45, 45, 48;
+    --bs-body-color-rgb: 204, 213, 220;
+    --bs-emphasis-color: #fff;
+    --bs-emphasis-color-rgb: 255, 255, 255;
+    --bs-secondary-color: rgba(204, 213, 220, 0.75);
+    --bs-secondary-color-rgb: 204, 213, 220;
+    --bs-secondary-bg: var(--grey-800);
+    --bs-secondary-bg-rgb: 51, 51, 55;
+    --bs-tertiary-color: rgba(204, 213, 220, 0.5);
+    --bs-tertiary-color-rgb: 204, 213, 220;
+    --bs-tertiary-bg: var(--grey-800);
+    --bs-tertiary-bg-rgb: 51, 51, 55;
+    --bs-primary-text-emphasis: #86b7fe;
+    --bs-secondary-text-emphasis: #a7acb1;
+    --bs-success-text-emphasis: #75b798;
+    --bs-info-text-emphasis: #6edff6;
+    --bs-warning-text-emphasis: #ffda6a;
+    --bs-danger-text-emphasis: #ea868f;
+}
+
+body.light-theme {
+    --bs-body-bg-rgb: 210, 210, 207;
+    --bs-body-color-rgb: 30, 30, 30;
+    --bs-emphasis-color: #000;
+    --bs-emphasis-color-rgb: 0, 0, 0;
+    --bs-secondary-color: rgba(30, 30, 30, 0.75);
+    --bs-secondary-color-rgb: 30, 30, 30;
+    --bs-secondary-bg: var(--grey-300);
+    --bs-secondary-bg-rgb: 231, 231, 231;
+    --bs-tertiary-color: rgba(30, 30, 30, 0.5);
+    --bs-tertiary-color-rgb: 30, 30, 30;
+    --bs-tertiary-bg: var(--grey-200);
+    --bs-tertiary-bg-rgb: 240, 240, 240;
 }
 
 body.dark-theme .card,
@@ -218,10 +307,10 @@ body.dark-theme .btn-outline-primary {
 }
 
 body.dark-theme .btn-outline-secondary {
-    --bs-btn-color: var(--grey-400);
-    --bs-btn-border-color: var(--grey-600);
+    --bs-btn-color: #f0f0f0;
+    --bs-btn-border-color: var(--grey-500);
     --bs-btn-hover-bg: var(--grey-700);
-    --bs-btn-hover-border-color: var(--grey-600);
+    --bs-btn-hover-border-color: var(--grey-500);
     --bs-btn-hover-color: #fff;
 }
 
@@ -231,6 +320,30 @@ body.dark-theme .btn-outline-danger {
     --bs-btn-hover-bg: var(--red);
     --bs-btn-hover-border-color: var(--red);
     --bs-btn-hover-color: #fff;
+}
+
+body.dark-theme .btn-outline-success {
+    --bs-btn-color: #75b798;
+    --bs-btn-border-color: var(--green);
+    --bs-btn-hover-bg: var(--green);
+    --bs-btn-hover-border-color: var(--green);
+    --bs-btn-hover-color: #fff;
+}
+
+body.dark-theme .btn-outline-warning {
+    --bs-btn-color: #ffda6a;
+    --bs-btn-border-color: var(--yellow);
+    --bs-btn-hover-bg: var(--yellow);
+    --bs-btn-hover-border-color: var(--yellow);
+    --bs-btn-hover-color: #000;
+}
+
+body.dark-theme .btn-outline-info {
+    --bs-btn-color: #6edff6;
+    --bs-btn-border-color: var(--cyan);
+    --bs-btn-hover-bg: var(--cyan);
+    --bs-btn-hover-border-color: var(--cyan);
+    --bs-btn-hover-color: #000;
 }
 
 body.dark-theme .table-dark {
@@ -296,11 +409,35 @@ body.light-theme .btn-outline-primary {
 }
 
 body.light-theme .btn-outline-secondary {
-    --bs-btn-color: #6c757d;
+    --bs-btn-color: #495057;
     --bs-btn-border-color: #6c757d;
     --bs-btn-hover-bg: #6c757d;
     --bs-btn-hover-border-color: #6c757d;
     --bs-btn-hover-color: #fff;
+}
+
+body.light-theme .btn-outline-success {
+    --bs-btn-color: #146c43;
+    --bs-btn-border-color: #198754;
+    --bs-btn-hover-bg: #198754;
+    --bs-btn-hover-border-color: #198754;
+    --bs-btn-hover-color: #fff;
+}
+
+body.light-theme .btn-outline-warning {
+    --bs-btn-color: #997404;
+    --bs-btn-border-color: #ffc107;
+    --bs-btn-hover-bg: #ffc107;
+    --bs-btn-hover-border-color: #ffc107;
+    --bs-btn-hover-color: #000;
+}
+
+body.light-theme .btn-outline-info {
+    --bs-btn-color: #087990;
+    --bs-btn-border-color: #0dcaf0;
+    --bs-btn-hover-bg: #0dcaf0;
+    --bs-btn-hover-border-color: #0dcaf0;
+    --bs-btn-hover-color: #000;
 }
 
 body.light-theme .btn-outline-danger {
@@ -351,3 +488,11 @@ body.light-theme legend {
     font-size: 0.9rem;
     line-height: 1;
 }
+
+/* ── Badge → Werkr semantic color bridge ──────────────────── */
+.badge.bg-success   { background-color: var(--werkr-success) !important; }
+.badge.bg-danger    { background-color: var(--werkr-failed) !important; }
+.badge.bg-warning   { background-color: var(--werkr-running) !important; }
+.badge.bg-primary   { background-color: var(--werkr-pending) !important; }
+.badge.bg-secondary { background-color: var(--werkr-skipped) !important; }
+.badge.bg-info      { background-color: var(--werkr-pending) !important; }

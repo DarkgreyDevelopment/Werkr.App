@@ -87,7 +87,7 @@ public class CreateFileHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -110,7 +110,7 @@ public class CreateFileHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -140,7 +140,7 @@ public class CreateFileHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -168,7 +168,7 @@ public class CreateFileHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );
@@ -197,7 +197,7 @@ public class CreateFileHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsTrue( result.Success );
@@ -230,7 +230,7 @@ public class CreateFileHandlerTests {
         ActionOperatorResult result = await _handler.ExecuteAsync(
             parameters,
             _channel.Writer,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         Assert.IsFalse( result.Success );

@@ -16,9 +16,11 @@ namespace Werkr.Agent.Communication;
 /// Provides typed client accessors and <see cref="CallOptions"/> with bearer token authentication.
 /// </summary>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve <see cref="WerkrDbContext"/>.</param>
+/// <param name="configuration">Application configuration for optional URL overrides.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class AgentGrpcClientFactory(
+public sealed partial class AgentGrpcClientFactory(
     IServiceScopeFactory scopeFactory,
+    IConfiguration configuration,
     ILogger<AgentGrpcClientFactory> logger
 ) : IDisposable {
     /// <summary>
@@ -78,17 +80,28 @@ public sealed class AgentGrpcClientFactory(
     }
 
     /// <summary>
+    /// Creates a <see cref="VariableService.VariableServiceClient"/> for
+    /// getting and setting workflow run variables on the Server.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A configured gRPC client.</returns>
+    public async Task<VariableService.VariableServiceClient> CreateVariableServiceClientAsync( CancellationToken ct = default ) {
+        await EnsureInitializedAsync( ct );
+        return new VariableService.VariableServiceClient( _channel );
+    }
+
+    /// <summary>
     /// Creates gRPC <see cref="CallOptions"/> with bearer token, connection ID, call ID, and deadline.
     /// Mirrors the pattern from <c>AgentConnectionManager.CreateCallOptions</c>.
     /// </summary>
     /// <param name="callId">Optional call ID for tracing. Generated if null.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="timeout">Call timeout. Defaults to 5 minutes if null.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Configured <see cref="CallOptions"/>.</returns>
     public CallOptions CreateCallOptions(
         Guid? callId = null,
-        CancellationToken cancellationToken = default,
-        TimeSpan? timeout = null ) {
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default ) {
 
         if (_connection is null) {
             throw new InvalidOperationException(
@@ -103,7 +116,11 @@ public sealed class AgentGrpcClientFactory(
         };
 
         TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromMinutes( 5 );
-        DateTime deadline = DateTime.UtcNow + effectiveTimeout;
+
+        // Infinite or non-positive timeouts mean no deadline (used by output streaming).
+        DateTime? deadline = effectiveTimeout <= TimeSpan.Zero
+            ? null
+            : DateTime.UtcNow + effectiveTimeout;
 
         return new CallOptions(
             headers: metadata,
@@ -191,15 +208,30 @@ public sealed class AgentGrpcClientFactory(
 
             _connection = await ResolveConnectionAsync( ct );
 
+            // Prefer explicit API URL from config/environment (e.g. Aspire-injected
+            // Werkr__ApiUrl) over the stored registration URL, which may be stale after
+            // port changes or Aspire restarts.
+            string targetUrl = _connection.RemoteUrl;
+            string? apiUrlOverride = configuration["Werkr:ApiUrl"];
+            if (!string.IsNullOrWhiteSpace( apiUrlOverride )) {
+                if (logger.IsEnabled( LogLevel.Information )
+                    && !string.Equals( apiUrlOverride, targetUrl, StringComparison.OrdinalIgnoreCase )) {
+                    logger.LogInformation(
+                        "Overriding stored RemoteUrl {StoredUrl} with configured ApiUrl {OverrideUrl}.",
+                        targetUrl, apiUrlOverride );
+                }
+                targetUrl = apiUrlOverride;
+            }
+
             _channel?.Dispose( );
-            _channel = GrpcChannel.ForAddress( _connection.RemoteUrl, new GrpcChannelOptions {
+            _channel = GrpcChannel.ForAddress( targetUrl, new GrpcChannelOptions {
                 HttpHandler = CreateHttpHandler( )
             } );
 
             if (logger.IsEnabled( LogLevel.Information )) {
                 logger.LogInformation(
                     "Created gRPC channel to Server at {Url} (Connection: {ConnectionId}).",
-                    _connection.RemoteUrl, _connection.Id.ToString( ) );
+                    targetUrl, _connection.Id.ToString( ) );
             }
         } finally {
             _ = _initLock.Release( );

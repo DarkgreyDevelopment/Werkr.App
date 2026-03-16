@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Security.Cryptography;
 using Werkr.Common.Models;
+using Werkr.Common.Protos;
 using Werkr.Data.Entities.Interfaces;
 using Werkr.Data.Entities.Tasks;
 
@@ -70,7 +71,7 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
 
     /// <summary>
     /// Opaque identifier for <see cref="SharedKey"/>, placed in the <c>key_id</c> field of
-    /// every <see cref="Common.Protos.EncryptedEnvelope"/>. Defaults to
+    /// every <see cref="EncryptedEnvelope"/>. Defaults to
     /// <see cref="Id"/>.ToString() when null (pre-rotation connections).
     /// </summary>
     [MaxLength( 128 )]

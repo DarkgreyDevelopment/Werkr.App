@@ -1,9 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
 using Werkr.Data;
 using Werkr.Data.Entities.Tasks;
 
@@ -15,7 +13,7 @@ namespace Werkr.Core.Tasks;
 /// </summary>
 /// <param name="dbContext">Database context.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class TaskService(
+public sealed partial class TaskService(
     WerkrDbContext dbContext,
     ILogger<TaskService> logger
 ) {

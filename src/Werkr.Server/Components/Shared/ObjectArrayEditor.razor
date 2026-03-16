@@ -1,0 +1,271 @@
+@rendermode InteractiveServer
+
+<div>
+    @for ( int i = 0; i < _items.Count; i++ ) {
+        int index = i;
+        Dictionary<string, object?> item = _items[index];
+
+        <div class="card mb-2">
+            <div class="card-header d-flex justify-content-between align-items-center py-1 px-2">
+                <button class="btn btn-sm btn-link text-decoration-none p-0"
+                        type="button"
+                        @onclick="( ) => ToggleCollapse( index )">
+                    <span class="bi @( IsCollapsed( index ) ? "bi-chevron-right" : "bi-chevron-down" ) me-1"></span>
+                    @BuildSummary( item, index )
+                </button>
+                <button class="btn btn-outline-danger btn-sm py-0 px-1" type="button"
+                        @onclick="( ) => RemoveItem( index )"
+                        title="Remove item">&times;</button>
+            </div>
+
+            @if ( !IsCollapsed( index ) ) {
+                <div class="card-body py-2 px-3">
+                    @if ( SubFields is not null ) {
+                        @foreach ( FieldDescriptor field in SubFields ) {
+                            if ( !IsSubFieldVisible( field, item ) ) {
+                                continue;
+                            }
+
+                            <div class="mb-2">
+                                <label class="form-label form-label-sm mb-0">@field.Label</label>
+
+                                @switch ( field.Type ) {
+                                    case FieldType.Text:
+                                        <input type="text" class="form-control form-control-sm"
+                                               placeholder="@field.Placeholder"
+                                               value="@GetStringValue( item, field.Name )"
+                                               @onchange="( e ) => SetSubFieldValue( index, field.Name, e.Value?.ToString( ) )" />
+                                        break;
+
+                                    case FieldType.TextArea:
+                                        <textarea class="form-control form-control-sm font-monospace" rows="3"
+                                                  placeholder="@field.Placeholder"
+                                                  @onchange="( e ) => SetSubFieldValue( index, field.Name, e.Value?.ToString( ) )">@GetStringValue( item, field.Name )</textarea>
+                                        break;
+
+                                    case FieldType.Number:
+                                        <input type="number" class="form-control form-control-sm"
+                                               placeholder="@field.Placeholder"
+                                               min="@field.Min" max="@field.Max"
+                                               value="@GetStringValue( item, field.Name )"
+                                               @onchange="( e ) => SetSubFieldNumber( index, field.Name, e.Value?.ToString( ) )" />
+                                        break;
+
+                                    case FieldType.Bool:
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   checked="@GetBoolValue( item, field.Name )"
+                                                   @onchange="( e ) => SetSubFieldValue( index, field.Name, e.Value )" />
+                                        </div>
+                                        break;
+
+                                    case FieldType.Select:
+                                        <select class="form-select form-select-sm"
+                                                value="@GetStringValue( item, field.Name )"
+                                                @onchange="( e ) => SetSubFieldValue( index, field.Name, e.Value?.ToString( ) )">
+                                            <option value="">— select —</option>
+                                            @if ( field.Options is not null ) {
+                                                @foreach ( string opt in field.Options ) {
+                                                    <option value="@opt">@opt</option>
+                                                }
+                                            }
+                                        </select>
+                                        break;
+
+                                    default:
+                                        <input type="text" class="form-control form-control-sm" disabled
+                                               placeholder="Unsupported field type — use JSON view"
+                                               title="This field type is not supported in the object editor. Use JSON view to edit." />
+                                        break;
+                                }
+
+                                @if ( field.HelpText is not null ) {
+                                    <div class="form-text small">@field.HelpText</div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    }
+    <button class="btn btn-outline-primary btn-sm mt-1" type="button" @onclick="AddItem">
+        + Add Item
+    </button>
+</div>
+
+@code {
+    /// <summary>The list of structured objects — two-way bound.</summary>
+    [Parameter]
+    public List<Dictionary<string, object?>>? Value { get; set; }
+
+    /// <summary>Callback when the list changes.</summary>
+    [Parameter]
+    public EventCallback<List<Dictionary<string, object?>>?> ValueChanged { get; set; }
+
+    /// <summary>Field descriptors defining the shape of each object in the array.</summary>
+    [Parameter]
+    public IReadOnlyList<FieldDescriptor>? SubFields { get; set; }
+
+    private List<Dictionary<string, object?>> _items = [];
+    private HashSet<int> _collapsed = [];
+
+    protected override void OnParametersSet( ) {
+        List<Dictionary<string, object?>> incoming = Value ?? [];
+        if ( _items.Count != incoming.Count || !ItemsMatch( _items, incoming ) ) {
+            _items = incoming.Select( d => new Dictionary<string, object?>( d, StringComparer.OrdinalIgnoreCase ) ).ToList( );
+            _collapsed.Clear( );
+        }
+    }
+
+    private async Task SetSubFieldValue( int itemIndex, string fieldName, object? value ) {
+        if ( itemIndex < 0 || itemIndex >= _items.Count ) {
+            return;
+        }
+
+        Dictionary<string, object?> item = _items[itemIndex];
+
+        if ( value is null || ( value is string s && string.IsNullOrEmpty( s ) ) ) {
+            item.Remove( fieldName );
+        } else {
+            item[fieldName] = value;
+        }
+
+        // Clear hidden sub-fields when a controlling field changes
+        if ( SubFields is not null ) {
+            foreach ( FieldDescriptor field in SubFields ) {
+                if ( field.ShowWhen is not null && !IsSubFieldVisible( field, item ) ) {
+                    item.Remove( field.Name );
+                }
+            }
+        }
+
+        await NotifyChanged( );
+    }
+
+    private async Task SetSubFieldNumber( int itemIndex, string fieldName, string? text ) {
+        if ( itemIndex < 0 || itemIndex >= _items.Count ) {
+            return;
+        }
+
+        if ( long.TryParse( text, out long n ) ) {
+            _items[itemIndex][fieldName] = n;
+        } else if ( double.TryParse( text, out double d ) ) {
+            _items[itemIndex][fieldName] = d;
+        } else {
+            _items[itemIndex].Remove( fieldName );
+        }
+
+        await NotifyChanged( );
+    }
+
+    private async Task RemoveItem( int index ) {
+        if ( index >= 0 && index < _items.Count ) {
+            _items.RemoveAt( index );
+            _collapsed.Remove( index );
+            // Shift collapsed indices above the removed one
+            _collapsed = [.. _collapsed.Select( i => i > index ? i - 1 : i )];
+            await NotifyChanged( );
+        }
+    }
+
+    private async Task AddItem( ) {
+        Dictionary<string, object?> newItem = new( StringComparer.OrdinalIgnoreCase );
+        if ( SubFields is not null ) {
+            foreach ( FieldDescriptor field in SubFields ) {
+                if ( field.DefaultValue is not null ) {
+                    newItem[field.Name] = field.Type switch {
+                        FieldType.Bool => bool.TryParse( field.DefaultValue, out bool b ) && b,
+                        FieldType.Number => long.TryParse( field.DefaultValue, out long n ) ? n : field.DefaultValue,
+                        _ => field.DefaultValue,
+                    };
+                }
+            }
+        }
+        _items.Add( newItem );
+        await NotifyChanged( );
+    }
+
+    private void ToggleCollapse( int index ) {
+        if ( !_collapsed.Remove( index ) ) {
+            _collapsed.Add( index );
+        }
+    }
+
+    private bool IsCollapsed( int index ) => _collapsed.Contains( index );
+
+    private static string GetStringValue( Dictionary<string, object?> item, string name )
+        => item.TryGetValue( name, out object? v ) && v is not null ? v.ToString( ) ?? "" : "";
+
+    private static bool GetBoolValue( Dictionary<string, object?> item, string name )
+        => item.TryGetValue( name, out object? v ) && v is true;
+
+    private string BuildSummary( Dictionary<string, object?> item, int index ) {
+        if ( SubFields is null || SubFields.Count == 0 ) {
+            return $"Item {index + 1}";
+        }
+
+        // Use the first two fields that have values as the summary
+        List<string> parts = [];
+        foreach ( FieldDescriptor field in SubFields ) {
+            if ( parts.Count >= 2 ) {
+                break;
+            }
+            string val = GetStringValue( item, field.Name );
+            if ( !string.IsNullOrWhiteSpace( val ) ) {
+                parts.Add( val );
+            }
+        }
+
+        return parts.Count > 0 ? string.Join( " — ", parts ) : $"Item {index + 1}";
+    }
+
+    private static bool IsSubFieldVisible( FieldDescriptor field, Dictionary<string, object?> item ) {
+        if ( field.ShowWhen is null ) {
+            return true;
+        }
+
+        int eqIdx = field.ShowWhen.IndexOf( '=' );
+        if ( eqIdx < 0 ) {
+            return true;
+        }
+
+        string depField = field.ShowWhen[..eqIdx];
+        string[] allowedValues = field.ShowWhen[( eqIdx + 1 )..].Split( '|' );
+
+        string currentStr = GetStringValue( item, depField );
+        return allowedValues.Any( v => v.Equals( currentStr, StringComparison.OrdinalIgnoreCase ) );
+    }
+
+    private static bool ItemsMatch(
+            List<Dictionary<string, object?>> a,
+            List<Dictionary<string, object?>> b ) {
+        if ( a.Count != b.Count ) {
+            return false;
+        }
+        for ( int i = 0; i < a.Count; i++ ) {
+            if ( a[i].Count != b[i].Count ) {
+                return false;
+            }
+            foreach ( KeyValuePair<string, object?> kvp in a[i] ) {
+                if ( !b[i].TryGetValue( kvp.Key, out object? bVal )
+                        || !Equals( kvp.Value, bVal ) ) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private async Task NotifyChanged( ) {
+        // Emit a clean copy — only items with at least one non-empty field
+        List<Dictionary<string, object?>> result = [];
+        foreach ( Dictionary<string, object?> item in _items ) {
+            if ( item.Any( kvp => kvp.Value is not null ) ) {
+                result.Add( new Dictionary<string, object?>( item, StringComparer.OrdinalIgnoreCase ) );
+            }
+        }
+        Value = result.Count > 0 ? result : null;
+        await ValueChanged.InvokeAsync( Value );
+    }
+}

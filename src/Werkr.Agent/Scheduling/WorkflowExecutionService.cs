@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Werkr.Agent.Communication;
 using Werkr.Agent.Operators;
@@ -27,9 +28,11 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="shellOperator">System shell operator.</param>
 /// <param name="actionOperator">Built-in action operator.</param>
 /// <param name="clientFactory">Factory for creating outbound gRPC clients to the Server.</param>
+/// <param name="variableClient">Client for workflow variable get/set/create operations.</param>
+/// <param name="outputStreamingService">Manages real-time output streaming to the server.</param>
 /// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
 /// <param name="logger">Logger.</param>
-public sealed class WorkflowExecutionService(
+public sealed partial class WorkflowExecutionService(
     AgentJobOutputWriter outputWriter,
     SuccessCriteriaEvaluator successEvaluator,
     ConditionEvaluator conditionEvaluator,
@@ -37,6 +40,8 @@ public sealed class WorkflowExecutionService(
     SystemShellOperator shellOperator,
     IActionOperator actionOperator,
     AgentGrpcClientFactory clientFactory,
+    VariableClient variableClient,
+    Werkr.Agent.Services.OutputStreamingService outputStreamingService,
     IServiceScopeFactory serviceScopeFactory,
     ILogger<WorkflowExecutionService> logger
 ) {
@@ -69,7 +74,8 @@ public sealed class WorkflowExecutionService(
         DateTime StartTime,
         DateTime EndTime,
         ErrorCategory ErrorCategory,
-        string? OutputPreview
+        string? OutputPreview,
+        string? OutputVariableValue = null
     );
 
     // ── Public API ───────────────────────────────────────────────────────────────
@@ -85,7 +91,15 @@ public sealed class WorkflowExecutionService(
         ScheduledWorkflowDefinition workflow,
         CancellationToken ct
     ) {
-        Guid workflowRunId = Guid.NewGuid();
+        Guid workflowRunId;
+        if (!string.IsNullOrWhiteSpace( workflow.WorkflowRunId )
+            && Guid.TryParse( workflow.WorkflowRunId, out Guid parsedRunId )) {
+            workflowRunId = parsedRunId;
+        } else {
+            // Cron-triggered workflow — ask the API to create the WorkflowRun and seed defaults
+            Guid? apiRunId = await variableClient.CreateWorkflowRunAsync(workflow.WorkflowId, ct);
+            workflowRunId = apiRunId ?? Guid.NewGuid( ); // Final fallback for backwards compatibility
+        }
 
         // Resolve schedule ID from the workflow definition
         Guid? scheduleId = workflow.Schedule is not null
@@ -98,17 +112,29 @@ public sealed class WorkflowExecutionService(
                 workflowRunId, workflow.WorkflowId, workflow.Name, workflow.Steps.Count );
         }
 
+        // Seed variable cache from workflow definition defaults and trigger variables
+        ConcurrentDictionary<string, string> variableCache = new(StringComparer.OrdinalIgnoreCase);
+        foreach (WorkflowVariableDef varDef in workflow.Variables) {
+            if (!string.IsNullOrWhiteSpace( varDef.DefaultValue )) {
+                variableCache[varDef.Name] = varDef.DefaultValue;
+            }
+        }
+        foreach (KeyValuePair<string, string> trigger in workflow.TriggerVariables) {
+            variableCache[trigger.Key] = trigger.Value;
+        }
+
         // Build topological levels from the step definitions
         IReadOnlyList<IReadOnlyList<ScheduledWorkflowStepDef>> levels =
             BuildTopologicalLevels( workflow.Steps );
 
-        // Step result map: stepId → completed job result
-        Dictionary<long, StepJobResult> stepResults = [];
+        // Step result map: stepId → completed job result (concurrent for parallel steps)
+        ConcurrentDictionary<long, StepJobResult> stepResults = new();
 
         // If/Else/ElseIf chain tracking: stepId → whether that branch was taken
         Dictionary<long, bool> branchTaken = [];
 
         bool workflowFailed = false;
+        long? failedStepId = null;
 
         try {
             foreach (IReadOnlyList<ScheduledWorkflowStepDef> level in levels) {
@@ -127,24 +153,24 @@ public sealed class WorkflowExecutionService(
                     }
                 }
 
-                // Execute parallelizable steps (sequentially — no DB context concerns on agent
-                // but keeps behavior consistent with the original executor)
-                foreach (ScheduledWorkflowStepDef step in parallelizable) {
-                    ct.ThrowIfCancellationRequested( );
+                // Execute parallelizable steps concurrently via Task.WhenAll
+                if (parallelizable.Count > 0) {
+                    StepExecutionResult[] parallelResults = await Task.WhenAll(
+                        parallelizable.Select( step => ExecuteStepAsync(
+                            step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, ct ) ) );
 
-                    StepExecutionResult result = await ExecuteStepAsync(
-                        step, workflow, workflowRunId, stepResults, branchTaken, scheduleId, ct );
+                    foreach (StepExecutionResult result in parallelResults) {
+                        if (result.Job is not null) {
+                            stepResults[result.StepId] = result.Job;
+                        }
 
-                    if (result.Job is not null) {
-                        stepResults[result.StepId] = result.Job;
-                    }
-
-                    if (result.Failed) {
-                        logger.LogWarning(
-                            "Workflow run {RunId} failed at step {StepId}: {Error}.",
-                            workflowRunId, result.StepId, result.ErrorMessage );
-                        workflowFailed = true;
-                        break;
+                        if (result.Failed) {
+                            logger.LogWarning(
+                                "Workflow run {RunId} failed at step {StepId}: {Error}.",
+                                workflowRunId, result.StepId, result.ErrorMessage );
+                            workflowFailed = true;
+                            failedStepId ??= result.StepId;
+                        }
                     }
                 }
 
@@ -157,7 +183,7 @@ public sealed class WorkflowExecutionService(
                     ct.ThrowIfCancellationRequested( );
 
                     StepExecutionResult result = await ExecuteStepAsync(
-                        step, workflow, workflowRunId, stepResults, branchTaken, scheduleId, ct );
+                        step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, ct);
 
                     if (result.Job is not null) {
                         stepResults[result.StepId] = result.Job;
@@ -168,6 +194,7 @@ public sealed class WorkflowExecutionService(
                             "Workflow run {RunId} failed at step {StepId}: {Error}.",
                             workflowRunId, result.StepId, result.ErrorMessage );
                         workflowFailed = true;
+                        failedStepId ??= result.StepId;
                         break;
                     }
                 }
@@ -186,18 +213,22 @@ public sealed class WorkflowExecutionService(
             throw; // Propagate shutdown
         } catch (Exception ex) {
             logger.LogError( ex, "Workflow run {RunId} failed with unexpected error.", workflowRunId );
+            workflowFailed = true;
         }
+
+        // Report workflow run completion/failure to the server
+        await CompleteWorkflowRunAsync( workflowRunId, !workflowFailed, failedStepId, ct );
     }
 
     // ── Step Execution ───────────────────────────────────────────────────────────
 
-    /// <summary>Executes a single workflow step, handling control flow.</summary>
+    /// <summary>Executes a single workflow step, handling control flow and variable I/O.</summary>
     private async Task<StepExecutionResult> ExecuteStepAsync(
         ScheduledWorkflowStepDef step,
-        ScheduledWorkflowDefinition workflow,
         Guid workflowRunId,
-        Dictionary<long, StepJobResult> stepResults,
+        ConcurrentDictionary<long, StepJobResult> stepResults,
         Dictionary<long, bool> branchTaken,
+        ConcurrentDictionary<string, string> variableCache,
         Guid? scheduleId,
         CancellationToken ct
     ) {
@@ -226,18 +257,43 @@ public sealed class WorkflowExecutionService(
                 logger.LogDebug( "Step {StepId} '{StepLabel}' skipped by control flow ({ControlStatement}).",
                     step.StepId, stepLabel, (ControlStatement)step.ControlStatement );
             }
+
+            string skipReason = $"Control flow: {(ControlStatement) step.ControlStatement}";
+            await ReportStepSkippedAsync( workflowRunId, step.StepId, taskDef.Name, skipReason, ct );
+
             return StepExecutionResult.Skipped( step.StepId );
         }
+
+        // Report step started to the server
+        await ReportStepStartedAsync( workflowRunId, step.StepId, taskDef.Name, taskDef.TaskId, ct );
+
+        // Resolve input variable from cache
+        string? inputVariableValue = null;
+        if (!string.IsNullOrWhiteSpace( step.InputVariableName )
+            && variableCache.TryGetValue( step.InputVariableName, out string? cachedValue )) {
+            inputVariableValue = cachedValue;
+        }
+
+        string? outputVariableName = string.IsNullOrWhiteSpace(step.OutputVariableName)
+            ? null : step.OutputVariableName;
 
         // Handle While/Do loops
         ControlStatement cs = (ControlStatement) step.ControlStatement;
         if (cs is ControlStatement.While or ControlStatement.Do) {
             return await ExecuteLoopStepAsync(
-                step, taskDef, workflowRunId, predecessorJobs, scheduleId, ct );
+                step, taskDef, workflowRunId, predecessorJobs, variableCache, scheduleId, ct );
         }
 
         // Execute the step's task locally
-        StepJobResult job = await ExecuteStepTaskAsync( taskDef, workflowRunId, scheduleId, ct );
+        StepJobResult job = await ExecuteStepTaskAsync(
+            taskDef, workflowRunId, step.StepId, scheduleId, inputVariableValue, outputVariableName, ct);
+
+        // Push output variable to server and local cache
+        if (outputVariableName is not null && job.OutputVariableValue is not null) {
+            variableCache[outputVariableName] = job.OutputVariableValue;
+            await variableClient.PushVariableAsync( workflowRunId, outputVariableName,
+                job.OutputVariableValue, step.StepId, job.JobId, ct );
+        }
 
         // Record branch taken for If/ElseIf chains
         if (cs is ControlStatement.If or ControlStatement.ElseIf) {
@@ -252,12 +308,13 @@ public sealed class WorkflowExecutionService(
         return StepExecutionResult.Ok( step.StepId, job );
     }
 
-    /// <summary>Executes a While or Do loop step.</summary>
+    /// <summary>Executes a While or Do loop step with variable support.</summary>
     private async Task<StepExecutionResult> ExecuteLoopStepAsync(
         ScheduledWorkflowStepDef step,
         ScheduledTaskDefinition taskDef,
         Guid workflowRunId,
         List<WerkrJob> predecessorJobs,
+        ConcurrentDictionary<string, string> variableCache,
         Guid? scheduleId,
         CancellationToken ct
     ) {
@@ -265,6 +322,15 @@ public sealed class WorkflowExecutionService(
         int iterations = 0;
         bool isDoLoop = (ControlStatement) step.ControlStatement == ControlStatement.Do;
         int maxIterations = step.MaxIterations > 0 ? step.MaxIterations : 100;
+
+        // Resolve input/output variable names
+        string? inputVariableValue = null;
+        if (!string.IsNullOrWhiteSpace( step.InputVariableName )
+            && variableCache.TryGetValue( step.InputVariableName, out string? cachedIn )) {
+            inputVariableValue = cachedIn;
+        }
+        string? outputVariableName = string.IsNullOrWhiteSpace(step.OutputVariableName)
+            ? null : step.OutputVariableName;
 
         while (iterations < maxIterations) {
             ct.ThrowIfCancellationRequested( );
@@ -282,8 +348,22 @@ public sealed class WorkflowExecutionService(
                 }
             }
 
-            lastJob = await ExecuteStepTaskAsync( taskDef, workflowRunId, scheduleId, ct );
+            // Re-read input variable from cache on each iteration (may have been updated)
+            if (!string.IsNullOrWhiteSpace( step.InputVariableName )
+                && variableCache.TryGetValue( step.InputVariableName, out string? loopInput )) {
+                inputVariableValue = loopInput;
+            }
+
+            lastJob = await ExecuteStepTaskAsync(
+                taskDef, workflowRunId, step.StepId, scheduleId, inputVariableValue, outputVariableName, ct );
             iterations++;
+
+            // Push output variable after each iteration
+            if (outputVariableName is not null && lastJob.OutputVariableValue is not null) {
+                variableCache[outputVariableName] = lastJob.OutputVariableValue;
+                await variableClient.PushVariableAsync( workflowRunId, outputVariableName,
+                    lastJob.OutputVariableValue, step.StepId, lastJob.JobId, ct );
+            }
 
             if (!lastJob.Success) {
                 break;
@@ -303,12 +383,15 @@ public sealed class WorkflowExecutionService(
     // ── Task Execution (mirrors ScheduleEvaluatorService.ExecuteTaskLocallyAsync) ──
 
     /// <summary>
-    /// Executes a single task locally and reports the result to the server.
+    /// Executes a single task locally with variable I/O support and reports the result to the server.
     /// </summary>
     private async Task<StepJobResult> ExecuteStepTaskAsync(
         ScheduledTaskDefinition taskDef,
         Guid workflowRunId,
+        long stepId,
         Guid? scheduleId,
+        string? inputVariableValue,
+        string? outputVariableName,
         CancellationToken ct
     ) {
         Guid jobId = Guid.NewGuid();
@@ -319,21 +402,64 @@ public sealed class WorkflowExecutionService(
         int exitCode = 0;
         Exception? executionException = null;
         ErrorCategory errorCategory = ErrorCategory.None;
+        string? outputVariableValue = null;
+
+        // Variable file I/O for shell operators
+        bool isShellAction = actionType is TaskActionType.PowerShellCommand
+            or TaskActionType.PowerShellScript
+            or TaskActionType.ShellCommand
+            or TaskActionType.ShellScript;
+
+        string? inputFilePath = null;
+        string? outputFilePath = null;
+        Dictionary<string, string>? envVars = null;
+
+        if (isShellAction && (inputVariableValue is not null || outputVariableName is not null)) {
+            string varsDir = Path.Combine("job-output", "_vars");
+            _ = Directory.CreateDirectory( varsDir );
+            envVars = [];
+
+            if (inputVariableValue is not null) {
+                inputFilePath = Path.Combine( varsDir, $"{jobId}_input.json" );
+                await File.WriteAllTextAsync( inputFilePath, inputVariableValue, ct );
+                envVars["WERKR_INPUT"] = Path.GetFullPath( inputFilePath );
+            }
+
+            if (outputVariableName is not null) {
+                outputFilePath = Path.Combine( varsDir, $"{jobId}_output.json" );
+                envVars["WERKR_OUTPUT"] = Path.GetFullPath( outputFilePath );
+            }
+        }
 
         try {
-            using CancellationTokenSource timeoutCts = taskDef.TimeoutMinutes > 0
-                ? CancellationTokenSource.CreateLinkedTokenSource( ct )
-                : CancellationTokenSource.CreateLinkedTokenSource( ct );
+            using CancellationTokenSource timeoutCts =
+                CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             if (taskDef.TimeoutMinutes > 0) {
                 timeoutCts.CancelAfter( TimeSpan.FromMinutes( taskDef.TimeoutMinutes ) );
             }
 
-            OperatorExecution execution = RunOperator( taskDef, actionType, timeoutCts.Token );
+            OperatorExecution execution = RunOperator(
+                taskDef, actionType, envVars, inputVariableValue, timeoutCts.Token);
 
             await foreach (OperatorOutput output in execution.Output.WithCancellation( timeoutCts.Token )) {
                 await outputWriter.WriteLineAsync( jobId, output, timeoutCts.Token );
                 collectedOutput.Add( output );
+
+                // Publish to output streaming service with workflow context
+                string scheduleIdStr = scheduleId?.ToString( ) ?? "";
+                outputStreamingService.Publish( new OutputMessage {
+                    TaskId = taskDef.TaskId,
+                    ScheduleId = scheduleIdStr,
+                    JobId = jobId.ToString( ),
+                    Line = new OutputLine {
+                        Text = output.Message,
+                        LogLevel = output.LogLevel,
+                        Timestamp = output.Timestamp,
+                    },
+                    WorkflowRunId = workflowRunId.ToString( ),
+                    StepId = stepId,
+                } );
             }
 
             IOperatorResult result = await execution.Result;
@@ -344,8 +470,15 @@ public sealed class WorkflowExecutionService(
             };
             executionException = result.Exception;
 
-            if (!result.Success && errorCategory == ErrorCategory.None) {
+            if (!result.Success) {
                 errorCategory = ErrorCategory.ScriptError;
+            }
+
+            // Read output variable from action result or output file
+            if (result is ActionOperatorResult actionResult && actionResult.OutputVariableValue is not null) {
+                outputVariableValue = actionResult.OutputVariableValue;
+            } else if (outputFilePath is not null && File.Exists( outputFilePath )) {
+                outputVariableValue = await File.ReadAllTextAsync( outputFilePath, ct );
             }
         } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
             throw; // Propagate shutdown
@@ -363,6 +496,14 @@ public sealed class WorkflowExecutionService(
             OperatorOutput errorMsg = OperatorOutput.Create( "Error", $"Execution error: {ex.Message}" );
             await outputWriter.WriteLineAsync( jobId, errorMsg, ct );
             collectedOutput.Add( errorMsg );
+        } finally {
+            // Cleanup temporary variable files
+            if (inputFilePath is not null) {
+                try { File.Delete( inputFilePath ); } catch { /* best-effort cleanup */ }
+            }
+            if (outputFilePath is not null) {
+                try { File.Delete( outputFilePath ); } catch { /* best-effort cleanup */ }
+            }
         }
 
         DateTime endTime = DateTime.UtcNow;
@@ -380,22 +521,41 @@ public sealed class WorkflowExecutionService(
         await PersistJobLocallyAsync( jobId, taskDef.TaskId, taskDef.Content, startTime, endTime,
             success, exitCode, errorCategory, tailPreview, workflowRunId.ToString( ), scheduleId, ct );
 
-        // Report result to server with workflowRunId and schedule ID
+        // Report result to server with workflowRunId, schedule ID, step ID, and output variable info
         await ReportJobResultAsync(
             jobId, taskDef, startTime, endTime, success, exitCode,
-            errorCategory, workflowRunId.ToString( ), tailPreview, scheduleId, ct );
+            errorCategory, workflowRunId.ToString( ), tailPreview, scheduleId,
+            stepId, outputVariableName, outputVariableValue, ct );
 
-        return new StepJobResult( jobId, success, exitCode, startTime, endTime, errorCategory, tailPreview );
+        // Publish completion to output streaming service with workflow context
+        string completeScheduleIdStr = scheduleId?.ToString( ) ?? "";
+        outputStreamingService.Publish( new OutputMessage {
+            TaskId = taskDef.TaskId,
+            ScheduleId = completeScheduleIdStr,
+            JobId = jobId.ToString( ),
+            Complete = new OutputComplete {
+                ExitCode = exitCode,
+                Success = success,
+                ErrorMessage = executionException?.Message ?? "",
+            },
+            WorkflowRunId = workflowRunId.ToString( ),
+            StepId = stepId,
+        } );
+
+        return new StepJobResult( jobId, success, exitCode, startTime, endTime, errorCategory, tailPreview, outputVariableValue );
     }
 
     // ── Operator Selection (mirrors ScheduleEvaluatorService.RunOperator) ────────
 
     /// <summary>
-    /// Selects and invokes the appropriate operator based on the task's action type.
+    /// Selects and invokes the appropriate operator based on the task's action type,
+    /// passing environment variables for shell operators and input variable values for actions.
     /// </summary>
     private OperatorExecution RunOperator(
         ScheduledTaskDefinition taskDef,
         TaskActionType actionType,
+        IReadOnlyDictionary<string, string>? environmentVariables,
+        string? inputVariableValue,
         CancellationToken ct
     ) {
         if (actionType == TaskActionType.Action) {
@@ -405,10 +565,11 @@ public sealed class WorkflowExecutionService(
                 Parameters = parsedParameters.RootElement.Clone(),
             };
 
-            return actionOperator.Execute( descriptor, ct );
+            return actionOperator.Execute( descriptor, inputVariableValue, ct );
         }
 
-        IShellOperator operator_ = actionType switch {
+        IShellOperator shellOp = actionType switch
+        {
             TaskActionType.PowerShellCommand or TaskActionType.PowerShellScript => pwshOperator,
             TaskActionType.ShellCommand or TaskActionType.ShellScript => shellOperator,
             _ => throw new NotSupportedException(
@@ -417,13 +578,13 @@ public sealed class WorkflowExecutionService(
 
         return actionType switch {
             TaskActionType.PowerShellCommand or TaskActionType.ShellCommand =>
-                operator_.RunCommand( taskDef.Content, ct ),
+                shellOp.RunCommand( taskDef.Content, environmentVariables, ct ),
 
             TaskActionType.PowerShellScript or TaskActionType.ShellScript when taskDef.Arguments.Count > 0 =>
-                operator_.RunScriptWithArgs( taskDef.Content, taskDef.Arguments, ct ),
+                shellOp.RunScriptWithArgs( taskDef.Content, taskDef.Arguments, environmentVariables, ct ),
 
             TaskActionType.PowerShellScript or TaskActionType.ShellScript =>
-                operator_.RunScript( taskDef.Content, ct ),
+                shellOp.RunScript( taskDef.Content, environmentVariables, ct ),
 
             _ => throw new NotSupportedException(
                 $"ActionType '{actionType}' is not supported for local execution." ),
@@ -436,7 +597,7 @@ public sealed class WorkflowExecutionService(
     /// Builds topological levels from proto step definitions using Kahn's algorithm.
     /// Steps at the same level have all dependencies satisfied by prior levels.
     /// </summary>
-    private static IReadOnlyList<IReadOnlyList<ScheduledWorkflowStepDef>> BuildTopologicalLevels(
+    private static List<IReadOnlyList<ScheduledWorkflowStepDef>> BuildTopologicalLevels(
         IReadOnlyCollection<ScheduledWorkflowStepDef> steps
     ) {
         // Build adjacency: stepId → set of dependents
@@ -497,7 +658,7 @@ public sealed class WorkflowExecutionService(
     /// <summary>Checks whether dependencies are satisfied based on DependencyMode.</summary>
     private static bool CheckDependencies(
         ScheduledWorkflowStepDef step,
-        Dictionary<long, StepJobResult> stepResults
+        ConcurrentDictionary<long, StepJobResult> stepResults
     ) {
         if (step.DependsOnStepIds.Count == 0) {
             return true; // Root step — no dependencies
@@ -507,10 +668,10 @@ public sealed class WorkflowExecutionService(
 
         return mode switch {
             DependencyMode.All =>
-                step.DependsOnStepIds.All( id => stepResults.ContainsKey( id ) ),
+                step.DependsOnStepIds.All( stepResults.ContainsKey ),
             DependencyMode.Any =>
-                step.DependsOnStepIds.Any( id => stepResults.ContainsKey( id ) ),
-            _ => step.DependsOnStepIds.All( id => stepResults.ContainsKey( id ) ),
+                step.DependsOnStepIds.Any( stepResults.ContainsKey ),
+            _ => step.DependsOnStepIds.All( stepResults.ContainsKey ),
         };
     }
 
@@ -523,7 +684,7 @@ public sealed class WorkflowExecutionService(
         ControlStatement cs = (ControlStatement) step.ControlStatement;
 
         switch (cs) {
-            case ControlStatement.Sequential:
+            case ControlStatement.Default:
                 return true;
 
             case ControlStatement.If:
@@ -568,7 +729,7 @@ public sealed class WorkflowExecutionService(
     /// </summary>
     private static List<WerkrJob> BuildPredecessorJobs(
         ScheduledWorkflowStepDef step,
-        Dictionary<long, StepJobResult> stepResults
+        ConcurrentDictionary<long, StepJobResult> stepResults
     ) {
         List<WerkrJob> jobs = [];
         foreach (long depId in step.DependsOnStepIds) {
@@ -659,6 +820,7 @@ public sealed class WorkflowExecutionService(
 
     /// <summary>
     /// Reports a completed job result to the Server via gRPC with retry on transient failures.
+    /// Includes output variable information when a step produces variable output.
     /// </summary>
     private async Task ReportJobResultAsync(
         Guid jobId,
@@ -671,6 +833,9 @@ public sealed class WorkflowExecutionService(
         string? workflowRunId,
         string? outputPreview,
         Guid? scheduleId,
+        long stepId,
+        string? outputVariableName,
+        string? outputVariableValue,
         CancellationToken ct
     ) {
         JobReporting.JobReportingClient client = await clientFactory.CreateJobReportingClientAsync( ct );
@@ -688,6 +853,7 @@ public sealed class WorkflowExecutionService(
             ErrorCategory = (int) errorCategory,
             OutputPath = AgentJobOutputWriter.GetRelativeOutputPath( jobId ),
             JobId = jobId.ToString( ),
+            StepId = stepId,
         };
         if (!string.IsNullOrWhiteSpace( workflowRunId )) {
             innerRequest.WorkflowRunId = workflowRunId;
@@ -697,6 +863,12 @@ public sealed class WorkflowExecutionService(
         }
         if (scheduleId.HasValue) {
             innerRequest.ScheduleId = scheduleId.Value.ToString( );
+        }
+        if (!string.IsNullOrWhiteSpace( outputVariableName )) {
+            innerRequest.OutputVariableName = outputVariableName;
+        }
+        if (!string.IsNullOrWhiteSpace( outputVariableValue )) {
+            innerRequest.OutputVariableValue = outputVariableValue;
         }
 
         EncryptedEnvelope requestEnvelope = PayloadEncryptor.EncryptToEnvelope(
@@ -727,6 +899,123 @@ public sealed class WorkflowExecutionService(
             } catch (Exception ex) {
                 logger.LogError( ex, "Failed to report step job result for task {TaskId} after {MaxRetries} attempts.",
                     taskDef.TaskId, ReportMaxRetries );
+            }
+        }
+    }
+
+    // ── Step Lifecycle Reporting ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Reports that a workflow step has started execution.
+    /// </summary>
+    private async Task ReportStepStartedAsync(
+        Guid workflowRunId, long stepId, string stepName, long taskId, CancellationToken ct
+    ) {
+        try {
+            JobReporting.JobReportingClient client = await clientFactory.CreateJobReportingClientAsync( ct );
+
+            StepStartedRequest inner = new( ) {
+                ConnectionId = ( await clientFactory.GetConnectionAsync( ct ) ).Id.ToString( ),
+                WorkflowRunId = workflowRunId.ToString( ),
+                StepId = stepId,
+                StepName = stepName,
+                TaskId = taskId,
+                StartTime = DateTime.UtcNow.ToString( "o" ),
+            };
+
+            EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
+                inner, clientFactory.GetSharedKey( ), clientFactory.GetKeyId( ) );
+
+            Grpc.Core.CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
+            _ = await client.ReportStepStartedAsync( envelope, callOptions );
+        } catch (Exception ex) {
+            logger.LogWarning( ex, "Failed to report step started for step {StepId} in run {RunId}.",
+                stepId, workflowRunId );
+        }
+    }
+
+    /// <summary>
+    /// Reports that a workflow step was skipped by control flow evaluation.
+    /// </summary>
+    private async Task ReportStepSkippedAsync(
+        Guid workflowRunId, long stepId, string stepName, string reason, CancellationToken ct
+    ) {
+        try {
+            JobReporting.JobReportingClient client = await clientFactory.CreateJobReportingClientAsync( ct );
+
+            StepSkippedRequest inner = new( ) {
+                ConnectionId = ( await clientFactory.GetConnectionAsync( ct ) ).Id.ToString( ),
+                WorkflowRunId = workflowRunId.ToString( ),
+                StepId = stepId,
+                StepName = stepName,
+                Reason = reason,
+            };
+
+            EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
+                inner, clientFactory.GetSharedKey( ), clientFactory.GetKeyId( ) );
+
+            Grpc.Core.CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
+            _ = await client.ReportStepSkippedAsync( envelope, callOptions );
+        } catch (Exception ex) {
+            logger.LogWarning( ex, "Failed to report step skipped for step {StepId} in run {RunId}.",
+                stepId, workflowRunId );
+        }
+    }
+
+    /// <summary>
+    /// Reports workflow run completion or failure to the server.
+    /// Retries up to 3 times with exponential backoff on transient failure.
+    /// </summary>
+    private async Task CompleteWorkflowRunAsync(
+        Guid workflowRunId, bool success, long? failedStepId, CancellationToken ct
+    ) {
+        TimeSpan delay = s_reportRetryBaseDelay;
+        for (int attempt = 1; attempt <= ReportMaxRetries; attempt++) {
+            try {
+                VariableService.VariableServiceClient client =
+                    await clientFactory.CreateVariableServiceClientAsync( ct );
+                Data.Entities.Registration.RegisteredConnection connection =
+                    await clientFactory.GetConnectionAsync( ct );
+
+                CompleteWorkflowRunRequest inner = new( ) {
+                    ConnectionId = connection.Id.ToString( ),
+                    WorkflowRunId = workflowRunId.ToString( ),
+                    Success = success,
+                    EndTime = DateTime.UtcNow.ToString( "o" ),
+                };
+
+                if (failedStepId.HasValue) {
+                    inner.FailedStepId = failedStepId.Value;
+                }
+
+                EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
+                    inner, clientFactory.GetSharedKey( ), clientFactory.GetKeyId( ) );
+
+                Grpc.Core.CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
+                EncryptedEnvelope responseEnvelope = await client.CompleteWorkflowRunAsync( envelope, callOptions );
+                CompleteWorkflowRunResponse response = PayloadEncryptor.DecryptFromEnvelope<CompleteWorkflowRunResponse>(
+                    responseEnvelope, clientFactory.GetSharedKey( ) );
+
+                if (response.Accepted) {
+                    if (logger.IsEnabled( LogLevel.Information )) {
+                        logger.LogInformation(
+                            "Workflow run {RunId} completion reported (success={Success}).",
+                            workflowRunId, success );
+                    }
+                } else {
+                    logger.LogWarning( "Server rejected CompleteWorkflowRun for run {RunId}.", workflowRunId );
+                }
+                return;
+            } catch (Exception ex) when (attempt < ReportMaxRetries && !ct.IsCancellationRequested) {
+                logger.LogWarning( ex,
+                    "Failed to report workflow run completion for {RunId} (attempt {Attempt}/{MaxRetries}). Retrying in {Delay}.",
+                    workflowRunId, attempt, ReportMaxRetries, delay );
+                await Task.Delay( delay, ct );
+                delay *= 2;
+            } catch (Exception ex) {
+                logger.LogError( ex,
+                    "Failed to report workflow run completion for {RunId} after {MaxRetries} attempts.",
+                    workflowRunId, ReportMaxRetries );
             }
         }
     }

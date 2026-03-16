@@ -12,25 +12,20 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>CreateFile</c> action - creates a new file with optional content.
 /// Optionally creates parent directories.
 /// </summary>
-public sealed class CreateFileHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="CreateFileHandler"/>.</remarks>
+public sealed partial class CreateFileHandler(
+    IFilePathResolver resolver,
+    ILogger<CreateFileHandler> logger
+    ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<CreateFileHandler> _logger;
-
-    /// <summary>Creates a new <see cref="CreateFileHandler"/>.</summary>
-    public CreateFileHandler(
-        IFilePathResolver resolver,
-        ILogger<CreateFileHandler> logger
-    ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<CreateFileHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "CreateFile";
@@ -39,7 +34,8 @@ public sealed class CreateFileHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             CreateFileParameters p = parameters
@@ -105,12 +101,9 @@ public sealed class CreateFileHandler : IActionHandler {
                 cancellationToken
             );
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: JsonSerializer.Serialize( fullPath, ActionJson.SerializerOptions ) );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError(
-                ex,
-                "CreateFile action failed"
-            );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create(
                     LogLevel.Error,
@@ -124,4 +117,7 @@ public sealed class CreateFileHandler : IActionHandler {
             );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

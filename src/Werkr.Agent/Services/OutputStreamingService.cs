@@ -25,7 +25,7 @@ namespace Werkr.Agent.Services;
 /// </summary>
 /// <param name="clientFactory">Factory for creating outbound gRPC clients.</param>
 /// <param name="logger">Logger.</param>
-public sealed class OutputStreamingService(
+public sealed partial class OutputStreamingService(
     AgentGrpcClientFactory clientFactory,
     ILogger<OutputStreamingService> logger
 ) : IDisposable {
@@ -104,27 +104,52 @@ public sealed class OutputStreamingService(
 
         while (!ct.IsCancellationRequested) {
             try {
-                Werkr.Common.Protos.OutputStreamingService.OutputStreamingServiceClient client =
+                Common.Protos.OutputStreamingService.OutputStreamingServiceClient client =
                     await clientFactory.CreateOutputStreamingClientAsync( ct );
-                CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
+                CallOptions callOptions = clientFactory.CreateCallOptions(
+                    timeout: Timeout.InfiniteTimeSpan, cancellationToken: ct );
 
                 using AsyncDuplexStreamingCall<OutputMessage, OutputSubscription> call =
                     client.StreamOutput( callOptions );
 
-                // Reset backoff on successful connect
+                // Use a per-stream token so we can cancel the writer when the
+                // reader detects a disconnect (and vice-versa).
+                using CancellationTokenSource streamCts =
+                    CancellationTokenSource.CreateLinkedTokenSource( ct );
+
+                Task readTask = ReadSubscriptionsAsync( call.ResponseStream, streamCts.Token );
+                Task writeTask = WriteOutputAsync( call.RequestStream, streamCts.Token );
+
+                // Give the reader a moment to fail on immediate connection errors
+                // (e.g. "Connection refused") before declaring success.
+                Task settled = await Task.WhenAny( readTask, Task.Delay( 1000, streamCts.Token ) );
+                if (settled == readTask && readTask.IsFaulted) {
+                    await readTask; // propagate the connection error
+                }
+
+                // Connection confirmed — reset backoff.
                 delay = TimeSpan.FromSeconds( 2 );
 
                 if (logger.IsEnabled( LogLevel.Information )) {
                     logger.LogInformation( "Output streaming connected to server." );
                 }
 
-                // Read subscriptions in the background
-                Task readTask = ReadSubscriptionsAsync( call.ResponseStream, ct );
+                // Wait for either side to complete or fail.  Without WhenAny a
+                // reader failure goes undetected while the writer blocks on an
+                // empty outbound channel, leaving the stream in a zombie state.
+                Task completed = await Task.WhenAny( readTask, writeTask );
+                await streamCts.CancelAsync( );
 
-                // Write outbound messages
-                await WriteOutputAsync( call.RequestStream, ct );
+                // Drain the peer task so it doesn't leak as unobserved.
+                Task peer = completed == readTask ? writeTask : readTask;
+                try { await peer; } catch (Exception peerEx) {
+                    logger.LogDebug( peerEx, "Peer stream task ended during reconnection." );
+                }
 
-                await readTask;
+                // Re-throw the original failure for the reconnection catch block.
+                // If the read side completed normally (server closed the stream),
+                // this falls through and the outer loop reconnects.
+                await completed;
             } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
                 break;
             } catch (RpcException ex) when (ct.IsCancellationRequested) {
@@ -133,6 +158,11 @@ public sealed class OutputStreamingService(
             } catch (Exception ex) {
                 logger.LogWarning( ex, "Output stream disconnected. Reconnecting in {Delay}s.", delay.TotalSeconds );
                 _subscriptions.Clear( );
+
+                // Force the gRPC channel to be recreated on the next attempt so
+                // stale URLs (from old ports or transient failures) are discarded.
+                clientFactory.Reset( );
+
                 try {
                     await Task.Delay( delay, ct );
                 } catch (OperationCanceledException) {
@@ -205,7 +235,7 @@ public sealed class OutputStreamingService(
             }
         }
 
-        public IReadOnlyList<OutputMessage> Snapshot( ) {
+        public OutputMessage[] Snapshot( ) {
             lock (_lock) {
                 OutputMessage[] snapshot = new OutputMessage[_count];
                 int start = (_head - _count + capacity) % capacity;

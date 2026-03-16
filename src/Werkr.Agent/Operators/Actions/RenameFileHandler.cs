@@ -10,22 +10,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// <summary>
 /// Handles the <c>RenameFile</c> action - renames a file or directory in place.
 /// </summary>
-public sealed class RenameFileHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="RenameFileHandler"/>.</remarks>
+public sealed partial class RenameFileHandler( IFilePathResolver resolver, ILogger<RenameFileHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<RenameFileHandler> _logger;
-
-    /// <summary>Creates a new <see cref="RenameFileHandler"/>.</summary>
-    public RenameFileHandler( IFilePathResolver resolver, ILogger<RenameFileHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<RenameFileHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "RenameFile";
@@ -34,13 +29,15 @@ public sealed class RenameFileHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             RenameFileParameters p = parameters.Deserialize<RenameFileParameters>( ActionJson.SerializerOptions )
                 ?? throw new ArgumentException( "Failed to deserialize RenameFile parameters." );
 
             string fullPath = _resolver.ResolveSinglePath( p.Path );
+            string? resultPath = null;
 
             if (Directory.Exists( fullPath )) {
                 // Rename directory
@@ -59,6 +56,7 @@ public sealed class RenameFileHandler : IActionHandler {
                 }
 
                 Directory.Move( dir.FullName, updatePath );
+                resultPath = updatePath;
                 await output.WriteAsync(
                     OperatorOutput.Create( LogLevel.Information, $"Renamed directory '{fullPath}' → '{updatePath}'" ),
                     cancellationToken );
@@ -79,6 +77,7 @@ public sealed class RenameFileHandler : IActionHandler {
                 }
 
                 File.Move( file.FullName, updatePath, p.Overwrite );
+                resultPath = updatePath;
                 await output.WriteAsync(
                     OperatorOutput.Create( LogLevel.Information, $"Renamed file '{fullPath}' → '{updatePath}'" ),
                     cancellationToken );
@@ -86,13 +85,16 @@ public sealed class RenameFileHandler : IActionHandler {
                 throw new InvalidOperationException( $"Source path '{fullPath}' does not exist." );
             }
 
-            return new ActionOperatorResult( Success: true );
+            return new ActionOperatorResult( Success: true, OutputVariableValue: resultPath is not null ? JsonSerializer.Serialize( resultPath, ActionJson.SerializerOptions ) : null );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "RenameFile action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"RenameFile failed: {ex.Message}" ),
                 cancellationToken );
             return new ActionOperatorResult( Success: false, Exception: ex );
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

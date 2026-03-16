@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
+using Werkr.Data.Identity.Extensions;
 using Werkr.Data.Identity.Roles;
 using Werkr.Server.Identity;
 using Werkr.Server.Services;
@@ -46,7 +47,7 @@ public class IdentitySeederTests {
             options.UseInMemoryDatabase( dbName ) );
 
         _ = services.AddIdentity<WerkrUser, IdentityRole>(
-            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions
+            IdentityExtensions.ConfigureIdentityOptions
         )
             .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
             .AddDefaultTokenProviders( );
@@ -176,5 +177,141 @@ public class IdentitySeederTests {
             Assert.IsTrue( await roleManager.RoleExistsAsync( role ),
                 $"Role '{role}' should still exist after double-seed." );
         }
+    }
+
+    /// <summary>
+    /// Verifies that when <c>Werkr:SeedTestOperator</c> is not configured (the default), no test operator account is
+    /// created by <see cref="IdentitySeeder.SeedAsync"/>. This ensures production deployments are unaffected.
+    /// </summary>
+    [TestMethod]
+    public async Task SeedAsync_TestOperator_NotCreatedByDefault( ) {
+        await IdentitySeeder.SeedAsync( _provider );
+
+        using IServiceScope scope = _provider.CreateScope();
+        UserManager<WerkrUser> userManager = scope.ServiceProvider
+            .GetRequiredService<UserManager<WerkrUser>>();
+
+        WerkrUser? operatorUser = await userManager.FindByEmailAsync("operator@werkr.local");
+
+        Assert.IsNull( operatorUser,
+            "Test operator should not be created when Werkr:SeedTestOperator is not configured." );
+    }
+
+    /// <summary>
+    /// Verifies that when <c>Werkr:SeedTestOperator</c> is <c>true</c> and a valid password is provided via
+    /// <c>Werkr:TestOperatorPassword</c>, <see cref="IdentitySeeder.SeedAsync"/> creates a test operator account with
+    /// the expected properties: display name "Test Operator", <see cref="WerkrUser.Enabled"/> = <see
+    /// langword="true"/>, <see cref="WerkrUser.ChangePassword"/> = <see langword="false"/>, <see
+    /// cref="WerkrUser.Requires2FA"/> = <see langword="false"/>, and <see cref="WerkrUser.EmailConfirmed"/> = <see
+    /// langword="true"/>.
+    /// </summary>
+    [TestMethod]
+    public async Task SeedAsync_CreatesTestOperator_WhenConfigured( ) {
+        ServiceProvider provider = BuildProviderWithTestOperatorConfig();
+        try {
+            await IdentitySeeder.SeedAsync( provider );
+
+            using IServiceScope scope = provider.CreateScope();
+            UserManager<WerkrUser> userManager = scope.ServiceProvider
+                .GetRequiredService<UserManager<WerkrUser>>();
+
+            WerkrUser? operatorUser = await userManager.FindByEmailAsync("operator@werkr.local");
+
+            Assert.IsNotNull( operatorUser, "Test operator should be created when configured." );
+            Assert.AreEqual( "Test Operator", operatorUser.Name );
+            Assert.IsTrue( operatorUser.Enabled, "Operator should be enabled." );
+            Assert.IsFalse( operatorUser.ChangePassword, "Operator should not require password change." );
+            Assert.IsFalse( operatorUser.Requires2FA, "Operator should not require 2FA." );
+            Assert.IsTrue( operatorUser.EmailConfirmed, "Operator email should be confirmed." );
+        } finally {
+            provider.Dispose( );
+        }
+    }
+
+    /// <summary>
+    /// Verifies that the test operator account created by <see cref="IdentitySeeder.SeedAsync"/> is assigned to the
+    /// "Operator" role as defined in <see cref="DefaultRoles"/>.
+    /// </summary>
+    [TestMethod]
+    public async Task SeedAsync_TestOperator_HasOperatorRole( ) {
+        ServiceProvider provider = BuildProviderWithTestOperatorConfig();
+        try {
+            await IdentitySeeder.SeedAsync( provider );
+
+            using IServiceScope scope = provider.CreateScope();
+            UserManager<WerkrUser> userManager = scope.ServiceProvider
+                .GetRequiredService<UserManager<WerkrUser>>();
+
+            WerkrUser? operatorUser = await userManager.FindByEmailAsync("operator@werkr.local");
+            Assert.IsNotNull( operatorUser );
+
+            IList<string> roles = await userManager.GetRolesAsync(operatorUser);
+
+            Assert.Contains( DefaultRoles.Operator.ToString( ), roles,
+                "Test operator should be in Operator role." );
+        } finally {
+            provider.Dispose( );
+        }
+    }
+
+    /// <summary>
+    /// Verifies that calling <see cref="IdentitySeeder.SeedAsync"/> twice with test operator configuration enabled
+    /// does not create a duplicate operator user, confirming the seeder's idempotency.
+    /// </summary>
+    [TestMethod]
+    public async Task SeedAsync_TestOperator_SecondCallDoesNotCreateDuplicate( ) {
+        ServiceProvider provider = BuildProviderWithTestOperatorConfig();
+        try {
+            await IdentitySeeder.SeedAsync( provider );
+            await IdentitySeeder.SeedAsync( provider );
+
+            using IServiceScope scope = provider.CreateScope();
+            UserManager<WerkrUser> userManager = scope.ServiceProvider
+                .GetRequiredService<UserManager<WerkrUser>>();
+
+            IList<WerkrUser> operators = await userManager.GetUsersInRoleAsync(
+                DefaultRoles.Operator.ToString());
+
+            Assert.HasCount( 1, operators,
+                "Should have exactly one operator after double-seed." );
+        } finally {
+            provider.Dispose( );
+        }
+    }
+
+    /// <summary>
+    /// Builds a <see cref="ServiceProvider"/> with Identity, EF Core, logging, and configuration services configured
+    /// to enable test operator seeding via <c>Werkr:SeedTestOperator</c> and <c>Werkr:TestOperatorPassword</c>.
+    /// </summary>
+    private static ServiceProvider BuildProviderWithTestOperatorConfig( ) {
+        ServiceCollection services = new();
+
+        string dbName = $"IdentitySeederTests_{Guid.NewGuid()}";
+        _ = services.AddDbContext<WerkrIdentityDbContext>( options =>
+            options.UseInMemoryDatabase( dbName ) );
+
+        _ = services.AddIdentity<WerkrUser, IdentityRole>(
+            IdentityExtensions.ConfigureIdentityOptions
+        )
+            .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
+            .AddDefaultTokenProviders( );
+
+        _ = services.AddLogging( b => b.AddProvider( NullLoggerProvider.Instance ) );
+
+        _ = services.AddSingleton<IConfiguration>(
+            new ConfigurationBuilder( ).AddInMemoryCollection( new Dictionary<string, string?> {
+                ["Werkr:SeedTestOperator"] = "true",
+                ["Werkr:TestOperatorPassword"] = "TestPassword!1Aa",
+            } ).Build( )
+        );
+
+        _ = services.AddSingleton<ServerConfigCache>( );
+
+        ServiceProvider provider = services.BuildServiceProvider();
+
+        ServerConfigCache configCache = provider.GetRequiredService<ServerConfigCache>();
+        configCache.InitializeAsync( CancellationToken.None ).GetAwaiter( ).GetResult( );
+
+        return provider;
     }
 }

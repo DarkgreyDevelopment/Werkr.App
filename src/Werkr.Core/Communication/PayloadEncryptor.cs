@@ -1,5 +1,4 @@
 using Google.Protobuf;
-
 using Werkr.Common.Protos;
 using Werkr.Core.Cryptography;
 

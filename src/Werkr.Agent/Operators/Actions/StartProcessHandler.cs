@@ -12,22 +12,17 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>StartProcess</c> action - starts an external process.
 /// Optionally waits for the process to exit with an optional timeout.
 /// </summary>
-public sealed class StartProcessHandler : IActionHandler {
+/// <remarks>Creates a new <see cref="StartProcessHandler"/>.</remarks>
+public sealed partial class StartProcessHandler( IFilePathResolver resolver, ILogger<StartProcessHandler> logger ) : IActionHandler {
 
     /// <summary>
     /// Resolves and validates file paths against the agent's allowed-path allowlist.
     /// </summary>
-    private readonly IFilePathResolver _resolver;
+    private readonly IFilePathResolver _resolver = resolver;
     /// <summary>
     /// Logger for recording execution errors for this handler.
     /// </summary>
-    private readonly ILogger<StartProcessHandler> _logger;
-
-    /// <summary>Creates a new <see cref="StartProcessHandler"/>.</summary>
-    public StartProcessHandler( IFilePathResolver resolver, ILogger<StartProcessHandler> logger ) {
-        _resolver = resolver;
-        _logger = logger;
-    }
+    private readonly ILogger<StartProcessHandler> _logger = logger;
 
     /// <inheritdoc/>
     public string Action => "StartProcess";
@@ -36,7 +31,8 @@ public sealed class StartProcessHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         try {
             StartProcessParameters p = parameters.Deserialize<StartProcessParameters>( ActionJson.SerializerOptions )
@@ -119,13 +115,15 @@ public sealed class StartProcessHandler : IActionHandler {
                     OperatorOutput.Create( LogLevel.Information, $"Process exited with code {exitCode}" ),
                     cancellationToken );
 
-                return new ActionOperatorResult( Success: exitCode == 0 );
+                string exitJson = JsonSerializer.Serialize(new { processId = process.Id, exitCode }, ActionJson.SerializerOptions);
+                return new ActionOperatorResult( Success: exitCode == 0, OutputVariableValue: exitJson );
             }
 
             // Fire and forget — process started but not awaited
-            return new ActionOperatorResult( Success: true );
+            string pidJson = JsonSerializer.Serialize(new { processId = process.Id }, ActionJson.SerializerOptions);
+            return new ActionOperatorResult( Success: true, OutputVariableValue: pidJson );
         } catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError( ex, "StartProcess action failed" );
+            LogActionFailed( _logger, ex );
             await output.WriteAsync(
                 OperatorOutput.Create( LogLevel.Error, $"StartProcess failed: {ex.Message}" ),
                 cancellationToken );
@@ -152,4 +150,7 @@ public sealed class StartProcessHandler : IActionHandler {
             return false;
         }
     }
+
+    [LoggerMessage( Level = LogLevel.Error, Message = "Action failed" )]
+    private static partial void LogActionFailed( ILogger logger, Exception ex );
 }

@@ -7,26 +7,21 @@ namespace Werkr.Server.Identity;
 /// outgoing API requests from the Blazor Server. The Server is the sole
 /// JWT issuer and trusts itself - no HTTP round-trip is needed (Decision A1).
 /// </summary>
-public sealed class AuthForwardingHandler : DelegatingHandler {
+/// <remarks>
+/// Initializes the auth forwarding handler.
+/// </remarks>
+public sealed partial class AuthForwardingHandler(
+    JwtTokenService tokenService,
+    ILogger<AuthForwardingHandler> logger
+    ) : DelegatingHandler {
     /// <summary>
     /// The <see cref="JwtTokenService"/> used to mint short-lived service JWTs containing full admin-level permissions.
     /// </summary>
-    private readonly JwtTokenService _tokenService;
+    private readonly JwtTokenService _tokenService = tokenService;
     /// <summary>
     /// Logger for diagnostic messages about outgoing authenticated requests.
     /// </summary>
-    private readonly ILogger<AuthForwardingHandler> _logger;
-
-    /// <summary>
-    /// Initializes the auth forwarding handler.
-    /// </summary>
-    public AuthForwardingHandler(
-        JwtTokenService tokenService,
-        ILogger<AuthForwardingHandler> logger
-    ) {
-        _tokenService = tokenService;
-        _logger = logger;
-    }
+    private readonly ILogger<AuthForwardingHandler> _logger = logger;
 
     /// <inheritdoc/>
     protected override Task<HttpResponseMessage> SendAsync(

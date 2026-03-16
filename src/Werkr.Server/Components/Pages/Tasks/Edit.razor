@@ -38,11 +38,11 @@
                     <div class="col-md-4">
                         <label class="form-label" for="actionType">Action Type</label>
                         <InputSelect id="actionType" class="form-select" @bind-Value="_model.ActionType">
+                            <option value="Action">Action</option>
                             <option value="PowerShellCommand">PowerShell Command</option>
                             <option value="PowerShellScript">PowerShell Script</option>
                             <option value="ShellCommand">Shell Command</option>
                             <option value="ShellScript">Shell Script</option>
-                            <option value="Action">Action</option>
                         </InputSelect>
                     </div>
                     <div class="col-md-4">
@@ -74,7 +74,8 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="card-title">Action Parameters</h5>
-                    <ActionParameterEditor @bind-ActionSubType="_model.ActionSubType"
+                    <ActionParameterEditor @ref="_actionEditor"
+                                           @bind-ActionSubType="_model.ActionSubType"
                                            @bind-ActionParameters="_model.ActionParameters" />
                 </div>
             </div>
@@ -160,7 +161,7 @@
                             <td>@j.StartTime.ToString( "g" )</td>
                             <td>@j.RuntimeSeconds.ToString( "F1" )s</td>
                             <td>
-                                <span class="badge @( j.Success ? "bg-success" : "bg-danger" )">
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( j.Success ? "Completed" : "Failed" )">
                                     @( j.Success ? "Success" : "Failed" )
                                 </span>
                             </td>
@@ -180,6 +181,7 @@
     [Parameter] public long Id { get; set; }
 
     private TaskFormModel? _model;
+    private ActionParameterEditor? _actionEditor;
     private List<JobListDto>? _jobs;
     private List<WorkflowDto> _workflows = [];
     private int? _syncIntervalMinutes;
@@ -222,6 +224,9 @@
 
     private async Task SubmitAsync( ) {
         if ( _model is null ) return;
+        if ( _model.ActionType == "Action" && _actionEditor is not null && !_actionEditor.Validate( ) ) {
+            return;
+        }
         _isSaving = true;
         _errorMessage = null;
         _model.TargetTags = string.Join( ",", _targetTags );
@@ -255,7 +260,7 @@
     private sealed class TaskFormModel {
         public string Name { get; set; } = "";
         public string? Description { get; set; }
-        public string ActionType { get; set; } = "ShellCommand";
+        public string ActionType { get; set; } = "Action";
         public string Content { get; set; } = "";
         public string? Arguments { get; set; }
         public string TargetTags { get; set; } = "";

@@ -19,7 +19,7 @@ namespace Werkr.Api.Interceptors;
 /// user/service call authenticated via JWT and the interceptor is a no-op.
 /// </para>
 /// </summary>
-public class AgentBearerTokenInterceptor(
+public partial class AgentBearerTokenInterceptor(
     IServiceScopeFactory scopeFactory,
     ILogger<AgentBearerTokenInterceptor> logger
 ) : Interceptor {

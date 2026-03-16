@@ -15,7 +15,7 @@ namespace Werkr.Server.Identity;
 /// via <see cref="GenerateServiceToken"/>.
 /// </para>
 /// </summary>
-public sealed class JwtTokenService {
+public sealed partial class JwtTokenService {
     /// <summary>
     /// The HMAC-SHA256 symmetric signing key derived from the <c>Jwt:SigningKey</c> configuration value. Must be at least 32 characters (256 bits).
     /// </summary>

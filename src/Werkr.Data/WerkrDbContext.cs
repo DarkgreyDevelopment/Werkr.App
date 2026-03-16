@@ -9,6 +9,7 @@ using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Entities;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
+using Werkr.Data.Entities.Settings;
 using Werkr.Data.Entities.Tasks;
 using Werkr.Data.Entities.Workflows;
 
@@ -72,6 +73,12 @@ public class WerkrDbContext : DbContext {
     /// <summary>Workflow execution runs.</summary>
     public DbSet<WorkflowRun> WorkflowRuns => Set<WorkflowRun>( );
 
+    /// <summary>Design-time variable definitions on workflows.</summary>
+    public DbSet<WorkflowVariable> WorkflowVariables => Set<WorkflowVariable>( );
+
+    /// <summary>Append-only runtime variable values per workflow run.</summary>
+    public DbSet<WorkflowRunVariable> WorkflowRunVariables => Set<WorkflowRunVariable>( );
+
     /// <summary>Holiday calendars.</summary>
     public DbSet<HolidayCalendar> HolidayCalendars => Set<HolidayCalendar>( );
 
@@ -92,6 +99,12 @@ public class WerkrDbContext : DbContext {
 
     /// <summary>Workflow-to-schedule many-to-many join table.</summary>
     public DbSet<WorkflowSchedule> WorkflowSchedules => Set<WorkflowSchedule>( );
+
+    /// <summary>Per-run-per-step execution tracking (supports retry attempts).</summary>
+    public DbSet<WorkflowStepExecution> WorkflowStepExecutions => Set<WorkflowStepExecution>( );
+
+    /// <summary>Named saved filter views (personal and shared).</summary>
+    public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>( );
 
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
@@ -124,8 +137,8 @@ public class WerkrDbContext : DbContext {
                 );
             allowedPathsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -179,8 +192,8 @@ public class WerkrDbContext : DbContext {
                 );
             prop.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -193,8 +206,8 @@ public class WerkrDbContext : DbContext {
                 );
             allowedPathsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -209,8 +222,8 @@ public class WerkrDbContext : DbContext {
                 );
             targetTagsProp.Metadata.SetValueComparer(
                 new ValueComparer<string[]>(
-                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
-                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item.GetHashCode( StringComparison.OrdinalIgnoreCase ) ) ),
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
@@ -225,6 +238,22 @@ public class WerkrDbContext : DbContext {
                 new ValueComparer<string[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item ) ),
+                    v => v == null ? null : v.ToArray( )
+                )
+            );
+        } );
+
+        // Workflow.TargetTags stored as JSON
+        _ = modelBuilder.Entity<Workflow>( entity => {
+            PropertyBuilder<string[]?> targetTagsProp = entity.Property( e => e.TargetTags )
+                .HasConversion(
+                    v => v == null ? null : JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
+                    v => v == null ? null : JsonSerializer.Deserialize<string[]>(v, (JsonSerializerOptions?)null)
+                );
+            targetTagsProp.Metadata.SetValueComparer(
+                new ValueComparer<string[]?>(
+                    ( a, b ) => ReferenceEquals( a, b ) || (a != null && b != null && a.SequenceEqual( b, StringComparer.OrdinalIgnoreCase )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, item ) => HashCode.Combine( hash, item == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode( item ) ) ),
                     v => v == null ? null : v.ToArray( )
                 )
             );
@@ -334,6 +363,92 @@ public class WerkrDbContext : DbContext {
                 .HasForeignKey( e => e.ScheduleId )
                 .OnDelete( DeleteBehavior.Cascade );
         } );
+
+        // WorkflowVariable — design-time variable definitions on workflows
+        _ = modelBuilder.Entity<WorkflowVariable>( entity => {
+            _ = entity.HasKey( e => e.Id );
+
+            _ = entity.Property( e => e.Name ).HasMaxLength( 128 );
+            _ = entity.Property( e => e.Description ).HasMaxLength( 500 );
+
+            // Unique variable name per workflow (case-insensitive)
+            _ = entity.HasIndex( e => new { e.WorkflowId, e.Name } )
+                .IsUnique( );
+
+            _ = entity.HasOne( e => e.Workflow )
+                .WithMany( w => w.Variables )
+                .HasForeignKey( e => e.WorkflowId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
+        // WorkflowRunVariable — append-only runtime variable values per workflow run
+        _ = modelBuilder.Entity<WorkflowRunVariable>( entity => {
+            _ = entity.HasKey( e => e.Id );
+
+            _ = entity.Property( e => e.VariableName ).HasMaxLength( 128 );
+
+            // Unique index enforces append-only invariant at DB level
+            _ = entity.HasIndex( e => new { e.WorkflowRunId, e.VariableName, e.Version } )
+                .IsUnique( );
+
+            // Index for "which variables did step X produce?" queries
+            _ = entity.HasIndex( e => e.ProducedByStepId );
+
+            _ = entity.HasOne( e => e.WorkflowRun )
+                .WithMany( r => r.RunVariables )
+                .HasForeignKey( e => e.WorkflowRunId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.ProducedByStep )
+                .WithMany( )
+                .HasForeignKey( e => e.ProducedByStepId )
+                .OnDelete( DeleteBehavior.SetNull );
+
+            _ = entity.HasOne( e => e.ProducedByJob )
+                .WithMany( )
+                .HasForeignKey( e => e.ProducedByJobId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // WerkrJob — StepId FK and index
+        _ = modelBuilder.Entity<WerkrJob>( entity => {
+            _ = entity.HasIndex( e => new { e.WorkflowRunId, e.StepId } )
+                .HasDatabaseName( "IX_jobs_WorkflowRunId_StepId" );
+
+            _ = entity.HasOne( e => e.Step )
+                .WithMany( )
+                .HasForeignKey( e => e.StepId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // WorkflowStepExecution — per-run-per-step execution tracking
+        _ = modelBuilder.Entity<WorkflowStepExecution>( entity => {
+            _ = entity.HasIndex( e => new { e.WorkflowRunId, e.StepId, e.Attempt } )
+                .IsUnique( );
+
+            _ = entity.HasIndex( e => e.WorkflowRunId );
+
+            _ = entity.HasOne( e => e.WorkflowRun )
+                .WithMany( r => r.StepExecutions )
+                .HasForeignKey( e => e.WorkflowRunId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.Step )
+                .WithMany( )
+                .HasForeignKey( e => e.StepId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.Job )
+                .WithMany( )
+                .HasForeignKey( e => e.JobId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // SavedFilter — named filter views per page per user
+        _ = modelBuilder.Entity<SavedFilter>( entity => {
+            _ = entity.HasIndex( e => new { e.PageKey, e.OwnerId } );
+            _ = entity.HasIndex( e => new { e.PageKey, e.IsShared } );
+        } );
     }
 
     /// <inheritdoc/>
@@ -395,6 +510,14 @@ public class WerkrDbContext : DbContext {
         // HolidayCalendarMode ↔ string
         _ = configurationBuilder.Properties<HolidayCalendarMode>( )
             .HaveConversion<HolidayCalendarModeStringConverter>( );
+
+        // VariableSource ↔ string
+        _ = configurationBuilder.Properties<VariableSource>( )
+            .HaveConversion<VariableSourceStringConverter>( );
+
+        // StepExecutionStatus ↔ string
+        _ = configurationBuilder.Properties<Common.Models.StepExecutionStatus>( )
+            .HaveConversion<StepExecutionStatusStringConverter>( );
     }
 
     /// <inheritdoc/>
@@ -483,8 +606,21 @@ public class WerkrDbContext : DbContext {
 
     private sealed class ControlStatementStringConverter( )
         : ValueConverter<ControlStatement, string>(
-            v => v.ToString( ),
-            v => Enum.Parse<ControlStatement>( v ) );
+            v => v == ControlStatement.Default ? "Default" : v.ToString( ),
+            v => ParseControlStatement( v ) ) {
+        private static ControlStatement ParseControlStatement( string v ) =>
+            v switch {
+                "Sequential" or "Parallel" => ControlStatement.Default,
+                "ConditionalIf" => ControlStatement.If,
+                "ConditionalElseIf" => ControlStatement.ElseIf,
+                "ConditionalElse" => ControlStatement.Else,
+                "ConditionalWhile" => ControlStatement.While,
+                "ConditionalDo" => ControlStatement.Do,
+                _ => Enum.TryParse<ControlStatement>( v, ignoreCase: true, out ControlStatement parsed )
+                    ? parsed
+                    : ControlStatement.Default,
+            };
+    }
 
     private sealed class DependencyModeStringConverter( )
         : ValueConverter<DependencyMode, string>(
@@ -510,4 +646,14 @@ public class WerkrDbContext : DbContext {
         : ValueConverter<HolidayCalendarMode, string>(
             v => v.ToString( ),
             v => Enum.Parse<HolidayCalendarMode>( v ) );
+
+    private sealed class VariableSourceStringConverter( )
+        : ValueConverter<VariableSource, string>(
+            v => v.ToString( ),
+            v => Enum.Parse<VariableSource>( v ) );
+
+    private sealed class StepExecutionStatusStringConverter( )
+        : ValueConverter<Common.Models.StepExecutionStatus, string>(
+            v => v.ToString( ),
+            v => Enum.Parse<Common.Models.StepExecutionStatus>( v ) );
 }

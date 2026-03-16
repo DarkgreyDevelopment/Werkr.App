@@ -79,7 +79,7 @@ public class ActionDispatchIntegrationTests {
     /// Cleans up the created task after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_CopyFile_PersistsAndReturnsCorrectData( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -117,15 +117,13 @@ public class ActionDispatchIntegrationTests {
     }
 
     /// <summary>
-    /// Verifies that all supported action sub-types (CopyFile, MoveFile, RenameFile,
-    /// DeleteFile, CreateFile, CreateDirectory, TestExists, ClearContent, WriteContent,
-    ///  StartProcess, StopProcess) can be created successfully. Each action type is
-    /// created with appropriate parameters, and the test asserts that each receives a
-    /// positive task ID and the correct <see cref="ActionSubType"/> value. All created
-    /// tasks are cleaned up after verification.
+    /// Verifies that all supported action sub-types can be created successfully.
+    /// Each action type is created with appropriate parameters, and the test asserts
+    /// that each receives a positive task ID and the correct <see cref="ActionSubType"/>
+    /// value. All created tasks are cleaned up after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_AllActionTypes_Succeed( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -142,6 +140,14 @@ public class ActionDispatchIntegrationTests {
             ("WriteContent", new { path = "/a/file.txt", content = "data" }),
             ("StartProcess", new { fileName = "echo", arguments = "hello" }),
             ("StopProcess", new { processName = "notepad" }),
+            ("Delay", new { seconds = 1.0 }),
+            ("GetFileInfo", new { path = "/a/file.txt" }),
+            ("ReadContent", new { path = "/a/file.txt" }),
+            ("ListDirectory", new { path = "/a" }),
+            ("FindReplace", new { path = "/a/file.txt", find = "old", replace = "new" }),
+            ("CompressArchive", new { source = "/a/file.txt", destination = "/a/archive.zip" }),
+            ("ExpandArchive", new { source = "/a/archive.zip", destination = "/a/out" }),
+            ("WatchFile", new { directory = "/a", pattern = "*.txt" }),
         ];
 
         List<long> createdIds = [];
@@ -171,7 +177,7 @@ public class ActionDispatchIntegrationTests {
     /// values (including the added "append" flag). Cleans up the task after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task UpdateActionTask_ChangesActionParameters( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -227,7 +233,7 @@ public class ActionDispatchIntegrationTests {
     /// asserts that <see cref="HttpStatusCode.NotFound"/> is returned.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task DeleteActionTask_RemovesAndReturnsNotFound( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -257,7 +263,7 @@ public class ActionDispatchIntegrationTests {
     /// rejects action tasks that lack a required sub-type.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_MissingActionSubType_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -279,9 +285,9 @@ public class ActionDispatchIntegrationTests {
             "Missing ActionSubType should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "ActionSubType",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should reference the missing ActionSubType field." );
     }
 
@@ -292,7 +298,7 @@ public class ActionDispatchIntegrationTests {
     /// action sub-types.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_UnknownActionSubType_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -314,9 +320,9 @@ public class ActionDispatchIntegrationTests {
             "Unknown ActionSubType should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "FlyToMoon",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should reference the unknown action name." );
     }
 
@@ -331,7 +337,7 @@ public class ActionDispatchIntegrationTests {
     /// require parameters to be specified.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_MissingActionParameters_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -353,9 +359,9 @@ public class ActionDispatchIntegrationTests {
             "Missing ActionParameters should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "ActionParameters",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should reference the missing ActionParameters field." );
     }
 
@@ -366,7 +372,7 @@ public class ActionDispatchIntegrationTests {
     /// confirming that action parameters must be valid JSON.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateActionTask_MalformedJsonParameters_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -399,7 +405,7 @@ public class ActionDispatchIntegrationTests {
     /// that action-specific fields are exclusive to Action-type tasks.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateShellTask_WithActionSubType_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -420,9 +426,9 @@ public class ActionDispatchIntegrationTests {
             "ShellCommand task with ActionSubType should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "ActionSubType",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should explain ActionSubType must be null for non-Action tasks." );
     }
 
@@ -433,7 +439,7 @@ public class ActionDispatchIntegrationTests {
     /// that action-specific fields are exclusive to Action-type tasks.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task CreateShellTask_WithActionParameters_ReturnsBadRequest( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -454,9 +460,9 @@ public class ActionDispatchIntegrationTests {
             "ShellCommand task with ActionParameters should return 400 Bad Request." );
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
-        StringAssert.Contains(
-            body.GetProperty( "message" ).GetString( )!,
+        Assert.Contains(
             "ActionParameters",
+            body.GetProperty( "message" ).GetString( )!,
             "Error message should explain ActionParameters must be null for non-Action tasks." );
     }
 
@@ -466,13 +472,12 @@ public class ActionDispatchIntegrationTests {
 
     /// <summary>
     /// Verifies that attempting an ad-hoc run of an action task when no agent is connected returns
-    /// <see cref="HttpStatusCode.Conflict"/> (HTTP 409). Creates a TestExists action task with
-    /// "integration-test" target tags and issues a POST to <c>/api/tasks/{id}/run</c>. Asserts the
-    /// conflict status and that the response body contains "No connected agent", confirming the API
-    /// correctly reports the absence of a matching agent. Cleans up the task.
+    /// <see cref="HttpStatusCode.Accepted"/> (HTTP 202). The run endpoint creates a one-time schedule
+    /// and returns immediately. Creates a TestExists action task with "integration-test" target tags
+    /// and issues a POST to <c>/api/tasks/{id}/run</c>. Asserts the accepted status. Cleans up the task.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task AdHocRunActionTask_WithoutConnectedAgent_ReturnsConflict( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
@@ -487,12 +492,8 @@ public class ActionDispatchIntegrationTests {
         HttpResponseMessage runResponse = await Api.PostAsJsonAsync(
             $"/api/tasks/{taskId}/run", new object( ), JsonOptions, ct );
 
-        Assert.AreEqual( HttpStatusCode.Conflict, runResponse.StatusCode,
-            "Ad-hoc action run should return 409 Conflict when no agent matches the target tags." );
-
-        string body = await runResponse.Content.ReadAsStringAsync( ct );
-        StringAssert.Contains( body, "No connected agent",
-            "Conflict response should describe that no matching agent was found." );
+        Assert.AreEqual( HttpStatusCode.Accepted, runResponse.StatusCode,
+            "Ad-hoc action run should return 202 Accepted (one-time schedule created)." );
 
         // Cleanup
         _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
@@ -508,7 +509,7 @@ public class ActionDispatchIntegrationTests {
     /// and asserts that the returned JSON array is empty. Cleans up the task after verification.
     /// </summary>
     [TestMethod]
-    [Timeout( 60_000 )]
+    [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task JobHistory_ForNewActionTask_ReturnsEmptyList( ) {
         CancellationToken ct = TestContext.CancellationToken;
 

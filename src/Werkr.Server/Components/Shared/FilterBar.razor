@@ -1,0 +1,213 @@
+@using Werkr.Common.Models
+@using Werkr.Server.Services
+@inject SavedFilterService FilterService
+@inject ILogger<FilterBar> Logger
+
+<div class="filter-bar">
+    <div class="filter-bar-controls">
+        @foreach ( FilterField field in Definition.Fields ) {
+            <div class="filter-field">
+                <label class="form-label form-label-sm mb-0" for="@($"filter-{PageKey}-{field.Key}")">@field.Label</label>
+                @switch ( field.Type ) {
+                    case FilterFieldType.Dropdown:
+                        <select id="@($"filter-{PageKey}-{field.Key}")"
+                                class="form-select form-select-sm"
+                                value="@GetValue( field.Key )"
+                                @onchange="( e ) => SetValue( field.Key, e.Value?.ToString( ) )">
+                            <option value="">All</option>
+                            @if ( field.Options is not null ) {
+                                @foreach ( string opt in field.Options ) {
+                                    <option value="@opt">@opt</option>
+                                }
+                            }
+                        </select>
+                        break;
+
+                    case FilterFieldType.Date:
+                        <input id="@($"filter-{PageKey}-{field.Key}")"
+                               type="date"
+                               class="form-control form-control-sm"
+                               value="@GetValue( field.Key )"
+                               @onchange="( e ) => SetValue( field.Key, e.Value?.ToString( ) )" />
+                        break;
+
+                    case FilterFieldType.Text:
+                        <input id="@($"filter-{PageKey}-{field.Key}")"
+                               type="text"
+                               class="form-control form-control-sm"
+                               placeholder="@field.Label…"
+                               value="@GetValue( field.Key )"
+                               @onchange="( e ) => SetValue( field.Key, e.Value?.ToString( ) )" />
+                        break;
+
+                    case FilterFieldType.Number:
+                        <input id="@($"filter-{PageKey}-{field.Key}")"
+                               type="number"
+                               class="form-control form-control-sm"
+                               placeholder="@field.Label…"
+                               value="@GetValue( field.Key )"
+                               @onchange="( e ) => SetValue( field.Key, e.Value?.ToString( ) )" />
+                        break;
+                }
+            </div>
+        }
+
+        <div class="filter-actions">
+            <button class="btn btn-primary btn-sm" @onclick="ApplyAsync">Apply</button>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="ClearAsync">Clear</button>
+        </div>
+    </div>
+
+    <div class="filter-bar-saved">
+        <select class="form-select form-select-sm saved-filter-select"
+                value="@_selectedFilterId"
+                @onchange="OnSavedFilterSelectedAsync">
+            <option value="">Saved filters…</option>
+            @foreach ( SavedFilterView f in _savedFilters ) {
+                <option value="@f.Id">
+                    @( f.IsShared ? "🌐 " : "" )@f.Name@( f.IsDefault ? " ★" : "" )
+                </option>
+            }
+        </select>
+
+        <button class="btn btn-outline-primary btn-sm" @onclick="ShowSaveDialogAsync" title="Save current filter">Save</button>
+
+        @if ( _savedFilters.Count > 0 ) {
+            <div class="dropdown d-inline-block">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" title="Manage filters">
+                    ⚙
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    @foreach ( SavedFilterView f in _savedFilters.Where( f => !f.IsShared ) ) {
+                        <li class="dropdown-item d-flex justify-content-between align-items-center gap-2">
+                            <span class="text-truncate" style="max-width:160px;">@f.Name</span>
+                            <span class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-warning py-0 px-1"
+                                        @onclick="( ) => SetDefaultAsync( f.Id )"
+                                        title="Set as default">★</button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-1"
+                                        @onclick="( ) => DeleteFilterAsync( f.Id )"
+                                        title="Delete">✕</button>
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@if ( _showSaveDialog ) {
+    <div class="filter-save-dialog mt-2">
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control" placeholder="Filter name…"
+                   @bind="_saveFilterName" @bind:event="oninput" />
+            <button class="btn btn-primary" @onclick="SaveCurrentFilterAsync"
+                    disabled="@string.IsNullOrWhiteSpace( _saveFilterName )">Save</button>
+            <button class="btn btn-outline-secondary" @onclick="( ) => _showSaveDialog = false">Cancel</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string PageKey { get; set; } = "";
+    [Parameter, EditorRequired] public FilterDefinition Definition { get; set; } = new( [] );
+    [Parameter] public EventCallback<FilterCriteria> OnFilterApplied { get; set; }
+    [Parameter] public EventCallback OnFilterCleared { get; set; }
+
+    private FilterCriteria _criteria = new( );
+    private List<SavedFilterView> _savedFilters = [];
+    private string _selectedFilterId = "";
+    private bool _showSaveDialog;
+    private string _saveFilterName = "";
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync( bool firstRender ) {
+        if ( !firstRender || _initialized ) return;
+        _initialized = true;
+
+        try {
+            _savedFilters = [.. await FilterService.GetAllFiltersAsync( PageKey )];
+
+            SavedFilterView? defaultFilter = _savedFilters.FirstOrDefault( f => f.IsDefault );
+            if ( defaultFilter is not null ) {
+                _criteria = defaultFilter.Criteria;
+                _selectedFilterId = defaultFilter.Id;
+                await OnFilterApplied.InvokeAsync( _criteria );
+            }
+
+            StateHasChanged( );
+        } catch ( Exception ex ) {
+            Logger.LogWarning( ex, "Failed to load saved filters for page {PageKey}.", PageKey );
+        }
+    }
+
+    private string GetValue( string key ) => _criteria.Get( key ) ?? "";
+
+    private void SetValue( string key, string? value ) {
+        if ( string.IsNullOrWhiteSpace( value ) ) {
+            _criteria.Values.Remove( key );
+        } else {
+            _criteria.Values[key] = value;
+        }
+    }
+
+    private async Task ApplyAsync( ) {
+        _selectedFilterId = "";
+        await OnFilterApplied.InvokeAsync( _criteria );
+    }
+
+    private async Task ClearAsync( ) {
+        _criteria = new FilterCriteria( );
+        _selectedFilterId = "";
+        await OnFilterCleared.InvokeAsync( );
+    }
+
+    private async Task OnSavedFilterSelectedAsync( ChangeEventArgs e ) {
+        string? filterId = e.Value?.ToString( );
+        if ( string.IsNullOrWhiteSpace( filterId ) ) return;
+
+        SavedFilterView? filter = _savedFilters.FirstOrDefault( f => f.Id == filterId );
+        if ( filter is null ) return;
+
+        _selectedFilterId = filterId;
+        _criteria = filter.Criteria;
+        await OnFilterApplied.InvokeAsync( _criteria );
+    }
+
+    private Task ShowSaveDialogAsync( ) {
+        _showSaveDialog = true;
+        _saveFilterName = "";
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveCurrentFilterAsync( ) {
+        if ( string.IsNullOrWhiteSpace( _saveFilterName ) ) return;
+
+        SavedFilterView filter = new(
+            Id: Guid.NewGuid( ).ToString( ),
+            Name: _saveFilterName.Trim( ),
+            IsDefault: false,
+            IsShared: false,
+            Criteria: _criteria
+        );
+
+        await FilterService.SaveFilterAsync( PageKey, filter );
+        _savedFilters = [.. await FilterService.GetAllFiltersAsync( PageKey )];
+        _showSaveDialog = false;
+        _selectedFilterId = filter.Id;
+    }
+
+    private async Task SetDefaultAsync( string filterId ) {
+        await FilterService.SetDefaultAsync( PageKey, filterId );
+        _savedFilters = [.. await FilterService.GetAllFiltersAsync( PageKey )];
+    }
+
+    private async Task DeleteFilterAsync( string filterId ) {
+        await FilterService.DeleteFilterAsync( PageKey, filterId );
+        _savedFilters = [.. await FilterService.GetAllFiltersAsync( PageKey )];
+        if ( _selectedFilterId == filterId ) {
+            _selectedFilterId = "";
+        }
+    }
+}

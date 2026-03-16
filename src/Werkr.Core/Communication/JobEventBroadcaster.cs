@@ -8,17 +8,13 @@ namespace Werkr.Core.Communication;
 /// active SSE subscribers. Each subscriber receives its own bounded
 /// <see cref="ChannelReader{T}"/> so slow consumers cannot block producers.
 /// </summary>
-public sealed partial class JobEventBroadcaster {
+/// <remarks>Initializes a new broadcaster.</remarks>
+/// <param name="logger">Logger instance.</param>
+public sealed partial class JobEventBroadcaster( ILogger<JobEventBroadcaster> logger ) {
 
     private readonly Lock _lock = new( );
     private readonly List<ChannelWriter<JobEvent>> _subscribers = [];
-    private readonly ILogger<JobEventBroadcaster> _logger;
-
-    /// <summary>Initializes a new broadcaster.</summary>
-    /// <param name="logger">Logger instance.</param>
-    public JobEventBroadcaster( ILogger<JobEventBroadcaster> logger ) {
-        _logger = logger;
-    }
+    private readonly ILogger<JobEventBroadcaster> _logger = logger;
 
     /// <summary>
     /// Creates a new subscription. The caller reads from the returned

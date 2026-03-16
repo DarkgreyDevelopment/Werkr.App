@@ -19,7 +19,7 @@ namespace Werkr.Agent.Operators;
 /// <remarks>Creates a new <see cref="PwshOperator"/>.</remarks>
 /// <param name="agentSettingsOptions">Agent settings containing PowerShell configuration.</param>
 /// <param name="logger">Logger for diagnostics.</param>
-public class PwshOperator(
+public partial class PwshOperator(
     IOptions<AgentSettings> agentSettingsOptions,
     ILogger<PwshOperator> logger
 ) : IShellOperator {
@@ -34,18 +34,18 @@ public class PwshOperator(
     public bool IsAvailable => true;
 
     /// <inheritdoc/>
-    public OperatorExecution RunCommand( string command, CancellationToken cancellationToken = default ) {
+    public OperatorExecution RunCommand( string command, IReadOnlyDictionary<string, string>? environmentVariables = null, CancellationToken cancellationToken = default ) {
         Guid callId = Guid.NewGuid( );
         Channel<OperatorOutput> channel = Channel.CreateBounded<OperatorOutput>(
             new BoundedChannelOptions( 10_000 ) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false } );
 
         TaskCompletionSource<IOperatorResult> resultTcs = new( TaskCreationOptions.RunContinuationsAsynchronously );
-        _ = ExecuteCommandInternal( command, callId, channel.Writer, resultTcs, cancellationToken );
+        _ = ExecuteCommandInternal( command, callId, channel.Writer, resultTcs, environmentVariables, cancellationToken );
         return new OperatorExecution( channel.Reader.ReadAllAsync( cancellationToken ), resultTcs.Task );
     }
 
     /// <inheritdoc/>
-    public OperatorExecution RunScript( string scriptPath, CancellationToken cancellationToken = default ) {
+    public OperatorExecution RunScript( string scriptPath, IReadOnlyDictionary<string, string>? environmentVariables = null, CancellationToken cancellationToken = default ) {
         if (!File.Exists( scriptPath )) {
             Guid errorCallId = Guid.NewGuid( );
             Channel<OperatorOutput> errorChannel = Channel.CreateBounded<OperatorOutput>(
@@ -58,13 +58,14 @@ public class PwshOperator(
         }
 
         string script = File.ReadAllText( scriptPath );
-        return RunCommand( script, cancellationToken );
+        return RunCommand( script, environmentVariables, cancellationToken );
     }
 
     /// <inheritdoc/>
     public OperatorExecution RunScriptWithArgs(
         string scriptPath,
         IEnumerable<string> args,
+        IReadOnlyDictionary<string, string>? environmentVariables = null,
         CancellationToken cancellationToken = default
     ) {
         if (!File.Exists( scriptPath )) {
@@ -83,7 +84,7 @@ public class PwshOperator(
             new BoundedChannelOptions( 10_000 ) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false } );
 
         TaskCompletionSource<IOperatorResult> resultTcs = new( TaskCreationOptions.RunContinuationsAsynchronously );
-        _ = ExecuteScriptWithArgsInternal( scriptPath, args, callId, channel.Writer, resultTcs, cancellationToken );
+        _ = ExecuteScriptWithArgsInternal( scriptPath, args, callId, channel.Writer, resultTcs, environmentVariables, cancellationToken );
         return new OperatorExecution( channel.Reader.ReadAllAsync( cancellationToken ), resultTcs.Task );
     }
 
@@ -97,6 +98,7 @@ public class PwshOperator(
         Guid callId,
         ChannelWriter<OperatorOutput> writer,
         TaskCompletionSource<IOperatorResult> resultTcs,
+        IReadOnlyDictionary<string, string>? environmentVariables,
         CancellationToken cancellationToken
     ) {
 
@@ -107,6 +109,13 @@ public class PwshOperator(
             WerkrPSHost host = new( writer, _bufferWidth );
             runspace = RunspaceFactory.CreateRunspace( host, InitialSessionState.CreateDefault( ) );
             runspace.Open( );
+
+            // Inject environment variables as PowerShell variables (runspace-scoped, not process-wide)
+            if (environmentVariables is not null) {
+                foreach (KeyValuePair<string, string> kvp in environmentVariables) {
+                    runspace.SessionStateProxy.SetVariable( kvp.Key, kvp.Value );
+                }
+            }
 
             using PowerShell pwsh = PowerShell.Create( );
             pwsh.Runspace = runspace;
@@ -172,6 +181,7 @@ public class PwshOperator(
         Guid callId,
         ChannelWriter<OperatorOutput> writer,
         TaskCompletionSource<IOperatorResult> resultTcs,
+        IReadOnlyDictionary<string, string>? environmentVariables,
         CancellationToken cancellationToken
     ) {
 
@@ -184,6 +194,13 @@ public class PwshOperator(
             WerkrPSHost host = new( writer, _bufferWidth );
             runspace = RunspaceFactory.CreateRunspace( host, InitialSessionState.CreateDefault( ) );
             runspace.Open( );
+
+            // Inject environment variables as PowerShell variables (runspace-scoped, not process-wide)
+            if (environmentVariables is not null) {
+                foreach (KeyValuePair<string, string> kvp in environmentVariables) {
+                    runspace.SessionStateProxy.SetVariable( kvp.Key, kvp.Value );
+                }
+            }
 
             using PowerShell pwsh = PowerShell.Create( );
             pwsh.Runspace = runspace;

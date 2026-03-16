@@ -34,6 +34,8 @@ public class ScheduleServiceTests {
     /// </summary>
     public TestContext TestContext { get; set; } = null!;
 
+    private static readonly int[] s_expected = [1, 15];
+
     /// <summary>
     /// Initializes an in-memory SQLite database, creates the schema, and instantiates the <see cref="ScheduleService"/>
     /// with a <see cref="HolidayDateService"/> under test.
@@ -250,7 +252,7 @@ public class ScheduleServiceTests {
 
         Assert.IsNotNull( created.MonthlyRecurrence );
         CollectionAssert.AreEqual(
-            new[] { 1, 15 },
+            s_expected,
             created.MonthlyRecurrence!.DayNumbers
         );
         Assert.AreEqual(

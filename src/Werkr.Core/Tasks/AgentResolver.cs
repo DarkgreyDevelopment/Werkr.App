@@ -1,9 +1,7 @@
 using Grpc.Core;
 using Grpc.Net.Client;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
@@ -19,7 +17,7 @@ namespace Werkr.Core.Tasks;
 /// <param name="dbContext">Database context for querying registered connections.</param>
 /// <param name="connectionManager">Singleton gRPC channel cache for live health checks.</param>
 /// <param name="logger">Logger instance.</param>
-public sealed class AgentResolver(
+public sealed partial class AgentResolver(
     WerkrDbContext dbContext,
     AgentConnectionManager connectionManager,
     ILogger<AgentResolver> logger

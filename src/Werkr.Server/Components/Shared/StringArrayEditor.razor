@@ -1,0 +1,67 @@
+@rendermode InteractiveServer
+
+<div>
+    @for ( int i = 0; i < _rows.Count; i++ ) {
+        int index = i;
+        <div class="input-group input-group-sm mb-1">
+            <input type="text" class="form-control font-monospace"
+                   placeholder="@Placeholder"
+                   value="@_rows[index]"
+                   @onchange="( e ) => UpdateRow( index, e.Value?.ToString( ) ?? string.Empty )" />
+            <button class="btn btn-outline-danger" type="button"
+                    @onclick="( ) => RemoveRow( index )"
+                    title="Remove item">&times;</button>
+        </div>
+    }
+    <button class="btn btn-outline-primary btn-sm mt-1" type="button" @onclick="AddRow">
+        + Add Item
+    </button>
+</div>
+
+@code {
+    /// <summary>The list of string values — two-way bound.</summary>
+    [Parameter]
+    public List<string>? Value { get; set; }
+
+    /// <summary>Callback when the list changes.</summary>
+    [Parameter]
+    public EventCallback<List<string>?> ValueChanged { get; set; }
+
+    /// <summary>Placeholder text for each input row.</summary>
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    private List<string> _rows = [];
+
+    protected override void OnParametersSet( ) {
+        List<string> incoming = Value ?? [];
+        if ( !_rows.SequenceEqual( incoming ) ) {
+            _rows = [.. incoming];
+        }
+    }
+
+    private async Task UpdateRow( int index, string value ) {
+        if ( index >= 0 && index < _rows.Count ) {
+            _rows[index] = value;
+            await NotifyChanged( );
+        }
+    }
+
+    private async Task RemoveRow( int index ) {
+        if ( index >= 0 && index < _rows.Count ) {
+            _rows.RemoveAt( index );
+            await NotifyChanged( );
+        }
+    }
+
+    private async Task AddRow( ) {
+        _rows.Add( string.Empty );
+        await NotifyChanged( );
+    }
+
+    private async Task NotifyChanged( ) {
+        List<string> result = [.. _rows.Where( r => !string.IsNullOrWhiteSpace( r ) )];
+        Value = result.Count > 0 ? result : null;
+        await ValueChanged.InvokeAsync( Value );
+    }
+}

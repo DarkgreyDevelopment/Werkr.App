@@ -1,11 +1,9 @@
 using Grpc.Core;
 using Grpc.Net.Client;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
@@ -24,7 +22,7 @@ namespace Werkr.Core.Health;
 /// <param name="connectionManager">Singleton gRPC channel cache.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <param name="interval">How often to sweep all agents (default: 60 seconds).</param>
-public class AgentHealthCheckService(
+public partial class AgentHealthCheckService(
     IServiceScopeFactory scopeFactory,
     AgentConnectionManager connectionManager,
     ILogger<AgentHealthCheckService> logger,

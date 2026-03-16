@@ -1,4 +1,3 @@
-using Werkr.Agent.Protos;
 using Werkr.Agent.Services;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;

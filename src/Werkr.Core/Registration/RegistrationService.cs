@@ -1,9 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
 using Werkr.Common.Models;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Registration.Models;
@@ -21,7 +19,7 @@ namespace Werkr.Core.Registration;
 /// <param name="dbContext">The database context for persisting registration data.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <param name="serverUrl">The Server's gRPC endpoint URL embedded in bundles.</param>
-public class RegistrationService(
+public partial class RegistrationService(
     WerkrDbContext dbContext,
     ILogger<RegistrationService> logger,
     string serverUrl

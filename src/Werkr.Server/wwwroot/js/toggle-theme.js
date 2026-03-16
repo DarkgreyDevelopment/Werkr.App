@@ -2,14 +2,18 @@
 // Dark theme is the default. Persists to localStorage.
 // The checkbox lives in the statically-rendered NavMenu, so it is
 // already in the DOM by the time this script runs (loaded at end of body).
+//
+// Blazor enhanced navigation morphs the <body> from the server
+// response which has no class attribute, stripping theme classes.
+// A MutationObserver detects this and restores the correct theme
+// immediately, independent of any particular event name.
 
 (function () {
-    const b = document.body;
-    if (!b) return;
+    if (!document.body) return;
 
     function applyTheme(dark) {
-        b.classList.toggle("dark-theme", dark);
-        b.classList.toggle("light-theme", !dark);
+        document.body.classList.toggle("dark-theme", dark);
+        document.body.classList.toggle("light-theme", !dark);
     }
 
     function currentIsDark() {
@@ -32,15 +36,32 @@
         });
     }
 
-    // Initial page load
-    applyTheme(currentIsDark());
-    bindToggle();
-
-    // Re-apply after Blazor enhanced navigation replaces the DOM
-    document.addEventListener("blazor:enhancedload", function () {
+    function restore() {
         applyTheme(currentIsDark());
         bindToggle();
-    });
+    }
+
+    // Initial page load
+    restore();
+
+    // Blazor enhanced navigation — DOM event
+    document.addEventListener("enhancedload", restore);
+
+    // Blazor event API (available after blazor.web.js loads)
+    if (typeof Blazor !== "undefined" && Blazor.addEventListener) {
+        Blazor.addEventListener("enhancedload", restore);
+    }
+
+    // MutationObserver — catches any body class stripping regardless of
+    // event names or timing. When both theme classes are missing we
+    // restore from localStorage. The guard prevents infinite recursion:
+    // restore() adds a class → observer fires → guard stops re-entry.
+    new MutationObserver(function () {
+        if (!document.body.classList.contains("dark-theme") &&
+            !document.body.classList.contains("light-theme")) {
+            restore();
+        }
+    }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 
     // Sync across tabs
     window.addEventListener("storage", function (e) {

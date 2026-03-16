@@ -51,7 +51,7 @@ public class RegistrationServiceTests {
     /// Generates server and agent RSA key pairs once for all tests.
     /// </summary>
     [ClassInitialize]
-    public static void ClassInit( TestContext context ) {
+    public static void ClassInit( TestContext _ ) {
         // Pre-generate RSA-4096 keys to avoid per-test overhead.
         s_serverKeys = EncryptionProvider.GenerateRSAKeyPair( );
         s_agentKeys = EncryptionProvider.GenerateRSAKeyPair( );

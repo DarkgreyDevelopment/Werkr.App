@@ -1,0 +1,98 @@
+@rendermode InteractiveServer
+@using Werkr.Common.Models
+@using Werkr.Server.Helpers
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<DagEditorCanvas> Logger
+
+<div class="dag-editor-canvas-container position-relative flex-grow-1 d-flex flex-column">
+    @* ── Canvas ── *@
+    <div id="@_containerId" class="dag-editor-canvas flex-grow-1"></div>
+
+    @* ── Minimap ── *@
+    <div id="@_minimapId" class="dag-editor-minimap"></div>
+</div>
+
+@code {
+    [Parameter] public long WorkflowId { get; set; }
+    [Parameter] public string UserId { get; set; } = "";
+    [Parameter] public EventCallback<long> OnNodeSelected { get; set; }
+    [Parameter] public EventCallback OnNodeDeselected { get; set; }
+    [Parameter] public EventCallback<(string ActionType, double X, double Y)> OnNodeDropped { get; set; }
+    [Parameter] public EventCallback OnSaveRequested { get; set; }
+    [Parameter] public EventCallback<(string SourceId, string TargetId)> OnCycleDetected { get; set; }
+    [Parameter] public EventCallback<int> OnDirtyCountChanged { get; set; }
+    [Parameter] public EventCallback<double> OnZoomChanged { get; set; }
+
+    private readonly string _containerId = $"dag-edit-{Guid.NewGuid( ):N}";
+    private readonly string _minimapId = $"dag-edit-mini-{Guid.NewGuid( ):N}";
+    private DagEditorJsInterop? _interop;
+    private bool _initialized;
+
+    /// <summary>Gets the JS interop instance for parent components to call editor methods.</summary>
+    public DagEditorJsInterop? Interop => _interop;
+
+    protected override async Task OnAfterRenderAsync( bool firstRender ) {
+        if (!firstRender || _initialized) return;
+        _initialized = true;
+
+        try {
+            _interop = new DagEditorJsInterop( JS );
+            _interop.OnNodeSelected += HandleNodeSelectedAsync;
+            _interop.OnNodeDeselected += HandleNodeDeselectedAsync;
+            _interop.OnNodeDropped += HandleNodeDroppedAsync;
+            _interop.OnSaveRequested += HandleSaveRequestedAsync;
+            _interop.OnCycleDetected += HandleCycleDetectedAsync;
+            _interop.OnGraphDirtyChanged += HandleDirtyChangedAsync;
+            _interop.OnZoomChanged += HandleZoomChangedAsync;
+            await _interop.InitEditorAsync( _containerId, _minimapId, UserId, WorkflowId );
+        } catch (Exception ex) {
+            Logger.LogError( ex, "Failed to initialize DAG editor canvas." );
+        }
+    }
+
+    private async Task HandleNodeSelectedAsync( long stepId ) {
+        await OnNodeSelected.InvokeAsync( stepId );
+        await InvokeAsync( StateHasChanged );
+    }
+
+    private async Task HandleNodeDeselectedAsync( ) {
+        await OnNodeDeselected.InvokeAsync( );
+        await InvokeAsync( StateHasChanged );
+    }
+
+    private async Task HandleNodeDroppedAsync( string actionType, double x, double y ) {
+        await OnNodeDropped.InvokeAsync( (actionType, x, y) );
+        await InvokeAsync( StateHasChanged );
+    }
+
+    private async Task HandleSaveRequestedAsync( ) {
+        await OnSaveRequested.InvokeAsync( );
+    }
+
+    private async Task HandleCycleDetectedAsync( string sourceId, string targetId ) {
+        await OnCycleDetected.InvokeAsync( (sourceId, targetId) );
+    }
+
+    private async Task HandleDirtyChangedAsync( int dirtyCount ) {
+        await OnDirtyCountChanged.InvokeAsync( dirtyCount );
+        await InvokeAsync( StateHasChanged );
+    }
+
+    private async Task HandleZoomChangedAsync( double zoom ) {
+        await OnZoomChanged.InvokeAsync( zoom );
+    }
+
+    public async ValueTask DisposeAsync( ) {
+        if (_interop is not null) {
+            _interop.OnNodeSelected -= HandleNodeSelectedAsync;
+            _interop.OnNodeDeselected -= HandleNodeDeselectedAsync;
+            _interop.OnNodeDropped -= HandleNodeDroppedAsync;
+            _interop.OnSaveRequested -= HandleSaveRequestedAsync;
+            _interop.OnCycleDetected -= HandleCycleDetectedAsync;
+            _interop.OnGraphDirtyChanged -= HandleDirtyChangedAsync;
+            _interop.OnZoomChanged -= HandleZoomChangedAsync;
+            await _interop.DisposeAsync( );
+        }
+    }
+}

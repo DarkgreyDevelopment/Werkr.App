@@ -1,7 +1,5 @@
 using System.Text.RegularExpressions;
-
 using Microsoft.Extensions.Logging;
-
 using Werkr.Core.Communication;
 using Werkr.Data.Entities.Tasks;
 
@@ -198,7 +196,7 @@ public sealed partial class SuccessCriteriaEvaluator( ILogger<SuccessCriteriaEva
     /// <summary>
     /// Evaluates the default success criteria based on the action type.
     /// </summary>
-    private bool EvaluateDefault(
+    private static bool EvaluateDefault(
         TaskActionType actionType,
         int? exitCode,
         IReadOnlyList<OperatorOutput> output

@@ -4,5 +4,7 @@ namespace Werkr.Common.Models;
 public sealed record WorkflowUpdateRequest(
     string Name,
     string? Description = null,
-    bool Enabled = true
+    bool Enabled = true,
+    string[]? TargetTags = null,
+    List<AnnotationDto>? Annotations = null
 );

@@ -30,7 +30,7 @@ public class ActionOperatorTests {
     /// with the given timeout. Defaults to a one-hour timeout when none
     /// is supplied.
     /// </summary>
-    private static IOptionsMonitor<ActionOperatorConfiguration> DefaultOptions( TimeSpan? timeout = null ) {
+    private static TestOptionsMonitor<ActionOperatorConfiguration> DefaultOptions( TimeSpan? timeout = null ) {
         ActionOperatorConfiguration config = new( ) {
             DefaultTimeout = timeout ?? TimeSpan.FromHours( 1 ),
         };
@@ -119,7 +119,7 @@ public class ActionOperatorTests {
     /// </summary>
     [TestMethod]
     public void Constructor_NullExpectedActions_UsesDefaultList( ) {
-        // With null expectedActions, it uses DefaultExpectedActions which requires 11 handlers
+        // With null expectedActions, it uses DefaultExpectedActions which requires 19 handlers
         IActionHandler[] handlers = [new SuccessHandler( "A" )];
 
         _ = Assert.ThrowsExactly<InvalidOperationException>(
@@ -146,7 +146,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "TestAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = [];
@@ -177,7 +177,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "FailAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await foreach (OperatorOutput _ in execution.Output.WithCancellation( TestContext.CancellationToken )) { }
@@ -203,7 +203,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "ThrowAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await foreach (OperatorOutput _ in execution.Output.WithCancellation( TestContext.CancellationToken )) { }
@@ -232,7 +232,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "UnknownAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = [];
@@ -268,7 +268,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "SlowAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         List<OperatorOutput> outputs = [];
@@ -306,7 +306,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "SlowAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            cts.Token
+            cancellationToken: cts.Token
         );
 
         List<OperatorOutput> outputs = [];
@@ -339,7 +339,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "testaction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await foreach (OperatorOutput _ in execution.Output.WithCancellation( TestContext.CancellationToken )) { }
@@ -367,7 +367,7 @@ public class ActionOperatorTests {
         ActionDescriptor descriptor = TestActionDescriptor.Create( "TestAction" );
         OperatorExecution execution = op.Execute(
             descriptor,
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
 
         await foreach (OperatorOutput _ in execution.Output.WithCancellation( TestContext.CancellationToken )) { }
@@ -380,19 +380,15 @@ public class ActionOperatorTests {
     /// <summary>
     /// Simple <see cref="IOptionsMonitor{T}"/> implementation for tests.
     /// </summary>
-    private sealed class TestOptionsMonitor<T> : IOptionsMonitor<T> {
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TestOptionsMonitor{T}"/> class.
-        /// </summary>
-        public TestOptionsMonitor( T currentValue ) {
-            CurrentValue = currentValue;
-        }
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="TestOptionsMonitor{T}"/> class.
+    /// </remarks>
+    private sealed class TestOptionsMonitor<T>( T currentValue ) : IOptionsMonitor<T> {
 
         /// <summary>
         /// Gets the current options value.
         /// </summary>
-        public T CurrentValue { get; }
+        public T CurrentValue { get; } = currentValue;
 
         /// <summary>
         /// Returns the current value regardless of the supplied <paramref name="name"/>.

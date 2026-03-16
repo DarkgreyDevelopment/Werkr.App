@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,7 @@ using Serilog;
 using Serilog.Settings.Configuration;
 using Werkr.Api.Authorization;
 using Werkr.Api.Endpoints;
+using Werkr.Api.Interceptors;
 using Werkr.Api.Services;
 using Werkr.Common;
 using Werkr.Common.Auth;
@@ -12,10 +14,12 @@ using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
+using Werkr.Core.Health;
 using Werkr.Core.Registration;
 using Werkr.Core.Scheduling;
 using Werkr.Core.Tasks;
 using Werkr.Data;
+using Werkr.Data.Seeding;
 using Werkr.ServiceDefaults;
 
 namespace Werkr.Api;
@@ -32,9 +36,9 @@ public class Program {
         try {
             Log.Information( "Starting Werkr API Service..." );
 
-            string version = System.Reflection.CustomAttributeExtensions
-                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
-                    System.Reflection.Assembly.GetEntryAssembly( )! )
+            string version = CustomAttributeExtensions
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>(
+                    Assembly.GetEntryAssembly( )! )
                 ?.InformationalVersion ?? "unknown";
             Log.Information( "Werkr API version {Version}", version );
 
@@ -65,7 +69,7 @@ public class Program {
 
             // gRPC with Agent bearer-token validation
             _ = builder.Services.AddGrpc( options => {
-                options.Interceptors.Add<Werkr.Api.Interceptors.AgentBearerTokenInterceptor>( );
+                options.Interceptors.Add<AgentBearerTokenInterceptor>( );
             } );
 
             // Kestrel endpoint configuration.
@@ -144,25 +148,31 @@ public class Program {
             // Job event broadcaster (Singleton — SSE fan-out for real-time push)
             _ = builder.Services.AddSingleton<JobEventBroadcaster>( );
 
+            // Workflow event broadcaster (Singleton — SSE fan-out for step lifecycle events)
+            _ = builder.Services.AddSingleton<WorkflowEventBroadcaster>( );
+
             // Output streaming gRPC service (Singleton — receives agent output streams)
             _ = builder.Services.AddSingleton<OutputStreamingGrpcService>( );
 
             // Agent health check background service — keeps DB status current
-            _ = builder.Services.AddHostedService<Werkr.Core.Health.AgentHealthCheckService>( sp => {
+            _ = builder.Services.AddHostedService<AgentHealthCheckService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
                 AgentConnectionManager connectionManager = sp.GetRequiredService<AgentConnectionManager>( );
-                ILogger<Werkr.Core.Health.AgentHealthCheckService> logger =
-                    sp.GetRequiredService<ILogger<Werkr.Core.Health.AgentHealthCheckService>>( );
-                return new Werkr.Core.Health.AgentHealthCheckService( scopeFactory, connectionManager, logger );
+                ILogger<AgentHealthCheckService> logger =
+                    sp.GetRequiredService<ILogger<AgentHealthCheckService>>( );
+                return new AgentHealthCheckService( scopeFactory, connectionManager, logger );
             } );
 
             // Schedule service (Scoped — one per request)
             _ = builder.Services.AddScoped<ScheduleService>( );
             _ = builder.Services.AddScoped<RunNowService>( );
+            _ = builder.Services.AddScoped<RetryFromFailedService>( );
 
             // Task & Job services (Scoped — one per request)
             _ = builder.Services.Configure<JobOutputOptions>(
                 builder.Configuration.GetSection( JobOutputOptions.SectionName ) );
+            _ = builder.Services.Configure<WorkflowVariableOptions>(
+                builder.Configuration.GetSection( WorkflowVariableOptions.SectionName ) );
             _ = builder.Services.AddScoped<TaskService>( );
             _ = builder.Services.AddScoped<AgentResolver>( );
             _ = builder.Services.AddScoped<JobOutputWriter>( );
@@ -204,7 +214,7 @@ public class Program {
             }
 
             // Seed system holiday calendars
-            await Werkr.Data.Seeding.HolidayCalendarSeeder.SeedAsync( app.Services );
+            await HolidayCalendarSeeder.SeedAsync( app.Services );
 
             // Configure the HTTP request pipeline.
             _ = app.UseExceptionHandler( );
@@ -222,6 +232,7 @@ public class Program {
             _ = app.MapGrpcService<ScheduleSyncGrpcService>( );
             _ = app.MapGrpcService<JobReportingGrpcService>( );
             _ = app.MapGrpcService<OutputStreamingGrpcService>( );
+            _ = app.MapGrpcService<VariableGrpcService>( );
 
             // REST endpoints
             _ = app.MapStatusEndpoints( );
@@ -234,9 +245,11 @@ public class Program {
             _ = app.MapJobEndpoints( );
             _ = app.MapSettingsEndpoints( );
             _ = app.MapWorkflowEndpoints( );
+            _ = app.MapVariableEndpoints( );
             _ = app.MapHolidayCalendarEndpoints( );
             _ = app.MapEventEndpoints( );
             _ = app.MapShellEndpoints( );
+            _ = app.MapFilterEndpoints( );
 
             _ = app.MapDefaultEndpoints( );
 

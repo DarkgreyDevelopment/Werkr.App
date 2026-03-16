@@ -96,7 +96,7 @@ public class AgentResolverTests {
     /// <summary>
     /// Creates a <see cref="RegisteredConnection"/> with the specified name, status, and tags for test seeding.
     /// </summary>
-    private RegisteredConnection MakeConnection(
+    private static RegisteredConnection MakeConnection(
         string name,
         ConnectionStatus status,
         params string[] tags

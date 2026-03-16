@@ -1,6 +1,6 @@
 using Google.Protobuf;
 using Grpc.Core;
-using Werkr.Api.Protos;
+using Werkr.Common.Protos;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Registration;
 using Werkr.Core.Registration.Models;
@@ -16,7 +16,7 @@ namespace Werkr.Api.Services;
 /// </remarks>
 /// <param name="registrationService">The core registration service.</param>
 /// <param name="logger">Logger for diagnostics.</param>
-public class RegistrationGrpcService(
+public partial class RegistrationGrpcService(
     RegistrationService registrationService,
     ILogger<RegistrationGrpcService> logger
 ) : AgentRegistration.AgentRegistrationBase {

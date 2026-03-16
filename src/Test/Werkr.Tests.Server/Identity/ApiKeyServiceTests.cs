@@ -42,8 +42,7 @@ public class ApiKeyServiceTests {
                 .UseInMemoryDatabase( $"ApiKeyTests_{Guid.NewGuid( )}" )
                 .Options;
         _dbContext = new WerkrIdentityDbContext( options );
-        ILogger<ApiKeyService> logger =
-            NullLogger<ApiKeyService>.Instance;
+        ILogger<ApiKeyService> logger = NullLogger<ApiKeyService>.Instance;
         _service = new ApiKeyService(
             _dbContext,
             logger

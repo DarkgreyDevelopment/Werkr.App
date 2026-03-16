@@ -4,9 +4,11 @@ namespace Werkr.Common.Models;
 public sealed record WorkflowStepCreateRequest(
     long TaskId,
     int Order = 0,
-    string ControlStatement = "Sequential",
+    string ControlStatement = "Default",
     string? ConditionExpression = null,
     int MaxIterations = 100,
     Guid? AgentConnectionIdOverride = null,
-    string DependencyMode = "All"
+    string DependencyMode = "All",
+    string? InputVariableName = null,
+    string? OutputVariableName = null
 );

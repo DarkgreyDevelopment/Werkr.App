@@ -55,7 +55,7 @@ public class PwshOperatorTests {
 
         OperatorExecution execution = _operator.RunCommand(
             "Write-Output 'hello'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );
@@ -81,7 +81,7 @@ public class PwshOperatorTests {
 
         OperatorExecution execution = _operator.RunCommand(
             "Write-Error 'fail'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );
@@ -105,7 +105,7 @@ public class PwshOperatorTests {
 
         OperatorExecution execution = _operator.RunCommand(
             "Write-Output 'out'; Write-Warning 'warn'; Write-Error 'err'",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );
@@ -145,7 +145,7 @@ public class PwshOperatorTests {
         try {
             OperatorExecution execution = _operator.RunCommand(
                 "Start-Sleep 300",
-                cts.Token
+                cancellationToken: cts.Token
             );
             await foreach (OperatorOutput output in execution.Output.WithCancellation( cts.Token )) {
                 outputs.Add( output );
@@ -176,7 +176,7 @@ public class PwshOperatorTests {
 
         OperatorExecution execution = _operator.RunScript(
             "C:\\nonexistent\\fake.ps1",
-            TestContext.CancellationToken
+            cancellationToken: TestContext.CancellationToken
         );
         await foreach (OperatorOutput output in execution.Output.WithCancellation( TestContext.CancellationToken )) {
             outputs.Add( output );

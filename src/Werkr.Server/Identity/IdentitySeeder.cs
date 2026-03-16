@@ -9,9 +9,10 @@ using Werkr.Data.Identity.Roles;
 namespace Werkr.Server.Identity;
 
 /// <summary>
-/// Seeds default roles, role-permission mappings, and an initial admin account on application startup.
+/// Seeds default roles, role-permission mappings, an initial admin account, and optionally a test
+/// operator account on application startup.
 /// </summary>
-public static class IdentitySeeder {
+public static partial class IdentitySeeder {
     /// <summary>
     /// Default permission sets for each role.
     /// Admin gets all permissions. Operator gets Read + Execute. Viewer gets Read only.
@@ -82,7 +83,7 @@ public static class IdentitySeeder {
 
                 ILogger logger = services.GetRequiredService<ILoggerFactory>( )
                     .CreateLogger( "Werkr.Identity.Seeder" );
-                logger.LogWarning( "Default admin account created: admin@werkr.local — change the password on first login." );
+                LogAdminCreated( logger );
 
                 // Write sensitive credentials only to stdout (not to Serilog sinks)
                 Console.WriteLine( );
@@ -100,22 +101,96 @@ public static class IdentitySeeder {
                 if (!string.IsNullOrWhiteSpace( passwordFilePath )) {
                     try {
                         await File.WriteAllTextAsync( passwordFilePath, generatedPassword );
-                        logger.LogInformation( "Admin password written to file." );
+                        LogPasswordWritten( logger );
                     } catch (Exception ex) {
-                        logger.LogError( ex, "Failed to write admin password to {FilePath}", passwordFilePath );
+                        LogPasswordWriteFailed( logger, ex, passwordFilePath );
                     }
                 }
             } else {
                 ILogger logger = services.GetRequiredService<ILoggerFactory>( )
                     .CreateLogger( "Werkr.Identity.Seeder" );
                 foreach (IdentityError error in result.Errors) {
-                    logger.LogError( "Failed to create default admin: {Code} — {Description}",
-                        error.Code, error.Description
-                    );
+                    LogAdminCreateFailed( logger, error.Code, error.Description );
                 }
             }
         }
 
+        // Optionally seed a test operator account for automated browser testing.
+        // Gated by Werkr:SeedTestOperator = true. Never enable in production.
+        IConfiguration config = services.GetRequiredService<IConfiguration>();
+        if (string.Equals( config["Werkr:SeedTestOperator"], "true", StringComparison.OrdinalIgnoreCase )) {
+            await SeedTestOperatorAsync( services, userManager, config );
+        }
+    }
+
+    /// <summary>
+    /// Seeds a test operator account with a known password and no forced password-change or 2FA gates.
+    /// Intended exclusively for automated browser testing (e.g., BrowserTester agent) in non-production
+    /// environments. The password is read from the <c>Werkr:TestOperatorPassword</c> configuration key.
+    /// </summary>
+    private static async Task SeedTestOperatorAsync(
+        IServiceProvider services,
+        UserManager<WerkrUser> userManager,
+        IConfiguration configuration
+    ) {
+        const string Email = "operator@werkr.local";
+
+        WerkrUser? existing = await userManager.FindByEmailAsync(Email);
+        if (existing is not null) {
+            return;
+        }
+
+        string? password = configuration["Werkr:TestOperatorPassword"];
+        if (string.IsNullOrWhiteSpace( password )) {
+            ILogger logger = services.GetRequiredService<ILoggerFactory>()
+                .CreateLogger("Werkr.Identity.Seeder");
+            LogTestOperatorPasswordMissing( logger );
+            return;
+        }
+
+        WerkrUser operatorUser = new()
+        {
+            UserName = Email,
+            Email = Email,
+            Name = "Test Operator",
+            Enabled = true,
+            ChangePassword = false,
+            Requires2FA = false,
+            EmailConfirmed = true,
+        };
+
+        IdentityResult result = await userManager.CreateAsync(operatorUser, password);
+        if (result.Succeeded) {
+            _ = await userManager.AddToRoleAsync( operatorUser, DefaultRoles.Operator.ToString( ) );
+
+            ILogger logger = services.GetRequiredService<ILoggerFactory>()
+                .CreateLogger("Werkr.Identity.Seeder");
+            LogTestOperatorCreated( logger );
+
+            Console.WriteLine( );
+            Console.WriteLine( "╔══════════════════════════════════════════════════════╗" );
+            Console.WriteLine( "║  TEST OPERATOR ACCOUNT CREATED                      ║" );
+            Console.WriteLine( "║  Email:    operator@werkr.local                     ║" );
+            Console.WriteLine( "║  ⚠ This account is for automated testing only       ║" );
+            Console.WriteLine( "╚══════════════════════════════════════════════════════╝" );
+            Console.WriteLine( );
+
+            string? passwordFilePath = configuration["Werkr:WriteTestOperatorPasswordToFile"];
+            if (!string.IsNullOrWhiteSpace( passwordFilePath )) {
+                try {
+                    await File.WriteAllTextAsync( passwordFilePath, password );
+                    LogPasswordWritten( logger );
+                } catch (Exception ex) {
+                    LogPasswordWriteFailed( logger, ex, passwordFilePath );
+                }
+            }
+        } else {
+            ILogger logger = services.GetRequiredService<ILoggerFactory>()
+                .CreateLogger("Werkr.Identity.Seeder");
+            foreach (IdentityError error in result.Errors) {
+                LogTestOperatorCreateFailed( logger, error.Code, error.Description );
+            }
+        }
     }
 
     /// <summary>
@@ -174,4 +249,32 @@ public static class IdentitySeeder {
 
         return new string( passwordChars );
     }
+
+    [LoggerMessage( Level = LogLevel.Warning,
+        Message = "Default admin account created: admin@werkr.local — change the password on first login." )]
+    private static partial void LogAdminCreated( ILogger logger );
+
+    [LoggerMessage( Level = LogLevel.Information,
+        Message = "Admin password written to file." )]
+    private static partial void LogPasswordWritten( ILogger logger );
+
+    [LoggerMessage( Level = LogLevel.Error,
+        Message = "Failed to write admin password to {FilePath}" )]
+    private static partial void LogPasswordWriteFailed( ILogger logger, Exception ex, string filePath );
+
+    [LoggerMessage( Level = LogLevel.Error,
+        Message = "Failed to create default admin: {Code} — {Description}" )]
+    private static partial void LogAdminCreateFailed( ILogger logger, string code, string description );
+
+    [LoggerMessage( Level = LogLevel.Warning,
+        Message = "Test operator account created: operator@werkr.local — for automated testing only." )]
+    private static partial void LogTestOperatorCreated( ILogger logger );
+
+    [LoggerMessage( Level = LogLevel.Warning,
+        Message = "Werkr:SeedTestOperator is true but Werkr:TestOperatorPassword is not set. Skipping test operator seed." )]
+    private static partial void LogTestOperatorPasswordMissing( ILogger logger );
+
+    [LoggerMessage( Level = LogLevel.Error,
+        Message = "Failed to create test operator: {Code} — {Description}" )]
+    private static partial void LogTestOperatorCreateFailed( ILogger logger, string code, string description );
 }

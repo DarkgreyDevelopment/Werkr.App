@@ -7,20 +7,16 @@ namespace Werkr.Tests.Agent.Helpers;
 /// under specified prefixes. Used for testing allowlist enforcement
 /// in <see cref="Werkr.Agent.Security.FilePathResolver"/> tests.
 /// </summary>
-internal sealed class AllowPrefixValidator : IPathAllowlistValidator {
+/// <remarks>
+/// Initializes a new instance of the <see cref="AllowPrefixValidator"/>
+/// class with the specified set of allowed directory prefixes.
+/// </remarks>
+internal sealed class AllowPrefixValidator( params string[] allowedPrefixes ) : IPathAllowlistValidator {
 
     /// <summary>
     /// The set of directory prefixes that are considered allowed.
     /// </summary>
-    private readonly string[] _allowedPrefixes;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AllowPrefixValidator"/>
-    /// class with the specified set of allowed directory prefixes.
-    /// </summary>
-    public AllowPrefixValidator( params string[] allowedPrefixes ) {
-        _allowedPrefixes = allowedPrefixes;
-    }
+    private readonly string[] _allowedPrefixes = allowedPrefixes;
 
     /// <summary>
     /// Validates the specified path against the configured prefixes.

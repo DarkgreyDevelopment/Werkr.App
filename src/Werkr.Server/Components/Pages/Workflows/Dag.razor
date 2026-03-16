@@ -27,7 +27,7 @@
     } else {
         <div class="card">
             <div class="card-body p-2 overflow-auto">
-                <DagView WorkflowId="Id" Steps="_workflow.Steps" OnStepSelected="HandleStepSelected" />
+                <DagCanvas WorkflowId="Id" Steps="_workflow.Steps" OnStepSelected="HandleStepSelected" />
             </div>
         </div>
 
@@ -80,7 +80,6 @@
 
     protected override async Task OnInitializedAsync( ) {
         _breadcrumbs = [
-            new( "Task List", "/" ),
             new( "Workflows", "/workflows" ),
             new( $"Workflow #{Id}", $"/workflows/{Id}" ),
             new( "DAG" )

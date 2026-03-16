@@ -4,5 +4,6 @@ namespace Werkr.Common.Models;
 public sealed record WorkflowCreateRequest(
     string Name,
     string? Description = null,
-    bool Enabled = true
+    bool Enabled = true,
+    string[]? TargetTags = null
 );

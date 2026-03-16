@@ -19,7 +19,7 @@ public class HybridEncryptionTests {
     /// Generates the RSA key pair once for all tests in this class.
     /// </summary>
     [ClassInitialize]
-    public static void ClassInit( TestContext context ) {
+    public static void ClassInit( TestContext _ ) {
         // Generate once — RSA-4096 is required for hybrid operations (HybridDecrypt hardcodes 512-byte RSA block).
         s_keyPair = EncryptionProvider.GenerateRSAKeyPair( );
     }

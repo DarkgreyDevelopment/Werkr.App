@@ -12,7 +12,7 @@ namespace Werkr.Agent.Operators;
 /// </summary>
 /// <remarks>Creates a new <see cref="SystemShellOperator"/>.</remarks>
 /// <param name="logger">Logger for diagnostics.</param>
-public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShellOperator {
+public partial class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShellOperator {
 
     /// <inheritdoc/>
     public bool IsAvailable => OperatingSystem.IsWindows( ) || OperatingSystem.IsLinux( ) || OperatingSystem.IsMacOS( );
@@ -20,6 +20,7 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
     /// <inheritdoc/>
     public OperatorExecution RunCommand(
         string command,
+        IReadOnlyDictionary<string, string>? environmentVariables = null,
         CancellationToken cancellationToken = default
     ) {
         Guid callId = Guid.NewGuid( );
@@ -27,13 +28,14 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
             new BoundedChannelOptions( 10_000 ) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false } );
 
         TaskCompletionSource<IOperatorResult> resultTcs = new( TaskCreationOptions.RunContinuationsAsynchronously );
-        _ = ExecuteCommandInternal( command, callId, channel.Writer, resultTcs, cancellationToken );
+        _ = ExecuteCommandInternal( command, callId, channel.Writer, resultTcs, environmentVariables, cancellationToken );
         return new OperatorExecution( channel.Reader.ReadAllAsync( cancellationToken ), resultTcs.Task );
     }
 
     /// <inheritdoc/>
     public OperatorExecution RunScript(
         string scriptPath,
+        IReadOnlyDictionary<string, string>? environmentVariables = null,
         CancellationToken cancellationToken = default
     ) {
         if (!File.Exists( scriptPath )) {
@@ -47,13 +49,14 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
                 Task.FromResult<IOperatorResult>( new ShellOperatorResult( ExitCode: -1, Exception: ex ) ) );
         }
 
-        return RunCommand( scriptPath, cancellationToken );
+        return RunCommand( scriptPath, environmentVariables, cancellationToken );
     }
 
     /// <inheritdoc/>
     public OperatorExecution RunScriptWithArgs(
         string scriptPath,
         IEnumerable<string> args,
+        IReadOnlyDictionary<string, string>? environmentVariables = null,
         CancellationToken cancellationToken = default
     ) {
         if (!File.Exists( scriptPath )) {
@@ -68,7 +71,7 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
         }
 
         string command = $"\"{scriptPath}\" {string.Join( ' ', args )}";
-        return RunCommand( command, cancellationToken );
+        return RunCommand( command, environmentVariables, cancellationToken );
     }
 
     /// <summary>
@@ -80,6 +83,7 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
         Guid callId,
         ChannelWriter<OperatorOutput> writer,
         TaskCompletionSource<IOperatorResult> resultTcs,
+        IReadOnlyDictionary<string, string>? environmentVariables,
         CancellationToken cancellationToken
     ) {
 
@@ -112,6 +116,13 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
             process.StartInfo.ArgumentList.Add( shellArg );
             process.StartInfo.ArgumentList.Add( command );
 
+            // Inject environment variables for variable file exchange
+            if (environmentVariables is not null) {
+                foreach (KeyValuePair<string, string> kvp in environmentVariables) {
+                    process.StartInfo.Environment[kvp.Key] = kvp.Value;
+                }
+            }
+
             process.OutputDataReceived += ( sender, e ) => {
                 if (e.Data is not null) {
                     _ = writer.TryWrite( OperatorOutput.Create( "Information", e.Data ) );
@@ -138,6 +149,11 @@ public class SystemShellOperator( ILogger<SystemShellOperator> logger ) : IShell
             } );
 
             await process.WaitForExitAsync( cancellationToken );
+
+            // The synchronous WaitForExit() ensures all redirected stdout/stderr
+            // events have been fully processed before we read ExitCode or
+            // complete the channel writer.
+            process.WaitForExit( );
 
             int exitCode = process.ExitCode;
 

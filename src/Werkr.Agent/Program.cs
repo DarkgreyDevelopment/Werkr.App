@@ -1,8 +1,12 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Settings.Configuration;
+using Serilog.Sinks.OpenTelemetry;
 using Werkr.Agent.Communication;
 using Werkr.Agent.Interceptors;
 using Werkr.Agent.Operators;
@@ -18,14 +22,15 @@ using Werkr.Core.Cryptography;
 using Werkr.Core.Operators;
 using Werkr.Core.Security;
 using Werkr.Core.Tasks;
+using Werkr.Core.Workflows;
 using Werkr.Data;
 using Werkr.ServiceDefaults;
 
 namespace Werkr.Agent;
 
 /// <summary>Application entry point for the Werkr Agent.</summary>
-public class Program {
-    private static readonly Random _random = new();
+public partial class Program {
+    private static readonly Random s_random = new();
 
     /// <summary>Main entry point.</summary>
     /// <param name="args">Command-line arguments.</param>
@@ -66,9 +71,9 @@ public class Program {
 
             // Serilog (ConfigurationReaderOptions required for single-file publish)
             ConfigurationReaderOptions readerOptions = new(
-                typeof( Serilog.ConsoleLoggerConfigurationExtensions ).Assembly,
-                typeof( Serilog.FileLoggerConfigurationExtensions ).Assembly,
-                typeof( Serilog.Sinks.OpenTelemetry.OtlpProtocol ).Assembly );
+                typeof( ConsoleLoggerConfigurationExtensions ).Assembly,
+                typeof( FileLoggerConfigurationExtensions ).Assembly,
+                typeof( OtlpProtocol ).Assembly );
             _ = builder.Host.UseSerilog( ( ctx, lc ) => lc
                 .ReadFrom.Configuration( ctx.Configuration, readerOptions ) );
 
@@ -110,23 +115,70 @@ public class Program {
             } );
 
             // Agent-specific services
+            _ = builder.Services.AddSingleton( TimeProvider.System );
             _ = builder.Services.AddSingleton<PwshOperator>( );
             _ = builder.Services.AddSingleton<SystemShellOperator>( );
             _ = builder.Services.AddSingleton<IActionOperator, ActionOperator>( );
             _ = builder.Services.AddActionHandlers( );
             _ = builder.Services.AddSingleton<IPathAllowlistValidator, PathAllowlistValidator>( );
             _ = builder.Services.AddSingleton<IFilePathResolver, FilePathResolver>( );
+            _ = builder.Services.AddSingleton<IUrlValidator, UrlValidator>( );
+            _ = builder.Services.AddHttpClient( "WerkrActions", client => {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd( "Werkr-Agent/1.0" );
+            } ).ConfigurePrimaryHttpMessageHandler( sp => {
+                IOptionsMonitor<ActionOperatorConfiguration> actionOptions =
+                    sp.GetRequiredService<IOptionsMonitor<ActionOperatorConfiguration>>();
+                return new SocketsHttpHandler {
+                    PooledConnectionLifetime = TimeSpan.FromMinutes( 2 ),
+                    AllowAutoRedirect = false,
+                    ConnectCallback = async ( context, cancellationToken ) => {
+                        // DNS-pinning: resolve, validate, then connect to the validated IP
+                        // directly. This closes the TOCTOU window between UrlValidator's
+                        // pre-request DNS check and the actual TCP connection.
+                        IPAddress[] addresses = await Dns.GetHostAddressesAsync(
+                            context.DnsEndPoint.Host, cancellationToken);
+
+                        if (addresses.Length == 0) {
+                            throw new UnauthorizedAccessException(
+                                $"DNS resolution returned no addresses for '{context.DnsEndPoint.Host}'." );
+                        }
+
+                        if (!actionOptions.CurrentValue.AllowPrivateNetworks) {
+                            foreach (IPAddress address in addresses) {
+                                if (UrlValidator.IsPrivateOrReserved( address )) {
+                                    throw new UnauthorizedAccessException(
+                                        $"Connection to '{context.DnsEndPoint.Host}' blocked: " +
+                                        $"resolved to private/reserved IP {address}." );
+                                }
+                            }
+                        }
+
+                        Socket socket = new(SocketType.Stream, ProtocolType.Tcp);
+                        try {
+                            socket.NoDelay = true;
+                            await socket.ConnectAsync( addresses, context.DnsEndPoint.Port, cancellationToken );
+                            return new NetworkStream( socket, ownsSocket: true );
+                        } catch {
+                            socket.Dispose( );
+                            throw;
+                        }
+                    },
+                };
+            } );
             _ = builder.Services.AddScoped<AgentRegistrationHandler>( );
 
             // Schedule evaluation services
             _ = builder.Services.AddSingleton<AgentGrpcClientFactory>( );
+            _ = builder.Services.AddSingleton<VariableClient>( );
             _ = builder.Services.Configure<JobOutputOptions>(
                 builder.Configuration.GetSection( JobOutputOptions.SectionName ) );
+            _ = builder.Services.Configure<WorkflowVariableOptions>(
+                builder.Configuration.GetSection( WorkflowVariableOptions.SectionName ) );
             _ = builder.Services.AddSingleton<AgentJobOutputWriter>( );
             _ = builder.Services.AddSingleton<SuccessCriteriaEvaluator>( );
-            _ = builder.Services.AddSingleton<Werkr.Core.Workflows.ConditionEvaluator>( sp =>
-                new Werkr.Core.Workflows.ConditionEvaluator(
-                    sp.GetRequiredService<ILoggerFactory>( ).CreateLogger<Werkr.Core.Workflows.ConditionEvaluator>( ) ) );
+            _ = builder.Services.AddSingleton<ConditionEvaluator>( sp =>
+                new ConditionEvaluator(
+                    sp.GetRequiredService<ILoggerFactory>( ).CreateLogger<ConditionEvaluator>( ) ) );
             _ = builder.Services.AddSingleton<WorkflowExecutionService>( );
             _ = builder.Services.AddSingleton<OutputStreamingService>( );
             _ = builder.Services.AddSingleton( Channel.CreateUnbounded<string>(
@@ -160,6 +212,11 @@ public class Program {
             _ = app.MapGrpcService<ScheduleInvalidationService>( );
             _ = app.MapGrpcService<ConnectionManagementService>( );
 
+            // Sweep stale variable temp files from previous runs (crash recovery)
+            SweepStaleVariableFiles(
+                app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>( )
+                    .CreateLogger( "Werkr.Agent.Startup" ) );
+
             // Default Aspire endpoints (health, etc.)
             _ = app.MapDefaultEndpoints( );
 
@@ -181,24 +238,10 @@ public class Program {
     }
 
     private static IResult GetAgentArt( ) {
-        const string asciiArt = """
-    ╔════════════════════════════════╗
-    ║ ┌────────────────────────────┐ ║
-    ║ │      ---          ---      │ ║
-    ║ │       •            •       │ ║
-╔═══║ │   ______________________   │ ║═══╗
-║   ║ └────────────────────────────┘ ║   ║
-║   ║ __        __        _          ║   ║
-║   ║ \ \      / /__ _ __| | ___ __  ║   ║
-║   ║  \ \ /\ / / _ \ '__| |/ / '__| ║   ║
-║___║   \ V  V /  __/ |  |   <| |    ║___║
-    ║    \_/\_/ \___|_|  |_|\_\_|    ║
-    ╚════════════════════════════════╝
-            |AGENT|     | gRPC|
-    ++++++++++++++++++++++++++++++++++
-""";
 
-        const string happyAsciiArt = """
+        return Results.Text(
+            content: s_random.Next( 0, 10 ) == 0
+                ? """
       ╔════════════════════════════════╗
       ║ ┌────────────────────────────┐ ║
       ║ │      ---          ---      │ ║
@@ -213,11 +256,23 @@ public class Program {
       ╚════════════════════════════════╝          |      |      |      |      |      |      |
               |AGENT|     | gRPC|                 |      |      |      |      |      |      |
 ++++++++++++++++++++++++++++++++++++++++._______._|_.__._|_.__._|_.__._|_.__._|_.__._|_.__._|_.
-""";
-        return Results.Text(
-            content: _random.Next( 0, 10 ) == 0
-                ? happyAsciiArt
-                : asciiArt,
+"""
+                : """
+    ╔════════════════════════════════╗
+    ║ ┌────────────────────────────┐ ║
+    ║ │      ---          ---      │ ║
+    ║ │       •            •       │ ║
+╔═══║ │   ______________________   │ ║═══╗
+║   ║ └────────────────────────────┘ ║   ║
+║   ║ __        __        _          ║   ║
+║   ║ \ \      / /__ _ __| | ___ __  ║   ║
+║   ║  \ \ /\ / / _ \ '__| |/ / '__| ║   ║
+║___║   \ V  V /  __/ |  |   <| |    ║___║
+    ║    \_/\_/ \___|_|  |_|\_\_|    ║
+    ╚════════════════════════════════╝
+            |AGENT|     | gRPC|
+    ++++++++++++++++++++++++++++++++++
+""",
             contentType: "text/plain; charset=utf-8"
         );
     }
@@ -249,5 +304,42 @@ public class Program {
         string dataHome = Environment.GetEnvironmentVariable( "XDG_DATA_HOME" )
             ?? Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), ".local", "share" );
         return Path.Combine( dataHome, "werkr", "data" );
+    }
+
+    /// <summary>
+    /// Deletes any leftover variable temp files in <c>job-output/_vars/</c> that are older than 1 hour.
+    /// These files can accumulate if the agent crashes or is killed during a workflow run.
+    /// </summary>
+    /// <param name="logger">Logger instance.</param>
+    private static void SweepStaleVariableFiles( Microsoft.Extensions.Logging.ILogger logger ) {
+        string varsDir = Path.Combine("job-output", "_vars");
+        if (!Directory.Exists( varsDir )) {
+            return;
+        }
+
+        try {
+            int deleted = 0;
+            DateTime cutoff = DateTime.UtcNow.AddHours(-1);
+
+            foreach (string file in Directory.GetFiles( varsDir, "*.json" )) {
+                try {
+                    FileInfo info = new(file);
+                    if (info.LastWriteTimeUtc < cutoff) {
+                        info.Delete( );
+                        deleted++;
+                    }
+                } catch {
+                    // Best-effort cleanup — don't fail startup over temp files
+                }
+            }
+
+            if (deleted > 0 && logger.IsEnabled( Microsoft.Extensions.Logging.LogLevel.Information )) {
+                logger.LogInformation(
+                    "Cleaned up {Count} stale variable temp file(s) from {Dir}.",
+                    deleted, varsDir );
+            }
+        } catch (Exception ex) {
+            logger.LogWarning( ex, "Failed to sweep stale variable files in {Dir}.", varsDir );
+        }
     }
 }

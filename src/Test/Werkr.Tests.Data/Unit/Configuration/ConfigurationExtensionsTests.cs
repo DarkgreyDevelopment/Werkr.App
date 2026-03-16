@@ -27,7 +27,7 @@ public sealed class ConfigurationExtensionsTests {
                 tempFile
             );
 
-            IConfigurationBuilder builder = new ConfigurationBuilder();
+            ConfigurationBuilder builder = new();
 
             // Act
             _ = builder.AddWerkrConfigPath( );
@@ -58,7 +58,7 @@ public sealed class ConfigurationExtensionsTests {
             "WERKR_CONFIG_PATH",
             null
         );
-        IConfigurationBuilder builder = new ConfigurationBuilder();
+        ConfigurationBuilder builder = new();
 
         // Act
         _ = builder.AddWerkrConfigPath( );
@@ -85,7 +85,7 @@ public sealed class ConfigurationExtensionsTests {
             "WERKR_CONFIG_PATH",
             missingPath
         );
-        IConfigurationBuilder builder = new ConfigurationBuilder();
+        ConfigurationBuilder builder = new();
 
         try {
             // Act

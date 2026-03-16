@@ -35,11 +35,11 @@
                 <div class="col-md-4">
                     <label class="form-label" for="actionType">Action Type</label>
                     <InputSelect id="actionType" class="form-select" @bind-Value="_model.ActionType">
+                        <option value="Action">Action</option>
                         <option value="PowerShellCommand">PowerShell Command</option>
                         <option value="PowerShellScript">PowerShell Script</option>
                         <option value="ShellCommand">Shell Command</option>
                         <option value="ShellScript">Shell Script</option>
-                        <option value="Action">Action</option>
                     </InputSelect>
                 </div>
                 <div class="col-md-4">
@@ -71,7 +71,8 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title">Action Parameters</h5>
-                <ActionParameterEditor @bind-ActionSubType="_model.ActionSubType"
+                <ActionParameterEditor @ref="_actionEditor"
+                                       @bind-ActionSubType="_model.ActionSubType"
                                        @bind-ActionParameters="_model.ActionParameters" />
             </div>
         </div>
@@ -124,6 +125,7 @@
 
 @code {
     private readonly TaskFormModel _model = new( );
+    private ActionParameterEditor? _actionEditor;
     private string? _errorMessage;
     private bool _isSaving;
     private List<WorkflowDto> _workflows = [];
@@ -145,6 +147,9 @@
     }
 
     private async Task SubmitAsync( ) {
+        if ( _model.ActionType == "Action" && _actionEditor is not null && !_actionEditor.Validate( ) ) {
+            return;
+        }
         _isSaving = true;
         _errorMessage = null;
         _model.TargetTags = string.Join( ",", _targetTags );
@@ -176,7 +181,7 @@
     private sealed class TaskFormModel {
         public string Name { get; set; } = "";
         public string? Description { get; set; }
-        public string ActionType { get; set; } = "ShellCommand";
+        public string ActionType { get; set; } = "Action";
         public string Content { get; set; } = "";
         public string? Arguments { get; set; }
         public string TargetTags { get; set; } = "";

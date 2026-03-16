@@ -15,6 +15,7 @@ using Werkr.Common.Auth;
 using Werkr.Data;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
+using Werkr.Data.Identity.Extensions;
 using Werkr.Data.Identity.Roles;
 
 namespace Werkr.Tests;
@@ -83,16 +84,16 @@ public static class AppHostFixture {
                     // Remove the database context registrations added by Program.Main
                     // (which captured an empty connection string) and re-register
                     // them with the Testcontainer's connection string.
-                    _ = services.RemoveAll( typeof( DbContextOptions<PostgresWerkrDbContext> ) );
-                    _ = services.RemoveAll( typeof( DbContextOptions<WerkrDbContext> ) );
-                    _ = services.RemoveAll( typeof( PostgresWerkrDbContext ) );
-                    _ = services.RemoveAll( typeof( WerkrDbContext ) );
+                    _ = services.RemoveAll<DbContextOptions<PostgresWerkrDbContext>>( );
+                    _ = services.RemoveAll<DbContextOptions<WerkrDbContext>>( );
+                    _ = services.RemoveAll<PostgresWerkrDbContext>( );
+                    _ = services.RemoveAll<WerkrDbContext>( );
 
-                    _ = services.RemoveAll( typeof( DbContextOptions<WerkrIdentityDbContext> ) );
-                    _ = services.RemoveAll( typeof( DbContextOptions<PostgresWerkrIdentityDbContext> ) );
-                    _ = services.RemoveAll( typeof( DbContextOptions<WerkrIdentityDbContext> ) );
-                    _ = services.RemoveAll( typeof( PostgresWerkrIdentityDbContext ) );
-                    _ = services.RemoveAll( typeof( WerkrIdentityDbContext ) );
+                    _ = services.RemoveAll<DbContextOptions<WerkrIdentityDbContext>>( );
+                    _ = services.RemoveAll<DbContextOptions<PostgresWerkrIdentityDbContext>>( );
+                    _ = services.RemoveAll<DbContextOptions<WerkrIdentityDbContext>>( );
+                    _ = services.RemoveAll<PostgresWerkrIdentityDbContext>( );
+                    _ = services.RemoveAll<WerkrIdentityDbContext>( );
 
                     _ = services.AddWerkrDbContext( DatabaseProvider.Postgres, connStr );
 
@@ -106,8 +107,7 @@ public static class AppHostFixture {
                     _ = services.AddScoped<WerkrIdentityDbContext>( sp =>
                         sp.GetRequiredService<PostgresWerkrIdentityDbContext>( ) );
 
-                    _ = services.AddIdentityCore<WerkrUser>(
-                            Werkr.Data.Identity.Extensions.IdentityExtensions.ConfigureIdentityOptions )
+                    _ = services.AddIdentityCore<WerkrUser>( IdentityExtensions.ConfigureIdentityOptions )
                         .AddRoles<IdentityRole>( )
                         .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
                         .AddDefaultTokenProviders( );
@@ -240,7 +240,7 @@ public static class AppHostFixture {
             new( ClaimTypes.Role, "Admin" ),
             new( WerkrClaimTypes.ApiKeyId, Guid.NewGuid( ).ToString( ) ),
             new( WerkrClaimTypes.ApiKeyName, "integration-test-key" ),
-            new( JwtRegisteredClaimNames.Jti, Guid.NewGuid( ).ToString( ) ),
+            new( Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames.Jti, Guid.NewGuid( ).ToString( ) ),
             // Permission claims required by ClaimsPermissionAuthorizationHandler
             new( WerkrClaimTypes.Permission, Permission.Create.ToString( ) ),
             new( WerkrClaimTypes.Permission, Permission.Read.ToString( ) ),

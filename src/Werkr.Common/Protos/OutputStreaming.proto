@@ -19,6 +19,9 @@ message OutputMessage {
     OutputLine line = 4;
     OutputComplete complete = 5;
   }
+  // Workflow context — populated by the agent during workflow execution.
+  string workflow_run_id = 6;
+  int64  step_id = 7;
 }
 
 message OutputLine {

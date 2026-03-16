@@ -1,15 +1,11 @@
 using System.Security.Cryptography;
-
 using Google.Protobuf;
-
 using Grpc.Core;
 using Grpc.Net.Client;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
 using Werkr.Core.Cryptography;
@@ -28,7 +24,7 @@ namespace Werkr.Core.Communication;
 /// <param name="connectionManager">Singleton gRPC channel cache.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <param name="rotationInterval">How often to rotate keys (default: 24 hours).</param>
-public class KeyRotationService(
+public partial class KeyRotationService(
     IServiceScopeFactory scopeFactory,
     AgentConnectionManager connectionManager,
     ILogger<KeyRotationService> logger,

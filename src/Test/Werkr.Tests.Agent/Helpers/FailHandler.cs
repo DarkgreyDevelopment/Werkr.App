@@ -9,19 +9,15 @@ namespace Werkr.Tests.Agent.Helpers;
 /// <summary>
 /// Fake action handler that always fails (returns Success = false, no throw).
 /// </summary>
-internal sealed class FailHandler : IActionHandler {
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FailHandler"/> class with an optional action name.
-    /// </summary>
-    public FailHandler( string action = "FailAction" ) {
-        Action = action;
-    }
+/// <remarks>
+/// Initializes a new instance of the <see cref="FailHandler"/> class with an optional action name.
+/// </remarks>
+internal sealed class FailHandler( string action = "FailAction" ) : IActionHandler {
 
     /// <summary>
     /// Gets the action name that this handler is registered under.
     /// </summary>
-    public string Action { get; }
+    public string Action { get; } = action;
 
     /// <summary>
     /// Executes the handler by writing an error output and returning a failure result.
@@ -29,7 +25,8 @@ internal sealed class FailHandler : IActionHandler {
     public async Task<ActionOperatorResult> ExecuteAsync(
         JsonElement parameters,
         ChannelWriter<OperatorOutput> output,
-        CancellationToken cancellationToken
+        string? inputVariableValue = null,
+        CancellationToken cancellationToken = default
     ) {
         await output.WriteAsync(
             OperatorOutput.Create(

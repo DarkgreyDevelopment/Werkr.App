@@ -9,6 +9,10 @@ import "EncryptedEnvelope.proto";
 service JobReporting {
   // Request envelope contains JobResultRequest; response contains JobResultResponse.
   rpc ReportJobResult (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Request envelope contains StepStartedRequest; response contains StepEventResponse.
+  rpc ReportStepStarted (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Request envelope contains StepSkippedRequest; response contains StepEventResponse.
+  rpc ReportStepSkipped (EncryptedEnvelope) returns (EncryptedEnvelope);
 }
 
 message JobResultRequest {
@@ -40,6 +44,12 @@ message JobResultRequest {
   string job_id = 13;
   // Schedule ID that triggered this job execution.
   string schedule_id = 14;
+  // Variable name for step output (empty = no output).
+  string output_variable_name = 15;
+  // JSON blob of the output variable value (empty = no output).
+  string output_variable_value = 16;
+  // Optional workflow step ID linking this job to a specific workflow step.
+  int64 step_id = 17;
 }
 
 message JobResultResponse {
@@ -47,4 +57,25 @@ message JobResultResponse {
   bool accepted = 1;
   // The assigned job ID on the server.
   string job_id = 2;
+}
+
+message StepStartedRequest {
+  string connection_id = 1;
+  string workflow_run_id = 2;
+  int64  step_id = 3;
+  string step_name = 4;
+  int64  task_id = 5;
+  string start_time = 6;
+}
+
+message StepSkippedRequest {
+  string connection_id = 1;
+  string workflow_run_id = 2;
+  int64  step_id = 3;
+  string step_name = 4;
+  string reason = 5;
+}
+
+message StepEventResponse {
+  bool accepted = 1;
 }

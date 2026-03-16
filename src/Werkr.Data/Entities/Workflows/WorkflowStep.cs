@@ -28,13 +28,13 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
     public int Order { get; set; }
 
     /// <summary>Control flow statement type for this step.</summary>
-    public ControlStatement ControlStatement { get; set; } = ControlStatement.Sequential;
+    public ControlStatement ControlStatement { get; set; } = ControlStatement.Default;
 
     /// <summary>
     /// Condition expression evaluated against prior step results.
     /// Supports: <c>$exitCode == 0</c>, <c>$exitCode != 0</c>, <c>$exitCode &gt; N</c>,
     /// <c>$? -eq $true</c>, <c>$? -eq $false</c>, and custom expressions.
-    /// Null/empty = always true (for Sequential steps).
+    /// Null/empty = always true (for Default steps).
     /// </summary>
     [MaxLength( 2000 )]
     public string? ConditionExpression { get; set; }
@@ -57,6 +57,14 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
     /// Any = at least one predecessor satisfying the condition triggers execution.
     /// </summary>
     public DependencyMode DependencyMode { get; set; } = DependencyMode.All;
+
+    /// <summary>Name of the input variable consumed by this step. Null if no input variable is declared.</summary>
+    [MaxLength( 128 )]
+    public string? InputVariableName { get; set; }
+
+    /// <summary>Name of the output variable produced by this step. Null if no output variable is declared.</summary>
+    [MaxLength( 128 )]
+    public string? OutputVariableName { get; set; }
 
     /// <summary>Navigation property to the parent workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
