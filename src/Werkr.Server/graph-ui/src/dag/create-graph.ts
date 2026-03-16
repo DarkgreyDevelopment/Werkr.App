@@ -77,6 +77,7 @@ export function createGraph( options: GraphOptions ): GraphResult {
     modifiers: "ctrl",
     rubberband: false,
     showNodeSelectionBox: true,
+    showEdgeSelectionBox: true,
   } ) );
 
   // Alignment snaplines (visual aid only)

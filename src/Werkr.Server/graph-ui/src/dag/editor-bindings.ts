@@ -4,20 +4,38 @@ import type { EditorNodeData } from "./dag-types";
 import { wouldCreateCycle } from "./cycle-detection";
 import { Changeset } from "./changeset";
 import { copySelection, pasteSelection } from "./clipboard-handler";
+import { werkrEdgeDefaults } from "./werkr-edge";
 
 let zoomDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ── Blank-click suppression ──
-// Shape.HTML nodes render inside <foreignObject> in SVG. Safari (and sometimes
-// Chrome) fires BOTH node:click AND blank:click for the same physical click on
-// a Shape.HTML node, because the foreignObject click propagates to the SVG
-// background. Timing-based approaches fail because the blank:click can be
-// delayed by hundreds of milliseconds (Blazor Server round-trip + DOM patching).
+// Shape.HTML nodes render inside <foreignObject> in SVG. Chromium and Safari
+// fire BOTH node:click AND blank:click for the same physical click, because
+// the foreignObject click propagates to the SVG background.  DnD drops also
+// generate spurious blank:click events.
 //
-// Strategy: When blank:click fires, we geometrically check whether the click
-// coordinates fall inside any existing node's bounding box. If they do, the
-// blank:click is a ghost event from foreignObject propagation and is suppressed.
-// This is deterministic and has zero timing dependencies.
+// Strategy: Flag-based suppression.  When an interaction that should NOT be
+// followed by a deselect occurs (node:click, addNode via DnD), we set a flag.
+// The flag is auto-cleared via setTimeout(0) at the end of the current macro-
+// task — long enough to catch any ghost blank:click fired synchronously from
+// the same DOM event, but short enough to never suppress a genuine user click.
+let suppressBlankClick = false;
+let suppressClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Request that the next blank:click event be suppressed.
+ * Call this from any code path that will trigger a ghost blank:click
+ * (e.g. node:click, addNode, DnD drop).
+ * Auto-clears after the current macrotask via setTimeout(0).
+ */
+export function requestSuppressBlankClick(): void {
+  suppressBlankClick = true;
+  if (suppressClearTimer !== null) clearTimeout(suppressClearTimer);
+  suppressClearTimer = setTimeout(() => {
+    suppressBlankClick = false;
+    suppressClearTimer = null;
+  }, 0);
+}
 
 /**
  * Bind editor-specific X6 graph events to .NET callbacks and changeset tracking.
@@ -33,6 +51,7 @@ export function bindEditorEvents(
     const data = node.getData<{ stepId?: number; isLane?: boolean }>();
     if ( data?.isLane ) return;
     if ( data?.stepId != null ) {
+      requestSuppressBlankClick();
       console.log( "[werkr-dag] node:click stepId=", data.stepId );
       graph.cleanSelection();
       graph.select( node );
@@ -47,11 +66,16 @@ export function bindEditorEvents(
     container?.focus();
   } );
 
-  // ── Click on blank canvas → deselect (unless click is inside a node bbox) ──
-  // Ghost blank:click events from foreignObject propagation will have coordinates
-  // that fall inside the clicked node's bounding box. Genuine blank clicks will
-  // have coordinates that are outside all nodes.
+  // ── Click on blank canvas → deselect (unless suppressed by a recent interaction) ──
   graph.on( "blank:click", ( { x, y }: { e: MouseEvent; x: number; y: number } ) => {
+    // Flag guard — suppress ghost events from node:click / addNode / DnD
+    if (suppressBlankClick) {
+      suppressBlankClick = false;
+      if (suppressClearTimer !== null) { clearTimeout(suppressClearTimer); suppressClearTimer = null; }
+      console.log("[werkr-dag] blank:click SUPPRESSED — flag set by node interaction");
+      return;
+    }
+    // Bbox fallback — suppress if click falls inside any node's bounding box
     for ( const node of graph.getNodes() ) {
       const bbox = node.getBBox();
       if ( bbox.containsPoint( { x, y } ) ) {
@@ -63,6 +87,25 @@ export function bindEditorEvents(
     graph.cleanSelection();
     dotNetRef.invokeMethodAsync( "OnNodeDeselectedCallback" );
   } );
+
+  // ── Edge click → select edge (so Delete/Backspace can remove it) ──
+  graph.on("edge:click", ({ edge }) => {
+    requestSuppressBlankClick();
+    console.log("[werkr-dag] edge:click id=", edge.id);
+    graph.cleanSelection();
+    graph.select(edge);
+    // Deselect any node in the config panel
+    dotNetRef.invokeMethodAsync("OnNodeDeselectedCallback");
+    // Focus container for keyboard shortcuts
+    const container = graph.container;
+    if (container) {
+      if (!container.getAttribute("tabindex")) {
+        container.setAttribute("tabindex", "-1");
+        container.style.outline = "none";
+      }
+      container.focus();
+    }
+  });
 
   // ── Zoom changed → C# callback (debounced 100ms) ──
   graph.on( "scale", ( { sx } ) => {
@@ -104,16 +147,23 @@ export function bindEditorEvents(
       return;
     }
 
-    // Cycle check (exclude the just-added edge for the check since it's already in graph)
-    // We temporarily remove it, check, then re-add if valid
+    // Capture source/target info before removal (toJSON() fails on detached edges)
+    const edgeSource = edge.getSource();
+    const edgeTarget = edge.getTarget();
+
+    // Cycle check: temporarily remove the edge so it doesn't appear in the graph
     graph.removeEdge( edge.id );
     if ( wouldCreateCycle( graph, sourceCell.id, targetCell.id ) ) {
       dotNetRef.invokeMethodAsync( "OnCycleDetectedCallback", sourceData.stepId, targetData.stepId );
       return;
     }
 
-    // Re-add the valid edge
-    graph.addEdge( edge.toJSON() );
+    // Re-add the valid edge using captured source/target and standard defaults
+    graph.addEdge({
+      source: edgeSource,
+      target: edgeTarget,
+      ...werkrEdgeDefaults,
+    });
     changeset.addDependency( targetData.stepId, sourceData.stepId );
     notifyDirty( dotNetRef, changeset );
   } );

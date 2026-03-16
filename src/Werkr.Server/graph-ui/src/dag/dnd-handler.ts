@@ -1,5 +1,6 @@
 import type { Graph, Dnd } from "@antv/x6";
 import type { DotNetObjectReference } from "../types/dotnet-interop";
+import { requestSuppressBlankClick } from "./editor-bindings";
 
 
 /**
@@ -47,6 +48,7 @@ export function setupDnd(
     if ( data?.actionType && !data.hasOwnProperty( "stepId" ) ) {
       const pos = node.getPosition();
       console.log( "[werkr-dag] node:added (dnd drop)", data.actionType, pos.x, pos.y );
+      requestSuppressBlankClick();
       // Remove the placeholder — .NET will call addNode with proper data
       graph.removeNode( node.id );
       dotNetRef.invokeMethodAsync( "OnNodeDroppedCallback", data.actionType, pos.x, pos.y );

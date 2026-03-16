@@ -2,7 +2,7 @@ import type { Graph, Dnd } from "@antv/x6";
 import type { DotNetObjectReference } from "../types/dotnet-interop";
 import type { DagEdgeDto, EditorDagNodeDto, EditorNodeData, LayoutConfig } from "./dag-types";
 import { createGraph } from "./create-graph";
-import { bindEditorEvents, bindKeyboardShortcuts } from "./editor-bindings";
+import { bindEditorEvents, bindKeyboardShortcuts, requestSuppressBlankClick } from "./editor-bindings";
 import { setupDnd } from "./dnd-handler";
 import { Changeset } from "./changeset";
 import { saveDraft, loadDraft, clearDraft, hasDraft } from "./draft-storage";
@@ -190,6 +190,7 @@ export function addNode(
 ): void {
   if ( !graph ) return;
   console.log( "[werkr-dag] addNode stepId=", stepId, "x=", x, "y=", y );
+  requestSuppressBlankClick();
 
   const node = graph.addNode( {
     id: `step-${stepId}`,
