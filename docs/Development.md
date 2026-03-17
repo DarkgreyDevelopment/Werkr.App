@@ -1,3 +1,6 @@
+# Outdated
+This document is outdated and needs to be revised.
+
 # Development
 
 This guide covers how to build, run, test, and contribute to the Werkr project. For architectural context, see [Architecture.md](Architecture.md).

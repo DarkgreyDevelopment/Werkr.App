@@ -1,3 +1,6 @@
+# Outdated
+This document is outdated and needs to be revised.
+
 # Architecture
 
 This document describes the stable architectural boundaries of the Werkr project. It covers the system topology, communication model, and key design decisions at a conceptual level. For class-level detail, see the [API documentation](https://docs.werkr.app/api/index.html). For vulnerability reporting, see [SECURITY.md](SECURITY.md). For encryption, key management, and secret storage details, see the [Security Architecture](articles/SecurityOverview.md).

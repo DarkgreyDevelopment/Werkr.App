@@ -1,3 +1,6 @@
+# Outdated
+This document is outdated and needs to be revised.
+
 # Testing
 
 Werkr uses [MSTest](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-intro) with the `Microsoft.Testing.Platform` runner (configured in `global.json`). Tests run automatically in CI via GitHub Actions and must all pass before a pull request can be merged.

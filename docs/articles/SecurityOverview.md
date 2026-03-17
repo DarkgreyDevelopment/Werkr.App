@@ -1,3 +1,6 @@
+# Outdated
+This document is outdated and needs to be revised.
+
 # Security Architecture
 
 This document describes the security architecture of the Werkr platform — the cryptographic primitives, authentication and authorization schemes, secret storage strategy, and agent-side file path controls. For vulnerability reporting procedures, see [SECURITY.md](../SECURITY.md). For the overall system topology, see [Architecture](../Architecture.md).
