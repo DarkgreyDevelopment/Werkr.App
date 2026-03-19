@@ -37,7 +37,7 @@ internal static class AgentEndpoints {
     /// </summary>
     private static void MapAgentCrud( WebApplication app ) {
         _ = app.MapGet(
-            "/api/agents",
+            "/api/v1/agents",
             async (
                 WerkrDbContext dbContext,
                 CancellationToken ct
@@ -58,7 +58,7 @@ internal static class AgentEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapGet(
-            "/api/agents/{id}",
+            "/api/v1/agents/{id}",
             async (
                 Guid id,
                 WerkrDbContext dbContext,
@@ -143,7 +143,7 @@ internal static class AgentEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapPut(
-            "/api/agents/{id}",
+            "/api/v1/agents/{id}",
             async (
                 Guid id,
                 UpdateAgentRequest request,
@@ -194,7 +194,7 @@ internal static class AgentEndpoints {
         .RequireAuthorization( Policies.CanUpdate );
 
         _ = app.MapPost(
-            "/api/agents/{id}/revoke",
+            "/api/v1/agents/{id}/revoke",
             async (
                 Guid id,
                 WerkrDbContext dbContext,
@@ -217,7 +217,7 @@ internal static class AgentEndpoints {
         .RequireAuthorization( Policies.IsAdmin );
 
         _ = app.MapPut(
-            "/api/agents/{id}/status",
+            "/api/v1/agents/{id}/status",
             async (
                 Guid id,
                 UpdateAgentStatusRequest request,
@@ -261,7 +261,7 @@ internal static class AgentEndpoints {
     /// </summary>
     private static void MapAgentHealth( WebApplication app ) {
         _ = app.MapGet(
-            "/api/agents/health",
+            "/api/v1/agents/health",
             async (
                 WerkrDbContext dbContext,
                 AgentConnectionManager connectionManager,
@@ -301,7 +301,7 @@ internal static class AgentEndpoints {
     /// </summary>
     private static void MapAgentActivity( WebApplication app ) {
         _ = app.MapGet(
-            "/api/agents/activity",
+            "/api/v1/agents/activity",
             async (
                 int? count,
                 WerkrDbContext dbContext,
@@ -362,7 +362,7 @@ internal static class AgentEndpoints {
     /// </summary>
     private static void MapAgentExecute( WebApplication app ) {
         _ = app.MapPost(
-            "/api/agents/{agentId}/execute",
+            "/api/v1/agents/{agentId}/execute",
             async (
                 Guid agentId,
                 ExecuteCommandRequest request,
@@ -404,7 +404,7 @@ internal static class AgentEndpoints {
     /// </summary>
     private static void MapAgentTags( WebApplication app ) {
         _ = app.MapGet(
-            "/api/tags",
+            "/api/v1/tags",
             async (
                 WerkrDbContext dbContext,
                 CancellationToken ct
@@ -435,7 +435,7 @@ internal static class AgentEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapGet(
-            "/api/agents/{id}/tags",
+            "/api/v1/agents/{id}/tags",
             async (
                 Guid id,
                 WerkrDbContext dbContext,
@@ -450,7 +450,7 @@ internal static class AgentEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapPut(
-            "/api/agents/{id}/tags",
+            "/api/v1/agents/{id}/tags",
             async (
                 Guid id,
                 UpdateAgentTagsRequest request,
@@ -478,7 +478,7 @@ internal static class AgentEndpoints {
     /// </summary>
     private static void MapAgentConnections( WebApplication app ) {
         _ = app.MapGet(
-            "/api/agents/connections",
+            "/api/v1/agents/connections",
             async (
                 WerkrDbContext dbContext,
                 CancellationToken ct
@@ -498,7 +498,7 @@ internal static class AgentEndpoints {
         .WithName( "GetAgentConnections" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/agents/connections/{id}", async (
+        _ = app.MapGet( "/api/v1/agents/connections/{id}", async (
             Guid id,
             WerkrDbContext dbContext,
             CancellationToken ct
@@ -528,7 +528,7 @@ internal static class AgentEndpoints {
     /// Registers the endpoint for triggering on-demand cryptographic key rotation for a single agent.
     /// </summary>
     private static void MapAgentKeyRotation( WebApplication app ) {
-        _ = app.MapPost( "/api/agents/{id}/rotate-key", async (
+        _ = app.MapPost( "/api/v1/agents/{id}/rotate-key", async (
             Guid id,
             KeyRotationService keyRotationService,
             CancellationToken ct

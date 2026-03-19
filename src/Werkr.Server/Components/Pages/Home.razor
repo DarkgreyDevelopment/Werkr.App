@@ -385,14 +385,14 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
 
-            Task<List<AgentListDto>?> agentsTask = client.GetFromJsonAsync<List<AgentListDto>>( "/api/agents" );
-            Task<List<AgentHealthDto>?> healthTask = client.GetFromJsonAsync<List<AgentHealthDto>>( "/api/agents/health" );
-            Task<List<AgentActivityDto>?> activityTask = client.GetFromJsonAsync<List<AgentActivityDto>>( "/api/agents/activity?count=10" );
-            Task<List<DatabaseHealthDto>?> databaseTask = client.GetFromJsonAsync<List<DatabaseHealthDto>>( "/api/diagnostics/health" );
-            Task<List<ScheduleDto>?> schedulesTask = client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" );
-            Task<List<TaskDto>?> tasksTask = client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
-            Task<List<WorkflowDto>?> workflowsTask = client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" );
-            Task<List<JobListDto>?> recentJobsTask = client.GetFromJsonAsync<List<JobListDto>>( "/api/jobs?limit=10" );
+            Task<List<AgentListDto>?> agentsTask = client.GetFromJsonAsync<List<AgentListDto>>( "/api/v1/agents" );
+            Task<List<AgentHealthDto>?> healthTask = client.GetFromJsonAsync<List<AgentHealthDto>>( "/api/v1/agents/health" );
+            Task<List<AgentActivityDto>?> activityTask = client.GetFromJsonAsync<List<AgentActivityDto>>( "/api/v1/agents/activity?count=10" );
+            Task<List<DatabaseHealthDto>?> databaseTask = client.GetFromJsonAsync<List<DatabaseHealthDto>>( "/api/v1/diagnostics/health" );
+            Task<List<ScheduleDto>?> schedulesTask = client.GetFromJsonAsync<List<ScheduleDto>>( "/api/v1/schedules" );
+            Task<List<TaskDto>?> tasksTask = client.GetFromJsonAsync<List<TaskDto>>( "/api/v1/tasks" );
+            Task<List<WorkflowDto>?> workflowsTask = client.GetFromJsonAsync<List<WorkflowDto>>( "/api/v1/workflows" );
+            Task<List<JobListDto>?> recentJobsTask = client.GetFromJsonAsync<List<JobListDto>>( "/api/v1/jobs?limit=10" );
             Task<AuthenticationState> authTask = AuthState.GetAuthenticationStateAsync( );
 
             await Task.WhenAll( agentsTask, healthTask, activityTask, databaseTask, schedulesTask, tasksTask, workflowsTask, recentJobsTask, authTask );
@@ -413,7 +413,7 @@
             List<WorkflowRunDto> allRuns = [];
             if ( workflows is { Count: > 0 } ) {
                 IEnumerable<Task<List<WorkflowRunDto>?>> runTasks = workflows.Take( 20 ).Select( w =>
-                    client.GetFromJsonAsync<List<WorkflowRunDto>>( $"/api/workflows/{w.Id}/runs" ) );
+                    client.GetFromJsonAsync<List<WorkflowRunDto>>( $"/api/v1/workflows/{w.Id}/runs" ) );
                 List<WorkflowRunDto>?[] results = await Task.WhenAll( runTasks );
                 foreach ( List<WorkflowRunDto>? runs in results ) {
                     if ( runs is not null ) allRuns.AddRange( runs );

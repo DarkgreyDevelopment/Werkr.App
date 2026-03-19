@@ -385,7 +385,7 @@
     private async Task LoadCalendarsAsync( ) {
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _availableCalendars = await client.GetFromJsonAsync<List<HolidayCalendarSummaryDto>>( "/api/holiday-calendars" );
+            _availableCalendars = await client.GetFromJsonAsync<List<HolidayCalendarSummaryDto>>( "/api/v1/holiday-calendars" );
         } catch {
             // Non-critical: calendar list not loaded
         }
@@ -396,7 +396,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             ScheduleHolidayCalendarDto? link = await client.GetFromJsonAsync<ScheduleHolidayCalendarDto>(
-                $"/api/schedules/{_editScheduleId}/holiday-calendar" );
+                $"/api/v1/schedules/{_editScheduleId}/holiday-calendar" );
             if ( link is not null ) {
                 _selectedCalendarId = link.CalendarId.ToString( );
                 _selectedCalendarMode = link.Mode;
@@ -413,7 +413,7 @@
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             DateTime from = DateTime.UtcNow.AddDays( -30 );
             DateTime to = DateTime.UtcNow;
-            string url = $"/api/schedules/{_editScheduleId}/audit-log?from={from:O}&to={to:O}";
+            string url = $"/api/v1/schedules/{_editScheduleId}/audit-log?from={from:O}&to={to:O}";
             _auditLogs = await client.GetFromJsonAsync<List<ScheduleAuditLogDto>>( url ) ?? [];
         } catch {
             _auditLogs = [];
@@ -428,10 +428,10 @@
 
             if ( IsEditing ) {
                 ScheduleUpdateRequest request = _model.ToUpdateRequest( );
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/schedules/{_editScheduleId}", request );
+                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/schedules/{_editScheduleId}", request );
                 if ( response.IsSuccessStatusCode ) {
                     await SaveHolidayCalendarAsync( client, _editScheduleId!.Value );
-                    ScheduleDto? updated = await client.GetFromJsonAsync<ScheduleDto>( $"/api/schedules/{_editScheduleId}" );
+                    ScheduleDto? updated = await client.GetFromJsonAsync<ScheduleDto>( $"/api/v1/schedules/{_editScheduleId}" );
                     _isVisible = false;
                     if ( updated is not null ) {
                         await OnScheduleUpdated.InvokeAsync( updated );
@@ -442,7 +442,7 @@
                 }
             } else {
                 ScheduleCreateRequest request = _model.ToCreateRequest( );
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/schedules", request );
+                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/schedules", request );
                 if ( response.IsSuccessStatusCode ) {
                     ScheduleDto? created = await response.Content.ReadFromJsonAsync<ScheduleDto>( );
                     if ( created is not null ) {
@@ -469,9 +469,9 @@
     private async Task SaveHolidayCalendarAsync( HttpClient client, Guid scheduleId ) {
         if ( !string.IsNullOrEmpty( _selectedCalendarId ) && Guid.TryParse( _selectedCalendarId, out Guid calId ) ) {
             AttachHolidayCalendarRequest attachReq = new( calId, _selectedCalendarMode );
-            _ = await client.PutAsJsonAsync( $"/api/schedules/{scheduleId}/holiday-calendar", attachReq );
+            _ = await client.PutAsJsonAsync( $"/api/v1/schedules/{scheduleId}/holiday-calendar", attachReq );
         } else if ( IsEditing ) {
-            _ = await client.DeleteAsync( $"/api/schedules/{scheduleId}/holiday-calendar" );
+            _ = await client.DeleteAsync( $"/api/v1/schedules/{scheduleId}/holiday-calendar" );
         }
     }
 

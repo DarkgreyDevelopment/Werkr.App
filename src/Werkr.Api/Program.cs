@@ -239,9 +239,7 @@ public class Program {
             // Configure the HTTP request pipeline.
             _ = app.UseExceptionHandler( );
 
-            if (app.Environment.IsDevelopment( )) {
-                _ = app.MapOpenApi( );
-            }
+            _ = app.MapOpenApi( );
 
             // Authentication & Authorization middleware
             _ = app.UseAuthentication( );

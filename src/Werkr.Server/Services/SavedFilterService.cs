@@ -94,7 +94,7 @@ public sealed class SavedFilterService( IJSRuntime js, IHttpClientFactory httpCl
         try {
             HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
             List<ServerFilterDto>? dtos = await client.GetFromJsonAsync<List<ServerFilterDto>>(
-                $"/api/filters/{pageKey}", s_jsonOptions );
+                $"/api/v1/filters/{pageKey}", s_jsonOptions );
 
             if (dtos is null || dtos.Count == 0) {
                 return [];
@@ -127,7 +127,7 @@ public sealed class SavedFilterService( IJSRuntime js, IHttpClientFactory httpCl
             HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
             string criteriaJson = JsonSerializer.Serialize( criteria, s_jsonOptions );
             HttpResponseMessage response = await client.PostAsJsonAsync(
-                $"/api/filters/{pageKey}",
+                $"/api/v1/filters/{pageKey}",
                 new { Name = name, CriteriaJson = criteriaJson },
                 s_jsonOptions );
             return response.IsSuccessStatusCode;
@@ -141,7 +141,7 @@ public sealed class SavedFilterService( IJSRuntime js, IHttpClientFactory httpCl
     public async Task<bool> DeleteSharedFilterAsync( string pageKey, long serverId ) {
         try {
             HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/filters/{pageKey}/{serverId}" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/filters/{pageKey}/{serverId}" );
             return response.IsSuccessStatusCode;
         } catch (Exception ex) {
             _logger.LogWarning( ex, "Failed to delete shared filter {Id} for page {PageKey}.", serverId, pageKey );

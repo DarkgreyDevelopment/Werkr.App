@@ -285,7 +285,7 @@
             if ( !string.IsNullOrWhiteSpace( statusFilter ) )
                 queryParts.Add( $"status={Uri.EscapeDataString( statusFilter )}" );
         }
-        return "/api/workflows/dashboard?" + string.Join( "&", queryParts );
+        return "/api/v1/workflows/dashboard?" + string.Join( "&", queryParts );
     }
 
     private void PromptDelete( long id, string name ) {
@@ -297,7 +297,7 @@
     private async Task DeleteConfirmedAsync( ) {
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/workflows/{_pendingDeleteId}" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/workflows/{_pendingDeleteId}" );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {
@@ -314,7 +314,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PostAsync(
-                $"/api/workflows/{workflowId}/execute", null );
+                $"/api/v1/workflows/{workflowId}/execute", null );
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );
                 _errorMessage = $"Run failed: {body}";

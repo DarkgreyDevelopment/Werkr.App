@@ -202,9 +202,9 @@
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
 
             // Load workflows for dropdown
-            _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" ) ?? [];
+            _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/v1/workflows" ) ?? [];
 
-            TaskDto? dto = await client.GetFromJsonAsync<TaskDto>( $"/api/tasks/{Id}" );
+            TaskDto? dto = await client.GetFromJsonAsync<TaskDto>( $"/api/v1/tasks/{Id}" );
             if ( dto is null ) {
                 _errorMessage = "Task not found.";
                 return;
@@ -214,7 +214,7 @@
             _targetTags = dto.TargetTags;
             _syncIntervalMinutes = dto.SyncIntervalMinutes;
 
-            _jobs = await client.GetFromJsonAsync<List<JobListDto>>( $"/api/tasks/{Id}/jobs?limit=25" );
+            _jobs = await client.GetFromJsonAsync<List<JobListDto>>( $"/api/v1/tasks/{Id}/jobs?limit=25" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load task: {ex.Message}";
         } finally {
@@ -233,7 +233,7 @@
         try {
             TaskUpdateRequest request = _model.ToUpdateRequest( );
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/tasks/{Id}", request );
+            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/tasks/{Id}", request );
             if ( response.IsSuccessStatusCode ) {
                 Navigation.NavigateTo( "/tasks" );
             } else {

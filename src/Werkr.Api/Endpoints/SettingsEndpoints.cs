@@ -13,7 +13,7 @@ namespace Werkr.Api.Endpoints;
 internal static class SettingsEndpoints {
     /// <summary>Maps the notify-URL-change endpoint.</summary>
     public static WebApplication MapSettingsEndpoints( this WebApplication app ) {
-        _ = app.MapPost( "/api/settings/notify-url-change", async (
+        _ = app.MapPost( "/api/v1/settings/notify-url-change", async (
             NotifyUrlChangeRequest request,
             WerkrDbContext dbContext,
             AgentConnectionManager connectionManager,

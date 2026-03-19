@@ -159,7 +159,7 @@
                 Tags: tags );
 
             HttpResponseMessage response = await client.PostAsJsonAsync(
-                "/api/registration/generate",
+                "/api/v1/registration/generate",
                 request );
 
             if ( response.IsSuccessStatusCode ) {

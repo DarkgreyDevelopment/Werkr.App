@@ -9,7 +9,7 @@ internal static class RegistrationEndpoints {
     /// <summary>Maps <c>POST /api/registration/generate</c>.</summary>
     public static WebApplication MapRegistrationEndpoints( this WebApplication app ) {
         _ = app.MapPost(
-            "/api/registration/generate",
+            "/api/v1/registration/generate",
             async (
                 RegistrationGenerateRequest request,
                 RegistrationService registrationService,

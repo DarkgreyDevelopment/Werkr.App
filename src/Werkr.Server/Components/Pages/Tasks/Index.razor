@@ -132,7 +132,7 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/v1/tasks" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load tasks: {ex.Message}";
         } finally {
@@ -149,7 +149,7 @@
     private async Task DeleteConfirmedAsync( ) {
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/tasks/{_pendingDeleteId}" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/tasks/{_pendingDeleteId}" );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {
@@ -165,7 +165,7 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( $"/api/tasks/{taskId}/run", new TaskRunRequest( null ) );
+            HttpResponseMessage response = await client.PostAsJsonAsync( $"/api/v1/tasks/{taskId}/run", new TaskRunRequest( null ) );
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );
                 _errorMessage = $"Run failed: {body}";

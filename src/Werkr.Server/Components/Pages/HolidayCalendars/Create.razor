@@ -64,7 +64,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HolidayCalendarCreateRequest request = new( _model.Name, _model.Description ?? "" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/holiday-calendars", request );
+            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/holiday-calendars", request );
 
             if ( response.IsSuccessStatusCode ) {
                 HolidayCalendarDto? created = await response.Content.ReadFromJsonAsync<HolidayCalendarDto>( );

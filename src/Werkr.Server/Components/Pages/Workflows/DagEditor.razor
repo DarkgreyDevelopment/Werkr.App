@@ -235,7 +235,7 @@
     private async Task LoadReferenceDataAsync( ) {
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/v1/tasks" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load tasks: {ex.Message}";
         }
@@ -246,7 +246,7 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/workflows/{Id}" );
+            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/v1/workflows/{Id}" );
             if ( _workflow is null ) {
                 _errorMessage = "Workflow not found.";
                 return;
@@ -265,7 +265,7 @@
                 TargetTags = _workflow.TargetTags ?? [],
             };
 
-            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/v1/tasks" );
             _stepCount = _workflow.Steps.Count;
             _edgeCount = _workflow.Steps.Sum( s => s.Dependencies.Count );
 
@@ -330,7 +330,7 @@
 
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PostAsync(
-                $"/api/workflows/{Id}/steps/batch",
+                $"/api/v1/workflows/{Id}/steps/batch",
                 new StringContent( changesetJson, System.Text.Encoding.UTF8, "application/json" ) );
 
             if ( response.IsSuccessStatusCode ) {
@@ -367,7 +367,7 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsync( $"/api/workflows/{Id}/validate", null );
+            HttpResponseMessage response = await client.PostAsync( $"/api/v1/workflows/{Id}/validate", null );
             _dagResult = await response.Content.ReadFromJsonAsync<DagValidationResult>( );
         } catch ( Exception ex ) {
             _errorMessage = $"Validation failed: {ex.Message}";
@@ -461,7 +461,7 @@
                     Enabled: _model.Enabled,
                     TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
 
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/workflows", createRequest );
+                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/workflows", createRequest );
                 if ( !response.IsSuccessStatusCode ) {
                     string body = await response.Content.ReadAsStringAsync( );
                     _errorMessage = $"Failed to create workflow: {body}";
@@ -493,7 +493,7 @@
                     TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null,
                     Annotations: annotations );
 
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/workflows/{Id}", request );
+                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/workflows/{Id}", request );
                 if ( response.IsSuccessStatusCode ) {
                     _successMessage = "Metadata saved.";
                 } else {

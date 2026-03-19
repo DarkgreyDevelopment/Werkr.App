@@ -10,7 +10,7 @@ internal static class DiagnosticsEndpoints {
     /// <summary>Maps <c>GET /api/diagnostics/health</c>.</summary>
     public static WebApplication MapDiagnosticsEndpoints( this WebApplication app ) {
         _ = app.MapGet(
-            "/api/diagnostics/health",
+            "/api/v1/diagnostics/health",
             async (
                 WerkrDbContext appDbContext,
                 CancellationToken ct

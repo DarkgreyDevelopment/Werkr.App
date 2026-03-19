@@ -56,7 +56,7 @@
     protected override async Task OnInitializedAsync( ) {
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _allTags = await client.GetFromJsonAsync<List<string>>( "/api/tags" ) ?? [];
+            _allTags = await client.GetFromJsonAsync<List<string>>( "/api/v1/tags" ) ?? [];
         } catch {
             _allTags = [];
         }

@@ -131,7 +131,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             AgentDetailDto? agent = await client.GetFromJsonAsync<AgentDetailDto>(
-                $"/api/agents/{AgentId}" );
+                $"/api/v1/agents/{AgentId}" );
             _agentStatus = agent?.Status;
         } catch (Exception ex) {
             Logger.LogWarning( ex, "Failed to load agent status for {AgentId}.", AgentId );
@@ -184,7 +184,7 @@
             ExecuteCommandRequest request = new( commandText, actionType );
 
             using HttpRequestMessage httpRequest = new( HttpMethod.Post,
-                $"/api/agents/{AgentId}/shell/stream" ) {
+                $"/api/v1/agents/{AgentId}/shell/stream" ) {
                 Content = JsonContent.Create( request )
             };
 

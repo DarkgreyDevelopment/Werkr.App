@@ -13,7 +13,7 @@ internal static class ScheduleEndpoints {
     /// <summary>Maps schedule CRUD + occurrence-preview endpoints.</summary>
     public static WebApplication MapScheduleEndpoints( this WebApplication app ) {
         _ = app.MapGet(
-            "/api/schedules",
+            "/api/v1/schedules",
             async (
                 ScheduleService scheduleService,
                 CancellationToken ct
@@ -26,7 +26,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapGet(
-            "/api/schedules/{id}",
+            "/api/v1/schedules/{id}",
             async (
                 Guid id,
                 ScheduleService scheduleService,
@@ -41,7 +41,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapPost(
-            "/api/schedules",
+            "/api/v1/schedules",
             async (
                 ScheduleCreateRequest request,
                 ScheduleService scheduleService,
@@ -51,7 +51,7 @@ internal static class ScheduleEndpoints {
                     Schedule schedule = ScheduleMapper.ToSchedule( request );
                     Schedule created = await scheduleService.CreateAsync( schedule, ct );
                     ScheduleDto dto = ScheduleMapper.ToDto( created );
-                    return Results.Created( $"/api/schedules/{dto.Id}", dto );
+                    return Results.Created( $"/api/v1/schedules/{dto.Id}", dto );
                 } catch (System.ComponentModel.DataAnnotations.ValidationException ex) {
                     return Results.BadRequest( new { message = ex.Message } );
                 } catch (TimeZoneNotFoundException ex) {
@@ -62,7 +62,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanCreate );
 
         _ = app.MapPut(
-            "/api/schedules/{id}",
+            "/api/v1/schedules/{id}",
             async (
                 Guid id,
                 ScheduleUpdateRequest request,
@@ -96,7 +96,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanUpdate );
 
         _ = app.MapDelete(
-            "/api/schedules/{id}",
+            "/api/v1/schedules/{id}",
             async (
                 Guid id,
                 ScheduleService scheduleService,
@@ -117,7 +117,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanDelete );
 
         _ = app.MapGet(
-            "/api/schedules/{id}/occurrences",
+            "/api/v1/schedules/{id}/occurrences",
             async (
                 Guid id,
                 DateTime windowEnd,

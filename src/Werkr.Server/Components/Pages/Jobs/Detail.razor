@@ -104,13 +104,13 @@
         _isLoading = true;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _job = await client.GetFromJsonAsync<JobDto>( $"/api/jobs/{Id}" );
+            _job = await client.GetFromJsonAsync<JobDto>( $"/api/v1/jobs/{Id}" );
             if ( _job is null ) {
                 _errorMessage = "Job not found.";
             } else if ( _job.AgentConnectionId is not null ) {
                 try {
                     AgentDetailDto? agent = await client.GetFromJsonAsync<AgentDetailDto>(
-                        $"/api/agents/{_job.AgentConnectionId}" );
+                        $"/api/v1/agents/{_job.AgentConnectionId}" );
                     _agentName = agent?.ConnectionName;
                 } catch {
                     // fall back to truncated GUID display
@@ -127,7 +127,7 @@
         _isLoadingOutput = true;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.GetAsync( $"/api/jobs/{Id}/output" );
+            HttpResponseMessage response = await client.GetAsync( $"/api/v1/jobs/{Id}/output" );
             if ( response.IsSuccessStatusCode ) {
                 _output = await response.Content.ReadAsStringAsync( );
             } else {

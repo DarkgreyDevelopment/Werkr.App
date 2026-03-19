@@ -39,7 +39,7 @@ public class HolidayCalendarIntegrationTests {
         string name, string description, CancellationToken ct ) {
         var request = new { name, description };
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/holiday-calendars", request, JsonOptions, ct );
+            "/api/v1/holiday-calendars", request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, response.StatusCode,
             $"Calendar creation failed: {await response.Content.ReadAsStringAsync( ct )}" );
         return await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -60,7 +60,7 @@ public class HolidayCalendarIntegrationTests {
             dailyRecurrence = new { dayInterval = 1 },
         };
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/schedules", request, JsonOptions, ct );
+            "/api/v1/schedules", request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, response.StatusCode );
         JsonElement json = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
         return json.GetProperty( "id" ).GetString( )!;
@@ -91,7 +91,7 @@ public class HolidayCalendarIntegrationTests {
         string calId = GetId( created );
         Assert.IsFalse( string.IsNullOrEmpty( calId ) );
 
-        HttpResponseMessage getResp = await Api.GetAsync( $"/api/holiday-calendars/{calId}", ct );
+        HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/holiday-calendars/{calId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
         JsonElement fetched = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -110,7 +110,7 @@ public class HolidayCalendarIntegrationTests {
         CancellationToken ct = TestContext.CancellationToken;
 
         // The system calendars are seeded at startup. List all and find one.
-        HttpResponseMessage listResp = await Api.GetAsync( "/api/holiday-calendars", ct );
+        HttpResponseMessage listResp = await Api.GetAsync( "/api/v1/holiday-calendars", ct );
         Assert.AreEqual( HttpStatusCode.OK, listResp.StatusCode );
 
         JsonElement[] all = await listResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
@@ -125,7 +125,7 @@ public class HolidayCalendarIntegrationTests {
         }
 
         string sysId = GetId( systemCal.Value );
-        HttpResponseMessage delResp = await Api.DeleteAsync( $"/api/holiday-calendars/{sysId}", ct );
+        HttpResponseMessage delResp = await Api.DeleteAsync( $"/api/v1/holiday-calendars/{sysId}", ct );
 
         // Should reject modification of system calendar (400 or 403)
         Assert.AreNotEqual( HttpStatusCode.OK, delResp.StatusCode );
@@ -146,7 +146,7 @@ public class HolidayCalendarIntegrationTests {
     public async Task CloneSystemCalendar_CreatesEditableCopy( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
-        HttpResponseMessage listResp = await Api.GetAsync( "/api/holiday-calendars", ct );
+        HttpResponseMessage listResp = await Api.GetAsync( "/api/v1/holiday-calendars", ct );
         JsonElement[] all = await listResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
             ?? [];
 
@@ -161,7 +161,7 @@ public class HolidayCalendarIntegrationTests {
         string sysId = GetId( systemCal.Value );
         var cloneReq = new { newName = "IntTest_Cloned" };
         HttpResponseMessage cloneResp = await Api.PostAsJsonAsync(
-            $"/api/holiday-calendars/{sysId}/clone", cloneReq, JsonOptions, ct );
+            $"/api/v1/holiday-calendars/{sysId}/clone", cloneReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, cloneResp.StatusCode );
 
         JsonElement cloned = await cloneResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -193,12 +193,12 @@ public class HolidayCalendarIntegrationTests {
         };
 
         HttpResponseMessage addResp = await Api.PostAsJsonAsync(
-            $"/api/holiday-calendars/{calId}/rules", rule, JsonOptions, ct );
+            $"/api/v1/holiday-calendars/{calId}/rules", rule, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, addResp.StatusCode );
 
         // Verify rule exists
         HttpResponseMessage getRulesResp = await Api.GetAsync(
-            $"/api/holiday-calendars/{calId}/rules", ct );
+            $"/api/v1/holiday-calendars/{calId}/rules", ct );
         Assert.AreEqual( HttpStatusCode.OK, getRulesResp.StatusCode );
 
         JsonElement[] rules = await getRulesResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
@@ -228,11 +228,11 @@ public class HolidayCalendarIntegrationTests {
         };
 
         HttpResponseMessage addResp = await Api.PostAsJsonAsync(
-            $"/api/holiday-calendars/{calId}/dates", date, JsonOptions, ct );
+            $"/api/v1/holiday-calendars/{calId}/dates", date, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, addResp.StatusCode );
 
         HttpResponseMessage getDatesResp = await Api.GetAsync(
-            $"/api/holiday-calendars/{calId}/dates", ct );
+            $"/api/v1/holiday-calendars/{calId}/dates", ct );
         Assert.AreEqual( HttpStatusCode.OK, getDatesResp.StatusCode );
 
         JsonElement[] dates = await getDatesResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
@@ -263,7 +263,7 @@ public class HolidayCalendarIntegrationTests {
         };
 
         HttpResponseMessage addResp = await Api.PostAsJsonAsync(
-            $"/api/holiday-calendars/{calId}/dates/bulk", dates, JsonOptions, ct );
+            $"/api/v1/holiday-calendars/{calId}/dates/bulk", dates, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, addResp.StatusCode );
     }
 
@@ -288,7 +288,7 @@ public class HolidayCalendarIntegrationTests {
         };
 
         HttpResponseMessage previewResp = await Api.PostAsJsonAsync(
-            "/api/holiday-calendars/rules/preview?startYear=2025&endYear=2027", rule, JsonOptions, ct );
+            "/api/v1/holiday-calendars/rules/preview?startYear=2025&endYear=2027", rule, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, previewResp.StatusCode );
 
         JsonElement previewResult = await previewResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -319,12 +319,12 @@ public class HolidayCalendarIntegrationTests {
             mode = "Blocklist",
         };
         HttpResponseMessage attachResp = await Api.PutAsJsonAsync(
-            $"/api/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
+            $"/api/v1/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, attachResp.StatusCode );
 
         // Get
         HttpResponseMessage getResp = await Api.GetAsync(
-            $"/api/schedules/{schedId}/holiday-calendar", ct );
+            $"/api/v1/schedules/{schedId}/holiday-calendar", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
         JsonElement attached = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -332,12 +332,12 @@ public class HolidayCalendarIntegrationTests {
 
         // Detach
         HttpResponseMessage detachResp = await Api.DeleteAsync(
-            $"/api/schedules/{schedId}/holiday-calendar", ct );
+            $"/api/v1/schedules/{schedId}/holiday-calendar", ct );
         Assert.AreEqual( HttpStatusCode.NoContent, detachResp.StatusCode );
 
         // Verify detached
         HttpResponseMessage getAfterDetachResp = await Api.GetAsync(
-            $"/api/schedules/{schedId}/holiday-calendar", ct );
+            $"/api/v1/schedules/{schedId}/holiday-calendar", ct );
         Assert.AreEqual( HttpStatusCode.NoContent, getAfterDetachResp.StatusCode );
     }
 
@@ -355,7 +355,7 @@ public class HolidayCalendarIntegrationTests {
         CancellationToken ct = TestContext.CancellationToken;
 
         // List system calendars and pick one
-        HttpResponseMessage listResp = await Api.GetAsync( "/api/holiday-calendars", ct );
+        HttpResponseMessage listResp = await Api.GetAsync( "/api/v1/holiday-calendars", ct );
         JsonElement[] all = await listResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
             ?? [];
 
@@ -369,7 +369,7 @@ public class HolidayCalendarIntegrationTests {
 
         string sysId = GetId( systemCal.Value );
         HttpResponseMessage previewResp = await Api.GetAsync(
-            $"/api/holiday-calendars/{sysId}/preview?startYear=2026&endYear=2026", ct );
+            $"/api/v1/holiday-calendars/{sysId}/preview?startYear=2026&endYear=2026", ct );
         Assert.AreEqual( HttpStatusCode.OK, previewResp.StatusCode );
 
         JsonElement previewResult = await previewResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -396,7 +396,7 @@ public class HolidayCalendarIntegrationTests {
         string to = DateTime.UtcNow.ToString( "O" );
 
         HttpResponseMessage getResp = await Api.GetAsync(
-            $"/api/schedules/{schedId}/audit-log?from={from}&to={to}", ct );
+            $"/api/v1/schedules/{schedId}/audit-log?from={from}&to={to}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
         JsonElement[] logs = await getResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
@@ -420,7 +420,7 @@ public class HolidayCalendarIntegrationTests {
         // Find Federal Reserve Holiday calendar by deterministic GUID
         string fedReserveId = "a0000001-0000-0000-0000-000000000002";
         HttpResponseMessage getResp = await Api.GetAsync(
-            $"/api/holiday-calendars/{fedReserveId}", ct );
+            $"/api/v1/holiday-calendars/{fedReserveId}", ct );
 
         if (getResp.StatusCode == HttpStatusCode.NotFound) {
             Assert.Inconclusive( "Federal Reserve calendar not found - seeder may not have run." );
@@ -431,7 +431,7 @@ public class HolidayCalendarIntegrationTests {
 
         // Get rules and verify no Columbus Day
         HttpResponseMessage rulesResp = await Api.GetAsync(
-            $"/api/holiday-calendars/{fedReserveId}/rules", ct );
+            $"/api/v1/holiday-calendars/{fedReserveId}/rules", ct );
         Assert.AreEqual( HttpStatusCode.OK, rulesResp.StatusCode );
 
         JsonElement[] rules = await rulesResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
@@ -465,7 +465,7 @@ public class HolidayCalendarIntegrationTests {
 
         var attachReq = new { calendarId = calId, mode = "Blocklist" };
         HttpResponseMessage attachResp = await Api.PutAsJsonAsync(
-            $"/api/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
+            $"/api/v1/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, attachResp.StatusCode );
 
         // Submit an audit log record
@@ -476,14 +476,14 @@ public class HolidayCalendarIntegrationTests {
             reason = "Blocked by Blocklist",
         };
         HttpResponseMessage postResp = await Api.PostAsJsonAsync(
-            $"/api/schedules/{schedId}/audit-log", auditReq, JsonOptions, ct );
+            $"/api/v1/schedules/{schedId}/audit-log", auditReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, postResp.StatusCode );
 
         // Retrieve and verify
         string from = DateTime.UtcNow.AddDays( -1 ).ToString( "O" );
         string to = DateTime.UtcNow.AddDays( 1 ).ToString( "O" );
         HttpResponseMessage getResp = await Api.GetAsync(
-            $"/api/schedules/{schedId}/audit-log?from={from}&to={to}", ct );
+            $"/api/v1/schedules/{schedId}/audit-log?from={from}&to={to}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
         JsonElement[] logs = await getResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
@@ -518,7 +518,7 @@ public class HolidayCalendarIntegrationTests {
             observanceRule = "None",
         };
         HttpResponseMessage addRuleResp = await Api.PostAsJsonAsync(
-            $"/api/holiday-calendars/{calId}/rules", rule, JsonOptions, ct );
+            $"/api/v1/holiday-calendars/{calId}/rules", rule, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, addRuleResp.StatusCode );
 
         // Create daily schedule starting July 1 2026
@@ -529,7 +529,7 @@ public class HolidayCalendarIntegrationTests {
             dailyRecurrence = new { dayInterval = 1 },
         };
         HttpResponseMessage schedResp = await Api.PostAsJsonAsync(
-            "/api/schedules", schedReq, JsonOptions, ct );
+            "/api/v1/schedules", schedReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, schedResp.StatusCode );
         JsonElement schedJson = await schedResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
         string schedId = schedJson.GetProperty( "id" ).GetString( )!;
@@ -537,13 +537,13 @@ public class HolidayCalendarIntegrationTests {
         // Attach as blocklist
         var attachReq = new { calendarId = calId, mode = "Blocklist" };
         HttpResponseMessage attachResp = await Api.PutAsJsonAsync(
-            $"/api/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
+            $"/api/v1/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, attachResp.StatusCode );
 
         // Preview occurrences for July 1-7 window
         string windowEnd = new DateTime( 2026, 7, 8, 0, 0, 0, DateTimeKind.Utc ).ToString( "O" );
         HttpResponseMessage previewResp = await Api.GetAsync(
-            $"/api/schedules/{schedId}/occurrences?windowEnd={windowEnd}", ct );
+            $"/api/v1/schedules/{schedId}/occurrences?windowEnd={windowEnd}", ct );
         Assert.AreEqual( HttpStatusCode.OK, previewResp.StatusCode );
 
         JsonElement preview = await previewResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -587,7 +587,7 @@ public class HolidayCalendarIntegrationTests {
             observanceRule = "None",
         };
         HttpResponseMessage addRuleResp = await Api.PostAsJsonAsync(
-            $"/api/holiday-calendars/{calId}/rules", rule, JsonOptions, ct );
+            $"/api/v1/holiday-calendars/{calId}/rules", rule, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, addRuleResp.StatusCode );
 
         // Create daily schedule starting July 1 2026
@@ -598,7 +598,7 @@ public class HolidayCalendarIntegrationTests {
             dailyRecurrence = new { dayInterval = 1 },
         };
         HttpResponseMessage schedResp = await Api.PostAsJsonAsync(
-            "/api/schedules", schedReq, JsonOptions, ct );
+            "/api/v1/schedules", schedReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, schedResp.StatusCode );
         JsonElement schedJson = await schedResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
         string schedId = schedJson.GetProperty( "id" ).GetString( )!;
@@ -606,13 +606,13 @@ public class HolidayCalendarIntegrationTests {
         // Attach as allowlist
         var attachReq = new { calendarId = calId, mode = "Allowlist" };
         HttpResponseMessage attachResp = await Api.PutAsJsonAsync(
-            $"/api/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
+            $"/api/v1/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, attachResp.StatusCode );
 
         // Preview occurrences for July 1-7 window
         string windowEnd = new DateTime( 2026, 7, 8, 0, 0, 0, DateTimeKind.Utc ).ToString( "O" );
         HttpResponseMessage previewResp = await Api.GetAsync(
-            $"/api/schedules/{schedId}/occurrences?windowEnd={windowEnd}", ct );
+            $"/api/v1/schedules/{schedId}/occurrences?windowEnd={windowEnd}", ct );
         Assert.AreEqual( HttpStatusCode.OK, previewResp.StatusCode );
 
         JsonElement preview = await previewResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -652,12 +652,12 @@ public class HolidayCalendarIntegrationTests {
             observanceRule = "None",
         };
         HttpResponseMessage addResp = await Api.PostAsJsonAsync(
-            $"/api/holiday-calendars/{calId}/rules", rule, JsonOptions, ct );
+            $"/api/v1/holiday-calendars/{calId}/rules", rule, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, addResp.StatusCode );
 
         // Preview: should have January 1
         HttpResponseMessage preview1Resp = await Api.GetAsync(
-            $"/api/holiday-calendars/{calId}/preview?startYear=2026&endYear=2026", ct );
+            $"/api/v1/holiday-calendars/{calId}/preview?startYear=2026&endYear=2026", ct );
         Assert.AreEqual( HttpStatusCode.OK, preview1Resp.StatusCode );
 
         JsonElement preview1Result = await preview1Resp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -666,7 +666,7 @@ public class HolidayCalendarIntegrationTests {
 
         // Get the rule ID so we can update it
         HttpResponseMessage rulesResp = await Api.GetAsync(
-            $"/api/holiday-calendars/{calId}/rules", ct );
+            $"/api/v1/holiday-calendars/{calId}/rules", ct );
         JsonElement[] rules = await rulesResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
             ?? [];
         long ruleId = rules[0].GetProperty( "id" ).GetInt64( );
@@ -680,12 +680,12 @@ public class HolidayCalendarIntegrationTests {
             observanceRule = "None",
         };
         HttpResponseMessage updateResp = await Api.PutAsJsonAsync(
-            $"/api/holiday-calendars/{calId}/rules/{ruleId}", updatedRule, JsonOptions, ct );
+            $"/api/v1/holiday-calendars/{calId}/rules/{ruleId}", updatedRule, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, updateResp.StatusCode );
 
         // Preview again: should now show March 15 instead of January 1
         HttpResponseMessage preview2Resp = await Api.GetAsync(
-            $"/api/holiday-calendars/{calId}/preview?startYear=2026&endYear=2026", ct );
+            $"/api/v1/holiday-calendars/{calId}/preview?startYear=2026&endYear=2026", ct );
         Assert.AreEqual( HttpStatusCode.OK, preview2Resp.StatusCode );
 
         JsonElement preview2Result = await preview2Resp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );

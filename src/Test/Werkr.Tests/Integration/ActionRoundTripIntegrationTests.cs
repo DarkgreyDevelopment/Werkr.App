@@ -58,7 +58,7 @@ public class ActionRoundTripIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, response.StatusCode,
             $"Action task creation failed for '{actionSubType}': {await response.Content.ReadAsStringAsync( ct )}" );
 
@@ -95,7 +95,7 @@ public class ActionRoundTripIntegrationTests {
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
         try {
-            HttpResponseMessage getResp = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+            HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
             Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
             JsonElement retrieved = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -105,7 +105,7 @@ public class ActionRoundTripIntegrationTests {
             Assert.AreEqual( 2.5, p.GetProperty( "seconds" ).GetDouble( ), 0.001 );
             Assert.AreEqual( "Wait for external service", p.GetProperty( "reason" ).GetString( ) );
         } finally {
-            _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         }
     }
 
@@ -128,7 +128,7 @@ public class ActionRoundTripIntegrationTests {
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
         try {
-            HttpResponseMessage getResp = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+            HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
             Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
             JsonElement retrieved = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -137,7 +137,7 @@ public class ActionRoundTripIntegrationTests {
             JsonElement p = GetActionParams( retrieved );
             Assert.AreEqual( "/data/report.csv", p.GetProperty( "path" ).GetString( ) );
         } finally {
-            _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         }
     }
 
@@ -161,7 +161,7 @@ public class ActionRoundTripIntegrationTests {
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
         try {
-            HttpResponseMessage getResp = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+            HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
             Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
             JsonElement retrieved = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -170,7 +170,7 @@ public class ActionRoundTripIntegrationTests {
             Assert.AreEqual( "utf-16", p.GetProperty( "encoding" ).GetString( ) );
             Assert.AreEqual( 4096L, p.GetProperty( "maxBytes" ).GetInt64( ) );
         } finally {
-            _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         }
     }
 
@@ -194,7 +194,7 @@ public class ActionRoundTripIntegrationTests {
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
         try {
-            HttpResponseMessage getResp = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+            HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
             Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
             JsonElement retrieved = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -205,7 +205,7 @@ public class ActionRoundTripIntegrationTests {
             Assert.AreEqual( "*.csv", p.GetProperty( "pattern" ).GetString( ) );
             Assert.IsTrue( p.GetProperty( "recursive" ).GetBoolean( ) );
         } finally {
-            _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         }
     }
 
@@ -229,7 +229,7 @@ public class ActionRoundTripIntegrationTests {
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
         try {
-            HttpResponseMessage getResp = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+            HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
             Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
             JsonElement retrieved = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -240,7 +240,7 @@ public class ActionRoundTripIntegrationTests {
             Assert.AreEqual( "prod-server", p.GetProperty( "replace" ).GetString( ) );
             Assert.IsFalse( p.GetProperty( "caseSensitive" ).GetBoolean( ) );
         } finally {
-            _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         }
     }
 
@@ -264,7 +264,7 @@ public class ActionRoundTripIntegrationTests {
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
         try {
-            HttpResponseMessage getResp = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+            HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
             Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
             JsonElement retrieved = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -275,7 +275,7 @@ public class ActionRoundTripIntegrationTests {
             Assert.AreEqual( "/backups/reports.tar.gz", p.GetProperty( "destination" ).GetString( ) );
             Assert.IsTrue( p.GetProperty( "overwrite" ).GetBoolean( ) );
         } finally {
-            _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         }
     }
 
@@ -299,7 +299,7 @@ public class ActionRoundTripIntegrationTests {
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
         try {
-            HttpResponseMessage getResp = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+            HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
             Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
             JsonElement retrieved = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -310,7 +310,7 @@ public class ActionRoundTripIntegrationTests {
             Assert.AreEqual( "/data/restored", p.GetProperty( "destination" ).GetString( ) );
             Assert.IsFalse( p.GetProperty( "overwrite" ).GetBoolean( ) );
         } finally {
-            _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         }
     }
 
@@ -342,7 +342,7 @@ public class ActionRoundTripIntegrationTests {
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
         try {
-            HttpResponseMessage getResp = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+            HttpResponseMessage getResp = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
             Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
             JsonElement retrieved = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -356,7 +356,7 @@ public class ActionRoundTripIntegrationTests {
             Assert.AreEqual( 2000, p.GetProperty( "pollIntervalMs" ).GetInt32( ) );
             Assert.IsTrue( p.GetProperty( "usePolling" ).GetBoolean( ) );
         } finally {
-            _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         }
     }
 

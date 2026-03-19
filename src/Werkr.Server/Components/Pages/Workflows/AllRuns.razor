@@ -116,7 +116,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             _runs = await client.GetFromJsonAsync<List<WorkflowRunDto>>(
-                "/api/workflows/runs?limit=50" );
+                "/api/v1/workflows/runs?limit=50" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load runs: {ex.Message}";
         } finally {

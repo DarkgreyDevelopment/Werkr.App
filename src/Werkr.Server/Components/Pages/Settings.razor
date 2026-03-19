@@ -284,8 +284,8 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
 
-            Task<List<DatabaseHealthDto>?> databaseTask = client.GetFromJsonAsync<List<DatabaseHealthDto>>( "/api/diagnostics/health" );
-            Task<List<AgentHealthDto>?> healthTask = client.GetFromJsonAsync<List<AgentHealthDto>>( "/api/agents/health" );
+            Task<List<DatabaseHealthDto>?> databaseTask = client.GetFromJsonAsync<List<DatabaseHealthDto>>( "/api/v1/diagnostics/health" );
+            Task<List<AgentHealthDto>?> healthTask = client.GetFromJsonAsync<List<AgentHealthDto>>( "/api/v1/agents/health" );
 
             await Task.WhenAll( databaseTask, healthTask );
 
@@ -323,7 +323,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             NotifyUrlChangeRequest request = new( _notifyNewUrl.Trim( ) );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/settings/notify-url-change", request );
+            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/settings/notify-url-change", request );
 
             if (response.IsSuccessStatusCode) {
                 _notifyResult = await response.Content.ReadFromJsonAsync<NotifyUrlChangeResponse>( );

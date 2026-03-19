@@ -56,7 +56,7 @@ public sealed partial class AgentHealthMonitorService(
 
         // Get live health from the API (which does real gRPC checks)
         List<AgentHealthDto>? healthResults = await client.GetFromJsonAsync<List<AgentHealthDto>>(
-            "/api/agents/health", ct
+            "/api/v1/agents/health", ct
         );
 
         if (healthResults is null || healthResults.Count == 0) {
@@ -79,7 +79,7 @@ public sealed partial class AgentHealthMonitorService(
 
             try {
                 using HttpResponseMessage response = await client.PutAsJsonAsync(
-                    $"/api/agents/{health.AgentId}/status",
+                    $"/api/v1/agents/{health.AgentId}/status",
                     new UpdateAgentStatusRequest( newStatus ),
                     ct
                 );

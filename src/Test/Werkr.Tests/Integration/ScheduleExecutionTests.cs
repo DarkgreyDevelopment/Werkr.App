@@ -53,7 +53,7 @@ public class ScheduleExecutionTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/schedules", request, JsonOptions, ct );
+            "/api/v1/schedules", request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, response.StatusCode,
             $"Schedule creation failed: {await response.Content.ReadAsStringAsync( ct )}" );
 
@@ -79,7 +79,7 @@ public class ScheduleExecutionTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, response.StatusCode,
             $"Task creation failed: {await response.Content.ReadAsStringAsync( ct )}" );
 
@@ -105,7 +105,7 @@ public class ScheduleExecutionTests {
         string scheduleId = created.GetProperty( "id" ).GetString( )!;
         Assert.IsFalse( string.IsNullOrEmpty( scheduleId ), "Schedule ID should be a non-empty GUID." );
 
-        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/schedules/{scheduleId}", ct );
+        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/v1/schedules/{scheduleId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResponse.StatusCode );
 
         JsonElement retrieved = await getResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -120,7 +120,7 @@ public class ScheduleExecutionTests {
         JsonElement daily = retrieved.GetProperty( "dailyRecurrence" );
         Assert.AreEqual( 1, daily.GetProperty( "dayInterval" ).GetInt32( ) );
 
-        HttpResponseMessage listResponse = await Api.GetAsync( "/api/schedules", ct );
+        HttpResponseMessage listResponse = await Api.GetAsync( "/api/v1/schedules", ct );
         Assert.AreEqual( HttpStatusCode.OK, listResponse.StatusCode );
 
         JsonElement list = await listResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -151,7 +151,7 @@ public class ScheduleExecutionTests {
 
         string windowEnd = "2026-06-22T23:59:59Z";
         HttpResponseMessage occResponse = await Api.GetAsync(
-            $"/api/schedules/{scheduleId}/occurrences?windowEnd={Uri.EscapeDataString( windowEnd )}", ct );
+            $"/api/v1/schedules/{scheduleId}/occurrences?windowEnd={Uri.EscapeDataString( windowEnd )}", ct );
         Assert.AreEqual( HttpStatusCode.OK, occResponse.StatusCode );
 
         JsonElement occResult = await occResponse.Content
@@ -196,13 +196,13 @@ public class ScheduleExecutionTests {
         };
 
         HttpResponseMessage putResponse = await Api.PutAsJsonAsync(
-            $"/api/schedules/{scheduleId}", updateRequest, JsonOptions, ct );
+            $"/api/v1/schedules/{scheduleId}", updateRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, putResponse.StatusCode,
             $"Schedule update failed: {await putResponse.Content.ReadAsStringAsync( ct )}" );
 
         await Task.Delay( 500, ct );
 
-        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/schedules/{scheduleId}", ct );
+        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/v1/schedules/{scheduleId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResponse.StatusCode );
 
         JsonElement updated = await getResponse.Content
@@ -233,15 +233,15 @@ public class ScheduleExecutionTests {
             "IntTest_ScheduleDelete", "2026-06-15", "12:00:00", 3, ct );
         string scheduleId = schedule.GetProperty( "id" ).GetString( )!;
 
-        HttpResponseMessage existsResponse = await Api.GetAsync( $"/api/schedules/{scheduleId}", ct );
+        HttpResponseMessage existsResponse = await Api.GetAsync( $"/api/v1/schedules/{scheduleId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, existsResponse.StatusCode );
 
         HttpResponseMessage deleteResponse = await Api.DeleteAsync(
-            $"/api/schedules/{scheduleId}", ct );
+            $"/api/v1/schedules/{scheduleId}", ct );
         Assert.AreEqual( HttpStatusCode.NoContent, deleteResponse.StatusCode );
 
         HttpResponseMessage notFoundResponse = await Api.GetAsync(
-            $"/api/schedules/{scheduleId}", ct );
+            $"/api/v1/schedules/{scheduleId}", ct );
         Assert.AreEqual( HttpStatusCode.NotFound, notFoundResponse.StatusCode );
     }
 
@@ -262,7 +262,7 @@ public class ScheduleExecutionTests {
         long taskId = task.GetProperty( "id" ).GetInt64( );
 
         HttpResponseMessage runResponse = await Api.PostAsJsonAsync(
-            $"/api/tasks/{taskId}/run", new object( ), JsonOptions, ct );
+            $"/api/v1/tasks/{taskId}/run", new object( ), JsonOptions, ct );
 
         Assert.AreEqual( HttpStatusCode.Accepted, runResponse.StatusCode,
             "Ad-hoc run should return 202 Accepted (one-time schedule created)." );
@@ -283,7 +283,7 @@ public class ScheduleExecutionTests {
         long taskId = task.GetProperty( "id" ).GetInt64( );
 
         HttpResponseMessage jobsResponse = await Api.GetAsync(
-            $"/api/tasks/{taskId}/jobs", ct );
+            $"/api/v1/tasks/{taskId}/jobs", ct );
 
         Assert.AreEqual( HttpStatusCode.OK, jobsResponse.StatusCode );
 

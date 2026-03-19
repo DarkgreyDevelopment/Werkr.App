@@ -6,7 +6,7 @@ internal static class StatusEndpoints {
     public static WebApplication MapStatusEndpoints( this WebApplication app ) {
         _ = app.MapGet( "/", ( ) => "Werkr API Service is running." );
 
-        _ = app.MapGet( "/api/status", ( ) => {
+        _ = app.MapGet( "/api/v1/status", ( ) => {
             return Results.Ok( new { status = "ok" } );
         } )
         .WithName( "GetStatus" )

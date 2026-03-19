@@ -21,7 +21,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 1. GET /api/holiday-calendars
         _ = app.MapGet(
-            "/api/holiday-calendars",
+            "/api/v1/holiday-calendars",
             async (
                 HolidayCalendarService service,
                 CancellationToken ct
@@ -35,7 +35,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 2. GET /api/holiday-calendars/{id}
         _ = app.MapGet(
-            "/api/holiday-calendars/{id}",
+            "/api/v1/holiday-calendars/{id}",
             async (
                 Guid id,
                 HolidayCalendarService service,
@@ -54,7 +54,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 3. POST /api/holiday-calendars
         _ = app.MapPost(
-            "/api/holiday-calendars",
+            "/api/v1/holiday-calendars",
             async (
                 HolidayCalendarCreateRequest request,
                 HolidayCalendarService service,
@@ -64,7 +64,7 @@ internal static class HolidayCalendarEndpoints {
                     HolidayCalendar entity = HolidayCalendarMapper.ToEntity( request );
                     HolidayCalendar created = await service.CreateAsync( entity, ct );
                     HolidayCalendarDto dto = HolidayCalendarMapper.ToDto( created );
-                    return Results.Created( $"/api/holiday-calendars/{dto.Id}", dto );
+                    return Results.Created( $"/api/v1/holiday-calendars/{dto.Id}", dto );
                 } catch (ValidationException ex) {
                     return Results.BadRequest( new { message = ex.Message } );
                 }
@@ -74,7 +74,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 4. PUT /api/holiday-calendars/{id}
         _ = app.MapPut(
-            "/api/holiday-calendars/{id}",
+            "/api/v1/holiday-calendars/{id}",
             async (
                 Guid id,
                 HolidayCalendarUpdateRequest request,
@@ -99,7 +99,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 5. DELETE /api/holiday-calendars/{id}
         _ = app.MapDelete(
-            "/api/holiday-calendars/{id}",
+            "/api/v1/holiday-calendars/{id}",
             async (
                 Guid id,
                 HolidayCalendarService service,
@@ -119,7 +119,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 6. POST /api/holiday-calendars/{id}/clone
         _ = app.MapPost(
-            "/api/holiday-calendars/{id}/clone",
+            "/api/v1/holiday-calendars/{id}/clone",
             async (
                 Guid id,
                 CloneHolidayCalendarRequest request,
@@ -129,7 +129,7 @@ internal static class HolidayCalendarEndpoints {
                 try {
                     HolidayCalendar cloned = await service.CloneAsync( id, request.NewName, ct );
                     HolidayCalendarDto dto = HolidayCalendarMapper.ToDto( cloned );
-                    return Results.Created( $"/api/holiday-calendars/{dto.Id}", dto );
+                    return Results.Created( $"/api/v1/holiday-calendars/{dto.Id}", dto );
                 } catch (KeyNotFoundException) {
                     return Results.NotFound( );
                 }
@@ -141,7 +141,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 7. GET /api/holiday-calendars/{id}/rules
         _ = app.MapGet(
-            "/api/holiday-calendars/{id}/rules",
+            "/api/v1/holiday-calendars/{id}/rules",
             async (
                 Guid id,
                 HolidayCalendarService service,
@@ -160,7 +160,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 8. GET /api/holiday-calendars/{id}/rules/{ruleId}
         _ = app.MapGet(
-            "/api/holiday-calendars/{id}/rules/{ruleId}",
+            "/api/v1/holiday-calendars/{id}/rules/{ruleId}",
             async (
                 Guid id,
                 long ruleId,
@@ -180,7 +180,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 9. POST /api/holiday-calendars/{id}/rules
         _ = app.MapPost(
-            "/api/holiday-calendars/{id}/rules",
+            "/api/v1/holiday-calendars/{id}/rules",
             async (
                 Guid id,
                 HolidayRuleCreateRequest request,
@@ -191,7 +191,7 @@ internal static class HolidayCalendarEndpoints {
                     HolidayRule entity = HolidayCalendarMapper.ToEntity( request );
                     HolidayRule created = await service.AddRuleAsync( id, entity, ct );
                     HolidayRuleDto dto = HolidayCalendarMapper.ToDto( created );
-                    return Results.Created( $"/api/holiday-calendars/{id}/rules/{dto.Id}", dto );
+                    return Results.Created( $"/api/v1/holiday-calendars/{id}/rules/{dto.Id}", dto );
                 } catch (KeyNotFoundException) {
                     return Results.NotFound( );
                 } catch (ValidationException ex) {
@@ -205,7 +205,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 10. PUT /api/holiday-calendars/{id}/rules/{ruleId}
         _ = app.MapPut(
-            "/api/holiday-calendars/{id}/rules/{ruleId}",
+            "/api/v1/holiday-calendars/{id}/rules/{ruleId}",
             async (
                 Guid id,
                 long ruleId,
@@ -230,7 +230,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 11. DELETE /api/holiday-calendars/{id}/rules/{ruleId}
         _ = app.MapDelete(
-            "/api/holiday-calendars/{id}/rules/{ruleId}",
+            "/api/v1/holiday-calendars/{id}/rules/{ruleId}",
             async (
                 Guid id,
                 long ruleId,
@@ -251,7 +251,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 12. POST /api/holiday-calendars/rules/preview?startYear=&endYear=
         _ = app.MapPost(
-            "/api/holiday-calendars/rules/preview",
+            "/api/v1/holiday-calendars/rules/preview",
             (
                 int startYear,
                 int endYear,
@@ -270,7 +270,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 13. GET /api/holiday-calendars/{id}/dates
         _ = app.MapGet(
-            "/api/holiday-calendars/{id}/dates",
+            "/api/v1/holiday-calendars/{id}/dates",
             async (
                 Guid id,
                 HolidayCalendarService service,
@@ -289,7 +289,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 14. GET /api/holiday-calendars/{id}/dates/{dateId}
         _ = app.MapGet(
-            "/api/holiday-calendars/{id}/dates/{dateId}",
+            "/api/v1/holiday-calendars/{id}/dates/{dateId}",
             async (
                 Guid id,
                 long dateId,
@@ -309,7 +309,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 15. POST /api/holiday-calendars/{id}/dates
         _ = app.MapPost(
-            "/api/holiday-calendars/{id}/dates",
+            "/api/v1/holiday-calendars/{id}/dates",
             async (
                 Guid id,
                 HolidayDateCreateRequest request,
@@ -320,7 +320,7 @@ internal static class HolidayCalendarEndpoints {
                     HolidayDate entity = HolidayCalendarMapper.ToEntity( request );
                     HolidayDate created = await service.AddManualDateAsync( id, entity, ct );
                     HolidayDateDto dto = HolidayCalendarMapper.ToDto( created );
-                    return Results.Created( $"/api/holiday-calendars/{id}/dates/{dto.Id}", dto );
+                    return Results.Created( $"/api/v1/holiday-calendars/{id}/dates/{dto.Id}", dto );
                 } catch (KeyNotFoundException) {
                     return Results.NotFound( );
                 } catch (InvalidOperationException ex) {
@@ -332,7 +332,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 16. PUT /api/holiday-calendars/{id}/dates/{dateId}
         _ = app.MapPut(
-            "/api/holiday-calendars/{id}/dates/{dateId}",
+            "/api/v1/holiday-calendars/{id}/dates/{dateId}",
             async (
                 Guid id,
                 long dateId,
@@ -355,7 +355,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 17. DELETE /api/holiday-calendars/{id}/dates/{dateId}
         _ = app.MapDelete(
-            "/api/holiday-calendars/{id}/dates/{dateId}",
+            "/api/v1/holiday-calendars/{id}/dates/{dateId}",
             async (
                 Guid id,
                 long dateId,
@@ -376,7 +376,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 18. POST /api/holiday-calendars/{id}/dates/bulk
         _ = app.MapPost(
-            "/api/holiday-calendars/{id}/dates/bulk",
+            "/api/v1/holiday-calendars/{id}/dates/bulk",
             async (
                 Guid id,
                 BulkHolidayDateCreateRequest request,
@@ -387,7 +387,7 @@ internal static class HolidayCalendarEndpoints {
                     List<HolidayDate> entities = [.. request.Dates.Select( HolidayCalendarMapper.ToEntity )];
                     IReadOnlyList<HolidayDate> created = await service.BulkAddManualDatesAsync( id, entities, ct );
                     List<HolidayDateDto> dtos = [.. created.Select( HolidayCalendarMapper.ToDto )];
-                    return Results.Created( $"/api/holiday-calendars/{id}/dates", dtos );
+                    return Results.Created( $"/api/v1/holiday-calendars/{id}/dates", dtos );
                 } catch (KeyNotFoundException) {
                     return Results.NotFound( );
                 } catch (InvalidOperationException ex) {
@@ -401,7 +401,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 19. GET /api/holiday-calendars/{id}/preview?startYear=&endYear=
         _ = app.MapGet(
-            "/api/holiday-calendars/{id}/preview",
+            "/api/v1/holiday-calendars/{id}/preview",
             async (
                 Guid id,
                 int startYear,
@@ -434,7 +434,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 20. GET /api/schedules/{id}/holiday-calendar
         _ = app.MapGet(
-            "/api/schedules/{id}/holiday-calendar",
+            "/api/v1/schedules/{id}/holiday-calendar",
             async (
                 Guid id,
                 HolidayCalendarService service,
@@ -459,7 +459,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 21. PUT /api/schedules/{id}/holiday-calendar
         _ = app.MapPut(
-            "/api/schedules/{id}/holiday-calendar",
+            "/api/v1/schedules/{id}/holiday-calendar",
             async (
                 Guid id,
                 AttachHolidayCalendarRequest request,
@@ -483,7 +483,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 22. DELETE /api/schedules/{id}/holiday-calendar
         _ = app.MapDelete(
-            "/api/schedules/{id}/holiday-calendar",
+            "/api/v1/schedules/{id}/holiday-calendar",
             async (
                 Guid id,
                 HolidayCalendarService service,
@@ -503,7 +503,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 23. GET /api/schedules/{id}/holiday-dates?start=&end=
         _ = app.MapGet(
-            "/api/schedules/{id}/holiday-dates",
+            "/api/v1/schedules/{id}/holiday-dates",
             async (
                 Guid id,
                 DateOnly start,
@@ -534,7 +534,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 24. POST /api/schedules/{id}/audit-log
         _ = app.MapPost(
-            "/api/schedules/{id}/audit-log",
+            "/api/v1/schedules/{id}/audit-log",
             async (
                 Guid id,
                 ScheduleAuditLogCreateRequest request,
@@ -556,7 +556,7 @@ internal static class HolidayCalendarEndpoints {
                     _ = await db.SaveChangesAsync( ct );
 
                     ScheduleAuditLogDto dto = HolidayCalendarMapper.ToDto( log );
-                    return Results.Created( $"/api/schedules/{id}/audit-log", dto );
+                    return Results.Created( $"/api/v1/schedules/{id}/audit-log", dto );
                 } catch (KeyNotFoundException) {
                     return Results.NotFound( );
                 }
@@ -566,7 +566,7 @@ internal static class HolidayCalendarEndpoints {
 
         // 25. GET /api/schedules/{id}/audit-log?from=&to=
         _ = app.MapGet(
-            "/api/schedules/{id}/audit-log",
+            "/api/v1/schedules/{id}/audit-log",
             async (
                 Guid id,
                 DateTime from,

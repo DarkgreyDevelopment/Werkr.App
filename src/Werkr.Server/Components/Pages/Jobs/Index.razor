@@ -104,7 +104,7 @@
             if ( long.TryParse( taskIdStr, out long taskId ) ) {
                 int limit = GetLimit( );
                 _jobs = await client.GetFromJsonAsync<List<JobListDto>>(
-                    $"/api/tasks/{taskId}/jobs?limit={limit}" );
+                    $"/api/v1/tasks/{taskId}/jobs?limit={limit}" );
             } else {
                 string url = BuildGlobalJobsUrl( );
                 _jobs = await client.GetFromJsonAsync<List<JobListDto>>( url );
@@ -140,7 +140,7 @@
         if ( until.HasValue )
             queryParams.Add( $"until={until.Value:O}" );
 
-        return $"/api/jobs?{string.Join( "&", queryParams )}";
+        return $"/api/v1/jobs?{string.Join( "&", queryParams )}";
     }
 
     private int GetLimit( ) {

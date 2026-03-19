@@ -28,7 +28,13 @@ public sealed partial class AuditLogCleanupService(
 
     /// <inheritdoc />
     protected override async Task ExecuteAsync( CancellationToken stoppingToken ) {
-        LogCleanupStarted( _logger, _options.RetentionDays );
+        int effectiveInterval = Math.Max( _options.SweepIntervalMinutes, AuditLogOptions.MinSweepIntervalMinutes );
+
+        if (_options.SweepIntervalMinutes < AuditLogOptions.MinSweepIntervalMinutes) {
+            LogSweepIntervalClamped( _logger, _options.SweepIntervalMinutes, effectiveInterval );
+        }
+
+        LogCleanupStarted( _logger, _options.RetentionDays, effectiveInterval );
 
         while (!stoppingToken.IsCancellationRequested) {
             try {
@@ -37,8 +43,7 @@ public sealed partial class AuditLogCleanupService(
                 LogCleanupError( _logger, ex );
             }
 
-            // Wait 24 hours before next cleanup cycle
-            await Task.Delay( TimeSpan.FromHours( 24 ), stoppingToken );
+            await Task.Delay( TimeSpan.FromMinutes( effectiveInterval ), stoppingToken );
         }
     }
 
@@ -60,9 +65,13 @@ public sealed partial class AuditLogCleanupService(
         }
     }
 
+    [LoggerMessage( Level = LogLevel.Warning,
+        Message = "Configured SweepIntervalMinutes ({Configured}) is below minimum. Clamped to {Effective} minutes." )]
+    private static partial void LogSweepIntervalClamped( ILogger logger, int configured, int effective );
+
     [LoggerMessage( Level = LogLevel.Information,
-        Message = "Audit log cleanup service started (retention: {RetentionDays} days)" )]
-    private static partial void LogCleanupStarted( ILogger logger, int retentionDays );
+        Message = "Audit log cleanup service started (retention: {RetentionDays} days, sweep interval: {SweepIntervalMinutes} minutes)" )]
+    private static partial void LogCleanupStarted( ILogger logger, int retentionDays, int sweepIntervalMinutes );
 
     [LoggerMessage( Level = LogLevel.Information,
         Message = "Audit log cleanup deleted {Count} records older than {RetentionDays} days" )]

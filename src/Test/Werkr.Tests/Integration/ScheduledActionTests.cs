@@ -55,7 +55,7 @@ public class ScheduledActionTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/schedules",
+            "/api/v1/schedules",
             request,
             JsonOptions,
             ct
@@ -103,7 +103,7 @@ public class ScheduledActionTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks",
+            "/api/v1/tasks",
             request,
             JsonOptions,
             ct
@@ -164,7 +164,7 @@ public class ScheduledActionTests {
 
         // Read back and verify all fields survived the round-trip
         HttpResponseMessage getResponse = await Api.GetAsync(
-            $"/api/tasks/{taskId}",
+            $"/api/v1/tasks/{taskId}",
             ct
         );
         Assert.AreEqual(
@@ -197,7 +197,7 @@ public class ScheduledActionTests {
 
         // Cleanup
         _ = await Api.DeleteAsync(
-            $"/api/tasks/{taskId}",
+            $"/api/v1/tasks/{taskId}",
             ct
         );
     }
@@ -230,7 +230,7 @@ public class ScheduledActionTests {
         // Query occurrence preview for a 10-day window
         string windowEnd = "2026-06-25T23:59:59Z";
         HttpResponseMessage occResponse = await Api.GetAsync(
-            $"/api/schedules/{scheduleId}/occurrences?windowEnd={Uri.EscapeDataString( windowEnd )}",
+            $"/api/v1/schedules/{scheduleId}/occurrences?windowEnd={Uri.EscapeDataString( windowEnd )}",
             ct
         );
         Assert.AreEqual(
@@ -269,7 +269,7 @@ public class ScheduledActionTests {
 
         // Cleanup
         _ = await Api.DeleteAsync(
-            $"/api/schedules/{scheduleId}",
+            $"/api/v1/schedules/{scheduleId}",
             ct
         );
     }
@@ -322,7 +322,7 @@ public class ScheduledActionTests {
         };
 
         HttpResponseMessage putResponse = await Api.PutAsJsonAsync(
-            $"/api/tasks/{taskId}",
+            $"/api/v1/tasks/{taskId}",
             updateRequest,
             JsonOptions,
             ct
@@ -351,7 +351,7 @@ public class ScheduledActionTests {
 
         // Cleanup
         _ = await Api.DeleteAsync(
-            $"/api/tasks/{taskId}",
+            $"/api/v1/tasks/{taskId}",
             ct
         );
     }
@@ -419,15 +419,15 @@ public class ScheduledActionTests {
 
         // Cleanup
         _ = await Api.DeleteAsync(
-            $"/api/tasks/{task1Id}",
+            $"/api/v1/tasks/{task1Id}",
             ct
         );
         _ = await Api.DeleteAsync(
-            $"/api/tasks/{task2Id}",
+            $"/api/v1/tasks/{task2Id}",
             ct
         );
         _ = await Api.DeleteAsync(
-            $"/api/tasks/{task3Id}",
+            $"/api/v1/tasks/{task3Id}",
             ct
         );
     }
@@ -484,7 +484,7 @@ public class ScheduledActionTests {
         };
 
         HttpResponseMessage putResponse = await Api.PutAsJsonAsync(
-            $"/api/tasks/{taskId}",
+            $"/api/v1/tasks/{taskId}",
             updateRequest,
             JsonOptions,
             ct
@@ -522,7 +522,7 @@ public class ScheduledActionTests {
 
         // Cleanup
         _ = await Api.DeleteAsync(
-            $"/api/tasks/{taskId}",
+            $"/api/v1/tasks/{taskId}",
             ct
         );
     }
@@ -568,7 +568,7 @@ public class ScheduledActionTests {
 
         // Delete the schedule
         HttpResponseMessage deleteResponse = await Api.DeleteAsync(
-            $"/api/schedules/{scheduleId}",
+            $"/api/v1/schedules/{scheduleId}",
             ct
         );
         Assert.AreEqual(
@@ -578,7 +578,7 @@ public class ScheduledActionTests {
 
         // Task should still exist with action fields intact
         HttpResponseMessage getResponse = await Api.GetAsync(
-            $"/api/tasks/{taskId}",
+            $"/api/v1/tasks/{taskId}",
             ct
         );
         Assert.AreEqual(
@@ -606,7 +606,7 @@ public class ScheduledActionTests {
 
         // Cleanup
         _ = await Api.DeleteAsync(
-            $"/api/tasks/{taskId}",
+            $"/api/v1/tasks/{taskId}",
             ct
         );
     }

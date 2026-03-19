@@ -47,14 +47,14 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             WorkflowRunDetailDto? detail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
-                $"/api/workflows/runs/{RunId}" );
+                $"/api/v1/workflows/runs/{RunId}" );
             if ( detail is not null ) {
                 _lastFetchedRunId = RunId;
                 _effectiveExecutions = detail.StepExecutions;
                 // Fetch workflow steps if not provided
                 if ( Steps.Count == 0 ) {
                     WorkflowDto? wf = await client.GetFromJsonAsync<WorkflowDto>(
-                        $"/api/workflows/{detail.WorkflowId}" );
+                        $"/api/v1/workflows/{detail.WorkflowId}" );
                     _effectiveSteps = wf?.Steps ?? [];
                 } else {
                     _effectiveSteps = Steps;

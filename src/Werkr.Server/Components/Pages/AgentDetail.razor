@@ -131,7 +131,7 @@
 
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _agent = await client.GetFromJsonAsync<AgentDetailDto>( $"/api/agents/{AgentId}" );
+            _agent = await client.GetFromJsonAsync<AgentDetailDto>( $"/api/v1/agents/{AgentId}" );
             _editedName = _agent?.ConnectionName ?? string.Empty;
             _editedUrl = _agent?.RemoteUrl ?? string.Empty;
             if (_agent is not null) {
@@ -140,7 +140,7 @@
                     new( "Agents", "/agents" ),
                     new( _agent.ConnectionName )
                 ];
-                _tags = await client.GetFromJsonAsync<string[]>( $"/api/agents/{AgentId}/tags" ) ?? [];
+                _tags = await client.GetFromJsonAsync<string[]>( $"/api/v1/agents/{AgentId}/tags" ) ?? [];
             }
         } catch (Exception ex) {
             _errorMessage = $"Failed to load agent details: {ex.Message}";
@@ -173,7 +173,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             UpdateAgentRequest request = new( _editedName, null );
-            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/agents/{_agent.Id}", request );
+            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/agents/{_agent.Id}", request );
             if (!response.IsSuccessStatusCode) {
                 _errorMessage = $"Failed to update name: {(int) response.StatusCode}";
                 return;
@@ -194,7 +194,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             UpdateAgentRequest request = new( null, _editedUrl );
-            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/agents/{_agent.Id}", request );
+            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/agents/{_agent.Id}", request );
             if (!response.IsSuccessStatusCode) {
                 string body = await response.Content.ReadAsStringAsync( );
                 _errorMessage = $"Failed to update URL: {(int) response.StatusCode} — {body}";
@@ -215,7 +215,7 @@
 
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsync( $"/api/agents/{_agent.Id}/revoke", null );
+            HttpResponseMessage response = await client.PostAsync( $"/api/v1/agents/{_agent.Id}/revoke", null );
             if (!response.IsSuccessStatusCode) {
                 _errorMessage = $"Failed to revoke agent: {(int) response.StatusCode}";
                 return;
@@ -240,7 +240,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PutAsJsonAsync(
-                $"/api/agents/{_agent.Id}/tags", new { Tags = tags } );
+                $"/api/v1/agents/{_agent.Id}/tags", new { Tags = tags } );
             if (response.IsSuccessStatusCode) {
                 _tags = await response.Content.ReadFromJsonAsync<string[]>( ) ?? [];
             } else {

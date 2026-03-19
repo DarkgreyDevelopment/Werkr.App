@@ -83,7 +83,7 @@
         _fetchingLog = true;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _fullLog = await client.GetStringAsync( $"/api/jobs/{Step.JobId}/output" );
+            _fullLog = await client.GetStringAsync( $"/api/v1/jobs/{Step.JobId}/output" );
         } catch {
             _fullLog = "Failed to fetch log.";
         } finally {

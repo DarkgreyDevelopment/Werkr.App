@@ -153,7 +153,7 @@
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             if ( IsEditing ) {
                 TaskUpdateRequest request = _model.ToUpdateRequest( _targetTags );
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/tasks/{_editTaskId}", request );
+                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/tasks/{_editTaskId}", request );
                 if ( response.IsSuccessStatusCode ) {
                     TaskDto? updated = await response.Content.ReadFromJsonAsync<TaskDto>( );
                     _isVisible = false;
@@ -166,7 +166,7 @@
                 }
             } else {
                 TaskCreateRequest request = _model.ToCreateRequest( WorkflowId, _targetTags );
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/tasks", request );
+                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/tasks", request );
                 if ( response.IsSuccessStatusCode ) {
                     TaskDto? created = await response.Content.ReadFromJsonAsync<TaskDto>( );
                     _isVisible = false;

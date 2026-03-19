@@ -191,7 +191,7 @@ public class TaskSetupModalTests : BunitContext {
         cut.Find( "form" ).Submit( );
 
         Assert.AreEqual( HttpMethod.Put, capturedMethod, "Should send PUT request in edit mode." );
-        Assert.AreEqual( "/api/tasks/7", capturedUri, "Should target the correct task endpoint." );
+        Assert.AreEqual( "/api/v1/tasks/7", capturedUri, "Should target the correct task endpoint." );
     }
 
     /// <summary>

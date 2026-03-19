@@ -132,7 +132,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
 
-            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/workflows/{Id}" );
+            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/v1/workflows/{Id}" );
             if ( _workflow is null ) {
                 _errorMessage = "Workflow not found.";
                 return;
@@ -141,7 +141,7 @@
 
             // Load latest run status for DAG overlay
             HttpResponseMessage statusResponse = await client.GetAsync(
-                $"/api/workflows/{Id}/latest-run-status" );
+                $"/api/v1/workflows/{Id}/latest-run-status" );
             if ( statusResponse.IsSuccessStatusCode ) {
                 _latestRunStatus = await statusResponse.Content
                     .ReadFromJsonAsync<WorkflowLatestRunStatusDto>( );
@@ -199,7 +199,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HttpResponseMessage response = await client.PostAsync(
-                $"/api/workflows/{Id}/execute", null );
+                $"/api/v1/workflows/{Id}/execute", null );
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );
                 _errorMessage = $"Run failed: {body}";

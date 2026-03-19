@@ -38,7 +38,7 @@ internal static partial class WorkflowEndpoints {
     /// </summary>
     private static void MapWorkflowCrud( WebApplication app ) {
 
-        _ = app.MapGet( "/api/workflows", async (
+        _ = app.MapGet( "/api/v1/workflows", async (
             WorkflowService workflowService,
             CancellationToken ct
         ) => {
@@ -49,7 +49,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "GetWorkflows" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/workflows/{id}", async (
+        _ = app.MapGet( "/api/v1/workflows/{id}", async (
             long id,
             WorkflowService workflowService,
             CancellationToken ct
@@ -62,7 +62,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "GetWorkflow" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPost( "/api/workflows", async (
+        _ = app.MapPost( "/api/v1/workflows", async (
             WorkflowCreateRequest request,
             WorkflowService workflowService,
             CancellationToken ct
@@ -71,7 +71,7 @@ internal static partial class WorkflowEndpoints {
                 Workflow entity = WorkflowMapper.ToEntity( request );
                 Workflow created = await workflowService.CreateAsync( entity, ct );
                 WorkflowDto dto = WorkflowMapper.ToDto( created );
-                return Results.Created( $"/api/workflows/{dto.Id}", dto );
+                return Results.Created( $"/api/v1/workflows/{dto.Id}", dto );
             } catch (ValidationException ex) {
                 return Results.BadRequest( new { message = ex.Message } );
             }
@@ -79,7 +79,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "CreateWorkflow" )
         .RequireAuthorization( Policies.CanCreate );
 
-        _ = app.MapPut( "/api/workflows/{id}", async (
+        _ = app.MapPut( "/api/v1/workflows/{id}", async (
             long id,
             WorkflowUpdateRequest request,
             WorkflowService workflowService,
@@ -137,7 +137,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "UpdateWorkflow" )
         .RequireAuthorization( Policies.CanUpdate );
 
-        _ = app.MapDelete( "/api/workflows/{id}", async (
+        _ = app.MapDelete( "/api/v1/workflows/{id}", async (
             long id,
             WorkflowService workflowService,
             CancellationToken ct
@@ -152,7 +152,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "DeleteWorkflow" )
         .RequireAuthorization( Policies.CanDelete );
 
-        _ = app.MapPatch( "/api/workflows/{id}/enabled", async (
+        _ = app.MapPatch( "/api/v1/workflows/{id}/enabled", async (
             long id,
             WorkflowSetEnabledRequest request,
             WorkflowService workflowService,
@@ -185,7 +185,7 @@ internal static partial class WorkflowEndpoints {
     /// </summary>
     private static void MapWorkflowSteps( WebApplication app ) {
 
-        _ = app.MapPost( "/api/workflows/{workflowId}/steps", async (
+        _ = app.MapPost( "/api/v1/workflows/{workflowId}/steps", async (
             long workflowId,
             WorkflowStepCreateRequest request,
             WorkflowService workflowService,
@@ -195,7 +195,7 @@ internal static partial class WorkflowEndpoints {
                 WorkflowStep step = WorkflowMapper.ToStepEntity( workflowId, request );
                 WorkflowStep created = await workflowService.AddStepAsync( workflowId, step, ct );
                 WorkflowStepDto dto = WorkflowMapper.ToStepDto( created );
-                return Results.Created( $"/api/workflows/{workflowId}/steps/{dto.Id}", dto );
+                return Results.Created( $"/api/v1/workflows/{workflowId}/steps/{dto.Id}", dto );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
             } catch (Exception ex) when (ex is FormatException or ArgumentException) {
@@ -205,7 +205,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "AddWorkflowStep" )
         .RequireAuthorization( Policies.CanCreate );
 
-        _ = app.MapPut( "/api/workflows/{workflowId}/steps/{stepId}", async (
+        _ = app.MapPut( "/api/v1/workflows/{workflowId}/steps/{stepId}", async (
             long workflowId,
             long stepId,
             WorkflowStepUpdateRequest request,
@@ -238,7 +238,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "UpdateWorkflowStep" )
         .RequireAuthorization( Policies.CanUpdate );
 
-        _ = app.MapDelete( "/api/workflows/{workflowId}/steps/{stepId}", async (
+        _ = app.MapDelete( "/api/v1/workflows/{workflowId}/steps/{stepId}", async (
             long workflowId,
             long stepId,
             WorkflowService workflowService,
@@ -254,7 +254,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "RemoveWorkflowStep" )
         .RequireAuthorization( Policies.CanDelete );
 
-        _ = app.MapPost( "/api/workflows/{workflowId}/steps/batch", async (
+        _ = app.MapPost( "/api/v1/workflows/{workflowId}/steps/batch", async (
             long workflowId,
             WorkflowStepBatchRequest request,
             WorkflowService workflowService,
@@ -337,7 +337,7 @@ internal static partial class WorkflowEndpoints {
     /// </summary>
     private static void MapStepDependencies( WebApplication app ) {
 
-        _ = app.MapPost( "/api/workflows/{workflowId}/steps/{stepId}/dependencies", async (
+        _ = app.MapPost( "/api/v1/workflows/{workflowId}/steps/{stepId}/dependencies", async (
             long workflowId,
             long stepId,
             StepDependencyRequest request,
@@ -349,7 +349,7 @@ internal static partial class WorkflowEndpoints {
                     stepId, request.DependsOnStepId, ct );
                 StepDependencyDto depDto = new( StepId: stepId, DependsOnStepId: request.DependsOnStepId );
                 return Results.Created(
-                    $"/api/workflows/{workflowId}/steps/{stepId}/dependencies/{request.DependsOnStepId}",
+                    $"/api/v1/workflows/{workflowId}/steps/{stepId}/dependencies/{request.DependsOnStepId}",
                     depDto );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
@@ -360,7 +360,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "AddStepDependency" )
         .RequireAuthorization( Policies.CanCreate );
 
-        _ = app.MapDelete( "/api/workflows/{workflowId}/steps/{stepId}/dependencies/{dependsOnStepId}", async (
+        _ = app.MapDelete( "/api/v1/workflows/{workflowId}/steps/{stepId}/dependencies/{dependsOnStepId}", async (
             long workflowId,
             long stepId,
             long dependsOnStepId,
@@ -385,7 +385,7 @@ internal static partial class WorkflowEndpoints {
     /// </summary>
     private static void MapWorkflowSchedules( WebApplication app ) {
 
-        _ = app.MapGet( "/api/workflows/{workflowId}/schedules", async (
+        _ = app.MapGet( "/api/v1/workflows/{workflowId}/schedules", async (
             long workflowId,
             WerkrDbContext dbContext,
             ScheduleService scheduleService,
@@ -403,7 +403,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "GetWorkflowSchedules" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPost( "/api/workflows/{workflowId}/schedules", async (
+        _ = app.MapPost( "/api/v1/workflows/{workflowId}/schedules", async (
             long workflowId,
             WorkflowScheduleAssociateRequest request,
             WerkrDbContext dbContext,
@@ -433,12 +433,12 @@ internal static partial class WorkflowEndpoints {
             };
             _ = dbContext.WorkflowSchedules.Add( link );
             _ = await dbContext.SaveChangesAsync( ct );
-            return Results.Created( $"/api/workflows/{workflowId}/schedules", null );
+            return Results.Created( $"/api/v1/workflows/{workflowId}/schedules", null );
         } )
         .WithName( "AssociateWorkflowSchedule" )
         .RequireAuthorization( Policies.CanCreate );
 
-        _ = app.MapDelete( "/api/workflows/{workflowId}/schedules/{scheduleId}", async (
+        _ = app.MapDelete( "/api/v1/workflows/{workflowId}/schedules/{scheduleId}", async (
             long workflowId,
             Guid scheduleId,
             WerkrDbContext dbContext,
@@ -466,7 +466,7 @@ internal static partial class WorkflowEndpoints {
     /// </summary>
     private static void MapWorkflowExecution( WebApplication app ) {
 
-        _ = app.MapPost( "/api/workflows/{id}/validate", async (
+        _ = app.MapPost( "/api/v1/workflows/{id}/validate", async (
             long id,
             WorkflowService workflowService,
             CancellationToken ct
@@ -485,7 +485,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "ValidateWorkflow" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPost( "/api/workflows/{id}/execute", async (
+        _ = app.MapPost( "/api/v1/workflows/{id}/execute", async (
             long id,
             WorkflowRunRequest? request,
             WorkflowService workflowService,
@@ -506,13 +506,13 @@ internal static partial class WorkflowEndpoints {
             (Guid scheduleId, Guid workflowRunId) = await runNowService.CreateWorkflowRunNowAsync(
                 id, triggerVariables: triggerVariables, ct: ct );
             await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
-            return Results.Accepted( $"/api/workflows/{id}/runs",
+            return Results.Accepted( $"/api/v1/workflows/{id}/runs",
                 new { scheduleId, workflowRunId, message = "One-time schedule created. Execution will begin on the next agent sync." } );
         } )
         .WithName( "ExecuteWorkflow" )
         .RequireAuthorization( Policies.CanExecute );
 
-        _ = app.MapGet( "/api/workflows/{id}/runs", async (
+        _ = app.MapGet( "/api/v1/workflows/{id}/runs", async (
             long id,
             int? limit,
             WerkrDbContext dbContext,
@@ -530,7 +530,7 @@ internal static partial class WorkflowEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         // Global workflow runs across all workflows (for the top-level Workflow Runs page)
-        _ = app.MapGet( "/api/workflows/runs", async (
+        _ = app.MapGet( "/api/v1/workflows/runs", async (
             int? limit,
             WerkrDbContext dbContext,
             CancellationToken ct
@@ -552,7 +552,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "GetAllWorkflowRuns" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/workflows/runs/{runId}", async (
+        _ = app.MapGet( "/api/v1/workflows/runs/{runId}", async (
             Guid runId,
             WerkrDbContext dbContext,
             CancellationToken ct
@@ -568,7 +568,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "GetWorkflowRun" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/workflows/runs/{runId}/stream", async (
+        _ = app.MapGet( "/api/v1/workflows/runs/{runId}/stream", async (
             Guid runId,
             JobEventBroadcaster broadcaster,
             WerkrDbContext dbContext,
@@ -614,7 +614,7 @@ internal static partial class WorkflowEndpoints {
         .ExcludeFromDescription( );
 
         // Step execution history for a run (all attempts)
-        _ = app.MapGet( "/api/workflows/runs/{runId:guid}/step-executions", async (
+        _ = app.MapGet( "/api/v1/workflows/runs/{runId:guid}/step-executions", async (
             Guid runId,
             WerkrDbContext dbContext,
             CancellationToken ct
@@ -630,7 +630,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "GetStepExecutions" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPost( "/api/workflows/{id}/runs/{runId:guid}/retry-from/{stepId:long}", async (
+        _ = app.MapPost( "/api/v1/workflows/{id}/runs/{runId:guid}/retry-from/{stepId:long}", async (
             long id,
             Guid runId,
             long stepId,
@@ -645,7 +645,7 @@ internal static partial class WorkflowEndpoints {
 
                 await invalidationDispatcher.InvalidateAsync( result.ScheduleId, ct );
 
-                return Results.Accepted( $"/api/workflows/runs/{runId}",
+                return Results.Accepted( $"/api/v1/workflows/runs/{runId}",
                     new { result.RunId, result.RetryFromStepId, result.ResetStepCount } );
             } catch (InvalidOperationException ex) {
                 return Results.Conflict( new { message = ex.Message } );
@@ -664,7 +664,7 @@ internal static partial class WorkflowEndpoints {
     /// </summary>
     private static void MapWorkflowDashboard( WebApplication app ) {
 
-        _ = app.MapGet( "/api/workflows/dashboard", async (
+        _ = app.MapGet( "/api/v1/workflows/dashboard", async (
             int? page,
             int? pageSize,
             string? search,
@@ -836,7 +836,7 @@ internal static partial class WorkflowEndpoints {
         .WithName( "GetWorkflowDashboard" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/workflows/{id}/latest-run-status", async (
+        _ = app.MapGet( "/api/v1/workflows/{id}/latest-run-status", async (
             long id,
             WerkrDbContext dbContext,
             ILogger<Program> logger,

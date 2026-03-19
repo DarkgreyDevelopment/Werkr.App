@@ -67,7 +67,7 @@ public sealed partial class JobEventRelayService(
     private async Task ConsumeStreamAsync( CancellationToken ct ) {
         HttpClient client = _httpClientFactory.CreateClient( "ApiServiceSse" );
 
-        using HttpRequestMessage request = new( HttpMethod.Get, "/api/events/workflow-runs" );
+        using HttpRequestMessage request = new( HttpMethod.Get, "/api/v1/events/workflow-runs" );
         request.Headers.Accept.Add( new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue( "text/event-stream" ) );
 
         using HttpResponseMessage response = await client.SendAsync(

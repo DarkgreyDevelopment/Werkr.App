@@ -146,8 +146,8 @@
         _isLoading = true;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _calendar = await client.GetFromJsonAsync<HolidayCalendarDto>( $"/api/holiday-calendars/{Id}" );
-            _rules = await client.GetFromJsonAsync<List<HolidayRuleDto>>( $"/api/holiday-calendars/{Id}/rules" );
+            _calendar = await client.GetFromJsonAsync<HolidayCalendarDto>( $"/api/v1/holiday-calendars/{Id}" );
+            _rules = await client.GetFromJsonAsync<List<HolidayRuleDto>>( $"/api/v1/holiday-calendars/{Id}/rules" );
 
             if ( _calendar is not null ) {
                 _breadcrumbs = [
@@ -168,7 +168,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HolidayPreviewResponse? preview = await client.GetFromJsonAsync<HolidayPreviewResponse>(
-                $"/api/holiday-calendars/{Id}/preview?startYear={_previewStartYear}&endYear={_previewEndYear}" );
+                $"/api/v1/holiday-calendars/{Id}/preview?startYear={_previewStartYear}&endYear={_previewEndYear}" );
             _previewDates = preview?.Dates?.ToList( );
         } catch ( Exception ex ) {
             _errorMessage = $"Preview failed: {ex.Message}";
@@ -179,7 +179,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             CloneHolidayCalendarRequest req = new( $"{_calendar!.Name} (Copy)" );
-            HttpResponseMessage res = await client.PostAsJsonAsync( $"/api/holiday-calendars/{Id}/clone", req );
+            HttpResponseMessage res = await client.PostAsJsonAsync( $"/api/v1/holiday-calendars/{Id}/clone", req );
             if ( res.IsSuccessStatusCode ) {
                 HolidayCalendarDto? cloned = await res.Content.ReadFromJsonAsync<HolidayCalendarDto>( );
                 if ( cloned is not null ) {

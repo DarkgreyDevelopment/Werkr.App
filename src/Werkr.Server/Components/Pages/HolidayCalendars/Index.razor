@@ -105,7 +105,7 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _calendars = await client.GetFromJsonAsync<List<HolidayCalendarSummaryDto>>( "/api/holiday-calendars" );
+            _calendars = await client.GetFromJsonAsync<List<HolidayCalendarSummaryDto>>( "/api/v1/holiday-calendars" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load calendars: {ex.Message}";
         } finally {
@@ -122,7 +122,7 @@
     private async Task DeleteConfirmedAsync( ) {
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/holiday-calendars/{_pendingDeleteId}" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/holiday-calendars/{_pendingDeleteId}" );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {
@@ -137,7 +137,7 @@
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             CloneHolidayCalendarRequest req = new( $"{cal.Name} (Copy)" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( $"/api/holiday-calendars/{cal.Id}/clone", req );
+            HttpResponseMessage response = await client.PostAsJsonAsync( $"/api/v1/holiday-calendars/{cal.Id}/clone", req );
             if ( response.IsSuccessStatusCode ) {
                 HolidayCalendarDto? cloned = await response.Content.ReadFromJsonAsync<HolidayCalendarDto>( );
                 if ( cloned is not null ) {

@@ -117,7 +117,7 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _schedules = await client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" );
+            _schedules = await client.GetFromJsonAsync<List<ScheduleDto>>( "/api/v1/schedules" );
 
             // Fetch next occurrence for each schedule concurrently
             if ( _schedules is not null ) {
@@ -137,7 +137,7 @@
     private async Task FetchNextOccurrenceAsync( HttpClient client, Guid scheduleId, string windowEndParam ) {
         try {
             OccurrencePreview? preview = await client.GetFromJsonAsync<OccurrencePreview>(
-                $"/api/schedules/{scheduleId}/occurrences?windowEnd={windowEndParam}" );
+                $"/api/v1/schedules/{scheduleId}/occurrences?windowEnd={windowEndParam}" );
             DateTime? next = preview?.Occurrences?.Where( o => o > DateTime.UtcNow ).OrderBy( o => o ).FirstOrDefault( );
             _nextOccurrences[scheduleId] = next == default ? null : next;
         } catch {
@@ -154,7 +154,7 @@
     private async Task DeleteConfirmedAsync( ) {
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/schedules/{_pendingDeleteId}" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/schedules/{_pendingDeleteId}" );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {

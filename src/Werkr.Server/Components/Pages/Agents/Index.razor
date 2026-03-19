@@ -113,7 +113,7 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _agents = await client.GetFromJsonAsync<List<AgentListDto>>( "/api/agents" );
+            _agents = await client.GetFromJsonAsync<List<AgentListDto>>( "/api/v1/agents" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load agents: {ex.Message}";
         } finally {
@@ -124,7 +124,7 @@
     private async Task RevokeAgent( Guid agentId ) {
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsync( $"/api/agents/{agentId}/revoke", null );
+            HttpResponseMessage response = await client.PostAsync( $"/api/v1/agents/{agentId}/revoke", null );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAgents( );
             } else {

@@ -18,7 +18,7 @@ public static class AuthEndpoints {
     public static WebApplication MapAuthEndpoints( this WebApplication app ) {
         // ── Token Exchange (unauthenticated) ──
 
-        _ = app.MapPost( "/api/auth/token", async (
+        _ = app.MapPost( "/api/v1/auth/token", async (
             TokenRequest request,
             ApiKeyService apiKeyService,
             JwtTokenService tokenService,
@@ -46,7 +46,7 @@ public static class AuthEndpoints {
 
         // ── API Key Management ──
 
-        _ = app.MapPost( "/api/auth/keys", async (
+        _ = app.MapPost( "/api/v1/auth/keys", async (
             ApiKeyCreateRequest request,
             ApiKeyService apiKeyService,
             ClaimsPrincipal user,
@@ -66,7 +66,7 @@ public static class AuthEndpoints {
                 request.Name, userRole, userId, request.ExpiresUtc, ct
             );
 
-            return Results.Created( $"/api/auth/keys/{apiKey.Id}", new ApiKeyCreateResponse(
+            return Results.Created( $"/api/v1/auth/keys/{apiKey.Id}", new ApiKeyCreateResponse(
                     apiKey.Id, apiKey.Name, rawKey, apiKey.KeyPrefix, apiKey.Role,
                     apiKey.CreatedUtc, apiKey.ExpiresUtc
                 ) );
@@ -75,7 +75,7 @@ public static class AuthEndpoints {
         .WithTags( "Auth" )
         .RequireAuthorization( Policies.IsAdmin );
 
-        _ = app.MapGet( "/api/auth/keys", async (
+        _ = app.MapGet( "/api/v1/auth/keys", async (
             ApiKeyService apiKeyService,
             CancellationToken ct
         ) => {
@@ -90,7 +90,7 @@ public static class AuthEndpoints {
         .WithTags( "Auth" )
         .RequireAuthorization( Policies.IsAdmin );
 
-        _ = app.MapDelete( "/api/auth/keys/{id}", async (
+        _ = app.MapDelete( "/api/v1/auth/keys/{id}", async (
             Guid id,
             ApiKeyService apiKeyService,
             CancellationToken ct

@@ -92,7 +92,7 @@
         _errorMessage = null;
         try {
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/workflows/{Id}" );
+            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/v1/workflows/{Id}" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load workflow: {ex.Message}";
         } finally {
