@@ -86,6 +86,7 @@ Werkr uses two distinct communication protocols depending on which components ar
 | **User → API** | HTTPS/REST | Direct REST API access |
 | **Server → API** | HTTPS/REST | Server calls API endpoints; Server is not aware of agents |
 | **Agent → API** | gRPC over TLS | All agent interaction — registration, schedule sync, job reporting, configuration push, command dispatch |
+| **Server → API** | SSE (`text/event-stream`) | Real-time workflow run event streaming; relayed to browser via SignalR |
 
 ```mermaid
 flowchart LR
@@ -112,6 +113,10 @@ After agent registration and initial heartbeat, the primary communication patter
 
 A limited set of features (e.g., server address rebroadcast after API address change) may require true API-initiated connections to the agent; if the agent is behind a NAT or firewall without inbound connectivity, these operations will fail and may require manual resolution.
 
+### Server-Sent Events (SSE)
+
+The API exposes SSE endpoints for real-time event streaming (e.g., workflow run job events at `/api/v1/workflows/runs/{runId}/stream`). The Server's `JobEventRelayService` subscribes to these SSE streams and relays events to connected browsers via SignalR hubs. This creates a three-hop real-time pipeline: Agent → gRPC → API → SSE → Server → SignalR → Browser.
+
 ### HTTPS Endpoints
 
 **Server** hosts Blazor Server pages, ASP.NET Identity endpoints (login, 2FA, passkey management, user management), and SignalR hubs for real-time UI updates.
@@ -133,7 +138,7 @@ All protobuf definitions are in `src/Werkr.Common/Protos/`.
 
 **Agent-hosted services** (API → Agent, via agent-initiated persistent connection):
 - **ConnectionManagement** — Heartbeat with pending-approval state sync, server URL change notifications, shared key rotation. Defined in `ConnectionManagement.proto`.
-- **ScheduleInvalidation** — Push notifications when a schedule is modified or deleted. Defined in `ScheduleInvalidation.proto`.
+- **ScheduleInvalidation** — Push notifications when a schedule is modified or deleted, and `NotifyWorkflowDisabled` notifications when a workflow is disabled. Defined in `ScheduleInvalidation.proto`.
 - **OutputFetch** — Retrieves full job output logs from the agent on demand. Defined in `OutputFetch.proto`.
 - **OutputStreaming** — Streams action execution and shell/PowerShell execution logs in real time. Defined in `OutputStreaming.proto`.
 - **Configuration Synchronization** — Pushes configuration updates to agents. *(Planned for 1.0)*
@@ -492,6 +497,8 @@ The security architecture aligns with OWASP Top 10 mitigations and NIST SP 800-6
 All REST endpoints are served under `/api/v1/`. The version prefix is part of the public contract. Existing endpoint contracts remain stable within a major version.
 
 ### Endpoint Organization
+
+> This table describes the target v1.0 API surface. Some domains are fully implemented; others are planned and will be added before the 1.0 release. See [1.0-Target-Featureset.md](1.0-Target-Featureset.md) for the full specification.
 
 | Domain | Description |
 |--------|-------------|
