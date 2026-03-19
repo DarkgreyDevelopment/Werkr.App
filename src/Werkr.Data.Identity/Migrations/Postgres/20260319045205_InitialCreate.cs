@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -139,6 +140,27 @@ public partial class InitialCreate : Migration {
             } );
 
         _ = migrationBuilder.CreateTable(
+            name: "password_history",
+            schema: "werkr_identity",
+            columns: table => new {
+                id = table.Column<long>( type: "bigint", nullable: false )
+                    .Annotation( "Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn ),
+                user_id = table.Column<string>( type: "text", nullable: false ),
+                password_hash = table.Column<string>( type: "character varying(1024)", maxLength: 1024, nullable: false ),
+                created_utc = table.Column<DateTime>( type: "timestamp with time zone", nullable: false )
+            },
+            constraints: table => {
+                _ = table.PrimaryKey( "pk_password_history", x => x.id );
+                _ = table.ForeignKey(
+                    name: "fk_password_history_users_user_id",
+                    column: x => x.user_id,
+                    principalSchema: "werkr_identity",
+                    principalTable: "users",
+                    principalColumn: "id",
+                    onDelete: ReferentialAction.Cascade );
+            } );
+
+        _ = migrationBuilder.CreateTable(
             name: "user_claims",
             schema: "werkr_identity",
             columns: table => new {
@@ -244,6 +266,12 @@ public partial class InitialCreate : Migration {
             column: "key_prefix" );
 
         _ = migrationBuilder.CreateIndex(
+            name: "ix_password_history_user_id",
+            schema: "werkr_identity",
+            table: "password_history",
+            column: "user_id" );
+
+        _ = migrationBuilder.CreateIndex(
             name: "ix_role_claims_role_id",
             schema: "werkr_identity",
             table: "role_claims",
@@ -253,7 +281,7 @@ public partial class InitialCreate : Migration {
             name: "ix_role_permissions_role_id_permission",
             schema: "werkr_identity",
             table: "role_permissions",
-            columns: ["role_id", "permission"],
+            columns: new[] { "role_id", "permission" },
             unique: true );
 
         _ = migrationBuilder.CreateIndex(
@@ -303,6 +331,10 @@ public partial class InitialCreate : Migration {
 
         _ = migrationBuilder.DropTable(
             name: "config_settings",
+            schema: "werkr_identity" );
+
+        _ = migrationBuilder.DropTable(
+            name: "password_history",
             schema: "werkr_identity" );
 
         _ = migrationBuilder.DropTable(

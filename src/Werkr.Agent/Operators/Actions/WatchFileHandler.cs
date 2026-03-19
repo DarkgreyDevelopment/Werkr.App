@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
@@ -15,6 +16,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// finished writing before reporting success.
 /// </summary>
 /// <remarks>Creates a new <see cref="WatchFileHandler"/>.</remarks>
+[ActionCategory( "File monitoring" )]
 public sealed partial class WatchFileHandler(
     IFilePathResolver resolver,
     ILogger<WatchFileHandler> logger,

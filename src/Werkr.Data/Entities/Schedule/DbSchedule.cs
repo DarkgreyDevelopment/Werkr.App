@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Entities.Interfaces;
 
 namespace Werkr.Data.Entities.Schedule;
@@ -50,6 +51,9 @@ public class DbSchedule : ConcurrencyBase, IKey<Guid> {
     /// One-time "Run Now" schedules set this to true.
     /// </summary>
     public bool CatchUpEnabled { get; set; }
+
+    /// <summary>How occurrences on non-business days are handled. Default: suppress.</summary>
+    public ShiftMode ShiftMode { get; set; } = ShiftMode.None;
 
     /// <summary>Navigation property for task links (many-to-many via TaskSchedule).</summary>
     public ICollection<Werkr.Data.Entities.Tasks.TaskSchedule> TaskSchedules { get; set; } = [];

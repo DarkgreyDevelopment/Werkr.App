@@ -56,13 +56,14 @@
 
     private static string GetCategoryIcon( string category ) => category switch {
         "File" => "bi-file-earmark",
+        "Directory" => "bi-folder",
         "Network" => "bi-globe",
         "Process" => "bi-terminal",
         "Archive" => "bi-file-zip",
         "Data" => "bi-database",
-        "Security" => "bi-shield-lock",
-        "System" => "bi-gear",
-        "Text" => "bi-file-text",
+        "ControlFlow" => "bi-arrow-repeat",
+        "File monitoring" => "bi-eye",
+        "Iteration" => "bi-arrow-repeat",
         "Shell" => "bi-terminal-fill",
         "PowerShell" => "bi-code-slash",
         _ => "bi-puzzle"

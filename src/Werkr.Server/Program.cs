@@ -5,6 +5,7 @@ using Serilog;
 using Serilog.Settings.Configuration;
 using Werkr.Common;
 using Werkr.Common.Auth;
+using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Authorization;
@@ -66,6 +67,10 @@ public class Program {
             )
                 ? parsed : DatabaseProvider.Postgres;
             _ = builder.Services.AddWerkrIdentity( dbProvider, connectionString );
+
+            // Password history — NIST-aligned password reuse prevention
+            _ = builder.Services.Configure<PasswordHistoryOptions>(
+                builder.Configuration.GetSection( PasswordHistoryOptions.SectionName ) );
 
             // Permission system (role-permission mapping, authorization policies)
             _ = builder.Services.AddScoped<IPermissionService, PermissionService>( );

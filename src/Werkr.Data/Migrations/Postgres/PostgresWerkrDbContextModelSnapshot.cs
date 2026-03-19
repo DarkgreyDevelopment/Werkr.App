@@ -35,6 +35,12 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(128)")
                         .HasColumnName("active_key_id");
 
+                    b.Property<string>("AgentVersion")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("agent_version");
+
                     b.Property<string>("AllowedPaths")
                         .IsRequired()
                         .HasColumnType("text")
@@ -64,6 +70,10 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Property<bool>("IsServer")
                         .HasColumnType("boolean")
                         .HasColumnName("is_server");
+
+                    b.Property<string>("KeyRotatedAtUtc")
+                        .HasColumnType("text")
+                        .HasColumnName("key_rotated_at_utc");
 
                     b.Property<string>("LastSeen")
                         .HasColumnType("text")
@@ -277,6 +287,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
 
+                    b.Property<int>("ShiftMode")
+                        .HasColumnType("integer")
+                        .HasColumnName("shift_mode");
+
                     b.Property<long>("StopTaskAfterMinutes")
                         .HasColumnType("bigint")
                         .HasColumnName("stop_task_after_minutes");
@@ -364,6 +378,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("updated_utc");
+
+                    b.Property<int>("WorkingDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("working_days");
 
                     b.HasKey("Id")
                         .HasName("pk_holiday_calendars");
@@ -559,6 +577,12 @@ namespace Werkr.Data.Migrations.Postgres
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("action");
+
                     b.Property<string>("CalendarName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -589,6 +613,10 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Property<Guid>("ScheduleId")
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
+
+                    b.Property<string>("ShiftedToUtcTime")
+                        .HasColumnType("text")
+                        .HasColumnName("shifted_to_utc_time");
 
                     b.HasKey("Id")
                         .HasName("pk_schedule_audit_log");

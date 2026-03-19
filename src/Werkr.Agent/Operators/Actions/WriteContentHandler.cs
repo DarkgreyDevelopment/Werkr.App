@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -12,6 +13,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>WriteContent</c> action - writes or appends text content to a file.
 /// </summary>
 /// <remarks>Creates a new <see cref="WriteContentHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class WriteContentHandler(
     IFilePathResolver resolver,
     ILogger<WriteContentHandler> logger

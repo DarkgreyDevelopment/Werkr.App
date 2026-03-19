@@ -81,7 +81,7 @@ public sealed partial class AgentConnectionManager(
     /// </summary>
     /// <param name="connection">The resolved <see cref="RegisteredConnection"/>.</param>
     /// <param name="callId">Optional call ID for tracing. Generated if null.</param>
-    /// <param name="timeout">Command timeout. Defaults to 30 minutes if null.</param>
+    /// <param name="timeout">Command timeout. Defaults to 60 minutes if null.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Configured <see cref="CallOptions"/>.</returns>
     public static CallOptions CreateCallOptions(
@@ -97,7 +97,7 @@ public sealed partial class AgentConnectionManager(
             { "x-werkr-call-id", (callId ?? Guid.NewGuid( )).ToString( ) }
         };
 
-        TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromMinutes( 30 );
+        TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromMinutes( 60 );
         DateTime deadline = DateTime.UtcNow + effectiveTimeout;
 
         return new CallOptions(

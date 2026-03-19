@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -12,6 +13,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// (exists, size, created, modified, isDirectory) as structured JSON output.
 /// </summary>
 /// <remarks>Creates a new <see cref="GetFileInfoHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class GetFileInfoHandler( IFilePathResolver resolver, ILogger<GetFileInfoHandler> logger ) : IActionHandler {
 
     /// <summary>

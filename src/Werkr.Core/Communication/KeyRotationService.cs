@@ -24,37 +24,48 @@ namespace Werkr.Core.Communication;
 /// <param name="connectionManager">Singleton gRPC channel cache.</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <param name="rotationInterval">How often to rotate keys (default: 24 hours).</param>
+/// <param name="gracePeriod">How long to retain the previous key after rotation (default: 5 minutes).</param>
 public partial class KeyRotationService(
     IServiceScopeFactory scopeFactory,
     AgentConnectionManager connectionManager,
     ILogger<KeyRotationService> logger,
-    TimeSpan? rotationInterval = null
+    TimeSpan? rotationInterval = null,
+    TimeSpan? gracePeriod = null
 ) : BackgroundService {
     private readonly TimeSpan _rotationInterval = rotationInterval ?? TimeSpan.FromHours( 24 );
+    private readonly TimeSpan _gracePeriod = gracePeriod ?? TimeSpan.FromMinutes( 5 );
 
     /// <inheritdoc/>
     protected override async Task ExecuteAsync( CancellationToken stoppingToken ) {
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
-                "KeyRotationService started. Rotation interval: {Interval}.",
-                _rotationInterval
+                "KeyRotationService started. Rotation interval: {Interval}, Grace period: {GracePeriod}.",
+                _rotationInterval,
+                _gracePeriod
             );
         }
 
-        while (!stoppingToken.IsCancellationRequested) {
-            // Wait first, then rotate — gives the system time to stabilize after startup
-            await Task.Delay(
-                _rotationInterval,
-                stoppingToken
-            );
+        DateTime nextRotation = DateTime.UtcNow + _rotationInterval;
+        TimeSpan graceCheckInterval = TimeSpan.FromSeconds( 60 );
 
+        while (!stoppingToken.IsCancellationRequested) {
+            await Task.Delay( graceCheckInterval, stoppingToken );
+
+            // Grace period cleanup (runs every 60s)
             try {
-                await RotateAllAgentsAsync( stoppingToken );
+                await ClearExpiredGracePeriodsAsync( stoppingToken );
             } catch (Exception ex) when (ex is not OperationCanceledException) {
-                logger.LogError(
-                    ex,
-                    "Error in KeyRotationService sweep."
-                );
+                logger.LogError( ex, "Error clearing expired grace periods." );
+            }
+
+            // Key rotation (runs on original interval)
+            if (DateTime.UtcNow >= nextRotation) {
+                try {
+                    await RotateAllAgentsAsync( stoppingToken );
+                } catch (Exception ex) when (ex is not OperationCanceledException) {
+                    logger.LogError( ex, "Key rotation sweep failed." );
+                }
+                nextRotation = DateTime.UtcNow + _rotationInterval;
             }
         }
     }
@@ -85,6 +96,40 @@ public partial class KeyRotationService(
                 dbContext,
                 ct
             );
+        }
+    }
+
+    /// <summary>
+    /// Clears <see cref="RegisteredConnection.PreviousSharedKey"/> for agents whose grace
+    /// period has expired (i.e., <see cref="RegisteredConnection.KeyRotatedAtUtc"/> is older
+    /// than <see cref="_gracePeriod"/>).
+    /// </summary>
+    internal async Task ClearExpiredGracePeriodsAsync( CancellationToken ct ) {
+        using IServiceScope scope = scopeFactory.CreateScope( );
+        WerkrDbContext dbContext = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
+
+        DateTime cutoff = DateTime.UtcNow - _gracePeriod;
+
+        List<RegisteredConnection> expired = await dbContext.RegisteredConnections
+            .Where( c => c.IsServer
+                && c.PreviousSharedKey != null
+                && c.KeyRotatedAtUtc != null )
+            .ToListAsync( ct );
+
+        // Client-side filter for DateTime comparison (SQLite stores as ISO string)
+        expired = [.. expired.Where( c => c.KeyRotatedAtUtc < cutoff )];
+
+        foreach (RegisteredConnection agent in expired) {
+            agent.PreviousSharedKey = null;
+            agent.PreviousKeyId = null;
+            agent.KeyRotatedAtUtc = null;
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation( "Grace period expired for agent {AgentId}. Previous key cleared.", agent.Id );
+            }
+        }
+
+        if (expired.Count > 0) {
+            _ = await dbContext.SaveChangesAsync( ct );
         }
     }
 
@@ -192,6 +237,7 @@ public partial class KeyRotationService(
             agent.PreviousKeyId = agent.ActiveKeyId;
             agent.SharedKey = newKey;
             agent.ActiveKeyId = newKeyId;
+            agent.KeyRotatedAtUtc = DateTime.UtcNow;
             _ = await dbContext.SaveChangesAsync( ct );
 
             // 6. Reset the cached channel so it picks up the refreshed connection

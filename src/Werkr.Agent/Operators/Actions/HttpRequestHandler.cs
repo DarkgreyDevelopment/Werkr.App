@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
+using Werkr.Common.Attributes;
 using Werkr.Common.Configuration;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
@@ -18,6 +19,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// request body from parameter or workflow variable, and optional file output.
 /// </summary>
 /// <remarks>Creates a new <see cref="HttpRequestHandler"/>.</remarks>
+[ActionCategory( "Network" )]
 public sealed partial class HttpRequestHandler(
     IUrlValidator urlValidator,
     IHttpClientFactory httpClientFactory,
@@ -67,6 +69,25 @@ public sealed partial class HttpRequestHandler(
                 foreach (KeyValuePair<string, string> header in p.Headers) {
                     _ = request.Headers.TryAddWithoutValidation( header.Key, header.Value );
                 }
+            }
+
+            // Authentication
+            switch (p.AuthType?.ToLowerInvariant( )) {
+                case "basic":
+                    string credentials = Convert.ToBase64String(
+                        Encoding.UTF8.GetBytes( $"{p.AuthUsername}:{p.AuthCredential}" ) );
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue( "Basic", credentials );
+                    break;
+                case "bearer":
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue( "Bearer", p.AuthCredential );
+                    break;
+                case "apikey":
+                    string headerName = p.AuthHeaderName ?? "X-Api-Key";
+                    _ = request.Headers.TryAddWithoutValidation( headerName, p.AuthCredential );
+                    break;
+                case null:
+                case "":
+                    break;
             }
 
             // Body: parameter takes precedence over inputVariableValue

@@ -12,12 +12,12 @@ namespace Werkr.Tests;
 public class ActionRegistryTests {
     /// <summary>
     /// Verifies that the <see cref="ActionRegistry.All"/> collection
-    /// contains exactly twenty-seven registered <see cref="ActionFormDescriptor"/>
-    /// entries representing all supported actions.
+    /// contains exactly thirty-one registered <see cref="ActionFormDescriptor"/>
+    /// entries representing all supported actions (27 action handlers + 4 Shell/PowerShell operators).
     /// </summary>
     [TestMethod]
-    public void All_Contains_TwentySeven_Actions( ) {
-        Assert.HasCount( 27, ActionRegistry.All );
+    public void All_Contains_ThirtyOne_Actions( ) {
+        Assert.HasCount( 31, ActionRegistry.All );
     }
 
     /// <summary>
@@ -64,6 +64,10 @@ public class ActionRegistryTests {
     [DataRow( "SendEmail" )]
     [DataRow( "SendWebhook" )]
     [DataRow( "TransformJson" )]
+    [DataRow( "ShellCommand" )]
+    [DataRow( "ShellScript" )]
+    [DataRow( "PowerShellCommand" )]
+    [DataRow( "PowerShellScript" )]
     public void Actions_Contains_Expected_Key( string key ) {
         Assert.IsTrue(
             ActionRegistry.Actions.ContainsKey( key ),
@@ -314,16 +318,16 @@ public class ActionRegistryTests {
     /// </summary>
     [TestMethod]
     [DataRow( "File" )]
-    [DataRow( "Content" )]
-    [DataRow( "File Info" )]
+    [DataRow( "Directory" )]
     [DataRow( "Archive" )]
     [DataRow( "Process" )]
-    [DataRow( "Control" )]
-    [DataRow( "Event" )]
+    [DataRow( "ControlFlow" )]
+    [DataRow( "File monitoring" )]
     [DataRow( "Iteration" )]
     [DataRow( "Network" )]
-    [DataRow( "Notification" )]
     [DataRow( "Data" )]
+    [DataRow( "Shell" )]
+    [DataRow( "PowerShell" )]
     public void Categories_Contains_Expected_Value( string category ) {
         CollectionAssert.Contains(
             (System.Collections.ICollection)ActionRegistry.Categories,
@@ -397,65 +401,57 @@ public class ActionRegistryTests {
     // ── Category membership tests ──────────────────────────────────────
 
     /// <summary>
-    /// Verifies that the "File" category contains exactly the seven expected file-operation actions.
+    /// Verifies that the "File" category contains eleven actions (original file ops +
+    /// merged Content + GetFileInfo).
     /// </summary>
     [TestMethod]
-    public void File_Category_Contains_Seven_Actions( ) {
+    public void File_Category_Contains_Eleven_Actions( ) {
         IReadOnlyList<ActionFormDescriptor> fileActions = GetCategoryActions( "File" );
-        Assert.HasCount( 7, fileActions );
+        Assert.HasCount( 11, fileActions );
         List<string> keys = [.. fileActions.Select( a => a.Key )];
-        string[] expected = ["CopyFile", "MoveFile", "RenameFile", "DeleteFile", "CreateFile", "CreateDirectory", "TestExists"];
+        string[] expected = [
+            "CopyFile", "MoveFile", "RenameFile", "DeleteFile", "CreateFile",
+            "TestExists", "ClearContent", "WriteContent", "ReadContent",
+            "FindReplace", "GetFileInfo"
+        ];
         foreach (string key in expected) {
             Assert.Contains( key, keys, $"File category missing action: {key}" );
         }
     }
 
     /// <summary>
-    /// Verifies that the "Content" category contains exactly four content-operation actions.
+    /// Verifies that the "Directory" category contains two actions.
     /// </summary>
     [TestMethod]
-    public void Content_Category_Contains_Four_Actions( ) {
-        IReadOnlyList<ActionFormDescriptor> actions = GetCategoryActions( "Content" );
-        Assert.HasCount( 4, actions );
+    public void Directory_Category_Contains_Two_Actions( ) {
+        IReadOnlyList<ActionFormDescriptor> actions = GetCategoryActions( "Directory" );
+        Assert.HasCount( 2, actions );
         List<string> keys = [.. actions.Select( a => a.Key )];
-        string[] expected = ["ClearContent", "WriteContent", "ReadContent", "FindReplace"];
-        foreach (string key in expected) {
-            Assert.Contains( key, keys, $"Content category missing action: {key}" );
-        }
+        Assert.Contains( "CreateDirectory", keys );
+        Assert.Contains( "ListDirectory", keys );
     }
 
     /// <summary>
-    /// Verifies that the "Network" category contains exactly four network-operation actions.
+    /// Verifies that the "Network" category contains six actions (original network ops +
+    /// merged SendEmail, SendWebhook).
     /// </summary>
     [TestMethod]
-    public void Network_Category_Contains_Four_Actions( ) {
+    public void Network_Category_Contains_Six_Actions( ) {
         IReadOnlyList<ActionFormDescriptor> actions = GetCategoryActions( "Network" );
-        Assert.HasCount( 4, actions );
+        Assert.HasCount( 6, actions );
         List<string> keys = [.. actions.Select( a => a.Key )];
-        string[] expected = ["HttpRequest", "DownloadFile", "TestConnection", "UploadFile"];
+        string[] expected = ["HttpRequest", "DownloadFile", "TestConnection", "UploadFile", "SendEmail", "SendWebhook"];
         foreach (string key in expected) {
             Assert.Contains( key, keys, $"Network category missing action: {key}" );
         }
     }
 
     /// <summary>
-    /// Verifies that the "Notification" category contains exactly two notification actions.
-    /// </summary>
-    [TestMethod]
-    public void Notification_Category_Contains_Two_Actions( ) {
-        IReadOnlyList<ActionFormDescriptor> actions = GetCategoryActions( "Notification" );
-        Assert.HasCount( 2, actions );
-        List<string> keys = [.. actions.Select( a => a.Key )];
-        Assert.Contains( "SendEmail", keys );
-        Assert.Contains( "SendWebhook", keys );
-    }
-
-    /// <summary>
     /// Verifies that single-entry categories each have exactly one action.
     /// </summary>
     [TestMethod]
-    [DataRow( "Control", "Delay" )]
-    [DataRow( "Event", "WatchFile" )]
+    [DataRow( "ControlFlow", "Delay" )]
+    [DataRow( "File monitoring", "WatchFile" )]
     [DataRow( "Iteration", "ForEach" )]
     [DataRow( "Data", "TransformJson" )]
     public void SingleEntry_Categories_Have_One_Action( string category, string expectedKey ) {
@@ -652,7 +648,7 @@ public class ActionRegistryTests {
     // ── Per-action field count verification ────────────────────────────
 
     /// <summary>
-    /// Verifies exact field counts for all 27 actions, ensuring no accidental
+    /// Verifies exact field counts for all 31 actions, ensuring no accidental
     /// additions or removals of field definitions.
     /// </summary>
     [TestMethod]
@@ -676,13 +672,17 @@ public class ActionRegistryTests {
     [DataRow( "Delay", 2 )]
     [DataRow( "WatchFile", 7 )]
     [DataRow( "ForEach", 1 )]
-    [DataRow( "HttpRequest", 9 )]
+    [DataRow( "HttpRequest", 13 )]
     [DataRow( "DownloadFile", 5 )]
     [DataRow( "TestConnection", 5 )]
     [DataRow( "UploadFile", 6 )]
     [DataRow( "SendEmail", 11 )]
     [DataRow( "SendWebhook", 4 )]
     [DataRow( "TransformJson", 3 )]
+    [DataRow( "ShellCommand", 2 )]
+    [DataRow( "ShellScript", 3 )]
+    [DataRow( "PowerShellCommand", 2 )]
+    [DataRow( "PowerShellScript", 3 )]
     public void Action_Has_Expected_Field_Count( string key, int expectedCount ) {
         ActionFormDescriptor desc = ActionRegistry.Actions[key];
         Assert.HasCount( expectedCount, desc.Fields,

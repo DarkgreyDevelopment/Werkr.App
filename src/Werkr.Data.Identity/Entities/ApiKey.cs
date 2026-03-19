@@ -11,7 +11,7 @@ public class ApiKey {
     public Guid Id { get; set; }
 
     /// <summary>
-    /// The hashed API key value (SHA-256).
+    /// The hashed API key value (SHA-512).
     /// The raw key is only returned once at creation time.
     /// </summary>
     [Required]

@@ -15,7 +15,7 @@ namespace Werkr.Data.Identity.Migrations.Sqlite
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.4");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
@@ -297,6 +297,37 @@ namespace Werkr.Data.Identity.Migrations.Sqlite
                     b.ToTable("config_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Werkr.Data.Identity.Entities.PasswordHistory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_history");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_password_history_user_id");
+
+                    b.ToTable("password_history", (string)null);
+                });
+
             modelBuilder.Entity("Werkr.Data.Identity.Entities.RolePermission", b =>
                 {
                     b.Property<long>("Id")
@@ -494,6 +525,18 @@ namespace Werkr.Data.Identity.Migrations.Sqlite
                         .HasConstraintName("fk_api_keys_users_created_by_user_id");
 
                     b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Identity.Entities.PasswordHistory", b =>
+                {
+                    b.HasOne("Werkr.Data.Identity.Entities.WerkrUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_history_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Werkr.Data.Identity.Entities.RolePermission", b =>

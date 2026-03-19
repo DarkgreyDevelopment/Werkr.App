@@ -141,22 +141,6 @@ public partial class AgentHealthCheckService(
             }
             agent.LastSeen = DateTime.UtcNow;
 
-            // Grace period cleanup: if the heartbeat succeeded with the current key,
-            // the agent has confirmed the key rotation. Clear the previous key.
-            if (agent.PreviousSharedKey is not null) {
-                if (logger.IsEnabled( LogLevel.Information )) {
-                    logger.LogInformation(
-                        "Clearing PreviousSharedKey for Agent {AgentId} ({Name}). " +
-                        "Heartbeat confirmed current key is active (PreviousKeyId={PreviousKeyId}).",
-                        agent.Id,
-                        agent.ConnectionName,
-                        agent.PreviousKeyId
-                    );
-                }
-                agent.PreviousSharedKey = null;
-                agent.PreviousKeyId = null;
-            }
-
             _ = await dbContext.SaveChangesAsync( ct );
         } catch (OperationCanceledException) {
             throw;

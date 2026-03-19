@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -14,6 +15,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// multipart/form-data.
 /// </summary>
 /// <remarks>Creates a new <see cref="UploadFileHandler"/>.</remarks>
+[ActionCategory( "Network" )]
 public sealed partial class UploadFileHandler(
     IUrlValidator urlValidator,
     IHttpClientFactory httpClientFactory,

@@ -7,11 +7,13 @@ namespace Werkr.Common.Models;
 /// <param name="Status">Current connection status.</param>
 /// <param name="LastSeen">Last communication timestamp.</param>
 /// <param name="RegisteredAt">When the connection was established.</param>
+/// <param name="AgentVersion">Last-known agent version.</param>
 public sealed record AgentListDto(
     Guid Id,
     string ConnectionName,
     string RemoteUrl,
     string Status,
     DateTime? LastSeen,
-    DateTime RegisteredAt
+    DateTime RegisteredAt,
+    string? AgentVersion = null
 );

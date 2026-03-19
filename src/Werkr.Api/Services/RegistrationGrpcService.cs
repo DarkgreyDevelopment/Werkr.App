@@ -37,6 +37,7 @@ public partial class RegistrationGrpcService(
                 request.EncryptedAgentPublicKey.ToByteArray( ),
                 request.AgentUrl,
                 request.AgentName,
+                request.AgentVersion,
                 context.CancellationToken );
 
             return new RegisterAgentResponse {

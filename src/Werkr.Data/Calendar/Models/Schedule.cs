@@ -34,4 +34,7 @@ public class Schedule {
 
     /// <summary>Mode of the attached holiday calendar (blocklist/allowlist).</summary>
     public HolidayCalendarMode? HolidayCalendarMode { get; set; }
+
+    /// <summary>How occurrences on non-business days are handled.</summary>
+    public ShiftMode? ShiftMode { get; set; }
 }

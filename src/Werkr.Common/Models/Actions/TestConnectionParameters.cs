@@ -10,8 +10,10 @@ public sealed record TestConnectionParameters {
     /// <summary>The hostname or IP address to connect to.</summary>
     public required string Host { get; init; }
 
-    /// <summary>The port number to connect to.</summary>
-    public required int Port { get; init; }
+    /// <summary>
+    /// The port number to connect to. Required for TCP/HTTP/HTTPS; ignored for ICMP.
+    /// </summary>
+    public int? Port { get; init; }
 
     /// <summary>Connection protocol. Default: <see cref="ConnectionProtocol.Tcp"/>.</summary>
     public ConnectionProtocol Protocol { get; init; } = ConnectionProtocol.Tcp;

@@ -70,7 +70,8 @@ public partial class AgentRegistrationHandler( ILogger<AgentRegistrationHandler>
             BundleId = Google.Protobuf.ByteString.CopyFrom( payload.BundleId ),
             EncryptedAgentPublicKey = Google.Protobuf.ByteString.CopyFrom( encryptedAgentPublicKey ),
             AgentUrl = agentUrl,
-            AgentName = Environment.MachineName
+            AgentName = Environment.MachineName,
+            AgentVersion = VersionHelper.GetAgentVersion( ),
         };
 
         RegisterAgentResponse response;

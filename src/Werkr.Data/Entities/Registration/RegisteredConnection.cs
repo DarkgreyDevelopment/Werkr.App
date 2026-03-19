@@ -84,6 +84,13 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     [MaxLength( 128 )]
     public string? PreviousKeyId { get; set; }
 
+    /// <summary>
+    /// UTC timestamp of the most recent key rotation. Used by the grace period
+    /// timer to determine when to clear <see cref="PreviousSharedKey"/>.
+    /// Null when no rotation has occurred or grace period has expired.
+    /// </summary>
+    public DateTime? KeyRotatedAtUtc { get; set; }
+
     /// <summary>True if this side is the Server in the relationship; false if Agent.</summary>
     public bool IsServer { get; set; }
 
@@ -112,4 +119,8 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     /// on all built-in action handlers. Default <see langword="false"/> preserves backward compatibility.
     /// </summary>
     public bool EnforceAllowlist { get; set; }
+
+    /// <summary>Last-known agent version, updated at registration and on each heartbeat.</summary>
+    [MaxLength( 128 )]
+    public string AgentVersion { get; set; } = string.Empty;
 }

@@ -131,6 +131,7 @@ public sealed partial class ConnectionManagementService(
             Acknowledged = true,
             ServerVersion = typeof( ConnectionManagementService ).Assembly
                 .GetName( ).Version?.ToString( ) ?? "unknown",
+            AgentVersion = VersionHelper.GetAgentVersion( ),
         };
 
         return Task.FromResult(

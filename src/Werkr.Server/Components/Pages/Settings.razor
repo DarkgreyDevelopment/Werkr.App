@@ -237,7 +237,7 @@
 
     private string _serverName = "Werkr Server";
     private string _serverUrl = "Not configured";
-    private int _defaultCommandTimeoutMinutes = 30;
+    private int _defaultCommandTimeoutMinutes = 60;
     private int _defaultKeySize = 4096;
     private bool _allowRegistration = true;
     private string _otlpEndpoint = string.Empty;
@@ -258,7 +258,7 @@
 
         _defaultCommandTimeoutMinutes = int.TryParse( Configuration["Werkr:DefaultCommandTimeoutMinutes"], out int timeoutMinutes )
             ? timeoutMinutes
-            : 30;
+            : 60;
 
         _defaultKeySize = int.TryParse( Configuration["Werkr:DefaultKeySize"], out int keySize )
             ? keySize

@@ -174,6 +174,194 @@ public static class ScheduleCalculator {
         );
     }
 
+    /// <summary>Default working days: Monday through Friday.</summary>
+    private const DaysOfWeek DefaultWorkingDays = DaysOfWeek.Monday | DaysOfWeek.Tuesday
+        | DaysOfWeek.Wednesday | DaysOfWeek.Thursday | DaysOfWeek.Friday;
+
+    /// <summary>Maximum number of days to walk when searching for a business day (prevents infinite loops).</summary>
+    private const int MaxWalkDays = 30;
+
+    /// <summary>
+    /// Holiday-aware overload with shift mode support. Computes raw occurrences via existing recurrence
+    /// algorithms, then applies holiday filtering with optional shifting per the specified <paramref name="shiftMode"/>.
+    /// </summary>
+    /// <param name="schedule">The schedule composite model.</param>
+    /// <param name="endOfWindow">End of the preview window (UTC).</param>
+    /// <param name="holidayDates">Pre-materialized holiday dates to filter against, or null for no filtering.</param>
+    /// <param name="mode">Blocklist (suppress matches) or Allowlist (keep only matches), or null for no filtering.</param>
+    /// <param name="shiftMode">How to handle occurrences that fall on non-business days.</param>
+    /// <param name="workingDays">Bitmask of days considered working days.</param>
+    /// <returns>A <see cref="ScheduleOccurrenceResult"/> with both kept and suppressed/shifted occurrences.</returns>
+    public static ScheduleOccurrenceResult CalculateOccurrences(
+        Schedule schedule,
+        DateTime endOfWindow,
+        IReadOnlyList<HolidayDate>? holidayDates,
+        HolidayCalendarMode? mode,
+        ShiftMode shiftMode,
+        DaysOfWeek workingDays = DefaultWorkingDays
+    ) {
+        // Delegate to the existing 3-arg overload when no shifting is needed
+        if (shiftMode == ShiftMode.None) {
+            return CalculateOccurrences( schedule, endOfWindow, holidayDates, mode );
+        }
+
+        IReadOnlyList<DateTime> rawOccurrences = CalculateOccurrences( schedule, endOfWindow );
+
+        if (holidayDates is null || !holidayDates.Any( ) || mode is null) {
+            return new ScheduleOccurrenceResult( rawOccurrences, [] );
+        }
+
+        List<DateTime> kept = [];
+        List<SuppressedOccurrence> suppressed = [];
+
+        foreach (DateTime occ in rawOccurrences) {
+            HolidayDate? matchingHoliday = holidayDates.FirstOrDefault( h => IsOccurrenceOnHoliday( occ, h ) );
+
+            if (mode == HolidayCalendarMode.Blocklist) {
+                if (matchingHoliday is not null) {
+                    // Occurrence falls on a holiday — shift it
+                    DateTime? shifted = FindShiftedDate( occ, shiftMode, workingDays,
+                        holidayDates, matchingHoliday );
+                    if (shifted.HasValue) {
+                        kept.Add( shifted.Value );
+                        suppressed.Add( new SuppressedOccurrence( occ, matchingHoliday.Name,
+                            $"Shifted from {matchingHoliday.Name} to {shifted.Value:O}",
+                            shifted.Value, "Shifted" ) );
+                    } else {
+                        // Walk guard hit — suppress instead
+                        suppressed.Add( new SuppressedOccurrence( occ, matchingHoliday.Name,
+                            $"Blocked by {matchingHoliday.Name} (no business day within {MaxWalkDays} days)" ) );
+                    }
+                } else {
+                    kept.Add( occ );
+                }
+            } else /* Allowlist */ {
+                if (matchingHoliday is not null) {
+                    kept.Add( occ );
+                } else {
+                    suppressed.Add( new SuppressedOccurrence( occ, string.Empty,
+                        "Not on an allowed holiday" ) );
+                }
+            }
+        }
+
+        return new ScheduleOccurrenceResult( kept.AsReadOnly( ), suppressed.AsReadOnly( ) );
+    }
+
+    /// <summary>
+    /// Finds the shifted date for an occurrence that falls on a non-business day,
+    /// using the specified <paramref name="shiftMode"/> strategy.
+    /// Returns null if no business day is found within <see cref="MaxWalkDays"/>.
+    /// </summary>
+    private static DateTime? FindShiftedDate(
+        DateTime occurrence,
+        ShiftMode shiftMode,
+        DaysOfWeek workingDays,
+        IReadOnlyList<HolidayDate> holidays,
+        HolidayDate matchingHoliday
+    ) {
+        return shiftMode switch {
+            ShiftMode.NextBusinessDay => WalkToBusinessDay( occurrence, 1, workingDays, holidays ),
+            ShiftMode.PreviousBusinessDay => WalkToBusinessDay( occurrence, -1, workingDays, holidays ),
+            ShiftMode.NearestBusinessDay => FindNearestBusinessDay( occurrence, workingDays,
+                holidays, matchingHoliday ),
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Walks forward or backward from <paramref name="origin"/> by <paramref name="direction"/>
+    /// (1 = forward, -1 = backward) until a working day that is not a holiday is found.
+    /// Returns null if <see cref="MaxWalkDays"/> is exceeded.
+    /// </summary>
+    private static DateTime? WalkToBusinessDay(
+        DateTime origin,
+        int direction,
+        DaysOfWeek workingDays,
+        IReadOnlyList<HolidayDate> holidays
+    ) {
+        for (int i = 1; i <= MaxWalkDays; i++) {
+            DateTime candidate = origin.AddDays( i * direction );
+            if (IsWorkingDay( DateOnly.FromDateTime( candidate ), workingDays, holidays )) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the nearest business day to <paramref name="origin"/>. When equidistant,
+    /// uses the holiday's <see cref="ObservanceRule"/> as tiebreaker.
+    /// </summary>
+    private static DateTime? FindNearestBusinessDay(
+        DateTime origin,
+        DaysOfWeek workingDays,
+        IReadOnlyList<HolidayDate> holidays,
+        HolidayDate matchingHoliday
+    ) {
+        DateTime? next = WalkToBusinessDay( origin, 1, workingDays, holidays );
+        DateTime? prev = WalkToBusinessDay( origin, -1, workingDays, holidays );
+
+        if (next is null && prev is null) {
+            return null;
+        }
+        if (next is null) {
+            return prev;
+        }
+        if (prev is null) {
+            return next;
+        }
+
+        double distNext = ( next.Value - origin ).TotalDays;
+        double distPrev = ( origin - prev.Value ).TotalDays;
+
+        if (distNext < distPrev) {
+            return next;
+        }
+        if (distPrev < distNext) {
+            return prev;
+        }
+
+        // Equidistant: use observance rule as tiebreaker
+        // Look up the ObservanceRule from the matching holiday's generating rule
+        ObservanceRule obsRule = ObservanceRule.None;
+        if (matchingHoliday.GeneratedByRule is not null) {
+            obsRule = matchingHoliday.GeneratedByRule.ObservanceRule;
+        }
+
+        // SaturdayToMonday favors forward; others (Friday-preference) favor backward
+        return obsRule == ObservanceRule.SaturdayToMonday ? next : prev;
+    }
+
+    /// <summary>
+    /// Checks whether a given date is a working day: it must fall on one of the
+    /// <paramref name="workingDays"/> and must not be a holiday.
+    /// </summary>
+    internal static bool IsWorkingDay(
+        DateOnly date,
+        DaysOfWeek workingDays,
+        IReadOnlyList<HolidayDate> holidays
+    ) {
+        // Check working day bitmask
+        DaysOfWeek dayFlag = date.DayOfWeek switch {
+            DayOfWeek.Monday => DaysOfWeek.Monday,
+            DayOfWeek.Tuesday => DaysOfWeek.Tuesday,
+            DayOfWeek.Wednesday => DaysOfWeek.Wednesday,
+            DayOfWeek.Thursday => DaysOfWeek.Thursday,
+            DayOfWeek.Friday => DaysOfWeek.Friday,
+            DayOfWeek.Saturday => DaysOfWeek.Saturday,
+            DayOfWeek.Sunday => DaysOfWeek.Sunday,
+            _ => DaysOfWeek.None,
+        };
+
+        if ((workingDays & dayFlag) == DaysOfWeek.None) {
+            return false;
+        }
+
+        // Check if it's a holiday (full-day check only for walk purposes)
+        return !holidays.Any( h => h.Date == date );
+    }
+
     /// <summary>
     /// Checks whether a UTC occurrence falls on a holiday date, respecting optional time windows.
     /// </summary>

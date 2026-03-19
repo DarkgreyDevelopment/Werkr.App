@@ -52,6 +52,8 @@ message HeartbeatResponse {
   bool acknowledged = 1;
   // Server's assembly version string.
   string server_version = 2;
+  // Agent's assembly version string.
+  string agent_version = 3;
 }
 
 // --- RotateSharedKey ---

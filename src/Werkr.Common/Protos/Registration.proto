@@ -22,6 +22,9 @@ message RegisterAgentRequest {
 
   // Human-readable Agent name
   string agent_name = 4;
+
+  // Agent's assembly version string
+  string agent_version = 5;
 }
 
 message RegisterAgentResponse {

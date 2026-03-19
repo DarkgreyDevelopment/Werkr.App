@@ -57,6 +57,8 @@ message ScheduleDefinition {
   bool has_holiday_calendar = 13;
   string holiday_calendar_mode = 14;
   bool catch_up_enabled = 15;
+  int32 shift_mode = 16;             // 0=None, 1=NextBusinessDay, 2=PreviousBusinessDay, 3=NearestBusinessDay
+  CalendarDefinition calendar = 17;  // Full calendar with rules for client-side evaluation
 }
 
 message DailyRecurrenceDef {
@@ -147,6 +149,28 @@ message HolidayDateMessage {
   string window_time_zone_id = 6;
 }
 
+message HolidayRuleDefinition {
+  string name = 1;
+  int32 rule_type = 2;             // 0=FixedDate, 1=NthWeekdayOfMonth, 2=LastWeekdayOfMonth
+  int32 month = 3;                 // 1-12
+  int32 day = 4;                   // 1-31 for FixedDate
+  int32 day_of_week = 5;           // 0=Sunday through 6=Saturday
+  int32 week_number = 6;           // 1-5 for NthWeekdayOfMonth
+  int32 observance_rule = 7;       // maps to ObservanceRule enum
+  int32 year_start = 8;            // 0 = no lower bound
+  int32 year_end = 9;              // 0 = no upper bound
+  string window_start = 10;        // TimeOnly ISO format or empty
+  string window_end = 11;          // TimeOnly ISO format or empty
+  string window_time_zone_id = 12;
+}
+
+message CalendarDefinition {
+  string calendar_id = 1;
+  string name = 2;
+  repeated HolidayRuleDefinition holiday_rules = 3;
+  int32 working_days = 4;          // DaysOfWeek flags bitmask
+}
+
 // ── Audit Log Submission ──
 
 message SubmitAuditLogRequest {
@@ -158,6 +182,8 @@ message AuditLogEntry {
   string occurrence_utc = 1;
   string holiday_name = 2;
   string reason = 3;
+  string action = 4;              // "Suppressed" or "Shifted"
+  string shifted_to_utc = 5;      // ISO 8601 datetime or empty
 }
 
 message SubmitAuditLogResponse {

@@ -181,7 +181,7 @@ public sealed partial class ScheduleSyncGrpcService(
             Name = task.Name,
             ActionType = (int) task.ActionType,
             Content = task.Content,
-            TimeoutMinutes = task.TimeoutMinutes ?? 30,
+            TimeoutMinutes = task.TimeoutMinutes ?? 60,
             SyncIntervalMinutes = task.SyncIntervalMinutes,
             Schedule = MapScheduleDefinition( schedule ),
             SuccessCriteria = task.SuccessCriteria ?? string.Empty,
@@ -256,6 +256,37 @@ public sealed partial class ScheduleSyncGrpcService(
         // Catch-up flag
         def.CatchUpEnabled = schedule.DbSchedule.CatchUpEnabled;
 
+        // ShiftMode (Epic 1.4.4)
+        def.ShiftMode = (int)schedule.DbSchedule.ShiftMode;
+
+        // Calendar definition with rules (Epic 1.4.3)
+        if (schedule.HolidayCalendar is not null) {
+            CalendarDefinition calDef = new( ) {
+                CalendarId = schedule.HolidayCalendar.Id.ToString( ),
+                Name = schedule.HolidayCalendar.Name,
+                WorkingDays = (int) schedule.HolidayCalendar.WorkingDays,
+            };
+
+            foreach (HolidayRule rule in schedule.HolidayCalendar.Rules) {
+                calDef.HolidayRules.Add( new HolidayRuleDefinition {
+                    Name = rule.Name,
+                    RuleType = (int)rule.RuleType,
+                    Month = rule.Month ?? 0,
+                    Day = rule.Day ?? 0,
+                    DayOfWeek = rule.DayOfWeek.HasValue ? (int)rule.DayOfWeek.Value : 0,
+                    WeekNumber = rule.WeekNumber ?? 0,
+                    ObservanceRule = (int)rule.ObservanceRule,
+                    YearStart = rule.YearStart ?? 0,
+                    YearEnd = rule.YearEnd ?? 0,
+                    WindowStart = rule.WindowStart?.ToString( "O" ) ?? string.Empty,
+                    WindowEnd = rule.WindowEnd?.ToString( "O" ) ?? string.Empty,
+                    WindowTimeZoneId = rule.WindowTimeZoneId ?? string.Empty,
+                } );
+            }
+
+            def.Calendar = calDef;
+        }
+
         return def;
     }
 
@@ -294,7 +325,7 @@ public sealed partial class ScheduleSyncGrpcService(
                     Name = stepTask.Name,
                     ActionType = (int) stepTask.ActionType,
                     Content = stepTask.Content,
-                    TimeoutMinutes = stepTask.TimeoutMinutes ?? 30,
+                    TimeoutMinutes = stepTask.TimeoutMinutes ?? 60,
                     SyncIntervalMinutes = stepTask.SyncIntervalMinutes,
                     SuccessCriteria = stepTask.SuccessCriteria ?? string.Empty,
                     ActionSubType = stepTask.ActionSubType ?? string.Empty,
@@ -410,6 +441,9 @@ public sealed partial class ScheduleSyncGrpcService(
             CalendarName = calendarName,
             HolidayName = e.HolidayName,
             Mode = mode,
+            Action = !string.IsNullOrEmpty( e.Action ) ? e.Action : "Suppressed",
+            ShiftedToUtcTime = !string.IsNullOrEmpty( e.ShiftedToUtc )
+                ? DateTime.Parse( e.ShiftedToUtc ).ToUniversalTime( ) : null,
             CreatedUtc = DateTime.UtcNow,
         } )];
 

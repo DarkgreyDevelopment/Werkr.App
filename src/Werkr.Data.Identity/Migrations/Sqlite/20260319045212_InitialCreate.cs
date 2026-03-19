@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -126,6 +127,25 @@ public partial class InitialCreate : Migration {
             } );
 
         _ = migrationBuilder.CreateTable(
+            name: "password_history",
+            columns: table => new {
+                id = table.Column<long>( type: "INTEGER", nullable: false )
+                    .Annotation( "Sqlite:Autoincrement", true ),
+                user_id = table.Column<string>( type: "TEXT", nullable: false ),
+                password_hash = table.Column<string>( type: "TEXT", maxLength: 1024, nullable: false ),
+                created_utc = table.Column<DateTime>( type: "TEXT", nullable: false )
+            },
+            constraints: table => {
+                _ = table.PrimaryKey( "pk_password_history", x => x.id );
+                _ = table.ForeignKey(
+                    name: "fk_password_history_users_user_id",
+                    column: x => x.user_id,
+                    principalTable: "users",
+                    principalColumn: "id",
+                    onDelete: ReferentialAction.Cascade );
+            } );
+
+        _ = migrationBuilder.CreateTable(
             name: "user_claims",
             columns: table => new {
                 id = table.Column<int>( type: "INTEGER", nullable: false )
@@ -219,6 +239,11 @@ public partial class InitialCreate : Migration {
             column: "key_prefix" );
 
         _ = migrationBuilder.CreateIndex(
+            name: "ix_password_history_user_id",
+            table: "password_history",
+            column: "user_id" );
+
+        _ = migrationBuilder.CreateIndex(
             name: "ix_role_claims_role_id",
             table: "role_claims",
             column: "role_id" );
@@ -226,7 +251,7 @@ public partial class InitialCreate : Migration {
         _ = migrationBuilder.CreateIndex(
             name: "ix_role_permissions_role_id_permission",
             table: "role_permissions",
-            columns: ["role_id", "permission"],
+            columns: new[] { "role_id", "permission" },
             unique: true );
 
         _ = migrationBuilder.CreateIndex(
@@ -269,6 +294,9 @@ public partial class InitialCreate : Migration {
 
         _ = migrationBuilder.DropTable(
             name: "config_settings" );
+
+        _ = migrationBuilder.DropTable(
+            name: "password_history" );
 
         _ = migrationBuilder.DropTable(
             name: "role_claims" );

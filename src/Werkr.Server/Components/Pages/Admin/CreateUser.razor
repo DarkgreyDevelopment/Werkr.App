@@ -7,9 +7,11 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Identity
 @using Werkr.Data.Identity.Entities
+@using Werkr.Data.Identity.Services
 @using Werkr.Server.Components.Shared
 @inject UserManager<WerkrUser> UserManager
 @inject NavigationManager Navigation
+@inject PasswordHistoryService PasswordHistoryService
 
 <PageTitle>Create User</PageTitle>
 
@@ -136,6 +138,9 @@
             _errorMessage = string.Join( " ", createResult.Errors.Select( error => error.Description ) );
             return;
         }
+
+        // Record the initial password hash in history for reuse prevention
+        await PasswordHistoryService.RecordAsync( user.Id, user.PasswordHash! );
 
         IdentityResult roleResult = await UserManager.AddToRolesAsync( user, roles );
         if (!roleResult.Succeeded) {

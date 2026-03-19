@@ -76,6 +76,7 @@ public partial class RegistrationService(
     /// key.</param>
     /// <param name="agentUrl">The Agent's gRPC endpoint URL.</param>
     /// <param name="agentName">Human-readable Agent name.</param>
+    /// <param name="agentVersion">Agent assembly version reported during registration.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="AgentRegistrationResult"/> indicating success or failure.</returns>
     public async Task<(AgentRegistrationResult Result, byte[]? EncryptedResponseData)> CompleteRegistrationAsync(
@@ -83,6 +84,7 @@ public partial class RegistrationService(
         byte[] encryptedAgentPublicKey,
         string agentUrl,
         string agentName,
+        string? agentVersion,
         CancellationToken ct
     ) {
 
@@ -157,6 +159,7 @@ public partial class RegistrationService(
                 IsServer = true,
                 Status = ConnectionStatus.Connected,
                 Tags = bundle.Tags,
+                AgentVersion = agentVersion ?? string.Empty,
             };
 
             _ = dbContext.RegisteredConnections.Add( connection );

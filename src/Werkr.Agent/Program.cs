@@ -42,10 +42,7 @@ public partial class Program {
         try {
             Log.Information( "Starting Werkr Agent..." );
 
-            string version = System.Reflection.CustomAttributeExtensions
-                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
-                    System.Reflection.Assembly.GetEntryAssembly( )! )
-                ?.InformationalVersion ?? "unknown";
+            string version = VersionHelper.GetAgentVersion( );
             Log.Information( "Werkr Agent version {Version}", version );
 
             // Validate platform crypto support
@@ -224,6 +221,17 @@ public partial class Program {
             _ = app.MapRegistrationEndpoints( );
 
             _ = app.MapGet( "/", GetAgentArt );
+
+            // Register graceful shutdown drain callback
+            TimeSpan shutdownTimeout = TimeSpan.FromSeconds(
+                builder.Configuration.GetValue( "Agent:ShutdownTimeoutSeconds", 30 ) );
+
+            _ = app.Lifetime.ApplicationStopping.Register( ( ) => {
+                Log.Information( "Graceful shutdown initiated, waiting for active jobs..." );
+                WorkflowExecutionService wes = app.Services.GetRequiredService<WorkflowExecutionService>( );
+                wes.DrainAsync( shutdownTimeout, CancellationToken.None ).GetAwaiter( ).GetResult( );
+                Log.Information( "Drain complete, shutting down." );
+            } );
 
             // Start the output streaming service (opens persistent gRPC stream to server)
             OutputStreamingService outputStreaming = app.Services.GetRequiredService<OutputStreamingService>( );

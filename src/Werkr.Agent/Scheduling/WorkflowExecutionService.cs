@@ -49,6 +49,13 @@ public sealed partial class WorkflowExecutionService(
     /// <summary>Tracks active CancellationTokenSources keyed by workflow ID for in-flight runs.</summary>
     private readonly ConcurrentDictionary<long, CancellationTokenSource> _activeWorkflows = new();
 
+    private int _activeJobCount;
+    private readonly TaskCompletionSource _drainComplete = new();
+    private volatile bool _shuttingDown;
+
+    /// <summary>Indicates whether a graceful shutdown is in progress.</summary>
+    public bool IsShuttingDown => _shuttingDown;
+
     /// <summary>
     /// Cancels any in-flight workflow runs for the specified workflow.
     /// Called when the API signals that a workflow was disabled.
@@ -59,6 +66,37 @@ public sealed partial class WorkflowExecutionService(
                 logger.LogInformation( "Cancelling in-flight workflow run for WorkflowId={WorkflowId}.", workflowId );
             }
             cts.Cancel( );
+        }
+    }
+
+    /// <summary>
+    /// Initiates a graceful drain: stops accepting new work, waits for active jobs to complete,
+    /// and force-cancels after the specified timeout.
+    /// </summary>
+    /// <param name="timeout">Maximum time to wait for active jobs to finish.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task DrainAsync( TimeSpan timeout, CancellationToken ct ) {
+        _shuttingDown = true;
+
+        if (Interlocked.CompareExchange( ref _activeJobCount, 0, 0 ) == 0) {
+            return;
+        }
+
+        if (logger.IsEnabled( LogLevel.Information )) {
+            logger.LogInformation( "Draining {Count} active job(s)...", _activeJobCount );
+        }
+
+        try {
+            await _drainComplete.Task.WaitAsync( timeout, ct );
+        } catch (TimeoutException) {
+            logger.LogWarning( "Drain timeout reached after {Timeout}. Force-cancelling active workflows.", timeout );
+            foreach (CancellationTokenSource cts in _activeWorkflows.Values) {
+                cts.Cancel( );
+            }
+            // Brief grace period for cancellation to propagate
+            await Task.Delay( TimeSpan.FromSeconds( 2 ), CancellationToken.None );
+        } catch (OperationCanceledException) {
+            // Host forced shutdown
         }
     }
 
@@ -107,12 +145,23 @@ public sealed partial class WorkflowExecutionService(
         ScheduledWorkflowDefinition workflow,
         CancellationToken ct
     ) {
+        if (_shuttingDown) {
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation( "Shutdown in progress — skipping workflow {WorkflowId}.", workflow.WorkflowId );
+            }
+            return;
+        }
+
+        _ = Interlocked.Increment( ref _activeJobCount );
         using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _ = _activeWorkflows.TryAdd( workflow.WorkflowId, linkedCts );
         try {
             await ExecuteWorkflowCoreAsync( workflow, linkedCts.Token );
         } finally {
             _ = _activeWorkflows.TryRemove( workflow.WorkflowId, out _ );
+            if (Interlocked.Decrement( ref _activeJobCount ) == 0 && _shuttingDown) {
+                _ = _drainComplete.TrySetResult( );
+            }
         }
     }
 

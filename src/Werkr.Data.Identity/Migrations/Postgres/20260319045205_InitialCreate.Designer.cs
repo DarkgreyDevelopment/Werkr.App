@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Werkr.Data.Identity;
@@ -11,9 +12,11 @@ using Werkr.Data.Identity;
 namespace Werkr.Data.Identity.Migrations.Postgres
 {
     [DbContext(typeof(PostgresWerkrIdentityDbContext))]
-    partial class PostgresWerkrIdentityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260319045205_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

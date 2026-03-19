@@ -129,7 +129,7 @@ public class TaskSetupModalTests : BunitContext {
             Arguments: ["--verbose"],
             TargetTags: ["linux"],
             Enabled: true,
-            TimeoutMinutes: 30,
+            TimeoutMinutes: 60,
             SyncIntervalMinutes: 5,
             SuccessCriteria: null,
             EffectiveSuccessCriteria: "ExitCodeZero",
@@ -165,7 +165,7 @@ public class TaskSetupModalTests : BunitContext {
                 Id: 7, Name: "Updated", Description: "Updated desc",
                 ActionType: "ShellCommand", Content: "echo updated",
                 Arguments: null, TargetTags: ["linux"], Enabled: true,
-                TimeoutMinutes: 30, SyncIntervalMinutes: 5,
+                TimeoutMinutes: 60, SyncIntervalMinutes: 5,
                 SuccessCriteria: null, EffectiveSuccessCriteria: "ExitCodeZero",
                 WorkflowId: 42 ) ),
             ( method, uri ) => { capturedMethod = method; capturedUri = uri; } );
@@ -176,7 +176,7 @@ public class TaskSetupModalTests : BunitContext {
             Id: 7, Name: "My Task", Description: "Test desc",
             ActionType: "ShellCommand", Content: "echo hello",
             Arguments: null, TargetTags: ["linux"], Enabled: true,
-            TimeoutMinutes: 30, SyncIntervalMinutes: 5,
+            TimeoutMinutes: 60, SyncIntervalMinutes: 5,
             SuccessCriteria: null, EffectiveSuccessCriteria: "ExitCodeZero",
             WorkflowId: 42 );
 
@@ -205,7 +205,7 @@ public class TaskSetupModalTests : BunitContext {
             Id: 7, Name: "Updated Task", Description: "Updated desc",
             ActionType: "ShellCommand", Content: "echo updated",
             Arguments: null, TargetTags: ["linux"], Enabled: true,
-            TimeoutMinutes: 30, SyncIntervalMinutes: 5,
+            TimeoutMinutes: 60, SyncIntervalMinutes: 5,
             SuccessCriteria: null, EffectiveSuccessCriteria: "ExitCodeZero",
             WorkflowId: 42 );
 
@@ -215,7 +215,7 @@ public class TaskSetupModalTests : BunitContext {
             Id: 7, Name: "My Task", Description: "Test desc",
             ActionType: "ShellCommand", Content: "echo hello",
             Arguments: null, TargetTags: ["linux"], Enabled: true,
-            TimeoutMinutes: 30, SyncIntervalMinutes: 5,
+            TimeoutMinutes: 60, SyncIntervalMinutes: 5,
             SuccessCriteria: null, EffectiveSuccessCriteria: "ExitCodeZero",
             WorkflowId: 42 );
 

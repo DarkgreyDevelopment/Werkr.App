@@ -4,6 +4,7 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
@@ -19,6 +20,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Attachments are resolved through <see cref="IFilePathResolver"/>.
 /// </summary>
 /// <remarks>Creates a new <see cref="SendEmailHandler"/>.</remarks>
+[ActionCategory( "Network" )]
 public sealed partial class SendEmailHandler(
     IOptionsMonitor<ActionOperatorConfiguration> config,
     ISecretStore secretStore,

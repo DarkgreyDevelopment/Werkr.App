@@ -36,7 +36,7 @@ public static class ActionRegistry {
     private static readonly string[] s_httpMethods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
 
     /// <summary>Connection protocol values for TestConnection.</summary>
-    private static readonly string[] s_connectionProtocols = ["Tcp", "Http", "Https"];
+    private static readonly string[] s_connectionProtocols = ["Tcp", "Http", "Https", "Icmp"];
 
     /// <summary>Upload method values for UploadFile.</summary>
     private static readonly string[] s_uploadMethods = ["POST", "PUT"];
@@ -91,7 +91,7 @@ public static class ActionRegistry {
         ] ),
 
         new( "CreateDirectory", "Create Directory", "Create one or more directories.",
-            "File", typeof( CreateDirectoryParameters ), [
+            "Directory", typeof( CreateDirectoryParameters ), [
             new( "Path", "Path", FieldType.Text, Required: true, Placeholder: "C:\\path\\to\\directory" ),
         ] ),
 
@@ -103,12 +103,12 @@ public static class ActionRegistry {
 
         // ── Content operations ───────────────────────────────────────
         new( "ClearContent", "Clear Content", "Truncate a file to zero bytes.",
-            "Content", typeof( ClearContentParameters ), [
+            "File", typeof( ClearContentParameters ), [
             new( "Path", "Path", FieldType.Text, Required: true, Placeholder: "C:\\path\\to\\file.txt" ),
         ] ),
 
         new( "WriteContent", "Write Content", "Write or append text to a file.",
-            "Content", typeof( WriteContentParameters ), [
+            "File", typeof( WriteContentParameters ), [
             new( "Path", "Path", FieldType.Text, Required: true, Placeholder: "C:\\path\\to\\file.txt" ),
             new( "Content", "Content", FieldType.TextArea, Required: true, Placeholder: "Text to write…" ),
             new( "Append", "Append", FieldType.Bool, DefaultValue: "false", HelpText: "Append instead of overwriting." ),
@@ -116,14 +116,14 @@ public static class ActionRegistry {
         ] ),
 
         new( "ReadContent", "Read Content", "Read file content and emit it as action output.",
-            "Content", typeof( ReadContentParameters ), [
+            "File", typeof( ReadContentParameters ), [
             new( "Path", "Path", FieldType.Text, Required: true, Placeholder: "C:\\path\\to\\file.txt" ),
             new( "Encoding", "Encoding", FieldType.Select, DefaultValue: "utf-8", Options: Encodings ),
             new( "MaxBytes", "Max Bytes", FieldType.Number, HelpText: "Leave blank for no limit." ),
         ] ),
 
         new( "FindReplace", "Find & Replace", "Perform string or regex find-and-replace within a file.",
-            "Content", typeof( FindReplaceParameters ), [
+            "File", typeof( FindReplaceParameters ), [
             new( "Path", "Path", FieldType.Text, Required: true, Placeholder: "C:\\path\\to\\file.txt" ),
             new( "Find", "Find", FieldType.Text, Required: true, Placeholder: "search-text" ),
             new( "Replace", "Replace", FieldType.Text, Required: true, Placeholder: "replacement-text" ),
@@ -134,12 +134,12 @@ public static class ActionRegistry {
 
         // ── File information ─────────────────────────────────────────
         new( "GetFileInfo", "Get File Info", "Return file or directory metadata as JSON.",
-            "File Info", typeof( GetFileInfoParameters ), [
+            "File", typeof( GetFileInfoParameters ), [
             new( "Path", "Path", FieldType.Text, Required: true, Placeholder: "C:\\path\\to\\file.txt" ),
         ] ),
 
         new( "ListDirectory", "List Directory", "Enumerate files or directories matching a pattern.",
-            "File Info", typeof( ListDirectoryParameters ), [
+            "Directory", typeof( ListDirectoryParameters ), [
             new( "Path", "Path", FieldType.Text, Required: true, Placeholder: "C:\\path\\to\\directory" ),
             new( "Pattern", "Pattern", FieldType.Text, DefaultValue: "*", Placeholder: "*.csv", HelpText: "Glob pattern for matching entries." ),
             new( "Recursive", "Recursive", FieldType.Bool, DefaultValue: "false" ),
@@ -183,16 +183,16 @@ public static class ActionRegistry {
             new( "Force", "Force", FieldType.Bool, DefaultValue: "false", HelpText: "Forcefully terminate the process." ),
         ] ),
 
-        // ── Control operations ───────────────────────────────────────
+        // ── ControlFlow operations ───────────────────────────────────
         new( "Delay", "Delay", "Pause workflow execution for a specified duration.",
-            "Control", typeof( DelayParameters ), [
+            "ControlFlow", typeof( DelayParameters ), [
             new( "Seconds", "Seconds", FieldType.Number, Required: true, Placeholder: "10", HelpText: "Duration to pause in seconds." ),
             new( "Reason", "Reason", FieldType.Text, Placeholder: "Wait for external system to settle…" ),
         ] ),
 
-        // ── Event operations ─────────────────────────────────────────
+        // ── File monitoring operations ───────────────────────────────
         new( "WatchFile", "Watch File", "Monitor a directory for a file matching a glob pattern.",
-            "Event", typeof( WatchFileParameters ), [
+            "File monitoring", typeof( WatchFileParameters ), [
             new( "Directory", "Directory", FieldType.Text, Required: true, Placeholder: "C:\\watched\\folder" ),
             new( "Pattern", "Pattern", FieldType.Text, Required: true, Placeholder: "*.csv", HelpText: "Glob pattern for matching files." ),
             new( "StabilitySeconds", "Stability (seconds)", FieldType.Number, DefaultValue: "5", HelpText: "Time the file size must remain stable before match." ),
@@ -228,6 +228,17 @@ public static class ActionRegistry {
             new( "OutputFilePath", "Output File Path", FieldType.Text, Placeholder: "/path/to/response.json",
                  HelpText: "Save full response body to this file instead of including it in the output variable." ),
             new( "FollowRedirects", "Follow Redirects", FieldType.Bool, DefaultValue: "false" ),
+            new( "AuthType", "Auth Type", FieldType.Select, Options: ["", "basic", "bearer", "apikey"],
+                 HelpText: "Authentication method. Leave empty for no auth." ),
+            new( "AuthUsername", "Auth Username", FieldType.Text,
+                 ShowWhen: "AuthType=basic",
+                 HelpText: "Username for Basic authentication." ),
+            new( "AuthCredential", "Auth Credential", FieldType.Text,
+                 ShowWhen: "AuthType=basic|bearer|apikey",
+                 HelpText: "Password (Basic), token (Bearer), or key value (API Key)." ),
+            new( "AuthHeaderName", "Auth Header Name", FieldType.Text,
+                 ShowWhen: "AuthType=apikey", DefaultValue: "X-Api-Key",
+                 HelpText: "Header name for API Key authentication." ),
         ] ),
 
         new( "DownloadFile", "Download File", "Download a file from a URL to a local path.",
@@ -240,10 +251,12 @@ public static class ActionRegistry {
             new( "TimeoutSeconds", "Timeout (seconds)", FieldType.Number, DefaultValue: "300", Min: 1 ),
         ] ),
 
-        new( "TestConnection", "Test Connection", "Verify TCP connectivity or HTTP(S) endpoint availability.",
+        new( "TestConnection", "Test Connection", "Verify TCP, HTTP(S), or ICMP connectivity.",
             "Network", typeof( TestConnectionParameters ), [
             new( "Host", "Host", FieldType.Text, Required: true, Placeholder: "example.com" ),
-            new( "Port", "Port", FieldType.Number, Required: true, Placeholder: "443", Min: 1, Max: 65535 ),
+            new( "Port", "Port", FieldType.Number, Placeholder: "443", Min: 1, Max: 65535,
+                 ShowWhen: "Protocol=Tcp|Http|Https",
+                 HelpText: "Required for TCP/HTTP/HTTPS. Ignored for ICMP." ),
             new( "Protocol", "Protocol", FieldType.Select, DefaultValue: "Tcp", Options: s_connectionProtocols ),
             new( "TimeoutSeconds", "Timeout (seconds)", FieldType.Number, DefaultValue: "10", Min: 1 ),
             new( "ExpectedStatusCode", "Expected Status Code", FieldType.Number,
@@ -264,7 +277,7 @@ public static class ActionRegistry {
 
         // ── Notification operations ──────────────────────────────────
         new( "SendEmail", "Send Email", "Send an email via SMTP.",
-            "Notification", typeof( SendEmailParameters ), [
+            "Network", typeof( SendEmailParameters ), [
             new( "SmtpHost", "SMTP Host", FieldType.Text, Required: true, Placeholder: "smtp.example.com" ),
             new( "Port", "Port", FieldType.Number, DefaultValue: "587", Min: 1, Max: 65535 ),
             new( "UseSsl", "Use SSL/TLS", FieldType.Bool, DefaultValue: "true" ),
@@ -288,7 +301,7 @@ public static class ActionRegistry {
         ] ),
 
         new( "SendWebhook", "Send Webhook", "Send an HTTP POST with a JSON payload.",
-            "Notification", typeof( SendWebhookParameters ), [
+            "Network", typeof( SendWebhookParameters ), [
             new( "Url", "Webhook URL", FieldType.Text, Required: true,
                  Placeholder: "https://hooks.example.com/webhook" ),
             new( "Payload", "Payload", FieldType.TextArea,
@@ -330,7 +343,7 @@ public static class ActionRegistry {
             new( "Content", "Command", FieldType.TextArea, Required: true,
                  Placeholder: "echo 'Hello, World!'",
                  HelpText: "The shell command to execute." ),
-            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "30", Min: 1,
+            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "60", Min: 1,
                  HelpText: "Maximum execution time in minutes." ),
         ] ),
 
@@ -342,7 +355,7 @@ public static class ActionRegistry {
             new( "Arguments", "Arguments", FieldType.Text,
                  Placeholder: "--flag value",
                  HelpText: "Optional arguments to pass to the script." ),
-            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "30", Min: 1,
+            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "60", Min: 1,
                  HelpText: "Maximum execution time in minutes." ),
         ] ),
 
@@ -352,7 +365,7 @@ public static class ActionRegistry {
             new( "Content", "Command", FieldType.TextArea, Required: true,
                  Placeholder: "Get-Process | Where-Object { $_.CPU -gt 100 }",
                  HelpText: "The PowerShell command or script block to execute." ),
-            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "30", Min: 1,
+            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "60", Min: 1,
                  HelpText: "Maximum execution time in minutes." ),
         ] ),
 
@@ -364,7 +377,7 @@ public static class ActionRegistry {
             new( "Arguments", "Arguments", FieldType.Text,
                  Placeholder: "-Environment Production -Verbose",
                  HelpText: "Optional arguments to pass to the script." ),
-            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "30", Min: 1,
+            new( "TimeoutMinutes", "Timeout (minutes)", FieldType.Number, DefaultValue: "60", Min: 1,
                  HelpText: "Maximum execution time in minutes." ),
         ] ),
     ];

@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -14,6 +15,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// within a file. Includes ReDoS protection via a 30-second regex match timeout.
 /// </summary>
 /// <remarks>Creates a new <see cref="FindReplaceHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class FindReplaceHandler( IFilePathResolver resolver, ILogger<FindReplaceHandler> logger ) : IActionHandler {
 
     /// <summary>Maximum time a regex match is allowed to execute.</summary>

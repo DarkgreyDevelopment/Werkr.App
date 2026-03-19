@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Werkr.Data;
+using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Models;
 using Werkr.Data.Calendar.Validation;
 using Werkr.Data.Entities.Schedule;
@@ -387,8 +388,14 @@ public sealed partial class ScheduleService(
             );
         }
 
+        ShiftMode shiftMode = schedule.ShiftMode ?? ShiftMode.None;
+        DaysOfWeek workingDays = schedule.HolidayCalendar?.WorkingDays
+            ?? ( DaysOfWeek.Monday | DaysOfWeek.Tuesday | DaysOfWeek.Wednesday
+                | DaysOfWeek.Thursday | DaysOfWeek.Friday );
+
         return ScheduleCalculator.CalculateOccurrences(
-            schedule, windowEnd, holidayDates, schedule.HolidayCalendarMode );
+            schedule, windowEnd, holidayDates, schedule.HolidayCalendarMode,
+            shiftMode, workingDays );
     }
 
     /// <summary>
@@ -433,10 +440,11 @@ public sealed partial class ScheduleService(
             .Where(shc => ids.Contains(shc.ScheduleId))
             .ToDictionaryAsync(shc => shc.ScheduleId, ct);
 
-        // Load any referenced holiday calendars
+        // Load any referenced holiday calendars with their rules
         List<Guid> calendarIds = [.. holidayLinks.Values.Select(l => l.HolidayCalendarId).Distinct()];
         Dictionary<Guid, HolidayCalendar> calendars = calendarIds.Count > 0
             ? await _db.HolidayCalendars
+                .Include( c => c.Rules )
                 .Where(hc => calendarIds.Contains(hc.Id))
                 .ToDictionaryAsync(hc => hc.Id, ct)
             : [];
@@ -453,6 +461,7 @@ public sealed partial class ScheduleService(
                 DailyRecurrence = dailies.GetValueOrDefault(id),
                 WeeklyRecurrence = weeklies.GetValueOrDefault(id),
                 MonthlyRecurrence = monthlies.GetValueOrDefault(id),
+                ShiftMode = db.ShiftMode,
             };
 
             if (holidayLinks.TryGetValue( id, out ScheduleHolidayCalendar? link )) {
@@ -503,6 +512,9 @@ public sealed partial class ScheduleService(
             ),
         };
 
+        // Populate ShiftMode from DbSchedule
+        schedule.ShiftMode = dbSchedule.ShiftMode;
+
         // Load holiday calendar link if attached
         ScheduleHolidayCalendar? link = await _db.ScheduleHolidayCalendars
             .FirstOrDefaultAsync(
@@ -511,10 +523,9 @@ public sealed partial class ScheduleService(
             );
         if (link is not null) {
             schedule.HolidayCalendarMode = link.Mode;
-            schedule.HolidayCalendar = await _db.HolidayCalendars.FindAsync(
-                [link.HolidayCalendarId],
-                ct
-            );
+            schedule.HolidayCalendar = await _db.HolidayCalendars
+                .Include( c => c.Rules )
+                .FirstOrDefaultAsync( c => c.Id == link.HolidayCalendarId, ct );
         }
 
         return schedule;

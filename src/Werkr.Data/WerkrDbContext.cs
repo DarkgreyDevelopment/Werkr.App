@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Werkr.Common.Models;
 using Werkr.Data.Calendar.Enums;
+using Werkr.Data.Encryption;
 using Werkr.Data.Entities;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
@@ -27,6 +28,12 @@ public class WerkrDbContext : DbContext {
     /// <summary>Creates a new instance for use by derived provider-specific contexts.</summary>
     /// <param name="options">The options forwarded from a derived context.</param>
     protected WerkrDbContext( DbContextOptions options ) : base( options ) { }
+
+    /// <summary>
+    /// Field encryption provider for transparent column encryption.
+    /// Null when encryption is not configured (e.g., in test contexts).
+    /// </summary>
+    public FieldEncryptionProvider? FieldEncryption { get; set; }
 
     /// <summary>Pending registration bundles (server-side only).</summary>
     public DbSet<RegistrationBundle> RegistrationBundles => Set<RegistrationBundle>( );
@@ -450,6 +457,16 @@ public class WerkrDbContext : DbContext {
             _ = entity.HasIndex( e => new { e.PageKey, e.OwnerId } );
             _ = entity.HasIndex( e => new { e.PageKey, e.IsShared } );
         } );
+
+        // Field-level encryption for sensitive columns (§9 Data Protection)
+        if (FieldEncryption is not null) {
+            EncryptedStringConverter encString = new( FieldEncryption );
+
+            // WorkflowRunVariable.Value — runtime variable payloads (JSON)
+            _ = modelBuilder.Entity<WorkflowRunVariable>( entity => {
+                _ = entity.Property( e => e.Value ).HasConversion( encString );
+            } );
+        }
     }
 
     /// <inheritdoc/>

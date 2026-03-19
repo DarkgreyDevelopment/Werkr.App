@@ -35,6 +35,13 @@ public class ScheduleAuditLog {
     /// <summary>Whether the calendar was operating as a blocklist or allowlist.</summary>
     public HolidayCalendarMode Mode { get; set; }
 
+    /// <summary>Action taken: "Suppressed" or "Shifted".</summary>
+    [MaxLength( 32 )]
+    public string Action { get; set; } = "Suppressed";
+
+    /// <summary>The resulting shifted date (null when suppressed).</summary>
+    public DateTime? ShiftedToUtcTime { get; set; }
+
     /// <summary>UTC timestamp when this audit record was created.</summary>
     public DateTime CreatedUtc { get; set; }
 

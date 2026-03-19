@@ -12,7 +12,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteWerkrDbContext))]
-    [Migration("20260319032108_InitialCreate")]
+    [Migration("20260319045154_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -32,6 +32,12 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasMaxLength(128)
                         .HasColumnType("TEXT")
                         .HasColumnName("active_key_id");
+
+                    b.Property<string>("AgentVersion")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("agent_version");
 
                     b.Property<string>("AllowedPaths")
                         .IsRequired()
@@ -62,6 +68,10 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Property<bool>("IsServer")
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_server");
+
+                    b.Property<string>("KeyRotatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key_rotated_at_utc");
 
                     b.Property<string>("LastSeen")
                         .HasColumnType("TEXT")
@@ -275,6 +285,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
 
+                    b.Property<int>("ShiftMode")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("shift_mode");
+
                     b.Property<long>("StopTaskAfterMinutes")
                         .HasColumnType("INTEGER")
                         .HasColumnName("stop_task_after_minutes");
@@ -362,6 +376,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_utc");
+
+                    b.Property<int>("WorkingDays")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("working_days");
 
                     b.HasKey("Id")
                         .HasName("pk_holiday_calendars");
@@ -554,6 +572,12 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnName("id")
                         .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn);
 
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("action");
+
                     b.Property<string>("CalendarName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -584,6 +608,10 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Property<Guid>("ScheduleId")
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
+
+                    b.Property<string>("ShiftedToUtcTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("shifted_to_utc_time");
 
                     b.HasKey("Id")
                         .HasName("pk_schedule_audit_log");

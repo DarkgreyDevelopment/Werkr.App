@@ -46,6 +46,12 @@ public sealed class WerkrPSHost( ChannelWriter<OperatorOutput> writer, int buffe
     /// <inheritdoc/>
     public override PSHostUserInterface UI => _ui;
 
+    /// <summary>
+    /// Provides access to the <see cref="WerkrPSHostUserInterface"/> for post-invocation
+    /// Information stream deduplication.
+    /// </summary>
+    internal WerkrPSHostUserInterface WerkrUI => _ui;
+
     /// <inheritdoc/>
     public override void SetShouldExit( int exitCode ) { /* no-op */ }
 

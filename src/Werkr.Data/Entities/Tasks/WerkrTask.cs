@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Werkr.Data.Entities.Interfaces;
@@ -61,8 +62,9 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
 
     /// <summary>
     /// Maximum minutes the task may run before being cancelled.
-    /// Null defaults to 30 minutes in JobExecutionService.
+    /// Null defaults to 60 minutes in JobExecutionService.
     /// </summary>
+    [DefaultValue( 60 )]
     public long? TimeoutMinutes { get; set; }
 
     /// <summary>

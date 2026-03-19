@@ -263,7 +263,8 @@ public class ActionParameterEditorTests : BunitContext {
     public void Validate_Number_Below_Min_Returns_Error( ) {
         string json = JsonSerializer.Serialize( new {
             host = "localhost",
-            port = 0   // Below Min=1
+            port = 0,          // Below Min=1
+            protocol = "Tcp",  // Required for ShowWhen to activate Port field
         }, s_jsonOptions );
 
         IRenderedComponent<ActionParameterEditor> cut = Render<ActionParameterEditor>( parameters => parameters
@@ -290,7 +291,8 @@ public class ActionParameterEditorTests : BunitContext {
     public void Validate_Number_Above_Max_Returns_Error( ) {
         string json = JsonSerializer.Serialize( new {
             host = "localhost",
-            port = 99999   // Above Max=65535
+            port = 99999,      // Above Max=65535
+            protocol = "Tcp",  // Required for ShowWhen to activate Port field
         }, s_jsonOptions );
 
         IRenderedComponent<ActionParameterEditor> cut = Render<ActionParameterEditor>( parameters => parameters

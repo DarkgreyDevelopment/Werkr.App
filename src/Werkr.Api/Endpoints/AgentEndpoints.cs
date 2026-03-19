@@ -49,7 +49,8 @@ internal static class AgentEndpoints {
 
                 List<AgentListDto> agents = [.. connections.Select( c => new AgentListDto(
                     c.Id, c.ConnectionName, c.RemoteUrl, c.Status.ToString( ),
-                    c.LastSeen, c.Created ) )];
+                    c.LastSeen, c.Created,
+                    string.IsNullOrEmpty( c.AgentVersion ) ? null : c.AgentVersion ) )];
 
                 return Results.Ok( agents );
             } )
@@ -95,13 +96,24 @@ internal static class AgentEndpoints {
                             );
 
                         // Agent is reachable and shared key is valid
-                        HeartbeatResponse _ = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
+                        HeartbeatResponse heartbeatResp = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
                             responseEnvelope, resolvedConnection.SharedKey );
 
                         // Shell availability is no longer reported via health checks;
                         // the Heartbeat confirms the agent is alive and encryption works.
                         powerShellAvailable = true;
                         systemShellAvailable = true;
+
+                        // Persist agent version from heartbeat response
+                        if (!string.IsNullOrEmpty( heartbeatResp.AgentVersion )) {
+                            RegisteredConnection? tracked = await dbContext.RegisteredConnections
+                                .FirstOrDefaultAsync( c => c.Id == id && c.IsServer, ct );
+                            if (tracked is not null && tracked.AgentVersion != heartbeatResp.AgentVersion) {
+                                tracked.AgentVersion = heartbeatResp.AgentVersion;
+                                _ = await dbContext.SaveChangesAsync( ct );
+                            }
+                            connection = tracked ?? connection;
+                        }
                     } catch (RpcException) {
                         powerShellAvailable = null;
                         systemShellAvailable = null;
@@ -121,7 +133,8 @@ internal static class AgentEndpoints {
                     connection.Created,
                     connection.LastSeen,
                     powerShellAvailable,
-                    systemShellAvailable
+                    systemShellAvailable,
+                    string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion
                 );
 
                 return Results.Ok( dto );
@@ -548,7 +561,8 @@ internal static class AgentEndpoints {
                 null,
                 null,
                 connection.LastSeen,
-                DateTime.UtcNow
+                DateTime.UtcNow,
+                string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion
             );
         }
 
@@ -569,8 +583,12 @@ internal static class AgentEndpoints {
                     timeout: TimeSpan.FromSeconds( 5 ),
                     cancellationToken: cancellationToken ) );
 
-            HeartbeatResponse _ = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
+            HeartbeatResponse heartbeatResp = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
                 responseEnvelope, resolvedConnection.SharedKey );
+
+            string? agentVersion = !string.IsNullOrEmpty( heartbeatResp.AgentVersion )
+                ? heartbeatResp.AgentVersion
+                : string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion;
 
             return new AgentHealthDto(
                 connection.Id,
@@ -579,7 +597,8 @@ internal static class AgentEndpoints {
                 true,
                 true,
                 connection.LastSeen,
-                DateTime.UtcNow );
+                DateTime.UtcNow,
+                agentVersion );
         } catch (OperationCanceledException) {
             throw;
         } catch (RpcException) {
@@ -590,7 +609,8 @@ internal static class AgentEndpoints {
                 null,
                 null,
                 connection.LastSeen,
-                DateTime.UtcNow );
+                DateTime.UtcNow,
+                string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion );
         } catch (Exception) {
             return new AgentHealthDto(
                 connection.Id,
@@ -599,7 +619,8 @@ internal static class AgentEndpoints {
                 null,
                 null,
                 connection.LastSeen,
-                DateTime.UtcNow );
+                DateTime.UtcNow,
+                string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion );
         }
     }
 }

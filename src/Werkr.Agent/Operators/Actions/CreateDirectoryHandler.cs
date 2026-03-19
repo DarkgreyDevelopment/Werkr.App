@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -11,6 +12,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>CreateDirectory</c> action - creates a new directory (including parent directories).
 /// </summary>
 /// <remarks>Creates a new <see cref="CreateDirectoryHandler"/>.</remarks>
+[ActionCategory( "Directory" )]
 public sealed partial class CreateDirectoryHandler(
     IFilePathResolver resolver,
     ILogger<CreateDirectoryHandler> logger

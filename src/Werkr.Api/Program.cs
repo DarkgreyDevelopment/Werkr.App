@@ -17,8 +17,10 @@ using Werkr.Core.Cryptography;
 using Werkr.Core.Health;
 using Werkr.Core.Registration;
 using Werkr.Core.Scheduling;
+using Werkr.Core.Security;
 using Werkr.Core.Tasks;
 using Werkr.Data;
+using Werkr.Data.Encryption;
 using Werkr.Data.Seeding;
 using Werkr.ServiceDefaults;
 
@@ -89,6 +91,19 @@ public class Program {
                 builder.Configuration["Database:Provider"], ignoreCase: true, out DatabaseProvider parsed )
                 ? parsed : DatabaseProvider.Postgres;
             _ = builder.Services.AddWerkrDbContext( dbProvider, connectionString );
+
+            // Field-level encryption — transparently encrypts sensitive DB columns
+            ISecretStore apiSecretStore = SecretStoreFactory.Create( );
+            string? fieldEncryptionKey = await apiSecretStore.GetSecretAsync(
+                FieldEncryptionProvider.SecretStoreKey );
+            if (fieldEncryptionKey is null) {
+                fieldEncryptionKey = FieldEncryptionProvider.GenerateKey( );
+                await apiSecretStore.SetSecretAsync(
+                    FieldEncryptionProvider.SecretStoreKey, fieldEncryptionKey );
+                Log.Information( "Generated new field encryption key for API database." );
+            }
+            FieldEncryptionProvider fieldEncryption = new( fieldEncryptionKey );
+            _ = builder.Services.AddSingleton( fieldEncryption );
 
             // Configuration
             WerkrConfiguration werkrConfig = new( );
@@ -203,7 +218,9 @@ public class Program {
                 AgentConnectionManager connectionManager = sp.GetRequiredService<AgentConnectionManager>( );
                 ILogger<KeyRotationService> logger =
                     sp.GetRequiredService<ILogger<KeyRotationService>>( );
-                return new KeyRotationService( scopeFactory, connectionManager, logger );
+                TimeSpan gracePeriod = TimeSpan.FromMinutes( werkrConfig.KeyRotationGracePeriodMinutes );
+                return new KeyRotationService( scopeFactory, connectionManager, logger,
+                    gracePeriod: gracePeriod );
             } );
             _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<KeyRotationService>( ) );
 

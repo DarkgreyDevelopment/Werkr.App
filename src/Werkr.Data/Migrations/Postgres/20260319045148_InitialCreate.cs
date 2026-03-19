@@ -1,10 +1,10 @@
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace Werkr.Data.Migrations.Postgres;
-
 /// <inheritdoc />
 public partial class InitialCreate : Migration {
     /// <inheritdoc />
@@ -21,7 +21,8 @@ public partial class InitialCreate : Migration {
                 description = table.Column<string>( type: "character varying(1024)", maxLength: 1024, nullable: false ),
                 is_system_calendar = table.Column<bool>( type: "boolean", nullable: false ),
                 created_utc = table.Column<string>( type: "text", nullable: false ),
-                updated_utc = table.Column<string>( type: "text", nullable: false )
+                updated_utc = table.Column<string>( type: "text", nullable: false ),
+                working_days = table.Column<int>( type: "integer", nullable: false )
             },
             constraints: table => {
                 _ = table.PrimaryKey( "pk_holiday_calendars", x => x.id );
@@ -43,12 +44,14 @@ public partial class InitialCreate : Migration {
                 previous_shared_key = table.Column<string>( type: "text", nullable: true ),
                 active_key_id = table.Column<string>( type: "character varying(128)", maxLength: 128, nullable: true ),
                 previous_key_id = table.Column<string>( type: "character varying(128)", maxLength: 128, nullable: true ),
+                key_rotated_at_utc = table.Column<string>( type: "text", nullable: true ),
                 is_server = table.Column<bool>( type: "boolean", nullable: false ),
                 status = table.Column<string>( type: "text", nullable: false ),
                 last_seen = table.Column<string>( type: "text", nullable: true ),
                 tags = table.Column<string>( type: "text", nullable: false ),
                 allowed_paths = table.Column<string>( type: "text", nullable: false ),
                 enforce_allowlist = table.Column<bool>( type: "boolean", nullable: false ),
+                agent_version = table.Column<string>( type: "character varying(128)", maxLength: 128, nullable: false ),
                 created = table.Column<string>( type: "text", nullable: false ),
                 last_updated = table.Column<string>( type: "text", nullable: false ),
                 version = table.Column<int>( type: "integer", nullable: false )
@@ -106,6 +109,7 @@ public partial class InitialCreate : Migration {
                 name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
                 stop_task_after_minutes = table.Column<long>( type: "bigint", nullable: false ),
                 catch_up_enabled = table.Column<bool>( type: "boolean", nullable: false ),
+                shift_mode = table.Column<int>( type: "integer", nullable: false ),
                 created = table.Column<string>( type: "text", nullable: false ),
                 last_updated = table.Column<string>( type: "text", nullable: false ),
                 version = table.Column<int>( type: "integer", nullable: false )
@@ -220,6 +224,8 @@ public partial class InitialCreate : Migration {
                 calendar_name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
                 holiday_name = table.Column<string>( type: "character varying(256)", maxLength: 256, nullable: false ),
                 mode = table.Column<string>( type: "text", nullable: false ),
+                action = table.Column<string>( type: "character varying(32)", maxLength: 32, nullable: false ),
+                shifted_to_utc_time = table.Column<string>( type: "text", nullable: true ),
                 created_utc = table.Column<string>( type: "text", nullable: false )
             },
             constraints: table => {
