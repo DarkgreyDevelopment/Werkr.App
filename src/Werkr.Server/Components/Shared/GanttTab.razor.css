@@ -1,33 +1,39 @@
 /* Gantt tab — vis-timeline style scoping and status color overrides */
 
 ::deep .gantt-container .vis-item.gantt-succeeded {
-    background-color: var(--werkr-success);
-    border-color: var(--werkr-success);
+    background-color: var(--werkr-status-succeeded);
+    border-color: var(--werkr-status-succeeded);
     color: #fff;
 }
 
 ::deep .gantt-container .vis-item.gantt-failed {
-    background-color: var(--werkr-failed);
-    border-color: var(--werkr-failed);
+    background-color: var(--werkr-status-failed);
+    border-color: var(--werkr-status-failed);
     color: #fff;
 }
 
 ::deep .gantt-container .vis-item.gantt-running {
-    background-color: var(--werkr-running);
-    border-color: var(--werkr-running);
+    background-color: var(--werkr-status-running);
+    border-color: var(--werkr-status-running);
     color: #212529;
     animation: gantt-pulse 1.5s ease-in-out infinite;
 }
 
 ::deep .gantt-container .vis-item.gantt-skipped {
-    background-color: var(--werkr-skipped);
-    border-color: var(--werkr-skipped);
+    background-color: var(--werkr-status-skipped);
+    border-color: var(--werkr-status-skipped);
     color: #fff;
 }
 
 ::deep .gantt-container .vis-item.gantt-pending {
-    background-color: var(--werkr-not-run);
-    border-color: var(--werkr-not-run);
+    background-color: var(--werkr-status-cancelled);
+    border-color: var(--werkr-status-cancelled);
+    color: #fff;
+}
+
+::deep .gantt-container .vis-item.gantt-cancelled {
+    background-color: var(--werkr-status-cancelled);
+    border-color: var(--werkr-status-cancelled);
     color: #fff;
 }
 

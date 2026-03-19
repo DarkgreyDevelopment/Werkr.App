@@ -6,6 +6,7 @@ export function getStatusClassName( status: string ): string {
     case "failed": return "gantt-failed";
     case "skipped": return "gantt-skipped";
     case "pending": return "gantt-pending";
+    case "cancelled": return "gantt-cancelled";
     default: return "gantt-pending";
   }
 }

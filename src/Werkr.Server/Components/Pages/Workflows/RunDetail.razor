@@ -96,6 +96,10 @@
                     <button class="nav-link @( _activeTab == "log" ? "active" : "" )"
                             @onclick='( ) => _activeTab = "log"'>Log</button>
                 </li>
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "grid" ? "active" : "" )"
+                            @onclick="ActivateGridTab">Grid</button>
+                </li>
             </ul>
 
             @switch ( _activeTab ) {
@@ -168,6 +172,19 @@
                     @* ── Log: Full Log Viewer ── *@
                     <LogViewer Lines="GetFilteredLogLines( )" />
                     break;
+
+                case "grid":
+                    @* ── Grid: Step x Run Matrix ── *@
+                    @if ( _gridLoading ) {
+                        <LoadingSpinner Message="Loading grid data..." />
+                    } else if ( _gridSteps is not null && _gridRuns is not null ) {
+                        <RunGridView Steps="_gridSteps"
+                                     Runs="_gridRuns"
+                                     OnCellSelected="OnGridCellSelected" />
+                    } else {
+                        <EmptyState Message="No grid data available." />
+                    }
+                    break;
             }
         </div>
 
@@ -195,6 +212,12 @@
     private string _activeTab = "compact";
     private StepExecutionDto? _selectedStep;
     private GanttTab? _ganttTab;
+
+    // Grid tab data
+    private IReadOnlyList<RunGridView.RunGridStep>? _gridSteps;
+    private IReadOnlyList<RunGridView.RunGridEntry>? _gridRuns;
+    private bool _gridLoading;
+    private bool _gridLoaded;
 
     // Retry
     private bool _retrying;
@@ -281,6 +304,21 @@
             else updated.Add( newEntry );
 
             _detail = _detail with { StepExecutions = updated };
+        }
+
+        // Update grid data if loaded
+        if ( _gridLoaded && _gridRuns is not null ) {
+            RunGridView.RunGridEntry? currentEntry = _gridRuns
+                .FirstOrDefault( r => r.RunId == RunId );
+            if ( currentEntry is not null ) {
+                Dictionary<long, string> updated = new( currentEntry.StepStatuses ) {
+                    [dto.StepId] = dto.Status
+                };
+                List<RunGridView.RunGridEntry> updatedRuns = _gridRuns.ToList( );
+                int idx = updatedRuns.IndexOf( currentEntry );
+                updatedRuns[idx] = currentEntry with { StepStatuses = updated };
+                _gridRuns = updatedRuns;
+            }
         }
 
         StateHasChanged( );
@@ -377,6 +415,75 @@
         if ( _selectedStep is null ) return _logLines;
         string prefix = $"Step {_selectedStep.StepId}:";
         return _logLines.Where( l => l.Contains( prefix ) ).ToList( );
+    }
+
+    // ── Grid Tab ──
+
+    private async Task ActivateGridTab( ) {
+        _activeTab = "grid";
+        await LoadGridDataAsync( );
+    }
+
+    private async Task LoadGridDataAsync( ) {
+        if ( _gridLoaded || _detail is null || _workflow is null ) return;
+        _gridLoading = true;
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            // Fetch recent runs for this workflow (limited to prevent excessive API calls)
+            List<WorkflowRunDto>? recentRuns = await client.GetFromJsonAsync<List<WorkflowRunDto>>(
+                $"/api/v1/workflows/{_detail.WorkflowId}/runs?limit=20" );
+
+            if ( recentRuns is null || recentRuns.Count == 0 ) return;
+
+            // Build step rows from workflow definition (topological order)
+            _gridSteps = _workflow.Steps
+                .OrderBy( s => s.Order )
+                .Select( s => new RunGridView.RunGridStep( s.Id, s.TaskName ?? $"Step #{s.Order}", s.Order ) )
+                .ToList( );
+
+            // Fetch detail for each run to get step execution statuses
+            // The current run's detail is already loaded — reuse it
+            List<RunGridView.RunGridEntry> entries = new( );
+            foreach ( WorkflowRunDto run in recentRuns.OrderBy( r => r.StartTime ) ) {
+                IReadOnlyDictionary<long, string> stepStatuses;
+                if ( run.Id == _detail.Id ) {
+                    // Reuse already-loaded detail
+                    stepStatuses = _detail.StepExecutions
+                        .GroupBy( e => e.StepId )
+                        .ToDictionary( g => g.Key, g => g.OrderByDescending( e => e.Attempt ).First( ).Status );
+                } else {
+                    // Fetch detail for other runs
+                    try {
+                        WorkflowRunDetailDto? runDetail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
+                            $"/api/v1/workflows/runs/{run.Id}" );
+                        stepStatuses = runDetail?.StepExecutions
+                            .GroupBy( e => e.StepId )
+                            .ToDictionary( g => g.Key, g => g.OrderByDescending( e => e.Attempt ).First( ).Status )
+                            ?? new Dictionary<long, string>( );
+                    } catch {
+                        stepStatuses = new Dictionary<long, string>( );
+                    }
+                }
+                entries.Add( new RunGridView.RunGridEntry( run.Id, run.StartTime, run.Status, stepStatuses ) );
+            }
+            _gridRuns = entries;
+            _gridLoaded = true;
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load grid data: {ex.Message}";
+        } finally {
+            _gridLoading = false;
+        }
+    }
+
+    private void OnGridCellSelected( (Guid RunId, long StepId) selection ) {
+        if ( selection.RunId == _detail?.Id ) {
+            // Same run — select the step in the existing detail
+            SelectStepById( selection.StepId );
+        } else {
+            // Different run — navigate to that run's detail page
+            Navigation.NavigateTo( $"/workflows/runs/{selection.RunId}" );
+        }
     }
 
     // ── Retry ──
