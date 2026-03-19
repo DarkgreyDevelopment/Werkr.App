@@ -85,5 +85,5 @@ message GetStepExecutionsResponse {
 message StepExecutionEntry {
   int64  step_id = 1;
   int32  attempt = 2;
-  string status = 3;           // "Pending", "Running", "Completed", "Failed", "Skipped"
+  string status = 3;           // "Pending", "Running", "Succeeded", "Failed", "Skipped"
 }

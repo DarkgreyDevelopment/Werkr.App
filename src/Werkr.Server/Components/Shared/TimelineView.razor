@@ -40,7 +40,7 @@
 
     private static string GetHeaderClass( string status ) => status switch {
         "Running" => "border-start border-primary border-3",
-        "Completed" => "border-start border-success border-3",
+        "Succeeded" => "border-start border-success border-3",
         "Failed" => "border-start border-danger border-3",
         "Skipped" => "border-start border-secondary border-3",
         _ => "border-start border-warning border-3",

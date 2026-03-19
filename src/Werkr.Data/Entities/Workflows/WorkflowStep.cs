@@ -53,10 +53,10 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
 
     /// <summary>
     /// How this step evaluates its predecessor dependencies.
-    /// All = all predecessors must satisfy the step's condition (default).
-    /// Any = at least one predecessor satisfying the condition triggers execution.
+    /// AllSuccess = all predecessors must satisfy the step's condition (default).
+    /// AnySuccess = at least one predecessor satisfying the condition triggers execution.
     /// </summary>
-    public DependencyMode DependencyMode { get; set; } = DependencyMode.All;
+    public DependencyMode DependencyMode { get; set; } = DependencyMode.AllSuccess;
 
     /// <summary>Name of the input variable consumed by this step. Null if no input variable is declared.</summary>
     [MaxLength( 128 )]

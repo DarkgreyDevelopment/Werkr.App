@@ -274,7 +274,7 @@
                 idx >= 0 ? updated[idx].Id : 0,
                 dto.RunId, dto.StepId, idx >= 0 ? updated[idx].Attempt : 1,
                 dto.Status, dto.Timestamp,
-                dto.Status is "Completed" or "Failed" ? dto.Timestamp : null,
+                dto.Status is "Succeeded" or "Failed" ? dto.Timestamp : null,
                 dto.JobId, dto.ErrorMessage, null );
 
             if ( idx >= 0 ) updated[idx] = newEntry;

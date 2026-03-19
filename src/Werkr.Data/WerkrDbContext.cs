@@ -370,6 +370,7 @@ public class WerkrDbContext : DbContext {
 
             _ = entity.Property( e => e.Name ).HasMaxLength( 128 );
             _ = entity.Property( e => e.Description ).HasMaxLength( 500 );
+            _ = entity.Property( e => e.DataType ).HasMaxLength( 32 );
 
             // Unique variable name per workflow (case-insensitive)
             _ = entity.HasIndex( e => new { e.WorkflowId, e.Name } )

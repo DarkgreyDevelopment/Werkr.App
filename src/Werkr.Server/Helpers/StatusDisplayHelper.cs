@@ -14,7 +14,7 @@ public static class StatusDisplayHelper {
     public static string GetStatusBadgeClass( string? status ) =>
         status?.Trim( ).ToLowerInvariant( ) switch {
             // Success family
-            "completed" or "succeeded" or "success" or "ready" or "connected" or "active" or "enabled" or "healthy" => "bg-success",
+            "succeeded" or "success" or "ready" or "connected" or "active" or "enabled" or "healthy" => "bg-success",
 
             // Failure family
             "failed" or "faulted" or "error" or "unreachable" => "bg-danger",

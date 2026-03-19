@@ -13,7 +13,7 @@ public enum StepExecutionStatus {
     Running = 1,
 
     /// <summary>Step completed successfully.</summary>
-    Completed = 2,
+    Succeeded = 2,
 
     /// <summary>Step execution failed.</summary>
     Failed = 3,

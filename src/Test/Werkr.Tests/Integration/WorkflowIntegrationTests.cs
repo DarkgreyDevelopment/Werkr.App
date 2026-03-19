@@ -173,7 +173,7 @@ public class WorkflowIntegrationTests {
             taskId = task1Id,
             order = 1,
             controlStatement = "Default",
-            dependencyMode = "All"
+            dependencyMode = "AllSuccess"
         };
 
         HttpResponseMessage step1Response = await Api.PostAsJsonAsync(
@@ -189,7 +189,7 @@ public class WorkflowIntegrationTests {
             taskId = task2Id,
             order = 2,
             controlStatement = "Default",
-            dependencyMode = "All"
+            dependencyMode = "AllSuccess"
         };
 
         HttpResponseMessage step2Response = await Api.PostAsJsonAsync(

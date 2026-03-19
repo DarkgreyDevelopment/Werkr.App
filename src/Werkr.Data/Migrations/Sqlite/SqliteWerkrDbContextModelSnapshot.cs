@@ -16,7 +16,7 @@ namespace Werkr.Data.Migrations.Sqlite
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.4");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
                 {
@@ -1407,6 +1407,11 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
+                    b.Property<string>("DataType")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("data_type");
+
                     b.Property<string>("DefaultValue")
                         .HasColumnType("TEXT")
                         .HasColumnName("default_value");
@@ -1416,10 +1421,18 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("description");
 
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_required");
+
                     b.Property<string>("LastUpdated")
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
+
+                    b.Property<bool>("LogRedaction")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("log_redaction");
 
                     b.Property<string>("Name")
                         .IsRequired()

@@ -121,7 +121,10 @@ internal static class WorkflowMapper {
             WorkflowId: variable.WorkflowId,
             Name: variable.Name,
             Description: variable.Description,
-            DefaultValue: variable.DefaultValue );
+            DefaultValue: variable.DefaultValue,
+            DataType: variable.DataType,
+            IsRequired: variable.IsRequired,
+            LogRedaction: variable.LogRedaction );
 
     /// <summary>Maps a <see cref="WorkflowRunVariable"/> entity to a <see cref="RunVariableCurrentDto"/>.</summary>
     public static RunVariableCurrentDto ToRunVariableCurrentDto( WorkflowRunVariable variable ) =>

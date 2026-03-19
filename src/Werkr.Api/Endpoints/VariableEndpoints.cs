@@ -93,6 +93,9 @@ internal static class VariableEndpoints {
                 Name = request.Name.ToLowerInvariant( ),
                 Description = request.Description,
                 DefaultValue = request.DefaultValue,
+                DataType = request.DataType,
+                IsRequired = request.IsRequired,
+                LogRedaction = request.LogRedaction,
             };
 
             _ = dbContext.WorkflowVariables.Add( entity );
@@ -152,6 +155,18 @@ internal static class VariableEndpoints {
                 }
 
                 entity.DefaultValue = request.DefaultValue;
+            }
+
+            if (request.DataType is not null) {
+                entity.DataType = request.DataType;
+            }
+
+            if (request.IsRequired is not null) {
+                entity.IsRequired = request.IsRequired.Value;
+            }
+
+            if (request.LogRedaction is not null) {
+                entity.LogRedaction = request.LogRedaction.Value;
             }
 
             _ = await dbContext.SaveChangesAsync( ct );

@@ -156,7 +156,7 @@ public sealed partial class JobReportingGrpcService(
                 .FirstOrDefaultAsync( context.CancellationToken );
 
             if (stepExecution is not null) {
-                stepExecution.Status = inner.Success ? StepExecutionStatus.Completed : StepExecutionStatus.Failed;
+                stepExecution.Status = inner.Success ? StepExecutionStatus.Succeeded : StepExecutionStatus.Failed;
                 stepExecution.EndTime = endTime ?? DateTime.UtcNow;
                 stepExecution.JobId = job.Id;
                 if (!inner.Success) {

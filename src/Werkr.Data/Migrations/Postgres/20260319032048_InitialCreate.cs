@@ -445,6 +445,9 @@ public partial class InitialCreate : Migration {
                 name = table.Column<string>( type: "character varying(128)", maxLength: 128, nullable: false ),
                 description = table.Column<string>( type: "character varying(500)", maxLength: 500, nullable: true ),
                 default_value = table.Column<string>( type: "text", nullable: true ),
+                data_type = table.Column<string>( type: "character varying(32)", maxLength: 32, nullable: true ),
+                is_required = table.Column<bool>( type: "boolean", nullable: false ),
+                log_redaction = table.Column<bool>( type: "boolean", nullable: false ),
                 created = table.Column<string>( type: "text", nullable: false ),
                 last_updated = table.Column<string>( type: "text", nullable: false ),
                 version = table.Column<int>( type: "integer", nullable: false )
@@ -743,7 +746,7 @@ public partial class InitialCreate : Migration {
             name: "ix_holiday_dates_holiday_calendar_id_date",
             schema: "werkr",
             table: "holiday_dates",
-            columns: ["holiday_calendar_id", "date"],
+            columns: new[] { "holiday_calendar_id", "date" },
             unique: true );
 
         _ = migrationBuilder.CreateIndex(
@@ -786,7 +789,7 @@ public partial class InitialCreate : Migration {
             name: "IX_jobs_WorkflowRunId_StepId",
             schema: "werkr",
             table: "jobs",
-            columns: ["workflow_run_id", "step_id"] );
+            columns: new[] { "workflow_run_id", "step_id" } );
 
         _ = migrationBuilder.CreateIndex(
             name: "ix_registered_connections_connection_name",
@@ -811,19 +814,19 @@ public partial class InitialCreate : Migration {
             name: "ix_saved_filters_page_key_is_shared",
             schema: "werkr",
             table: "saved_filters",
-            columns: ["page_key", "is_shared"] );
+            columns: new[] { "page_key", "is_shared" } );
 
         _ = migrationBuilder.CreateIndex(
             name: "ix_saved_filters_page_key_owner_id",
             schema: "werkr",
             table: "saved_filters",
-            columns: ["page_key", "owner_id"] );
+            columns: new[] { "page_key", "owner_id" } );
 
         _ = migrationBuilder.CreateIndex(
             name: "ix_schedule_audit_log_schedule_id_occurrence_utc_time",
             schema: "werkr",
             table: "schedule_audit_log",
-            columns: ["schedule_id", "occurrence_utc_time"] );
+            columns: new[] { "schedule_id", "occurrence_utc_time" } );
 
         _ = migrationBuilder.CreateIndex(
             name: "ix_schedule_holiday_calendars_holiday_calendar_id",
@@ -866,7 +869,7 @@ public partial class InitialCreate : Migration {
             name: "ix_workflow_run_variables_workflow_run_id_variable_name_version",
             schema: "werkr",
             table: "workflow_run_variables",
-            columns: ["workflow_run_id", "variable_name", "version"],
+            columns: new[] { "workflow_run_id", "variable_name", "version" },
             unique: true );
 
         _ = migrationBuilder.CreateIndex(
@@ -909,7 +912,7 @@ public partial class InitialCreate : Migration {
             name: "ix_workflow_step_executions_workflow_run_id_step_id_attempt",
             schema: "werkr",
             table: "workflow_step_executions",
-            columns: ["workflow_run_id", "step_id", "attempt"],
+            columns: new[] { "workflow_run_id", "step_id", "attempt" },
             unique: true );
 
         _ = migrationBuilder.CreateIndex(
@@ -934,7 +937,7 @@ public partial class InitialCreate : Migration {
             name: "ix_workflow_variables_workflow_id_name",
             schema: "werkr",
             table: "workflow_variables",
-            columns: ["workflow_id", "name"],
+            columns: new[] { "workflow_id", "name" },
             unique: true );
     }
 

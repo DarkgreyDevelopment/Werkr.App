@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Grpc.Core;
+using Werkr.Agent.Scheduling;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data.Entities.Registration;
@@ -18,9 +19,11 @@ namespace Werkr.Agent.Services;
 /// schedule needs re-syncing. Writers are this service; the reader is
 /// the evaluator's background loop.
 /// </param>
+/// <param name="workflowExecutionService">Workflow execution service for cancelling in-flight runs.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ScheduleInvalidationService(
     Channel<string> invalidationChannel,
+    WorkflowExecutionService workflowExecutionService,
     ILogger<ScheduleInvalidationService> logger
 ) : ScheduleInvalidation.ScheduleInvalidationBase {
 
@@ -66,6 +69,37 @@ public sealed partial class ScheduleInvalidationService(
 
         return await Task.FromResult(
             PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId ) );
+    }
+
+    /// <summary>
+    /// Handles a workflow-disabled notification from the Server.
+    /// Cancels any in-flight workflow run for the specified workflow ID.
+    /// </summary>
+    public override async Task<EncryptedEnvelope> NotifyWorkflowDisabled(
+        EncryptedEnvelope request,
+        ServerCallContext context
+    ) {
+        RegisteredConnection connection = GetConnection(context);
+        string keyId = connection.ActiveKeyId ?? connection.Id.ToString();
+
+        NotifyWorkflowDisabledRequest inner = PayloadEncryptor.DecryptFromEnvelope<NotifyWorkflowDisabledRequest>(
+            request, connection.SharedKey);
+
+        if (logger.IsEnabled( LogLevel.Information )) {
+            logger.LogInformation(
+                "Received workflow-disabled notification for WorkflowId={WorkflowId}.",
+                inner.WorkflowId );
+        }
+
+        workflowExecutionService.CancelWorkflow( inner.WorkflowId );
+
+        NotifyWorkflowDisabledResponse disabledResponse = new()
+        {
+            Acknowledged = true,
+        };
+
+        return await Task.FromResult(
+            PayloadEncryptor.EncryptToEnvelope( disabledResponse, connection.SharedKey, keyId ) );
     }
 
     private static RegisteredConnection GetConnection( ServerCallContext context ) {

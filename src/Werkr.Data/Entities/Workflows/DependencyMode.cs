@@ -5,9 +5,9 @@ namespace Werkr.Data.Entities.Workflows;
 /// </summary>
 public enum DependencyMode {
 
-    /// <summary>All predecessor steps must complete and satisfy conditions before this step executes.</summary>
-    All = 0,
+    /// <summary>All predecessor steps must succeed and satisfy conditions before this step executes.</summary>
+    AllSuccess = 0,
 
-    /// <summary>Any single predecessor completing and satisfying conditions triggers this step.</summary>
-    Any = 1,
+    /// <summary>Any single predecessor succeeding and satisfying conditions triggers this step.</summary>
+    AnySuccess = 1,
 }

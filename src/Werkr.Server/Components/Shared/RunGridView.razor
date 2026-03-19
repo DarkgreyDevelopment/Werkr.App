@@ -64,7 +64,7 @@
         run.StepStatuses.TryGetValue( stepId, out string? s ) ? s : "Pending";
 
     private static string GetStatusIcon( string status ) => status switch {
-        "Completed" => "✓",
+        "Succeeded" => "✓",
         "Failed" => "✗",
         "Running" => "▶",
         "Skipped" => "⏭",

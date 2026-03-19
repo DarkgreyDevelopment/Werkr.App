@@ -267,13 +267,13 @@ public sealed partial class VariableGrpcService(
 
         WorkflowRun? run = await dbContext.WorkflowRuns
             .FirstOrDefaultAsync( r => r.Id == runId, context.CancellationToken ) ?? throw new RpcException( new Status( StatusCode.NotFound, $"WorkflowRun {runId} not found." ) );
-        run.Status = inner.Success ? WorkflowRunStatus.Completed : WorkflowRunStatus.Failed;
+        run.Status = inner.Success ? WorkflowRunStatus.Succeeded : WorkflowRunStatus.Failed;
         run.EndTime = endTime;
         _ = await dbContext.SaveChangesAsync( context.CancellationToken );
 
         // Count step results for the event
         int completedSteps = await dbContext.WorkflowStepExecutions
-            .CountAsync( se => se.WorkflowRunId == runId && se.Status == StepExecutionStatus.Completed,
+            .CountAsync(se => se.WorkflowRunId == runId && se.Status == StepExecutionStatus.Succeeded,
                 context.CancellationToken );
         int failedSteps = await dbContext.WorkflowStepExecutions
             .CountAsync( se => se.WorkflowRunId == runId && se.Status == StepExecutionStatus.Failed,

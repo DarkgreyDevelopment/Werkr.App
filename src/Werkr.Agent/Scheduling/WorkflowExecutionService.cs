@@ -46,6 +46,22 @@ public sealed partial class WorkflowExecutionService(
     ILogger<WorkflowExecutionService> logger
 ) {
 
+    /// <summary>Tracks active CancellationTokenSources keyed by workflow ID for in-flight runs.</summary>
+    private readonly ConcurrentDictionary<long, CancellationTokenSource> _activeWorkflows = new();
+
+    /// <summary>
+    /// Cancels any in-flight workflow runs for the specified workflow.
+    /// Called when the API signals that a workflow was disabled.
+    /// </summary>
+    public void CancelWorkflow( long workflowId ) {
+        if (_activeWorkflows.TryRemove( workflowId, out CancellationTokenSource? cts )) {
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation( "Cancelling in-flight workflow run for WorkflowId={WorkflowId}.", workflowId );
+            }
+            cts.Cancel( );
+        }
+    }
+
     // ── Result Types ─────────────────────────────────────────────────────────────
 
     /// <summary>Result of executing a single workflow step.</summary>
@@ -91,6 +107,20 @@ public sealed partial class WorkflowExecutionService(
         ScheduledWorkflowDefinition workflow,
         CancellationToken ct
     ) {
+        using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _ = _activeWorkflows.TryAdd( workflow.WorkflowId, linkedCts );
+        try {
+            await ExecuteWorkflowCoreAsync( workflow, linkedCts.Token );
+        } finally {
+            _ = _activeWorkflows.TryRemove( workflow.WorkflowId, out _ );
+        }
+    }
+
+    /// <summary>Core workflow execution logic.</summary>
+    private async Task ExecuteWorkflowCoreAsync(
+        ScheduledWorkflowDefinition workflow,
+        CancellationToken ct
+    ) {
         Guid workflowRunId;
         if (!string.IsNullOrWhiteSpace( workflow.WorkflowRunId )
             && Guid.TryParse( workflow.WorkflowRunId, out Guid parsedRunId )) {
@@ -123,12 +153,30 @@ public sealed partial class WorkflowExecutionService(
             variableCache[trigger.Key] = trigger.Value;
         }
 
+        // Seed from prior run variable values (retry-from-failed: includes outputs from succeeded steps)
+        foreach (KeyValuePair<string, string> rv in workflow.RunVariableValues) {
+            variableCache[rv.Key] = rv.Value;
+        }
+
         // Build topological levels from the step definitions
         IReadOnlyList<IReadOnlyList<ScheduledWorkflowStepDef>> levels =
             BuildTopologicalLevels( workflow.Steps );
 
         // Step result map: stepId → completed job result (concurrent for parallel steps)
         ConcurrentDictionary<long, StepJobResult> stepResults = new();
+
+        // Pre-populate stepResults with prior succeeded steps (retry-from-failed scenario).
+        // This allows dependency checks to pass for upstream steps that don't need re-execution.
+        foreach (long succeededStepId in workflow.PriorSucceededStepIds) {
+            stepResults[succeededStepId] = new StepJobResult(
+                JobId: Guid.Empty,
+                Success: true,
+                ExitCode: 0,
+                StartTime: DateTime.MinValue,
+                EndTime: DateTime.MinValue,
+                ErrorCategory: ErrorCategory.None,
+                OutputPreview: null );
+        }
 
         // If/Else/ElseIf chain tracking: stepId → whether that branch was taken
         Dictionary<long, bool> branchTaken = [];
@@ -210,14 +258,18 @@ public sealed partial class WorkflowExecutionService(
                     workflowRunId, stepResults.Count );
             }
         } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
-            throw; // Propagate shutdown
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation( "Workflow run {RunId} was cancelled.", workflowRunId );
+            }
+            workflowFailed = true;
         } catch (Exception ex) {
             logger.LogError( ex, "Workflow run {RunId} failed with unexpected error.", workflowRunId );
             workflowFailed = true;
         }
 
-        // Report workflow run completion/failure to the server
-        await CompleteWorkflowRunAsync( workflowRunId, !workflowFailed, failedStepId, ct );
+        // Report workflow run completion/failure to the server.
+        // Use a non-cancellable token — we must report even if the run was cancelled (disabled).
+        await CompleteWorkflowRunAsync( workflowRunId, !workflowFailed, failedStepId, CancellationToken.None );
     }
 
     // ── Step Execution ───────────────────────────────────────────────────────────
@@ -236,6 +288,11 @@ public sealed partial class WorkflowExecutionService(
         if (taskDef is null) {
             string msg = $"Step {step.StepId} has no embedded task definition.";
             return StepExecutionResult.Fail( step.StepId, msg );
+        }
+
+        // Skip steps that already succeeded in a prior attempt (retry-from-failed)
+        if (stepResults.ContainsKey( step.StepId )) {
+            return StepExecutionResult.Skipped( step.StepId );
         }
 
         string stepLabel = $"Step {step.Order}: {taskDef.Name}";
@@ -289,10 +346,11 @@ public sealed partial class WorkflowExecutionService(
             taskDef, workflowRunId, step.StepId, scheduleId, inputVariableValue, outputVariableName, ct);
 
         // Push output variable to server and local cache
-        if (outputVariableName is not null && job.OutputVariableValue is not null) {
-            variableCache[outputVariableName] = job.OutputVariableValue;
+        if (outputVariableName is not null && job.Success) {
+            string value = job.OutputVariableValue ?? string.Empty;
+            variableCache[outputVariableName] = value;
             await variableClient.PushVariableAsync( workflowRunId, outputVariableName,
-                job.OutputVariableValue, step.StepId, job.JobId, ct );
+                value, step.StepId, job.JobId, ct );
         }
 
         // Record branch taken for If/ElseIf chains
@@ -359,10 +417,11 @@ public sealed partial class WorkflowExecutionService(
             iterations++;
 
             // Push output variable after each iteration
-            if (outputVariableName is not null && lastJob.OutputVariableValue is not null) {
-                variableCache[outputVariableName] = lastJob.OutputVariableValue;
+            if (outputVariableName is not null && lastJob.Success) {
+                string value = lastJob.OutputVariableValue ?? string.Empty;
+                variableCache[outputVariableName] = value;
                 await variableClient.PushVariableAsync( workflowRunId, outputVariableName,
-                    lastJob.OutputVariableValue, step.StepId, lastJob.JobId, ct );
+                    value, step.StepId, lastJob.JobId, ct );
             }
 
             if (!lastJob.Success) {
@@ -667,9 +726,9 @@ public sealed partial class WorkflowExecutionService(
         DependencyMode mode = (DependencyMode) step.DependencyMode;
 
         return mode switch {
-            DependencyMode.All =>
+            DependencyMode.AllSuccess =>
                 step.DependsOnStepIds.All( stepResults.ContainsKey ),
-            DependencyMode.Any =>
+            DependencyMode.AnySuccess =>
                 step.DependsOnStepIds.Any( stepResults.ContainsKey ),
             _ => step.DependsOnStepIds.All( stepResults.ContainsKey ),
         };

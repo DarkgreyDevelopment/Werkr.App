@@ -88,11 +88,16 @@ message ScheduledWorkflowDefinition {
   repeated WorkflowVariableDef variables = 5;       // Design-time variable definitions
   string workflow_run_id = 6;                        // API-generated run ID
   map<string, string> trigger_variables = 7;         // Per-execution trigger param overrides
+  repeated int64 prior_succeeded_step_ids = 8;       // Step IDs that already succeeded (retry-from-failed)
+  map<string, string> run_variable_values = 9;        // Latest variable values from the run (retry-from-failed)
 }
 
 message WorkflowVariableDef {
   string name = 1;
   string default_value = 2;         // JSON blob or empty
+  string data_type = 3;             // Optional data-type hint (e.g. "string", "int", "json")
+  bool is_required = 4;             // Whether the variable must be supplied before run start
+  bool log_redaction = 5;           // When true, value is redacted from logs and UI
 }
 
 message ScheduledWorkflowStepDef {

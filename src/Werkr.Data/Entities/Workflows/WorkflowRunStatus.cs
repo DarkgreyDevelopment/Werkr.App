@@ -9,7 +9,7 @@ public enum WorkflowRunStatus {
     Running = 0,
 
     /// <summary>All steps completed successfully.</summary>
-    Completed = 1,
+    Succeeded = 1,
 
     /// <summary>One or more steps failed.</summary>
     Failed = 2,

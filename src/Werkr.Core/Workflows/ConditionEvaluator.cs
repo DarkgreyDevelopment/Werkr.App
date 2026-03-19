@@ -94,11 +94,11 @@ public sealed partial class ConditionEvaluator(
         }
 
         return dependencyMode switch {
-            DependencyMode.All => predecessorJobs.All( job => Evaluate(
+            DependencyMode.AllSuccess => predecessorJobs.All( job => Evaluate(
                 expression,
                 job
             ) ),
-            DependencyMode.Any => predecessorJobs.Any( job => Evaluate(
+            DependencyMode.AnySuccess => predecessorJobs.Any( job => Evaluate(
                 expression,
                 job
             ) ),

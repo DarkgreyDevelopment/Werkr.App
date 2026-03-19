@@ -81,7 +81,7 @@
     ];
 
     private static readonly FilterDefinition _filterDefinition = new( [
-        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Running", "Completed", "Failed", "Skipped"] ),
+        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Running", "Succeeded", "Failed", "Skipped"] ),
         new FilterField( "since", "Since", FilterFieldType.Date ),
         new FilterField( "until", "Until", FilterFieldType.Date ),
     ] );

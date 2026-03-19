@@ -116,7 +116,7 @@
                         <td>
                             @if ( item.LastJob is not null ) {
                                 <a href="/jobs/@item.LastJob.Id">
-                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.LastJob.Success ? "Completed" : "Failed" )">@( item.LastJob.Success ? "Success" : "Failed" )</span>
+                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.LastJob.Success ? "Succeeded" : "Failed" )">@( item.LastJob.Success ? "Success" : "Failed" )</span>
                                 </a>
                                 <br />
                                 <small class="text-muted">@item.LastJob.StartTime.ToString( "g" )</small>

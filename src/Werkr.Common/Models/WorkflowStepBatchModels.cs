@@ -20,7 +20,7 @@ public sealed record WorkflowStepBatchRequest(
 /// <param name="ControlStatement">Control flow type: "Default", "If", "ElseIf", "Else", "While", "Do".</param>
 /// <param name="ConditionExpression">Condition for If/ElseIf/While/Do steps.</param>
 /// <param name="MaxIterations">Loop guard for While/Do steps.</param>
-/// <param name="DependencyMode">"All" or "Any".</param>
+/// <param name="DependencyMode">"AllSuccess" or "AnySuccess".</param>
 /// <param name="AgentConnectionIdOverride">Optional pin to specific agent.</param>
 /// <param name="InputVariableName">Variable name to read from predecessor output.</param>
 /// <param name="OutputVariableName">Variable name to write step output into.</param>
@@ -33,7 +33,7 @@ public sealed record StepBatchOperation(
     string ControlStatement = "Default",
     string? ConditionExpression = null,
     int MaxIterations = 100,
-    string DependencyMode = "All",
+    string DependencyMode = "AllSuccess",
     Guid? AgentConnectionIdOverride = null,
     string? InputVariableName = null,
     string? OutputVariableName = null,

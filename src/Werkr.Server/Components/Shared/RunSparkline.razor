@@ -33,7 +33,7 @@
     public sealed record RunSummary( Guid RunId, string Status, double? DurationSeconds );
 
     private static string GetFill( string status ) => status switch {
-        "Completed" => "var(--werkr-success)",
+        "Succeeded" => "var(--werkr-success)",
         "Failed" => "var(--werkr-failed)",
         "Running" => "var(--werkr-running)",
         "Skipped" => "var(--werkr-skipped)",

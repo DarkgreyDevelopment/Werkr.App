@@ -1,5 +1,6 @@
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
+using Werkr.Common.Models;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Core.Scheduling;
@@ -133,6 +134,31 @@ public sealed partial class ScheduleSyncGrpcService(
 
                 foreach (WorkflowRunVariable tv in triggerVars) {
                     workflowDef.TriggerVariables[tv.VariableName] = tv.Value;
+                }
+
+                // Include step IDs that already succeeded (for retry-from-failed pre-population)
+                List<long> succeededStepIds = await dbContext.WorkflowStepExecutions
+                    .AsNoTracking()
+                    .Where(e => e.WorkflowRunId == ws.WorkflowRunId.Value
+                        && e.Status == StepExecutionStatus.Succeeded)
+                    .Select(e => e.StepId)
+                    .Distinct()
+                    .ToListAsync(context.CancellationToken);
+
+                workflowDef.PriorSucceededStepIds.AddRange( succeededStepIds );
+
+                // Include latest variable values for retry cache seeding
+                if (succeededStepIds.Count > 0) {
+                    List<WorkflowRunVariable> latestVars = await dbContext.Set<WorkflowRunVariable>()
+                        .AsNoTracking()
+                        .Where(v => v.WorkflowRunId == ws.WorkflowRunId.Value)
+                        .GroupBy(v => v.VariableName)
+                        .Select(g => g.OrderByDescending(v => v.Version).First())
+                        .ToListAsync(context.CancellationToken);
+
+                    foreach (WorkflowRunVariable rv in latestVars) {
+                        workflowDef.RunVariableValues[rv.VariableName] = rv.Value;
+                    }
                 }
             }
 
@@ -290,6 +316,9 @@ public sealed partial class ScheduleSyncGrpcService(
             def.Variables.Add( new WorkflowVariableDef {
                 Name = variable.Name,
                 DefaultValue = variable.DefaultValue ?? string.Empty,
+                DataType = variable.DataType ?? string.Empty,
+                IsRequired = variable.IsRequired,
+                LogRedaction = variable.LogRedaction,
             } );
         }
 

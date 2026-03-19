@@ -103,7 +103,7 @@
         string tooltip = BuildTooltip( stepName, dto.Status, dto.RuntimeSeconds );
 
         string startIso = ( dto.StartTime ?? dto.Timestamp ).ToString( "o" );
-        string? endIso = dto.Status is "Completed" or "Failed" or "Skipped"
+        string? endIso = dto.Status is "Succeeded" or "Failed" or "Skipped"
             ? ( dto.EndTime ?? dto.Timestamp ).ToString( "o" )
             : null;
 
@@ -154,7 +154,7 @@
 
     private static string StatusToClassName( string status ) => status switch {
         "Running" => "gantt-running",
-        "Completed" => "gantt-completed",
+        "Succeeded" => "gantt-succeeded",
         "Failed" => "gantt-failed",
         "Skipped" => "gantt-skipped",
         _ => "gantt-pending",

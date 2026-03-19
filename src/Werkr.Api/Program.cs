@@ -186,6 +186,9 @@ public class Program {
             // Schedule invalidation dispatcher (Scoped — sends push notifications to agents)
             _ = builder.Services.AddScoped<ScheduleInvalidationDispatcher>( );
 
+            // Workflow disabled dispatcher (Scoped — notifies agents when a workflow is disabled)
+            _ = builder.Services.AddScoped<WorkflowDisabledDispatcher>( );
+
             // Holiday calendar services (Scoped — one per request)
             _ = builder.Services.AddScoped<HolidayDateService>( );
             _ = builder.Services.AddScoped<HolidayCalendarService>( );

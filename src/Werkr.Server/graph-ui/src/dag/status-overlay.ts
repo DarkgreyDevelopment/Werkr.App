@@ -16,7 +16,7 @@ const controlFillMap: Record<string, string> = {
 
 const statusFillMap: Record<string, string> = {
   "Running": "var(--werkr-running)",
-  "Completed": "var(--werkr-success)",
+  "Succeeded": "var(--werkr-success)",
   "Failed": "var(--werkr-failed)",
   "Skipped": "var(--werkr-skipped)",
   "Pending": "var(--werkr-pending)",
@@ -26,7 +26,7 @@ const statusFillMap: Record<string, string> = {
 
 const statusIconMap: Record<string, string> = {
   "Running": "●",
-  "Completed": "✓",
+  "Succeeded": "✓",
   "Failed": "✕",
   "Skipped": "⊘",
   "Pending": "◷",

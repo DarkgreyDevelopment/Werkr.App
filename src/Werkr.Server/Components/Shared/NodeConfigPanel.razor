@@ -79,8 +79,8 @@
             <div class="mb-3">
                 <label class="form-label">Dependency Mode</label>
                 <select class="form-select form-select-sm" value="@_dependencyMode" @onchange="OnDependencyModeChanged">
-                    <option>All</option>
-                    <option>Any</option>
+                    <option>AllSuccess</option>
+                    <option>AnySuccess</option>
                 </select>
             </div>
 
@@ -141,7 +141,7 @@
     [Parameter] public string ControlStatement { get; set; } = "Default";
     [Parameter] public string? ConditionExpression { get; set; }
     [Parameter] public int MaxIterations { get; set; } = 100;
-    [Parameter] public string DependencyMode { get; set; } = "All";
+    [Parameter] public string DependencyMode { get; set; } = "AllSuccess";
     [Parameter] public string? InputVariableName { get; set; }
     [Parameter] public string? OutputVariableName { get; set; }
 
@@ -157,7 +157,7 @@
     private string _controlStatement = "Default";
     private string? _conditionExpression;
     private int _maxIterations = 100;
-    private string _dependencyMode = "All";
+    private string _dependencyMode = "AllSuccess";
     private string? _inputVariableName;
     private string? _outputVariableName;
 
@@ -197,7 +197,7 @@
     }
 
     private async Task OnDependencyModeChanged( ChangeEventArgs e ) {
-        _dependencyMode = e.Value?.ToString( ) ?? "All";
+        _dependencyMode = e.Value?.ToString( ) ?? "AllSuccess";
         await EmitFieldChange( "dependencyMode", _dependencyMode );
     }
 

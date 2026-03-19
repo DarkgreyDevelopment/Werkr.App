@@ -156,6 +156,7 @@ internal static partial class WorkflowEndpoints {
             long id,
             WorkflowSetEnabledRequest request,
             WorkflowService workflowService,
+            WorkflowDisabledDispatcher disabledDispatcher,
             CancellationToken ct
         ) => {
             Workflow? workflow = await workflowService.GetByIdAsync( id, ct );
@@ -165,6 +166,12 @@ internal static partial class WorkflowEndpoints {
 
             workflow.Enabled = request.Enabled;
             _ = await workflowService.UpdateAsync( workflow, ct );
+
+            // When disabling, notify agents so they can cancel in-flight runs
+            if (!request.Enabled) {
+                await disabledDispatcher.NotifyDisabledAsync( id, ct );
+            }
+
             return Results.Ok( WorkflowMapper.ToDto( workflow ) );
         } )
         .WithName( "SetWorkflowEnabled" )

@@ -18,7 +18,7 @@ namespace Werkr.Data.Migrations.Postgres
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("werkr")
-                .HasAnnotation("ProductVersion", "10.0.4")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1429,6 +1429,11 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("created");
 
+                    b.Property<string>("DataType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("data_type");
+
                     b.Property<string>("DefaultValue")
                         .HasColumnType("text")
                         .HasColumnName("default_value");
@@ -1438,10 +1443,18 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required");
+
                     b.Property<string>("LastUpdated")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("last_updated");
+
+                    b.Property<bool>("LogRedaction")
+                        .HasColumnType("boolean")
+                        .HasColumnName("log_redaction");
 
                     b.Property<string>("Name")
                         .IsRequired()

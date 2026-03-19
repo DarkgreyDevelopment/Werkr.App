@@ -6,8 +6,8 @@ describe( "getStatusClassName", () => {
     expect( getStatusClassName( "Running" ) ).toBe( "gantt-running" );
   } );
 
-  it( "maps Completed to gantt-completed", () => {
-    expect( getStatusClassName( "Completed" ) ).toBe( "gantt-completed" );
+  it("maps Succeeded to gantt-succeeded", () => {
+    expect(getStatusClassName("Succeeded")).toBe("gantt-succeeded");
   } );
 
   it( "maps Failed to gantt-failed", () => {
@@ -24,7 +24,7 @@ describe( "getStatusClassName", () => {
 
   it( "is case-insensitive", () => {
     expect( getStatusClassName( "running" ) ).toBe( "gantt-running" );
-    expect( getStatusClassName( "COMPLETED" ) ).toBe( "gantt-completed" );
+    expect(getStatusClassName("SUCCEEDED")).toBe("gantt-succeeded");
     expect( getStatusClassName( "fAiLeD" ) ).toBe( "gantt-failed" );
   } );
 

@@ -146,7 +146,7 @@ public sealed partial class JobEventRelayService(
                             runId,
                             root.GetProperty( "stepId" ).GetInt64( ),
                             root.GetProperty( "stepName" ).GetString( ) ?? "",
-                            "Completed",
+                            "Succeeded",
                             ParseGuid( root, "jobId" ),
                             root.GetProperty( "exitCode" ).GetInt32( ),
                             root.GetProperty( "runtimeSeconds" ).GetDouble( ),
@@ -199,7 +199,7 @@ public sealed partial class JobEventRelayService(
                         await _hubContext.Clients.Group( group ).SendAsync( "RunStatusChanged",
                             new RunStatusDto(
                                 runId,
-                                success ? "Completed" : "Failed",
+                                success ? "Succeeded" : "Failed",
                                 null,
                                 root.TryGetProperty( "failedStepId", out JsonElement fsId ) && fsId.ValueKind != JsonValueKind.Null
                                     ? fsId.GetInt64( )

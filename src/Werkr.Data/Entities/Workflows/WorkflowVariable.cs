@@ -34,6 +34,16 @@ public sealed class WorkflowVariable : ConcurrencyBase, IKey<long> {
     /// <summary>Optional default value for the variable (JSON blob). Seeded at workflow run start.</summary>
     public string? DefaultValue { get; set; }
 
+    /// <summary>Optional data-type hint (e.g. "string", "int", "json"). Maximum 32 characters.</summary>
+    [MaxLength( 32 )]
+    public string? DataType { get; set; }
+
+    /// <summary>Whether this variable must be supplied before a workflow run can start.</summary>
+    public bool IsRequired { get; set; }
+
+    /// <summary>When true, the variable value is redacted from logs and UI output.</summary>
+    public bool LogRedaction { get; set; }
+
     /// <summary>Navigation to the parent workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow Workflow { get; set; } = null!;

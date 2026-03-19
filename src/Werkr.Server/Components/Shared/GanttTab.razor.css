@@ -1,6 +1,6 @@
 /* Gantt tab — vis-timeline style scoping and status color overrides */
 
-::deep .gantt-container .vis-item.gantt-completed {
+::deep .gantt-container .vis-item.gantt-succeeded {
     background-color: var(--werkr-success);
     border-color: var(--werkr-success);
     color: #fff;

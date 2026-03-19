@@ -241,7 +241,7 @@
         new FilterField( "search", "Name", FilterFieldType.Text ),
         new FilterField( "tag", "Tag", FilterFieldType.Text ),
         new FilterField( "enabled", "Enabled", FilterFieldType.Dropdown, ["Yes", "No"] ),
-        new FilterField( "status", "Last Run Status", FilterFieldType.Dropdown, ["Running", "Completed", "Failed", "Cancelled"] ),
+        new FilterField( "status", "Last Run Status", FilterFieldType.Dropdown, ["Running", "Succeeded", "Failed", "Cancelled"] ),
     ] );
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
