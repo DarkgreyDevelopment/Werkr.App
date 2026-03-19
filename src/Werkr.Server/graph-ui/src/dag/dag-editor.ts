@@ -154,6 +154,9 @@ export function loadGraph(
         dependencyMode: dto.dependencyMode,
         conditionExpression: dto.conditionExpression,
         maxIterations: dto.maxIterations,
+        isComposite: dto.isComposite,
+        compositeType: dto.compositeType,
+        childWorkflowId: dto.childWorkflowId,
       } satisfies EditorNodeData as unknown as EditorNodeData,
     } );
 
@@ -240,7 +243,11 @@ export function addNode(
   // Select the new node so Delete/Backspace can target it
   graph.select( node );
 
-  changeset.addStep( stepId, data.taskId, data.order, { x, y } );
+  changeset.addStep( stepId, data.taskId, data.order, { x, y }, {
+    isComposite: data.isComposite,
+    compositeType: data.compositeType,
+    childWorkflowId: data.childWorkflowId,
+  } );
   dotNetRef?.invokeMethodAsync( "OnGraphDirtyChangedCallback", changeset.getDirtyCount() );
 
   // Focus the graph container so keyboard shortcuts work

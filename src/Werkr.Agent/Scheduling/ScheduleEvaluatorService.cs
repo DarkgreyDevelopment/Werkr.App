@@ -43,6 +43,7 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="outputStreamingService">Manages real-time output streaming to the server.</param>
 /// <param name="invalidationChannel">Channel for receiving invalidation signals.</param>
 /// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
+/// <param name="fileMonitorService">File monitor trigger service for reconciling watchers.</param>
 /// <param name="logger">Logger.</param>
 public sealed partial class ScheduleEvaluatorService(
     AgentGrpcClientFactory clientFactory,
@@ -55,6 +56,7 @@ public sealed partial class ScheduleEvaluatorService(
     Werkr.Agent.Services.OutputStreamingService outputStreamingService,
     Channel<string> invalidationChannel,
     IServiceScopeFactory serviceScopeFactory,
+    Werkr.Agent.Triggers.FileMonitorService fileMonitorService,
     ILogger<ScheduleEvaluatorService> logger
 ) : BackgroundService {
 
@@ -224,6 +226,13 @@ public sealed partial class ScheduleEvaluatorService(
             _currentTasks.AddRange( response.Tasks );
             _currentWorkflows.Clear( );
             _currentWorkflows.AddRange( response.Workflows );
+        }
+
+        // Reconcile file monitor triggers with the FileMonitorService
+        if (response.FileMonitorTriggers.Count > 0) {
+            fileMonitorService.ReconcileWatchers( [.. response.FileMonitorTriggers] );
+        } else {
+            fileMonitorService.ReconcileWatchers( [] );
         }
 
         // Cache calendar rule definitions from proto for client-side evaluation

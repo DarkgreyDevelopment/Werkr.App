@@ -1151,13 +1151,16 @@ public static class ScheduleCalculator {
                 );
                 if (dayNum < 1 || dayNum > maxDay) { continue; }
 
-                occurrence = new DateOnly(
-                    occurrenceYear,
-                    occurrenceMonth,
-                    dayNum
-                ).ToDateTime(
-                    startTime,
-                    DateTimeKind.Utc
+                occurrence = startDt.ConvertToUtc(
+                    new DateTime(
+                        year: occurrenceYear,
+                        month: occurrenceMonth,
+                        day: dayNum,
+                        hour: startDt.TzTime.Hour,
+                        minute: startDt.TzTime.Minute,
+                        second: startDt.TzTime.Second,
+                        kind: DateTimeKind.Unspecified
+                    )
                 );
 
                 // Add the occurrence to the result list and calculate any repeat occurrences.

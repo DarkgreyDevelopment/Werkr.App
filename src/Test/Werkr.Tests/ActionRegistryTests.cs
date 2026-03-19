@@ -17,7 +17,7 @@ public class ActionRegistryTests {
     /// </summary>
     [TestMethod]
     public void All_Contains_ThirtyOne_Actions( ) {
-        Assert.HasCount( 31, ActionRegistry.All );
+        Assert.HasCount( 30, ActionRegistry.All );
     }
 
     /// <summary>

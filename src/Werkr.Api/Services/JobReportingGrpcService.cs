@@ -45,7 +45,9 @@ public sealed partial class JobReportingGrpcService(
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
         }
 
-        Guid connectionId = Guid.Parse( inner.ConnectionId );
+        if (!Guid.TryParse( inner.ConnectionId, out Guid connectionId )) {
+            throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid connection_id format." ) );
+        }
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
@@ -151,6 +153,8 @@ public sealed partial class JobReportingGrpcService(
         if (workflowRunId.HasValue && stepId.HasValue) {
             // Update WorkflowStepExecution to Completed/Failed
             WorkflowStepExecution? stepExecution = await dbContext.WorkflowStepExecutions
+                .Include( se => se.Step )
+                    .ThenInclude( s => s!.Task )
                 .Where( se => se.WorkflowRunId == workflowRunId.Value && se.StepId == stepId.Value )
                 .OrderByDescending( se => se.Attempt )
                 .FirstOrDefaultAsync( context.CancellationToken );
@@ -163,16 +167,14 @@ public sealed partial class JobReportingGrpcService(
                     stepExecution.ErrorMessage = inner.OutputPreview?[..Math.Min( inner.OutputPreview.Length, 4000 )];
                 }
                 _ = await dbContext.SaveChangesAsync( context.CancellationToken );
+            } else {
+                logger.LogWarning(
+                    "No WorkflowStepExecution found for run {RunId}, step {StepId}. ReportStepStarted may not have been called.",
+                    workflowRunId.Value, stepId.Value );
             }
 
             // Resolve step name for event
             string stepName = stepExecution?.Step?.Task?.Name ?? $"Step {stepId.Value}";
-            if (stepExecution?.Step is null) {
-                WorkflowStep? step = await dbContext.WorkflowSteps
-                    .Include( s => s.Task )
-                    .FirstOrDefaultAsync( s => s.Id == stepId.Value, context.CancellationToken );
-                stepName = step?.Task?.Name ?? $"Step {stepId.Value}";
-            }
 
             if (inner.Success) {
                 workflowBroadcaster.Publish( new StepCompletedEvent(

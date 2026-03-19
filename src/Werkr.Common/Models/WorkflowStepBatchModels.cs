@@ -25,6 +25,11 @@ public sealed record WorkflowStepBatchRequest(
 /// <param name="InputVariableName">Variable name to read from predecessor output.</param>
 /// <param name="OutputVariableName">Variable name to write step output into.</param>
 /// <param name="DependencyChanges">Optional per-step dependency mutations.</param>
+/// <param name="IsComposite">True if this step is a composite node (ForEach, While, etc.).</param>
+/// <param name="CompositeType">Composite type: "None", "ForEach", "While", "Do", "Switch".</param>
+/// <param name="ChildWorkflowId">FK to child workflow for composite nodes.</param>
+/// <param name="IterationVariableName">Loop variable name for ForEach composite nodes.</param>
+/// <param name="CollectionVariableName">Collection variable name for ForEach composite nodes.</param>
 public sealed record StepBatchOperation(
     string OperationType,
     long StepId,
@@ -37,7 +42,12 @@ public sealed record StepBatchOperation(
     Guid? AgentConnectionIdOverride = null,
     string? InputVariableName = null,
     string? OutputVariableName = null,
-    IReadOnlyList<DependencyBatchItem>? DependencyChanges = null
+    IReadOnlyList<DependencyBatchItem>? DependencyChanges = null,
+    bool IsComposite = false,
+    string CompositeType = "None",
+    long? ChildWorkflowId = null,
+    string? IterationVariableName = null,
+    string? CollectionVariableName = null
 );
 
 /// <summary>

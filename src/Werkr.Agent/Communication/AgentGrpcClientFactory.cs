@@ -91,6 +91,17 @@ public sealed partial class AgentGrpcClientFactory(
     }
 
     /// <summary>
+    /// Creates a <see cref="TriggerEventService.TriggerEventServiceClient"/> for
+    /// reporting file monitor events to the Server.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A configured gRPC client.</returns>
+    public async Task<TriggerEventService.TriggerEventServiceClient> CreateTriggerEventServiceClientAsync( CancellationToken ct = default ) {
+        await EnsureInitializedAsync( ct );
+        return new TriggerEventService.TriggerEventServiceClient( _channel );
+    }
+
+    /// <summary>
     /// Creates gRPC <see cref="CallOptions"/> with bearer token, connection ID, call ID, and deadline.
     /// Mirrors the pattern from <c>AgentConnectionManager.CreateCallOptions</c>.
     /// </summary>

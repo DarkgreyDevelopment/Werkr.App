@@ -120,6 +120,7 @@
                             <tbody>
                                 @foreach ( StepExecutionDto se in _detail.StepExecutions.OrderBy( e => e.StartTime ?? DateTime.MaxValue ) ) {
                                     string stepName = GetStepName( se.StepId );
+                                    bool isComposite = IsCompositeStep( se.StepId );
                                     double? duration = se is { StartTime: not null, EndTime: not null }
                                         ? ( se.EndTime.Value - se.StartTime.Value ).TotalSeconds
                                         : null;
@@ -129,7 +130,12 @@
 
                                     <tr role="button" class="@( _selectedStep?.StepId == se.StepId ? "table-active" : "" )"
                                         @onclick="( ) => SelectStep( se )">
-                                        <td>@stepName</td>
+                                        <td>
+                                            @if ( isComposite ) {
+                                                <i class="bi bi-arrow-repeat text-primary me-1" title="ForEach composite step"></i>
+                                            }
+                                            @stepName
+                                        </td>
                                         <td>
                                             <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( se.Status )">@se.Status</span>
                                         </td>
@@ -392,7 +398,14 @@
 
     private string GetStepName( long stepId ) {
         WorkflowStepDto? step = _workflow?.Steps.FirstOrDefault( s => s.Id == stepId );
-        return step is not null ? $"Step #{step.Order} (Task {step.TaskId})" : $"Step {stepId}";
+        if ( step is null ) return $"Step {stepId}";
+        if ( step.IsComposite ) return $"Step #{step.Order} (ForEach)";
+        return $"Step #{step.Order} (Task {step.TaskId})";
+    }
+
+    private bool IsCompositeStep( long stepId ) {
+        WorkflowStepDto? step = _workflow?.Steps.FirstOrDefault( s => s.Id == stepId );
+        return step?.IsComposite == true;
     }
 
     private void SelectStep( StepExecutionDto step ) => _selectedStep = step;

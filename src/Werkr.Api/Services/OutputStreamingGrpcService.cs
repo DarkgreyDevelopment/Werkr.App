@@ -112,8 +112,8 @@ public sealed partial class OutputStreamingGrpcService(
 
                 // Fan out to any SSE consumers for this execution
                 foreach (KeyValuePair<string, Channel<OutputMessage>> kvp in agentStream.Consumers) {
-                    if (kvp.Key == consumerKey) {
-                        _ = kvp.Value.Writer.TryWrite( message );
+                    if (kvp.Key == consumerKey && !kvp.Value.Writer.TryWrite( message )) {
+                        logger.LogWarning( "Output message dropped for consumer {Key} — channel full.", kvp.Key );
                     }
                 }
 

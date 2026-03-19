@@ -14,5 +14,10 @@ public sealed record WorkflowStepDto(
     IReadOnlyList<StepDependencyDto> Dependencies,
     string? InputVariableName = null,
     string? OutputVariableName = null,
-    string? TaskName = null
+    string? TaskName = null,
+    bool IsComposite = false,
+    string CompositeType = "None",
+    long? ChildWorkflowId = null,
+    string? IterationVariableName = null,
+    string? CollectionVariableName = null
 );

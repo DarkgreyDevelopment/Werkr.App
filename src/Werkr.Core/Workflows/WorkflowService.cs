@@ -542,10 +542,30 @@ public sealed partial class WorkflowService(
                     DependencyMode = Enum.Parse<DependencyMode>( add.DependencyMode, ignoreCase: true ),
                     InputVariableName = add.InputVariableName,
                     OutputVariableName = add.OutputVariableName,
+                    IsComposite = add.IsComposite,
+                    CompositeType = Enum.Parse<CompositeType>( add.CompositeType, ignoreCase: true ),
+                    ChildWorkflowId = add.ChildWorkflowId,
+                    IterationVariableName = add.IterationVariableName,
+                    CollectionVariableName = add.CollectionVariableName,
                 };
 
                 _ = dbContext.WorkflowSteps.Add( step );
                 _ = await dbContext.SaveChangesAsync( ct );
+
+                // Auto-create child workflow for composite steps
+                if (step.IsComposite && !step.ChildWorkflowId.HasValue) {
+                    Workflow childWorkflow = new( ) {
+                        IsChildWorkflow = true,
+                        Name = "ForEach Inner",
+                        ParentStepId = step.Id,
+                        Enabled = true,
+                    };
+                    _ = dbContext.Workflows.Add( childWorkflow );
+                    _ = await dbContext.SaveChangesAsync( ct );
+
+                    step.ChildWorkflowId = childWorkflow.Id;
+                    _ = await dbContext.SaveChangesAsync( ct );
+                }
 
                 tempToReal[add.StepId] = step.Id;
                 mappings.Add( new StepIdMapping( add.StepId, step.Id ) );
@@ -583,6 +603,11 @@ public sealed partial class WorkflowService(
                 existing.DependencyMode = Enum.Parse<DependencyMode>( update.DependencyMode, ignoreCase: true );
                 existing.InputVariableName = update.InputVariableName;
                 existing.OutputVariableName = update.OutputVariableName;
+                existing.IsComposite = update.IsComposite;
+                existing.CompositeType = Enum.Parse<CompositeType>( update.CompositeType, ignoreCase: true );
+                existing.ChildWorkflowId = update.ChildWorkflowId;
+                existing.IterationVariableName = update.IterationVariableName;
+                existing.CollectionVariableName = update.CollectionVariableName;
             }
 
             // ── Phase 3: Process dependency changes ──
@@ -629,6 +654,17 @@ public sealed partial class WorkflowService(
                 WorkflowStep? step = await dbContext.WorkflowSteps
                     .FirstOrDefaultAsync( s => s.Id == realId, ct );
                 if (step is not null) {
+                    // Cascade-delete child workflow for composite steps
+                    if (step.ChildWorkflowId.HasValue) {
+                        Workflow? childWf = await dbContext.Workflows
+                            .Include( w => w.Steps )
+                            .FirstOrDefaultAsync( w => w.Id == step.ChildWorkflowId.Value, ct );
+                        if (childWf is not null) {
+                            dbContext.WorkflowSteps.RemoveRange( childWf.Steps );
+                            _ = dbContext.Workflows.Remove( childWf );
+                        }
+                    }
+
                     // Remove dependencies first
                     List<WorkflowStepDependency> deps = await dbContext.WorkflowStepDependencies
                         .Where( d => d.StepId == realId || d.DependsOnStepId == realId )

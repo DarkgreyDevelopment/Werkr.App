@@ -113,7 +113,8 @@
     @* ── Editor Layout: Palette | Canvas | Config Panel ── *@
     <div class="dag-editor-layout d-flex" style="height: calc(100vh - 320px); min-height: 400px;">
         @* ── Step Palette (left) ── *@
-        <StepPalette OnPaletteDragStart="HandlePaletteDragStartAsync" />
+        <StepPalette OnPaletteDragStart="HandlePaletteDragStartAsync"
+                     OnCompositeDragStart="HandleCompositeDragStartAsync" />
 
         @* ── Canvas (center) ── *@
         <DagEditorCanvas @ref="_canvas"
@@ -139,6 +140,11 @@
                          DependencyMode="@_selectedDependencyMode"
                          InputVariableName="@_selectedInputVariable"
                          OutputVariableName="@_selectedOutputVariable"
+                         IsComposite="_selectedIsComposite"
+                         CompositeType="@_selectedCompositeType"
+                         ChildWorkflowId="_selectedChildWorkflowId"
+                         CollectionVariableName="@_selectedCollectionVariable"
+                         IterationVariableName="@_selectedIterationVariable"
                          OnFieldChanged="HandleFieldChangedAsync"
                          OnClose="HandleConfigPanelClose"
                          OnDelete="HandleDeleteSelectedAsync"
@@ -205,8 +211,16 @@
     private string? _selectedInputVariable;
     private string? _selectedOutputVariable;
     private IReadOnlyList<long>? _selectedStepDependencies;
+    private bool _selectedIsComposite;
+    private string _selectedCompositeType = "None";
+    private long? _selectedChildWorkflowId;
+    private string? _selectedCollectionVariable;
+    private string? _selectedIterationVariable;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
+
+    // Track which temp-ID nodes are composite (stepId → compositeType)
+    private readonly Dictionary<long, string> _compositeNodes = new( );
 
     private static readonly System.Text.Json.JsonSerializerOptions s_jsonWeb = new( System.Text.Json.JsonSerializerDefaults.Web );
 
@@ -252,11 +266,20 @@
                 return;
             }
 
-            _breadcrumbs = [
-                new( "Workflows", "/workflows" ),
-                new( _workflow.Name, $"/workflows/{Id}" ),
-                new( "Editor" )
-            ];
+            if ( _workflow.IsChildWorkflow && _workflow.ParentStepId.HasValue ) {
+                _breadcrumbs = [
+                    new( "Workflows", "/workflows" ),
+                    new( "Parent Workflow", $"/workflows/{_workflow.ParentStepId.Value}/dag-editor" ),
+                    new( "ForEach Step" ),
+                    new( $"{_workflow.Name} (Inner Workflow)" )
+                ];
+            } else {
+                _breadcrumbs = [
+                    new( "Workflows", "/workflows" ),
+                    new( _workflow.Name, $"/workflows/{Id}" ),
+                    new( "Editor" )
+                ];
+            }
 
             _model = new WorkflowFormModel {
                 Name = _workflow.Name,
@@ -285,8 +308,8 @@
 
         object[] nodes = _workflow.Steps.Select( step => (object) new {
             stepId = step.Id,
-            stepLabel = $"Step #{step.Order}",
-            taskName = step.TaskName ?? $"Task {step.TaskId}",
+            stepLabel = step.IsComposite ? $"ForEach #{step.Order}" : $"Step #{step.Order}",
+            taskName = step.IsComposite ? "ForEach" : ( step.TaskName ?? $"Task {step.TaskId}" ),
             controlStatement = step.ControlStatement,
             order = step.Order,
             taskId = step.TaskId,
@@ -295,6 +318,9 @@
             dependencyMode = step.DependencyMode,
             conditionExpression = step.ConditionExpression,
             maxIterations = step.MaxIterations,
+            isComposite = step.IsComposite,
+            compositeType = step.CompositeType,
+            childWorkflowId = step.ChildWorkflowId,
         } ).ToArray( );
 
         object[] edges = _workflow.Steps
@@ -541,8 +567,14 @@
             _selectedInputVariable = step.InputVariableName;
             _selectedOutputVariable = step.OutputVariableName;
             _selectedStepDependencies = step.Dependencies.Select( d => d.DependsOnStepId ).ToList( );
+            _selectedIsComposite = step.IsComposite;
+            _selectedCompositeType = step.CompositeType;
+            _selectedChildWorkflowId = step.ChildWorkflowId;
+            _selectedCollectionVariable = step.CollectionVariableName;
+            _selectedIterationVariable = step.IterationVariableName;
         } else {
-            // New node (temp ID) — set defaults
+            // New node (temp ID) — check if it's tracked as composite
+            bool isComposite = _compositeNodes.ContainsKey( stepId );
             _selectedTaskId = 0;
             _selectedTaskName = "";
             _selectedControlStatement = "Default";
@@ -552,6 +584,11 @@
             _selectedInputVariable = null;
             _selectedOutputVariable = null;
             _selectedStepDependencies = [];
+            _selectedIsComposite = isComposite;
+            _selectedCompositeType = isComposite ? _compositeNodes[stepId] : "None";
+            _selectedChildWorkflowId = null;
+            _selectedCollectionVariable = null;
+            _selectedIterationVariable = null;
         }
 
         await InvokeAsync( StateHasChanged );
@@ -570,15 +607,24 @@
         long tempId = _nextTempStepId--;
         _stepCount++;
 
+        bool isComposite = args.ActionType.StartsWith( "composite:", StringComparison.Ordinal );
+        string compositeType = isComposite ? args.ActionType["composite:".Length..] : "None";
+
         var data = new {
             stepId = tempId,
-            stepLabel = args.ActionType,
-            taskName = "Unassigned",
+            stepLabel = isComposite ? $"{compositeType} (new)" : args.ActionType,
+            taskName = isComposite ? compositeType : "Unassigned",
             controlStatement = "Default",
             order = _stepCount,
             taskId = 0,
-            actionType = args.ActionType
+            actionType = args.ActionType,
+            isComposite,
+            compositeType,
         };
+
+        if ( isComposite ) {
+            _compositeNodes[tempId] = compositeType;
+        }
 
         await _canvas.Interop.AddNodeAsync( tempId, data, args.X, args.Y );
 
@@ -593,6 +639,11 @@
         _selectedInputVariable = null;
         _selectedOutputVariable = null;
         _selectedStepDependencies = [];
+        _selectedIsComposite = isComposite;
+        _selectedCompositeType = compositeType;
+        _selectedChildWorkflowId = null;
+        _selectedCollectionVariable = null;
+        _selectedIterationVariable = null;
 
         await InvokeAsync( StateHasChanged );
     }
@@ -617,6 +668,13 @@
     private async Task HandlePaletteDragStartAsync( (string ActionType, double ClientX, double ClientY) args ) {
         if ( _canvas?.Interop is not null ) {
             await _canvas.Interop.StartPaletteDragAsync( args.ActionType, args.ClientX, args.ClientY );
+        }
+    }
+
+    private async Task HandleCompositeDragStartAsync( (string CompositeType, double ClientX, double ClientY) args ) {
+        if ( _canvas?.Interop is not null ) {
+            // Use a "composite:" prefix so the drop handler can distinguish composite nodes
+            await _canvas.Interop.StartPaletteDragAsync( $"composite:{args.CompositeType}", args.ClientX, args.ClientY );
         }
     }
 

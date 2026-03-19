@@ -14,6 +14,7 @@ using Werkr.Agent.Registration;
 using Werkr.Agent.Scheduling;
 using Werkr.Agent.Security;
 using Werkr.Agent.Services;
+using Werkr.Agent.Triggers;
 using Werkr.Common;
 using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
@@ -176,10 +177,14 @@ public partial class Program {
             _ = builder.Services.AddSingleton<ConditionEvaluator>( sp =>
                 new ConditionEvaluator(
                     sp.GetRequiredService<ILoggerFactory>( ).CreateLogger<ConditionEvaluator>( ) ) );
+            _ = builder.Services.AddSingleton<CompositeNodeExecutor>( );
             _ = builder.Services.AddSingleton<WorkflowExecutionService>( );
             _ = builder.Services.AddSingleton<OutputStreamingService>( );
             _ = builder.Services.AddSingleton( Channel.CreateUnbounded<string>(
                 new UnboundedChannelOptions { SingleReader = true } ) );
+            _ = builder.Services.AddSingleton<TriggerEventClient>( );
+            _ = builder.Services.AddSingleton<FileMonitorService>( );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<FileMonitorService>( ) );
             _ = builder.Services.AddHostedService<ScheduleEvaluatorService>( );
 
             WebApplication app = builder.Build( );

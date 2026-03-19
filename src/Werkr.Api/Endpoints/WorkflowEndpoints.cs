@@ -43,7 +43,9 @@ internal static partial class WorkflowEndpoints {
             CancellationToken ct
         ) => {
             IReadOnlyList<Workflow> workflows = await workflowService.GetAllAsync( ct );
-            List<WorkflowDto> dtos = [.. workflows.Select( WorkflowMapper.ToDto )];
+            List<WorkflowDto> dtos = [.. workflows
+                .Where( w => !w.IsChildWorkflow )
+                .Select( WorkflowMapper.ToDto )];
             return Results.Ok( dtos );
         } )
         .WithName( "GetWorkflows" )
@@ -189,11 +191,31 @@ internal static partial class WorkflowEndpoints {
             long workflowId,
             WorkflowStepCreateRequest request,
             WorkflowService workflowService,
+            WerkrDbContext dbContext,
             CancellationToken ct
         ) => {
             try {
                 WorkflowStep step = WorkflowMapper.ToStepEntity( workflowId, request );
                 WorkflowStep created = await workflowService.AddStepAsync( workflowId, step, ct );
+
+                // Auto-create child workflow for composite steps
+                if (created.IsComposite && !created.ChildWorkflowId.HasValue) {
+                    Workflow childWorkflow = new( ) {
+                        IsChildWorkflow = true,
+                        Name = "ForEach Inner",
+                        ParentStepId = created.Id,
+                        Enabled = true,
+                    };
+                    _ = dbContext.Workflows.Add( childWorkflow );
+                    _ = await dbContext.SaveChangesAsync( ct );
+
+                    WorkflowStep tracked = await dbContext.WorkflowSteps
+                        .FirstAsync( s => s.Id == created.Id, ct );
+                    tracked.ChildWorkflowId = childWorkflow.Id;
+                    _ = await dbContext.SaveChangesAsync( ct );
+                    created.ChildWorkflowId = childWorkflow.Id;
+                }
+
                 WorkflowStepDto dto = WorkflowMapper.ToStepDto( created );
                 return Results.Created( $"/api/v1/workflows/{workflowId}/steps/{dto.Id}", dto );
             } catch (KeyNotFoundException) {
@@ -242,9 +264,25 @@ internal static partial class WorkflowEndpoints {
             long workflowId,
             long stepId,
             WorkflowService workflowService,
+            WerkrDbContext dbContext,
             CancellationToken ct
         ) => {
             try {
+                // Cascade-delete child workflow for composite steps
+                WorkflowStep? step = await dbContext.WorkflowSteps
+                    .AsNoTracking( )
+                    .FirstOrDefaultAsync( s => s.Id == stepId && s.WorkflowId == workflowId, ct );
+                if (step is not null && step.ChildWorkflowId.HasValue) {
+                    Workflow? childWf = await dbContext.Workflows
+                        .Include( w => w.Steps )
+                        .FirstOrDefaultAsync( w => w.Id == step.ChildWorkflowId.Value, ct );
+                    if (childWf is not null) {
+                        dbContext.WorkflowSteps.RemoveRange( childWf.Steps );
+                        _ = dbContext.Workflows.Remove( childWf );
+                        _ = await dbContext.SaveChangesAsync( ct );
+                    }
+                }
+
                 await workflowService.RemoveStepAsync( stepId, ct );
                 return Results.NoContent( );
             } catch (KeyNotFoundException) {
@@ -253,6 +291,39 @@ internal static partial class WorkflowEndpoints {
         } )
         .WithName( "RemoveWorkflowStep" )
         .RequireAuthorization( Policies.CanDelete );
+
+        _ = app.MapGet( "/api/v1/workflows/{workflowId}/steps/{stepId}/child-workflow", async (
+            long workflowId,
+            long stepId,
+            WerkrDbContext dbContext,
+            CancellationToken ct
+        ) => {
+            WorkflowStep? step = await dbContext.WorkflowSteps
+                .AsNoTracking( )
+                .FirstOrDefaultAsync( s => s.Id == stepId && s.WorkflowId == workflowId, ct );
+            if (step is null) {
+                return Results.NotFound( );
+            }
+
+            if (!step.IsComposite || !step.ChildWorkflowId.HasValue) {
+                return Results.BadRequest( new { message = "Step is not a composite node or has no child workflow." } );
+            }
+
+            Workflow? childWorkflow = await dbContext.Workflows
+                .AsNoTracking( )
+                .Include( w => w.Steps )
+                    .ThenInclude( s => s.Dependencies )
+                .Include( w => w.Steps )
+                    .ThenInclude( s => s.Task )
+                .Include( w => w.Variables )
+                .FirstOrDefaultAsync( w => w.Id == step.ChildWorkflowId.Value, ct );
+
+            return childWorkflow is null
+                ? Results.NotFound( )
+                : Results.Ok( WorkflowMapper.ToDto( childWorkflow ) );
+        } )
+        .WithName( "GetChildWorkflow" )
+        .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapPost( "/api/v1/workflows/{workflowId}/steps/batch", async (
             long workflowId,

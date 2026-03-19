@@ -1,0 +1,27 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+
+// Agents report file monitor events to the API via this service.
+// All RPCs use EncryptedEnvelope. Inner payload types defined below.
+service TriggerEventService {
+  // Request envelope contains FileMonitorEventRequest; response contains FileMonitorEventResponse.
+  rpc ReportFileMonitorEvent (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message FileMonitorEventRequest {
+  string connection_id = 1;
+  int64 trigger_id = 2;
+  string file_path = 3;
+  string event_type = 4;
+  string directory = 5;
+  string timestamp = 6;
+}
+
+message FileMonitorEventResponse {
+  bool accepted = 1;
+  string workflow_run_id = 2;
+  string error = 3;
+}

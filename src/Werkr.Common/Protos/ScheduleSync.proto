@@ -25,6 +25,7 @@ message AgentScheduleRequest {
 message AgentScheduleResponse {
   repeated ScheduledTaskDefinition tasks = 1;
   repeated ScheduledWorkflowDefinition workflows = 2;
+  repeated FileMonitorTriggerDef file_monitor_triggers = 3;
 }
 
 message ScheduledTaskDefinition {
@@ -92,6 +93,7 @@ message ScheduledWorkflowDefinition {
   map<string, string> trigger_variables = 7;         // Per-execution trigger param overrides
   repeated int64 prior_succeeded_step_ids = 8;       // Step IDs that already succeeded (retry-from-failed)
   map<string, string> run_variable_values = 9;        // Latest variable values from the run (retry-from-failed)
+  repeated ChildWorkflowDefinition child_workflows = 10;  // Child workflows for composite steps
 }
 
 message WorkflowVariableDef {
@@ -115,6 +117,17 @@ message ScheduledWorkflowStepDef {
   int32 dependency_mode = 10;
   string input_variable_name = 11;   // Step's declared input variable
   string output_variable_name = 12;  // Step's declared output variable
+  bool is_composite = 13;
+  int32 composite_type = 14;         // Maps to CompositeType enum
+  int64 child_workflow_id = 15;
+  string iteration_variable_name = 16;
+  string collection_variable_name = 17;
+}
+
+message ChildWorkflowDefinition {
+  int64 child_workflow_id = 1;
+  repeated ScheduledWorkflowStepDef steps = 2;
+  repeated WorkflowVariableDef variables = 3;
 }
 
 // ── Bulk Holiday Date Fetch ──
@@ -188,4 +201,15 @@ message AuditLogEntry {
 
 message SubmitAuditLogResponse {
   int32 accepted_count = 1;
+}
+
+// ── File Monitor Trigger Definitions ──
+
+message FileMonitorTriggerDef {
+  int64 trigger_id = 1;
+  int64 workflow_id = 2;
+  string watch_directory = 3;
+  string file_pattern = 4;
+  repeated string event_types = 5;
+  int32 debounce_ms = 6;
 }

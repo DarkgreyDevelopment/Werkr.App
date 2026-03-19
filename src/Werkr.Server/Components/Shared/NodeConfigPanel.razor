@@ -16,63 +16,103 @@
         </div>
 
         <div class="flex-grow-1 overflow-auto px-3 py-2">
-            @* ── Task ── *@
-            <div class="mb-3">
-                <label class="form-label">Task</label>
-                @if ( SelectedStepId.Value < 0 ) {
-                    <div class="d-flex gap-1">
-                        <select class="form-select form-select-sm" value="@_taskId" @onchange="OnTaskIdChanged">
-                            <option value="0">— select task —</option>
-                            @if ( Tasks is not null ) {
-                                @foreach ( TaskDto t in Tasks ) {
-                                    <option value="@t.Id">@t.Name</option>
-                                }
-                            }
-                        </select>
-                        <button type="button" class="btn btn-outline-success btn-sm text-nowrap"
-                                @onclick="OnCreateTask"
-                                title="Create new task">
-                            + New
-                        </button>
+            @if ( IsComposite ) {
+                @* ── Composite Node Configuration ── *@
+                <div class="mb-3">
+                    <span class="badge bg-warning text-dark mb-2">
+                        <i class="bi bi-arrow-repeat me-1"></i>@CompositeType
+                    </span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Collection Variable</label>
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="e.g. $servers"
+                           value="@_collectionVariableName"
+                           @onchange="OnCollectionVariableChanged" />
+                    <div class="form-text">Variable containing the array to iterate over.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Iteration Variable</label>
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="e.g. $item"
+                           value="@_iterationVariableName"
+                           @onchange="OnIterationVariableChanged" />
+                    <div class="form-text">Variable name exposed to each iteration.</div>
+                </div>
+
+                @if ( ChildWorkflowId.HasValue && ChildWorkflowId.Value > 0 ) {
+                    <div class="mb-3">
+                        <a href="/workflows/@ChildWorkflowId.Value/dag-editor"
+                           class="btn btn-outline-primary btn-sm w-100">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Edit Inner Workflow
+                        </a>
                     </div>
                 } else {
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="form-control-plaintext form-control-sm">@_taskName</span>
-                        <button type="button" class="btn btn-outline-primary btn-sm text-nowrap"
-                                @onclick="OnEditTask">
-                            Edit Task
-                        </button>
+                    <div class="mb-3">
+                        <span class="text-muted small">Inner workflow will be created on save.</span>
                     </div>
                 }
-            </div>
-
-            @* ── Control Statement ── *@
-            <div class="mb-3">
-                <label class="form-label">Control Statement</label>
-                <select class="form-select form-select-sm" value="@_controlStatement" @onchange="OnControlChanged">
-                    <option>Default</option>
-                    <option>If</option>
-                    <option>ElseIf</option>
-                    <option>Else</option>
-                    <option>While</option>
-                    <option>Do</option>
-                </select>
-            </div>
-
-            @* ── Condition ── *@
-            @if ( _controlStatement is "If" or "ElseIf" or "While" or "Do" ) {
+            } else {
+                @* ── Task ── *@
                 <div class="mb-3">
-                    <label class="form-label">Condition Expression</label>
-                    <ConditionBuilder Expression="@_conditionExpression"
-                                      ExpressionChanged="@( async ( string? expr ) => { _conditionExpression = expr; await EmitFieldChange( "conditionExpression", expr ); } )" />
+                    <label class="form-label">Task</label>
+                    @if ( SelectedStepId.Value < 0 ) {
+                        <div class="d-flex gap-1">
+                            <select class="form-select form-select-sm" value="@_taskId" @onchange="OnTaskIdChanged">
+                                <option value="0">— select task —</option>
+                                @if ( Tasks is not null ) {
+                                    @foreach ( TaskDto t in Tasks ) {
+                                        <option value="@t.Id">@t.Name</option>
+                                    }
+                                }
+                            </select>
+                            <button type="button" class="btn btn-outline-success btn-sm text-nowrap"
+                                    @onclick="OnCreateTask"
+                                    title="Create new task">
+                                + New
+                            </button>
+                        </div>
+                    } else {
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="form-control-plaintext form-control-sm">@_taskName</span>
+                            <button type="button" class="btn btn-outline-primary btn-sm text-nowrap"
+                                    @onclick="OnEditTask">
+                                Edit Task
+                            </button>
+                        </div>
+                    }
                 </div>
 
+                @* ── Control Statement ── *@
                 <div class="mb-3">
-                    <label class="form-label">Max Iterations</label>
-                    <input type="number" class="form-control form-control-sm"
-                           value="@_maxIterations"
-                           @onchange="OnMaxIterationsChanged" />
+                    <label class="form-label">Control Statement</label>
+                    <select class="form-select form-select-sm" value="@_controlStatement" @onchange="OnControlChanged">
+                        <option>Default</option>
+                        <option>If</option>
+                        <option>ElseIf</option>
+                        <option>Else</option>
+                        <option>While</option>
+                        <option>Do</option>
+                    </select>
                 </div>
+
+                @* ── Condition ── *@
+                @if ( _controlStatement is "If" or "ElseIf" or "While" or "Do" ) {
+                    <div class="mb-3">
+                        <label class="form-label">Condition Expression</label>
+                        <ConditionBuilder Expression="@_conditionExpression"
+                                          ExpressionChanged="@( async ( string? expr ) => { _conditionExpression = expr; await EmitFieldChange( "conditionExpression", expr ); } )" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Max Iterations</label>
+                        <input type="number" class="form-control form-control-sm"
+                               value="@_maxIterations"
+                               @onchange="OnMaxIterationsChanged" />
+                    </div>
+                }
             }
 
             @* ── Dependency Mode ── *@
@@ -145,6 +185,13 @@
     [Parameter] public string? InputVariableName { get; set; }
     [Parameter] public string? OutputVariableName { get; set; }
 
+    // Composite node parameters
+    [Parameter] public bool IsComposite { get; set; }
+    [Parameter] public string CompositeType { get; set; } = "None";
+    [Parameter] public long? ChildWorkflowId { get; set; }
+    [Parameter] public string? CollectionVariableName { get; set; }
+    [Parameter] public string? IterationVariableName { get; set; }
+
     [Parameter] public EventCallback<(string Field, object? Value)> OnFieldChanged { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
@@ -160,6 +207,8 @@
     private string _dependencyMode = "AllSuccess";
     private string? _inputVariableName;
     private string? _outputVariableName;
+    private string? _collectionVariableName;
+    private string? _iterationVariableName;
 
     protected override void OnParametersSet( ) {
         _taskId = TaskId;
@@ -170,6 +219,8 @@
         _dependencyMode = DependencyMode;
         _inputVariableName = InputVariableName;
         _outputVariableName = OutputVariableName;
+        _collectionVariableName = CollectionVariableName;
+        _iterationVariableName = IterationVariableName;
     }
 
     private async Task Close( ) => await OnClose.InvokeAsync( );
@@ -209,6 +260,16 @@
     private async Task OnOutputVariableChanged( ChangeEventArgs e ) {
         _outputVariableName = e.Value?.ToString( );
         await EmitFieldChange( "outputVariableName", _outputVariableName );
+    }
+
+    private async Task OnCollectionVariableChanged( ChangeEventArgs e ) {
+        _collectionVariableName = e.Value?.ToString( );
+        await EmitFieldChange( "collectionVariableName", _collectionVariableName );
+    }
+
+    private async Task OnIterationVariableChanged( ChangeEventArgs e ) {
+        _iterationVariableName = e.Value?.ToString( );
+        await EmitFieldChange( "iterationVariableName", _iterationVariableName );
     }
 
     private async Task EmitFieldChange( string field, object? value ) {

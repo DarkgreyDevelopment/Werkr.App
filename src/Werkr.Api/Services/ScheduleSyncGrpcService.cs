@@ -10,6 +10,7 @@ using Werkr.Data.Calendar.Models;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Tasks;
+using Werkr.Data.Entities.Triggers;
 using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Api.Services;
@@ -121,6 +122,89 @@ public sealed partial class ScheduleSyncGrpcService(
 
             ScheduledWorkflowDefinition workflowDef = MapWorkflowDefinition( workflow, schedule );
 
+            // Load child workflows for composite steps
+            List<long> compositeStepIds = [.. workflow.Steps
+                .Where( s => s.IsComposite )
+                .Select( s => s.Id )];
+
+            if (compositeStepIds.Count > 0) {
+                List<Workflow> childWorkflows = await dbContext.Workflows
+                    .AsNoTracking( )
+                    .Include( w => w.Steps )
+                        .ThenInclude( s => s.Task )
+                    .Include( w => w.Steps )
+                        .ThenInclude( s => s.Dependencies )
+                    .Include( w => w.Variables )
+                    .Where( w => w.IsChildWorkflow && w.ParentStepId != null
+                        && compositeStepIds.Contains( w.ParentStepId.Value ) )
+                    .ToListAsync( context.CancellationToken );
+
+                foreach (Workflow childWf in childWorkflows) {
+                    ChildWorkflowDefinition childDef = new( ) {
+                        ChildWorkflowId = childWf.Id,
+                    };
+
+                    foreach (WorkflowStep childStep in childWf.Steps.OrderBy( s => s.Order )) {
+                        ScheduledWorkflowStepDef childStepDef = new( ) {
+                            StepId = childStep.Id,
+                            TaskId = childStep.TaskId,
+                            Order = childStep.Order,
+                            ControlStatement = (int) childStep.ControlStatement,
+                            ConditionExpression = childStep.ConditionExpression ?? string.Empty,
+                            MaxIterations = childStep.MaxIterations,
+                            AgentConnectionIdOverride = childStep.AgentConnectionIdOverride?.ToString( ) ?? string.Empty,
+                            DependencyMode = (int) childStep.DependencyMode,
+                            InputVariableName = childStep.InputVariableName ?? string.Empty,
+                            OutputVariableName = childStep.OutputVariableName ?? string.Empty,
+                            IsComposite = childStep.IsComposite,
+                            CompositeType = (int) childStep.CompositeType,
+                            ChildWorkflowId = childStep.ChildWorkflowId ?? 0,
+                            IterationVariableName = childStep.IterationVariableName ?? string.Empty,
+                            CollectionVariableName = childStep.CollectionVariableName ?? string.Empty,
+                        };
+
+                        foreach (WorkflowStepDependency dep in childStep.Dependencies) {
+                            childStepDef.DependsOnStepIds.Add( dep.DependsOnStepId );
+                        }
+
+                        if (childStep.Task is not null) {
+                            WerkrTask childTask = childStep.Task;
+                            ScheduledTaskDefinition childTaskDef = new( ) {
+                                TaskId = childTask.Id,
+                                Name = childTask.Name,
+                                ActionType = (int) childTask.ActionType,
+                                Content = childTask.Content,
+                                TimeoutMinutes = childTask.TimeoutMinutes ?? 60,
+                                SyncIntervalMinutes = childTask.SyncIntervalMinutes,
+                                SuccessCriteria = childTask.SuccessCriteria ?? string.Empty,
+                                ActionSubType = childTask.ActionSubType ?? string.Empty,
+                                ActionParametersJson = childTask.ActionParameters ?? string.Empty,
+                            };
+
+                            if (childTask.Arguments is { Length: > 0 }) {
+                                childTaskDef.Arguments.AddRange( childTask.Arguments );
+                            }
+
+                            childStepDef.Task = childTaskDef;
+                        }
+
+                        childDef.Steps.Add( childStepDef );
+                    }
+
+                    foreach (WorkflowVariable variable in childWf.Variables) {
+                        childDef.Variables.Add( new WorkflowVariableDef {
+                            Name = variable.Name,
+                            DefaultValue = variable.DefaultValue ?? string.Empty,
+                            DataType = variable.DataType ?? string.Empty,
+                            IsRequired = variable.IsRequired,
+                            LogRedaction = variable.LogRedaction,
+                        } );
+                    }
+
+                    workflowDef.ChildWorkflows.Add( childDef );
+                }
+            }
+
             // For run-now schedules, include the API-generated workflow run ID
             if (ws.WorkflowRunId.HasValue) {
                 workflowDef.WorkflowRunId = ws.WorkflowRunId.Value.ToString( );
@@ -165,10 +249,56 @@ public sealed partial class ScheduleSyncGrpcService(
             response.Workflows.Add( workflowDef );
         }
 
+        // ── File monitor triggers ──
+        List<FileMonitorTrigger> fileMonitorTriggers = await dbContext.FileMonitorTriggers
+            .AsNoTracking( )
+            .Where( t => t.Enabled )
+            .ToListAsync( context.CancellationToken );
+
+        foreach (FileMonitorTrigger fmt in fileMonitorTriggers) {
+            // Tag matching: if TargetTags is null/empty, the trigger matches all agents
+            if (!string.IsNullOrWhiteSpace( fmt.TargetTags )) {
+                try {
+                    string[]? triggerTags = System.Text.Json.JsonSerializer
+                        .Deserialize<string[]>( fmt.TargetTags );
+                    if (triggerTags is { Length: > 0 }
+                        && !triggerTags.Any( tag => agentTags.Contains( tag.Trim( ) ) )) {
+                        continue;
+                    }
+                } catch {
+                    // Malformed JSON — skip tag filter
+                }
+            }
+
+            // Parse event types from JSON string
+            List<string> eventTypes = [];
+            try {
+                string[]? parsed = System.Text.Json.JsonSerializer
+                    .Deserialize<string[]>( fmt.EventTypes );
+                if (parsed is not null) {
+                    eventTypes.AddRange( parsed );
+                }
+            } catch {
+                eventTypes.Add( "created" );
+            }
+
+            FileMonitorTriggerDef triggerDef = new( ) {
+                TriggerId = fmt.Id,
+                WorkflowId = fmt.WorkflowId,
+                WatchDirectory = fmt.WatchDirectory,
+                FilePattern = fmt.FilePattern,
+                DebounceMs = fmt.DebounceMs,
+            };
+            triggerDef.EventTypes.AddRange( eventTypes );
+
+            response.FileMonitorTriggers.Add( triggerDef );
+        }
+
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
-                "Returning {TaskCount} tasks and {WorkflowCount} workflows for agent {AgentId}.",
-                response.Tasks.Count.ToString( ), response.Workflows.Count.ToString( ), inner.ConnectionId );
+                "Returning {TaskCount} tasks, {WorkflowCount} workflows, and {TriggerCount} file monitor triggers for agent {AgentId}.",
+                response.Tasks.Count.ToString( ), response.Workflows.Count.ToString( ),
+                response.FileMonitorTriggers.Count.ToString( ), inner.ConnectionId );
         }
 
         return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
@@ -310,6 +440,11 @@ public sealed partial class ScheduleSyncGrpcService(
                 DependencyMode = (int) step.DependencyMode,
                 InputVariableName = step.InputVariableName ?? string.Empty,
                 OutputVariableName = step.OutputVariableName ?? string.Empty,
+                IsComposite = step.IsComposite,
+                CompositeType = (int) step.CompositeType,
+                ChildWorkflowId = step.ChildWorkflowId ?? 0,
+                IterationVariableName = step.IterationVariableName ?? string.Empty,
+                CollectionVariableName = step.CollectionVariableName ?? string.Empty,
             };
 
             // Add dependency step IDs

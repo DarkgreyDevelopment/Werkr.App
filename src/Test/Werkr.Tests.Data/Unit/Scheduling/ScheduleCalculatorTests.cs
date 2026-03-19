@@ -3268,13 +3268,13 @@ public class ScheduleCalculatorTests {
             EndOfWindow
         );
         Assert.HasCount(
-            3,
+            4,
             occurrences
         );
     }
 
     /// <summary>
-    /// Verifies that a monthly recurrence in all months, all week numbers, all days with max repeat returns 4011
+    /// Verifies that a monthly recurrence in all months, all week numbers, all days with max repeat returns 4013
     /// occurrences.
     /// </summary>
     [TestMethod]
@@ -3293,7 +3293,7 @@ public class ScheduleCalculatorTests {
             EndOfWindow
         );
         Assert.HasCount(
-            4011,
+            4013,
             occurrences
         );
     }
@@ -3757,7 +3757,7 @@ public class ScheduleCalculatorTests {
             EndOfWindow
         );
         Assert.HasCount(
-            9,
+            12,
             occurrences
         );
     }
@@ -3783,7 +3783,7 @@ public class ScheduleCalculatorTests {
             EndOfWindow
         );
         Assert.HasCount(
-            59,
+            61,
             occurrences
         );
     }

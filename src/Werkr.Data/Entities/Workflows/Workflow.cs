@@ -34,6 +34,12 @@ public class Workflow : ConcurrencyBase, IKey<long> {
     /// <summary>JSON-serialized annotation cards for the DAG canvas (sticky notes).</summary>
     public string? Annotations { get; set; }
 
+    /// <summary>Back-reference to the parent composite step that owns this child workflow.</summary>
+    public long? ParentStepId { get; set; }
+
+    /// <summary>True if this workflow is a child workflow owned by a composite step. Excluded from list queries.</summary>
+    public bool IsChildWorkflow { get; set; }
+
     /// <summary>Navigation property for workflow steps.</summary>
     public ICollection<WorkflowStep> Steps { get; set; } = [];
 

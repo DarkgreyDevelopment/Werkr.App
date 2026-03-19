@@ -251,6 +251,7 @@ public class Program {
             _ = app.MapGrpcService<JobReportingGrpcService>( );
             _ = app.MapGrpcService<OutputStreamingGrpcService>( );
             _ = app.MapGrpcService<VariableGrpcService>( );
+            _ = app.MapGrpcService<TriggerEventGrpcService>( );
 
             // REST endpoints
             _ = app.MapStatusEndpoints( );
@@ -268,6 +269,7 @@ public class Program {
             _ = app.MapEventEndpoints( );
             _ = app.MapShellEndpoints( );
             _ = app.MapFilterEndpoints( );
+            _ = app.MapTriggerEndpoints( );
 
             _ = app.MapDefaultEndpoints( );
 

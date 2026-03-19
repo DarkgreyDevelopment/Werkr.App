@@ -26,8 +26,8 @@
 }
 
 ::deep .gantt-container .vis-item.gantt-pending {
-    background-color: var(--werkr-status-cancelled);
-    border-color: var(--werkr-status-cancelled);
+    background-color: var(--werkr-status-pending);
+    border-color: var(--werkr-status-pending);
     color: #fff;
 }
 

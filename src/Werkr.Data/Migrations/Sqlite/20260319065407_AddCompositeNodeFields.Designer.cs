@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Werkr.Data;
@@ -11,9 +12,11 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteWerkrDbContext))]
-    partial class SqliteWerkrDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260319065407_AddCompositeNodeFields")]
+    partial class AddCompositeNodeFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -1049,55 +1052,6 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.ToTable("tasks", (string)null);
                 });
 
-            modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("id");
-
-                    b.Property<int>("DebounceMs")
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("debounce_ms");
-
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("enabled");
-
-                    b.Property<string>("EventTypes")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("event_types");
-
-                    b.Property<string>("FilePattern")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT")
-                        .HasColumnName("file_pattern");
-
-                    b.Property<string>("TargetTags")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("target_tags");
-
-                    b.Property<string>("WatchDirectory")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT")
-                        .HasColumnName("watch_directory");
-
-                    b.Property<long>("WorkflowId")
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("workflow_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_file_monitor_triggers");
-
-                    b.HasIndex("WorkflowId")
-                        .HasDatabaseName("ix_file_monitor_triggers_workflow_id");
-
-                    b.ToTable("file_monitor_triggers", (string)null);
-                });
-
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
                 {
                     b.Property<long>("Id")
@@ -1778,18 +1732,6 @@ namespace Werkr.Data.Migrations.Sqlite
                         .WithMany("Tasks")
                         .HasForeignKey("WorkflowId")
                         .HasConstraintName("fk_tasks_workflows_workflow_id");
-
-                    b.Navigation("Workflow");
-                });
-
-            modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
-                {
-                    b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
-                        .WithMany()
-                        .HasForeignKey("WorkflowId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_file_monitor_triggers_workflows_workflow_id");
 
                     b.Navigation("Workflow");
                 });

@@ -202,14 +202,6 @@ public static class ActionRegistry {
             new( "UsePolling", "Use Polling", FieldType.Bool, DefaultValue: "false", HelpText: "Recommended for network or UNC paths." ),
         ] ),
 
-        // ── Iteration operations ─────────────────────────────────────
-        new( "ForEach", "For Each", "Iterate over elements in a named array from a JSON object input.",
-            "Iteration", typeof( ForEachParameters ), [
-            new( "ArrayPropertyName", "Array Property Name", FieldType.Text, Required: true,
-                 Placeholder: "items",
-                 HelpText: "The property name in the input JSON object containing the array to iterate." ),
-        ] ),
-
         // ── Network operations ───────────────────────────────────────
         new( "HttpRequest", "HTTP Request", "Send an HTTP request and capture the response.",
             "Network", typeof( HttpRequestParameters ), [

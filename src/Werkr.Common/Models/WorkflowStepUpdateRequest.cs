@@ -9,5 +9,10 @@ public sealed record WorkflowStepUpdateRequest(
     Guid? AgentConnectionIdOverride = null,
     string DependencyMode = "AllSuccess",
     string? InputVariableName = null,
-    string? OutputVariableName = null
+    string? OutputVariableName = null,
+    bool IsComposite = false,
+    string CompositeType = "None",
+    long? ChildWorkflowId = null,
+    string? IterationVariableName = null,
+    string? CollectionVariableName = null
 );

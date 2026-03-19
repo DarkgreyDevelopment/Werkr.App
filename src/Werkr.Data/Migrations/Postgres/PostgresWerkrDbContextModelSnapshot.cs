@@ -1061,6 +1061,57 @@ namespace Werkr.Data.Migrations.Postgres
                     b.ToTable("tasks", "werkr");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("DebounceMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("debounce_ms");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("EventTypes")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("event_types");
+
+                    b.Property<string>("FilePattern")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("file_pattern");
+
+                    b.Property<string>("TargetTags")
+                        .HasColumnType("text")
+                        .HasColumnName("target_tags");
+
+                    b.Property<string>("WatchDirectory")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("watch_directory");
+
+                    b.Property<long>("WorkflowId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("workflow_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_file_monitor_triggers");
+
+                    b.HasIndex("WorkflowId")
+                        .HasDatabaseName("ix_file_monitor_triggers_workflow_id");
+
+                    b.ToTable("file_monitor_triggers", "werkr");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
                 {
                     b.Property<long>("Id")
@@ -1089,6 +1140,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("enabled");
 
+                    b.Property<bool>("IsChildWorkflow")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_child_workflow");
+
                     b.Property<string>("LastUpdated")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1099,6 +1154,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
+
+                    b.Property<long?>("ParentStepId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("parent_step_id");
 
                     b.Property<string>("TargetTags")
                         .HasColumnType("text")
@@ -1111,6 +1170,9 @@ namespace Werkr.Data.Migrations.Postgres
 
                     b.HasKey("Id")
                         .HasName("pk_workflows");
+
+                    b.HasIndex("ParentStepId")
+                        .HasDatabaseName("ix_workflows_parent_step_id");
 
                     b.ToTable("workflows", "werkr");
                 });
@@ -1271,6 +1333,20 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("agent_connection_id_override");
 
+                    b.Property<long?>("ChildWorkflowId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("child_workflow_id");
+
+                    b.Property<string>("CollectionVariableName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("collection_variable_name");
+
+                    b.Property<string>("CompositeType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("composite_type");
+
                     b.Property<string>("ConditionExpression")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -1295,6 +1371,15 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("input_variable_name");
+
+                    b.Property<bool>("IsComposite")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_composite");
+
+                    b.Property<string>("IterationVariableName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("iteration_variable_name");
 
                     b.Property<string>("LastUpdated")
                         .IsRequired()
@@ -1332,6 +1417,9 @@ namespace Werkr.Data.Migrations.Postgres
 
                     b.HasIndex("AgentConnectionIdOverride")
                         .HasDatabaseName("ix_workflow_steps_agent_connection_id_override");
+
+                    b.HasIndex("ChildWorkflowId")
+                        .HasDatabaseName("ix_workflow_steps_child_workflow_id");
 
                     b.HasIndex("TaskId")
                         .HasDatabaseName("ix_workflow_steps_task_id");
@@ -1718,6 +1806,27 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Workflow");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_file_monitor_triggers_workflows_workflow_id");
+
+                    b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowStep", null)
+                        .WithMany()
+                        .HasForeignKey("ParentStepId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflows_workflow_steps_parent_step_id");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRun", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
@@ -1786,6 +1895,12 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasForeignKey("AgentConnectionIdOverride")
                         .HasConstraintName("fk_workflow_steps_registered_connections_agent_connection_id_o");
 
+                    b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "ChildWorkflow")
+                        .WithMany()
+                        .HasForeignKey("ChildWorkflowId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflow_steps_workflows_child_workflow_id");
+
                     b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
@@ -1801,6 +1916,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasConstraintName("fk_workflow_steps_workflows_workflow_id");
 
                     b.Navigation("AgentConnectionOverride");
+
+                    b.Navigation("ChildWorkflow");
 
                     b.Navigation("Task");
 

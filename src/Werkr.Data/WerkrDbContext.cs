@@ -12,6 +12,7 @@ using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Settings;
 using Werkr.Data.Entities.Tasks;
+using Werkr.Data.Entities.Triggers;
 using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Data;
@@ -112,6 +113,9 @@ public class WerkrDbContext : DbContext {
 
     /// <summary>Named saved filter views (personal and shared).</summary>
     public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>( );
+
+    /// <summary>File monitor triggers that watch directories and initiate workflow runs.</summary>
+    public DbSet<FileMonitorTrigger> FileMonitorTriggers => Set<FileMonitorTrigger>( );
 
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
@@ -264,6 +268,22 @@ public class WerkrDbContext : DbContext {
                     v => v == null ? null : v.ToArray( )
                 )
             );
+        } );
+
+        // WorkflowStep.ChildWorkflow FK — SetNull on delete to avoid cascading removal of the parent step
+        _ = modelBuilder.Entity<WorkflowStep>( entity => {
+            _ = entity.HasOne( e => e.ChildWorkflow )
+                .WithMany( )
+                .HasForeignKey( e => e.ChildWorkflowId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // Workflow.ParentStepId FK — allows reverse navigation from child workflow to parent step
+        _ = modelBuilder.Entity<Workflow>( entity => {
+            _ = entity.HasOne<WorkflowStep>( )
+                .WithMany( )
+                .HasForeignKey( e => e.ParentStepId )
+                .OnDelete( DeleteBehavior.SetNull );
         } );
 
         // WorkflowStepDependency composite key and relationships
@@ -458,6 +478,36 @@ public class WerkrDbContext : DbContext {
             _ = entity.HasIndex( e => new { e.PageKey, e.IsShared } );
         } );
 
+        // FileMonitorTrigger — FK to Workflow with cascade delete, JSON conversions
+        _ = modelBuilder.Entity<FileMonitorTrigger>( entity => {
+            _ = entity.HasOne( e => e.Workflow )
+                .WithMany( )
+                .HasForeignKey( e => e.WorkflowId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasIndex( e => e.WorkflowId );
+
+            // EventTypes stored as JSON string (e.g. ["created","changed"])
+            PropertyBuilder<string> eventTypesProp = entity.Property( e => e.EventTypes );
+            eventTypesProp.Metadata.SetValueComparer(
+                new ValueComparer<string>(
+                    ( a, b ) => string.Equals( a, b, StringComparison.Ordinal ),
+                    v => v == null ? 0 : v.GetHashCode( StringComparison.Ordinal ),
+                    v => v
+                )
+            );
+
+            // TargetTags stored as nullable JSON string
+            PropertyBuilder<string?> targetTagsProp = entity.Property( e => e.TargetTags );
+            targetTagsProp.Metadata.SetValueComparer(
+                new ValueComparer<string?>(
+                    ( a, b ) => string.Equals( a, b, StringComparison.Ordinal ),
+                    v => v == null ? 0 : v.GetHashCode( StringComparison.Ordinal ),
+                    v => v
+                )
+            );
+        } );
+
         // Field-level encryption for sensitive columns (§9 Data Protection)
         if (FieldEncryption is not null) {
             EncryptedStringConverter encString = new( FieldEncryption );
@@ -536,6 +586,10 @@ public class WerkrDbContext : DbContext {
         // StepExecutionStatus ↔ string
         _ = configurationBuilder.Properties<Common.Models.StepExecutionStatus>( )
             .HaveConversion<StepExecutionStatusStringConverter>( );
+
+        // CompositeType ↔ string
+        _ = configurationBuilder.Properties<CompositeType>( )
+            .HaveConversion<CompositeTypeStringConverter>( );
     }
 
     /// <inheritdoc/>
@@ -674,4 +728,9 @@ public class WerkrDbContext : DbContext {
         : ValueConverter<Common.Models.StepExecutionStatus, string>(
             v => v.ToString( ),
             v => Enum.Parse<Common.Models.StepExecutionStatus>( v ) );
+
+    private sealed class CompositeTypeStringConverter( )
+        : ValueConverter<CompositeType, string>(
+            v => v.ToString( ),
+            v => Enum.Parse<CompositeType>( v ) );
 }

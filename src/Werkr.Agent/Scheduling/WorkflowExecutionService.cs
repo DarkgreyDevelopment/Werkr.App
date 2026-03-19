@@ -30,6 +30,7 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="clientFactory">Factory for creating outbound gRPC clients to the Server.</param>
 /// <param name="variableClient">Client for workflow variable get/set/create operations.</param>
 /// <param name="outputStreamingService">Manages real-time output streaming to the server.</param>
+/// <param name="compositeNodeExecutor">Executor for composite workflow nodes (ForEach, etc.).</param>
 /// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
 /// <param name="logger">Logger.</param>
 public sealed partial class WorkflowExecutionService(
@@ -42,6 +43,7 @@ public sealed partial class WorkflowExecutionService(
     AgentGrpcClientFactory clientFactory,
     VariableClient variableClient,
     Werkr.Agent.Services.OutputStreamingService outputStreamingService,
+    CompositeNodeExecutor compositeNodeExecutor,
     IServiceScopeFactory serviceScopeFactory,
     ILogger<WorkflowExecutionService> logger
 ) {
@@ -103,7 +105,7 @@ public sealed partial class WorkflowExecutionService(
     // ── Result Types ─────────────────────────────────────────────────────────────
 
     /// <summary>Result of executing a single workflow step.</summary>
-    private sealed record StepExecutionResult(
+    internal sealed record StepExecutionResult(
         long StepId,
         StepJobResult? Job,
         bool Failed,
@@ -211,6 +213,12 @@ public sealed partial class WorkflowExecutionService(
         IReadOnlyList<IReadOnlyList<ScheduledWorkflowStepDef>> levels =
             BuildTopologicalLevels( workflow.Steps );
 
+        // Build child workflow lookup for composite steps (keyed by child workflow ID)
+        Dictionary<long, ChildWorkflowDefinition> childWorkflowMap = [];
+        foreach (ChildWorkflowDefinition child in workflow.ChildWorkflows) {
+            childWorkflowMap[child.ChildWorkflowId] = child;
+        }
+
         // Step result map: stepId → completed job result (concurrent for parallel steps)
         ConcurrentDictionary<long, StepJobResult> stepResults = new();
 
@@ -254,7 +262,7 @@ public sealed partial class WorkflowExecutionService(
                 if (parallelizable.Count > 0) {
                     StepExecutionResult[] parallelResults = await Task.WhenAll(
                         parallelizable.Select( step => ExecuteStepAsync(
-                            step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, ct ) ) );
+                            step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, childWorkflowMap, ct ) ) );
 
                     foreach (StepExecutionResult result in parallelResults) {
                         if (result.Job is not null) {
@@ -280,7 +288,7 @@ public sealed partial class WorkflowExecutionService(
                     ct.ThrowIfCancellationRequested( );
 
                     StepExecutionResult result = await ExecuteStepAsync(
-                        step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, ct);
+                        step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, childWorkflowMap, ct);
 
                     if (result.Job is not null) {
                         stepResults[result.StepId] = result.Job;
@@ -323,16 +331,23 @@ public sealed partial class WorkflowExecutionService(
 
     // ── Step Execution ───────────────────────────────────────────────────────────
 
-    /// <summary>Executes a single workflow step, handling control flow and variable I/O.</summary>
-    private async Task<StepExecutionResult> ExecuteStepAsync(
+    /// <summary>Executes a single workflow step, handling control flow, composite nodes, and variable I/O.</summary>
+    internal async Task<StepExecutionResult> ExecuteStepAsync(
         ScheduledWorkflowStepDef step,
         Guid workflowRunId,
         ConcurrentDictionary<long, StepJobResult> stepResults,
         Dictionary<long, bool> branchTaken,
         ConcurrentDictionary<string, string> variableCache,
         Guid? scheduleId,
+        Dictionary<long, ChildWorkflowDefinition> childWorkflowMap,
         CancellationToken ct
     ) {
+        // Handle composite steps (ForEach, etc.) before task validation
+        if (step.IsComposite && (CompositeType) step.CompositeType == CompositeType.ForEach) {
+            return await ExecuteCompositeStepAsync(
+                step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, childWorkflowMap, ct );
+        }
+
         ScheduledTaskDefinition? taskDef = step.Task;
         if (taskDef is null) {
             string msg = $"Step {step.StepId} has no embedded task definition.";
@@ -413,6 +428,93 @@ public sealed partial class WorkflowExecutionService(
         }
 
         return StepExecutionResult.Ok( step.StepId, job );
+    }
+
+    /// <summary>
+    /// Executes a composite step by delegating to <see cref="CompositeNodeExecutor"/>.
+    /// Reports step started/completed lifecycle events to the server.
+    /// </summary>
+    private async Task<StepExecutionResult> ExecuteCompositeStepAsync(
+        ScheduledWorkflowStepDef step,
+        Guid workflowRunId,
+        ConcurrentDictionary<long, StepJobResult> stepResults,
+        Dictionary<long, bool> branchTaken,
+        ConcurrentDictionary<string, string> variableCache,
+        Guid? scheduleId,
+        Dictionary<long, ChildWorkflowDefinition> childWorkflowMap,
+        CancellationToken ct
+    ) {
+        // Skip steps that already succeeded in a prior attempt (retry-from-failed)
+        if (stepResults.ContainsKey( step.StepId )) {
+            return StepExecutionResult.Skipped( step.StepId );
+        }
+
+        // Check dependency satisfaction
+        if (!CheckDependencies( step, stepResults )) {
+            string depError = $"Dependencies not satisfied for composite step {step.StepId}.";
+            return StepExecutionResult.Fail( step.StepId, depError );
+        }
+
+        // Resolve child workflow steps
+        if (step.ChildWorkflowId == 0
+            || !childWorkflowMap.TryGetValue( step.ChildWorkflowId, out ChildWorkflowDefinition? childDef )) {
+            return StepExecutionResult.Fail( step.StepId,
+                $"Child workflow definition not found for composite step {step.StepId} (ChildWorkflowId={step.ChildWorkflowId})." );
+        }
+
+        // Report step started
+        string stepName = $"ForEach (Step {step.Order})";
+        await ReportStepStartedAsync( workflowRunId, step.StepId, stepName, 0, ct );
+
+        DateTime startTime = DateTime.UtcNow;
+
+        // Empty child workflow map for child steps (no nested composite in POC)
+        Dictionary<long, ChildWorkflowDefinition> emptyChildMap = [];
+
+        CompositeExecutionResult compositeResult = await compositeNodeExecutor.ExecuteForEachAsync(
+            step,
+            [.. childDef.Steps],
+            workflowRunId,
+            variableCache,
+            scheduleId,
+            ( s, runId, results, branch, cache, sId, token ) =>
+                ExecuteStepAsync( s, runId, results, branch, cache, sId, emptyChildMap, token ),
+            BuildTopologicalLevels,
+            ct );
+
+        DateTime endTime = DateTime.UtcNow;
+
+        // Create a synthetic job result for the composite step
+        StepJobResult syntheticJob = new(
+            JobId: Guid.NewGuid( ),
+            Success: compositeResult.Success,
+            ExitCode: compositeResult.Success ? 0 : 1,
+            StartTime: startTime,
+            EndTime: endTime,
+            ErrorCategory: compositeResult.Success ? ErrorCategory.None : ErrorCategory.ScriptError,
+            OutputPreview: compositeResult.Success
+                ? $"ForEach: {compositeResult.IterationCount} iteration(s) completed."
+                : compositeResult.ErrorMessage );
+
+        // Report the composite step result to the server
+        await ReportJobResultAsync(
+            syntheticJob.JobId,
+            new ScheduledTaskDefinition { TaskId = 0, Name = stepName },
+            startTime, endTime,
+            compositeResult.Success,
+            syntheticJob.ExitCode,
+            syntheticJob.ErrorCategory,
+            workflowRunId.ToString( ),
+            syntheticJob.OutputPreview,
+            scheduleId,
+            step.StepId,
+            outputVariableName: null,
+            outputVariableValue: null,
+            ct );
+
+        return compositeResult.Success
+            ? StepExecutionResult.Ok( step.StepId, syntheticJob )
+            : StepExecutionResult.Fail( step.StepId, compositeResult.ErrorMessage ?? "ForEach execution failed." );
     }
 
     /// <summary>Executes a While or Do loop step with variable support.</summary>
@@ -705,7 +807,7 @@ public sealed partial class WorkflowExecutionService(
     /// Builds topological levels from proto step definitions using Kahn's algorithm.
     /// Steps at the same level have all dependencies satisfied by prior levels.
     /// </summary>
-    private static List<IReadOnlyList<ScheduledWorkflowStepDef>> BuildTopologicalLevels(
+    internal static List<IReadOnlyList<ScheduledWorkflowStepDef>> BuildTopologicalLevels(
         IReadOnlyCollection<ScheduledWorkflowStepDef> steps
     ) {
         // Build adjacency: stepId → set of dependents

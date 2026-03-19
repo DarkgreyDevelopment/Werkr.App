@@ -1,0 +1,276 @@
+@page "/triggers/file-monitors/new"
+@page "/triggers/file-monitors/{Id:long}"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - @( _isNew ? "New" : "Edit" ) File Monitor Trigger</PageTitle>
+
+<h1>@( _isNew ? "New" : "Edit" ) File Monitor Trigger</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( !string.IsNullOrWhiteSpace( _successMessage ) ) {
+    <StatusBanner Visible="true" Level="success" Title="Success" Message="@_successMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading..." />
+} else {
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="EditFileMonitorForm">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label" for="workflowId">Target Workflow</label>
+            <select class="form-select" id="workflowId" @bind="_model.WorkflowId">
+                <option value="0">-- Select a workflow --</option>
+                @if ( _workflows is not null ) {
+                    @foreach ( WorkflowOption wf in _workflows ) {
+                        <option value="@wf.Id">@wf.Name</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="watchDirectory">Watch Directory</label>
+            <InputText class="form-control" id="watchDirectory" @bind-Value="_model.WatchDirectory"
+                       placeholder="/path/to/watch" />
+            <div class="form-text">The absolute directory path to monitor for file events.</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="filePattern">File Pattern</label>
+            <InputText class="form-control" id="filePattern" @bind-Value="_model.FilePattern"
+                       placeholder="*.*" />
+            <div class="form-text">Glob pattern to match files (e.g. "*.csv", "report_*.txt").</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Event Types</label>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="evtCreated" @bind="_model.EventCreated" />
+                <label class="form-check-label" for="evtCreated">Created</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="evtChanged" @bind="_model.EventChanged" />
+                <label class="form-check-label" for="evtChanged">Changed</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="evtDeleted" @bind="_model.EventDeleted" />
+                <label class="form-check-label" for="evtDeleted">Deleted</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="evtRenamed" @bind="_model.EventRenamed" />
+                <label class="form-check-label" for="evtRenamed">Renamed</label>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="debounceMs">Debounce (ms)</label>
+            <InputNumber class="form-control" id="debounceMs" @bind-Value="_model.DebounceMs" />
+            <div class="form-text">Minimum interval between events for the same file path.</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="targetTags">Target Agent Tags (comma-separated, optional)</label>
+            <InputText class="form-control" id="targetTags" @bind-Value="_model.TargetTagsText"
+                       placeholder="tag1,tag2" />
+            <div class="form-text">Leave empty to target all agents.</div>
+        </div>
+
+        <div class="mb-3 form-check">
+            <input class="form-check-input" type="checkbox" id="enabled" @bind="_model.Enabled" />
+            <label class="form-check-label" for="enabled">Enabled</label>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                @if ( _isSaving ) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                @( _isNew ? "Create" : "Save" )
+            </button>
+            <a href="/triggers/file-monitors" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public long Id { get; set; }
+
+    private bool _isNew => Id == 0;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private TriggerFormModel _model = new( );
+    private List<WorkflowOption>? _workflows;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
+
+    protected override async Task OnInitializedAsync( ) {
+        _breadcrumbs = [
+            new( "Task List", "/" ),
+            new( "File Monitor Triggers", "/triggers/file-monitors" ),
+            new( _isNew ? "New" : "Edit" )
+        ];
+
+        try {
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            // Load workflows for dropdown
+            List<WorkflowOption>? wfs = await client.GetFromJsonAsync<List<WorkflowOption>>( "/api/v1/workflows" );
+            _workflows = wfs ?? [];
+
+            if ( !_isNew ) {
+                // Load existing trigger
+                FileMonitorTriggerDto? trigger = await client.GetFromJsonAsync<FileMonitorTriggerDto>(
+                    $"/api/v1/triggers/file-monitor/{Id}" );
+                if ( trigger is not null ) {
+                    _model.WorkflowId = trigger.WorkflowId;
+                    _model.WatchDirectory = trigger.WatchDirectory;
+                    _model.FilePattern = trigger.FilePattern;
+                    _model.DebounceMs = trigger.DebounceMs;
+                    _model.Enabled = trigger.Enabled;
+
+                    // Parse event types
+                    try {
+                        string[]? events = System.Text.Json.JsonSerializer.Deserialize<string[]>( trigger.EventTypes );
+                        if ( events is not null ) {
+                            _model.EventCreated = events.Contains( "created", StringComparer.OrdinalIgnoreCase );
+                            _model.EventChanged = events.Contains( "changed", StringComparer.OrdinalIgnoreCase );
+                            _model.EventDeleted = events.Contains( "deleted", StringComparer.OrdinalIgnoreCase );
+                            _model.EventRenamed = events.Contains( "renamed", StringComparer.OrdinalIgnoreCase );
+                        }
+                    } catch { /* ignore parse errors */ }
+
+                    // Parse target tags
+                    if ( !string.IsNullOrWhiteSpace( trigger.TargetTags ) ) {
+                        try {
+                            string[]? tags = System.Text.Json.JsonSerializer.Deserialize<string[]>( trigger.TargetTags );
+                            _model.TargetTagsText = tags is not null ? string.Join( ",", tags ) : "";
+                        } catch {
+                            _model.TargetTagsText = "";
+                        }
+                    }
+                } else {
+                    _errorMessage = "Trigger not found.";
+                }
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveAsync( ) {
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try {
+            if ( _model.WorkflowId <= 0 ) {
+                _errorMessage = "Please select a target workflow.";
+                return;
+            }
+
+            if ( string.IsNullOrWhiteSpace( _model.WatchDirectory ) ) {
+                _errorMessage = "Watch directory is required.";
+                return;
+            }
+
+            // Build event types JSON
+            List<string> eventTypes = [];
+            if ( _model.EventCreated ) { eventTypes.Add( "created" ); }
+            if ( _model.EventChanged ) { eventTypes.Add( "changed" ); }
+            if ( _model.EventDeleted ) { eventTypes.Add( "deleted" ); }
+            if ( _model.EventRenamed ) { eventTypes.Add( "renamed" ); }
+            if ( eventTypes.Count == 0 ) {
+                _errorMessage = "Please select at least one event type.";
+                return;
+            }
+            string eventTypesJson = System.Text.Json.JsonSerializer.Serialize( eventTypes );
+
+            // Build target tags JSON
+            string? targetTagsJson = null;
+            if ( !string.IsNullOrWhiteSpace( _model.TargetTagsText ) ) {
+                string[] tags = _model.TargetTagsText.Split( ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries );
+                if ( tags.Length > 0 ) {
+                    targetTagsJson = System.Text.Json.JsonSerializer.Serialize( tags );
+                }
+            }
+
+            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+
+            if ( _isNew ) {
+                var body = new {
+                    workflowId = _model.WorkflowId,
+                    watchDirectory = _model.WatchDirectory,
+                    filePattern = _model.FilePattern,
+                    eventTypes = eventTypesJson,
+                    debounceMs = _model.DebounceMs,
+                    enabled = _model.Enabled,
+                    targetTags = targetTagsJson,
+                };
+                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/triggers/file-monitor", body );
+                if ( response.IsSuccessStatusCode ) {
+                    Navigation.NavigateTo( "/triggers/file-monitors" );
+                    return;
+                }
+                _errorMessage = $"Failed to create trigger: HTTP {(int) response.StatusCode}";
+            } else {
+                var body = new {
+                    workflowId = _model.WorkflowId,
+                    watchDirectory = _model.WatchDirectory,
+                    filePattern = _model.FilePattern,
+                    eventTypes = eventTypesJson,
+                    debounceMs = _model.DebounceMs,
+                    enabled = _model.Enabled,
+                    targetTags = targetTagsJson,
+                };
+                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/triggers/file-monitor/{Id}", body );
+                if ( response.IsSuccessStatusCode ) {
+                    _successMessage = "Trigger saved successfully.";
+                } else {
+                    _errorMessage = $"Failed to update trigger: HTTP {(int) response.StatusCode}";
+                }
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Save failed: {ex.Message}";
+        } finally {
+            _isSaving = false;
+        }
+    }
+
+    private sealed class TriggerFormModel {
+        public long WorkflowId { get; set; }
+        public string WatchDirectory { get; set; } = "";
+        public string FilePattern { get; set; } = "*.*";
+        public bool EventCreated { get; set; } = true;
+        public bool EventChanged { get; set; }
+        public bool EventDeleted { get; set; }
+        public bool EventRenamed { get; set; }
+        public int DebounceMs { get; set; } = 500;
+        public bool Enabled { get; set; } = true;
+        public string TargetTagsText { get; set; } = "";
+    }
+
+    private sealed record WorkflowOption( long Id, string Name );
+
+    private sealed record FileMonitorTriggerDto(
+        long Id,
+        long WorkflowId,
+        string WorkflowName,
+        string WatchDirectory,
+        string FilePattern,
+        string EventTypes,
+        int DebounceMs,
+        bool Enabled,
+        string? TargetTags );
+}

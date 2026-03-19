@@ -58,12 +58,14 @@ public sealed partial class RunNowService(
     /// </summary>
     /// <param name="workflowId">The ID of the workflow to run.</param>
     /// <param name="triggerVariables">Optional per-execution variable overrides from manual trigger.</param>
+    /// <param name="variableSource">The source of the trigger variables. Defaults to <see cref="VariableSource.ManualInput"/>.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A tuple of the schedule ID and the workflow run ID.</returns>
     /// <exception cref="KeyNotFoundException">Thrown when the workflow does not exist.</exception>
     public async Task<(Guid ScheduleId, Guid WorkflowRunId)> CreateWorkflowRunNowAsync(
         long workflowId,
         Dictionary<string, string>? triggerVariables = null,
+        VariableSource variableSource = VariableSource.ManualInput,
         CancellationToken ct = default
     ) {
         Workflow workflow = await dbContext.Set<Workflow>( )
@@ -113,7 +115,7 @@ public sealed partial class RunNowService(
                     VariableName = kvp.Key,
                     Value = kvp.Value,
                     Version = hasDefault ? 2 : 1,
-                    Source = VariableSource.ManualInput,
+                    Source = variableSource,
                     Created = DateTime.UtcNow,
                 };
                 _ = dbContext.Set<WorkflowRunVariable>( ).Add( triggerEntry );

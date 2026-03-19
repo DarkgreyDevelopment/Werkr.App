@@ -40,7 +40,9 @@ internal static class WorkflowMapper {
             Enabled: workflow.Enabled,
             Steps: [.. workflow.Steps.Select( ToStepDto )],
             TargetTags: workflow.TargetTags,
-            Annotations: DeserializeAnnotations( workflow.Annotations ) );
+            Annotations: DeserializeAnnotations( workflow.Annotations ),
+            IsChildWorkflow: workflow.IsChildWorkflow,
+            ParentStepId: workflow.ParentStepId );
 
     /// <summary>Maps a <see cref="WorkflowStep"/> entity to a <see cref="WorkflowStepDto"/>.</summary>
     public static WorkflowStepDto ToStepDto( WorkflowStep step ) =>
@@ -57,7 +59,12 @@ internal static class WorkflowMapper {
             Dependencies: [.. step.Dependencies.Select( ToDepDto )],
             InputVariableName: step.InputVariableName,
             OutputVariableName: step.OutputVariableName,
-            TaskName: step.Task?.Name );
+            TaskName: step.Task?.Name,
+            IsComposite: step.IsComposite,
+            CompositeType: step.CompositeType.ToString( ),
+            ChildWorkflowId: step.ChildWorkflowId,
+            IterationVariableName: step.IterationVariableName,
+            CollectionVariableName: step.CollectionVariableName );
 
     /// <summary>Maps a <see cref="WorkflowStepDependency"/> to a <see cref="StepDependencyDto"/>.</summary>
     public static StepDependencyDto ToDepDto( WorkflowStepDependency dep ) =>
@@ -76,6 +83,11 @@ internal static class WorkflowMapper {
             DependencyMode = Enum.Parse<DependencyMode>( request.DependencyMode, ignoreCase: true ),
             InputVariableName = request.InputVariableName,
             OutputVariableName = request.OutputVariableName,
+            IsComposite = request.IsComposite,
+            CompositeType = Enum.Parse<CompositeType>( request.CompositeType, ignoreCase: true ),
+            ChildWorkflowId = request.ChildWorkflowId,
+            IterationVariableName = request.IterationVariableName,
+            CollectionVariableName = request.CollectionVariableName,
         };
 
     /// <summary>Maps a <see cref="WorkflowRun"/> entity to a <see cref="WorkflowRunDto"/>.</summary>

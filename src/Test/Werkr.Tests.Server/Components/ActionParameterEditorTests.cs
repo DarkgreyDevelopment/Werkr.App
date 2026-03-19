@@ -45,7 +45,7 @@ public class ActionParameterEditorTests : BunitContext {
 
         // All <option> except the "— select action —" placeholder
         IReadOnlyList<AngleSharp.Dom.IElement> options = cut.FindAll( "select#actionSubType option[value]:not([value=''])" );
-        Assert.HasCount( 31, options, "Should list all 31 actions." );
+        Assert.HasCount( 30, options, "Should list all 30 actions." );
     }
 
     /// <summary>
@@ -495,20 +495,20 @@ public class ActionParameterEditorTests : BunitContext {
     public void Setting_Value_Emits_ActionParametersChanged( ) {
         string? emittedJson = null;
         IRenderedComponent<ActionParameterEditor> cut = Render<ActionParameterEditor>( parameters => parameters
-            .Add( p => p.ActionSubType, "ForEach" )
+            .Add( p => p.ActionSubType, "CreateFile" )
             .Add( p => p.ActionSubTypeChanged, EventCallback.Factory.Create<string>( this, _ => { } ) )
             .Add( p => p.ActionParametersChanged, EventCallback.Factory.Create<string?>( this, v => emittedJson = v ) ) );
 
-        // ForEach has a single required text field: ArrayPropertyName.
+        // CreateFile has a required text field: Path.
         AngleSharp.Dom.IElement input = cut.Find( "input[type='text']" );
-        input.Change( "items" );
+        input.Change( "/tmp/test.txt" );
 
         Assert.IsNotNull( emittedJson, "ActionParametersChanged should have been invoked." );
 
         using JsonDocument doc = JsonDocument.Parse( emittedJson );
         Assert.AreEqual(
-            "items",
-            doc.RootElement.GetProperty( "arrayPropertyName" ).GetString( ),
+            "/tmp/test.txt",
+            doc.RootElement.GetProperty( "path" ).GetString( ),
             "Emitted JSON should contain the typed value." );
     }
 

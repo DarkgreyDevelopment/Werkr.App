@@ -16,4 +16,7 @@ public enum VariableSource {
 
     /// <summary>Manually edited for re-execution (future use).</summary>
     ReExecutionEdit = 3,
+
+    /// <summary>Injected by a trigger (file monitor, webhook, etc.).</summary>
+    TriggerContext = 4,
 }

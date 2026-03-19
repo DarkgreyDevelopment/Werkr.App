@@ -8,5 +8,7 @@ public sealed record WorkflowDto(
     bool Enabled,
     IReadOnlyList<WorkflowStepDto> Steps,
     string[]? TargetTags = null,
-    List<AnnotationDto>? Annotations = null
+    List<AnnotationDto>? Annotations = null,
+    bool IsChildWorkflow = false,
+    long? ParentStepId = null
 );

@@ -66,6 +66,23 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
     [MaxLength( 128 )]
     public string? OutputVariableName { get; set; }
 
+    /// <summary>Marks this step as a composite node (e.g., ForEach, While).</summary>
+    public bool IsComposite { get; set; }
+
+    /// <summary>Which composite type this step is. Only meaningful when <see cref="IsComposite"/> is true.</summary>
+    public CompositeType CompositeType { get; set; } = CompositeType.None;
+
+    /// <summary>Foreign key to the child workflow executed by this composite node.</summary>
+    public long? ChildWorkflowId { get; set; }
+
+    /// <summary>Loop variable name exposed to each iteration of a ForEach composite node.</summary>
+    [MaxLength( 128 )]
+    public string? IterationVariableName { get; set; }
+
+    /// <summary>Collection variable name containing the array to iterate over in a ForEach composite node.</summary>
+    [MaxLength( 128 )]
+    public string? CollectionVariableName { get; set; }
+
     /// <summary>Navigation property to the parent workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow? Workflow { get; set; }
@@ -77,6 +94,10 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
     /// <summary>Navigation to the overridden agent connection.</summary>
     [ForeignKey( nameof( AgentConnectionIdOverride ) )]
     public RegisteredConnection? AgentConnectionOverride { get; set; }
+
+    /// <summary>Navigation to the child workflow for composite nodes.</summary>
+    [ForeignKey( nameof( ChildWorkflowId ) )]
+    public Workflow? ChildWorkflow { get; set; }
 
     /// <summary>Navigation to dependency relationships where this step is the dependent.</summary>
     public ICollection<WorkflowStepDependency> Dependencies { get; set; } = [];
