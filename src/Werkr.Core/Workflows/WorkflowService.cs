@@ -608,6 +608,13 @@ public sealed partial class WorkflowService(
                 existing.ChildWorkflowId = update.ChildWorkflowId;
                 existing.IterationVariableName = update.IterationVariableName;
                 existing.CollectionVariableName = update.CollectionVariableName;
+
+                if (existing.IsComposite && existing.ChildWorkflowId is null) {
+                    await tx.RollbackAsync( ct );
+                    return new WorkflowStepBatchResponse( false, [],
+                        [$"Step {realId}: composite steps require a non-null ChildWorkflowId. " +
+                         "Provide ChildWorkflowId or set IsComposite to false."] );
+                }
             }
 
             // ── Phase 3: Process dependency changes ──
@@ -757,10 +764,17 @@ public sealed partial class WorkflowService(
         }
     }
 
-    /// <summary>Parse dependency mode with legacy alias support ("All" → AllSuccess).</summary>
+    /// <summary>Parse dependency mode with legacy alias support ("All" → AllSuccess, "Any" → AnySuccess).</summary>
     private static DependencyMode ParseDependencyMode( string value ) {
-        return string.Equals( value, "All", StringComparison.OrdinalIgnoreCase )
-            ? DependencyMode.AllSuccess
-            : Enum.Parse<DependencyMode>( value, ignoreCase: true );
+        if (string.IsNullOrWhiteSpace( value )) {
+            return default;
+        }
+        if (string.Equals( value, "All", StringComparison.OrdinalIgnoreCase )) {
+            return DependencyMode.AllSuccess;
+        }
+        if (string.Equals( value, "Any", StringComparison.OrdinalIgnoreCase )) {
+            return DependencyMode.AnySuccess;
+        }
+        return Enum.Parse<DependencyMode>( value, ignoreCase: true );
     }
 }

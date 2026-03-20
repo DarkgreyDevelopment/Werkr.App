@@ -3,8 +3,6 @@ namespace Werkr.Api.Endpoints;
 /// <summary>Maps the root and status endpoints.</summary>
 internal static class StatusEndpoints {
 
-    private static readonly Random s_random = new();
-
     /// <summary>Maps <c>GET /</c> and <c>GET /api/status</c>.</summary>
     public static WebApplication MapStatusEndpoints( this WebApplication app ) {
         _ = app.MapGet( "/", GetApiArt );
@@ -21,7 +19,7 @@ internal static class StatusEndpoints {
     private static IResult GetApiArt( ) {
 
         return Results.Text(
-            content: s_random.Next( 0, 10 ) == 0
+            content: Random.Shared.Next( 0, 10 ) == 0
                 ? """
       ╔════════════════════════════════╗
       ║ ┌────────────────────────────┐ ║

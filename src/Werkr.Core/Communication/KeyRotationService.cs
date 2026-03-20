@@ -113,11 +113,9 @@ public partial class KeyRotationService(
         List<RegisteredConnection> expired = await dbContext.RegisteredConnections
             .Where( c => c.IsServer
                 && c.PreviousSharedKey != null
-                && c.KeyRotatedAtUtc != null )
+                && c.KeyRotatedAtUtc != null
+                && c.KeyRotatedAtUtc < cutoff )
             .ToListAsync( ct );
-
-        // Client-side filter for DateTime comparison (SQLite stores as ISO string)
-        expired = [.. expired.Where( c => c.KeyRotatedAtUtc < cutoff )];
 
         foreach (RegisteredConnection agent in expired) {
             agent.PreviousSharedKey = null;

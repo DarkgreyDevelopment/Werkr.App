@@ -40,6 +40,13 @@ public sealed partial class TriggerEventGrpcService(
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
         }
 
+        if (!Guid.TryParse( inner.ConnectionId, out Guid innerConnectionId )
+            || innerConnectionId != connection.Id) {
+            throw new RpcException( new Status(
+                StatusCode.InvalidArgument,
+                "Connection ID does not match authenticated connection." ) );
+        }
+
         using IServiceScope scope = scopeFactory.CreateScope( );
         WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
 

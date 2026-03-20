@@ -12,11 +12,11 @@ namespace Werkr.Tests;
 public class ActionRegistryTests {
     /// <summary>
     /// Verifies that the <see cref="ActionRegistry.All"/> collection
-    /// contains exactly thirty-one registered <see cref="ActionFormDescriptor"/>
-    /// entries representing all supported actions (27 action handlers + 4 Shell/PowerShell operators).
+    /// contains exactly thirty registered <see cref="ActionFormDescriptor"/>
+    /// entries representing all supported actions (26 action handlers + 4 Shell/PowerShell operators).
     /// </summary>
     [TestMethod]
-    public void All_Contains_ThirtyOne_Actions( ) {
+    public void All_Contains_Thirty_Actions( ) {
         Assert.HasCount( 30, ActionRegistry.All );
     }
 

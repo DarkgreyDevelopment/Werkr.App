@@ -33,7 +33,7 @@ public class PasswordHistoryService(
             List<PasswordHistory> toRemove = await db.PasswordHistory
                 .Where( h => h.UserId == userId )
                 .OrderByDescending( h => h.CreatedUtc )
-                .Skip( limit )
+                .Skip( limit - 1 )
                 .ToListAsync( ct );
 
             db.PasswordHistory.RemoveRange( toRemove );
