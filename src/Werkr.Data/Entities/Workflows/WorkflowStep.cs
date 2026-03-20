@@ -21,8 +21,8 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
     /// <summary>Foreign key to the parent workflow.</summary>
     public long WorkflowId { get; set; }
 
-    /// <summary>Foreign key to the task for this step.</summary>
-    public long TaskId { get; set; }
+    /// <summary>Foreign key to the task for this step. Null for composite nodes (ForEach) which have no task.</summary>
+    public long? TaskId { get; set; }
 
     /// <summary>Execution order within the workflow (lower = earlier). Used as tiebreaker within topological levels.</summary>
     public int Order { get; set; }

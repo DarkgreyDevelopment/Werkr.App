@@ -147,7 +147,7 @@ public sealed partial class ScheduleSyncGrpcService(
                     foreach (WorkflowStep childStep in childWf.Steps.OrderBy( s => s.Order )) {
                         ScheduledWorkflowStepDef childStepDef = new( ) {
                             StepId = childStep.Id,
-                            TaskId = childStep.TaskId,
+                            TaskId = childStep.TaskId ?? 0,
                             Order = childStep.Order,
                             ControlStatement = (int) childStep.ControlStatement,
                             ConditionExpression = childStep.ConditionExpression ?? string.Empty,
@@ -431,7 +431,7 @@ public sealed partial class ScheduleSyncGrpcService(
         foreach (WorkflowStep step in workflow.Steps.OrderBy( s => s.Order )) {
             ScheduledWorkflowStepDef stepDef = new( ) {
                 StepId = step.Id,
-                TaskId = step.TaskId,
+                TaskId = step.TaskId ?? 0,
                 Order = step.Order,
                 ControlStatement = (int) step.ControlStatement,
                 ConditionExpression = step.ConditionExpression ?? string.Empty,

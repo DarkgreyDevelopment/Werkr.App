@@ -84,7 +84,7 @@ export class Changeset {
       taskId,
       order,
       controlStatement: "Default",
-      dependencyMode: "All",
+      dependencyMode: "AllSuccess",
       maxIterations: 100,
       position,
       ...( extra ?? {} ),

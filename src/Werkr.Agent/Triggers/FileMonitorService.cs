@@ -65,7 +65,7 @@ public sealed class FileMonitorService(
     /// </summary>
     /// <param name="triggers">The current set of trigger definitions from the server.</param>
     public void ReconcileWatchers( IReadOnlyList<FileMonitorTriggerDef> triggers ) {
-        HashSet<long> desiredIds = new( triggers.Select( t => t.TriggerId ) );
+        HashSet<long> desiredIds = [.. triggers.Select( t => t.TriggerId )];
 
         // Remove watchers no longer in the server's list
         foreach (long existingId in _watchers.Keys) {

@@ -525,21 +525,21 @@ public sealed partial class WorkflowService(
             List<StepBatchOperation> adds = [.. request.Operations.Where( o => string.Equals( o.OperationType, "Add", StringComparison.OrdinalIgnoreCase ) )];
 
             foreach (StepBatchOperation add in adds) {
-                if (add.TaskId is null) {
+                if (!add.IsComposite && (add.TaskId is null || add.TaskId == 0)) {
                     await tx.RollbackAsync( ct );
                     return new WorkflowStepBatchResponse( false, [],
-                        [$"Add operation for temp step {add.StepId} is missing TaskId."] );
+                        [$"Step {add.StepId} requires a task assignment before saving."] );
                 }
 
                 WorkflowStep step = new( ) {
                     WorkflowId = workflowId,
-                    TaskId = add.TaskId.Value,
+                    TaskId = add.IsComposite ? null : add.TaskId,
                     Order = add.Order,
                     ControlStatement = Enum.Parse<ControlStatement>( add.ControlStatement, ignoreCase: true ),
                     ConditionExpression = add.ConditionExpression,
                     MaxIterations = add.MaxIterations,
                     AgentConnectionIdOverride = add.AgentConnectionIdOverride,
-                    DependencyMode = Enum.Parse<DependencyMode>( add.DependencyMode, ignoreCase: true ),
+                    DependencyMode = ParseDependencyMode( add.DependencyMode ),
                     InputVariableName = add.InputVariableName,
                     OutputVariableName = add.OutputVariableName,
                     IsComposite = add.IsComposite,
@@ -600,7 +600,7 @@ public sealed partial class WorkflowService(
                 existing.ConditionExpression = update.ConditionExpression;
                 existing.MaxIterations = update.MaxIterations;
                 existing.AgentConnectionIdOverride = update.AgentConnectionIdOverride;
-                existing.DependencyMode = Enum.Parse<DependencyMode>( update.DependencyMode, ignoreCase: true );
+                existing.DependencyMode = ParseDependencyMode( update.DependencyMode );
                 existing.InputVariableName = update.InputVariableName;
                 existing.OutputVariableName = update.OutputVariableName;
                 existing.IsComposite = update.IsComposite;
@@ -755,5 +755,12 @@ public sealed partial class WorkflowService(
         if (string.IsNullOrWhiteSpace( workflow.Name )) {
             throw new System.ComponentModel.DataAnnotations.ValidationException( "Workflow name is required." );
         }
+    }
+
+    /// <summary>Parse dependency mode with legacy alias support ("All" → AllSuccess).</summary>
+    private static DependencyMode ParseDependencyMode( string value ) {
+        return string.Equals( value, "All", StringComparison.OrdinalIgnoreCase )
+            ? DependencyMode.AllSuccess
+            : Enum.Parse<DependencyMode>( value, ignoreCase: true );
     }
 }

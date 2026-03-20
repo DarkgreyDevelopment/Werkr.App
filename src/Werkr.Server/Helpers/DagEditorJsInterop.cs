@@ -60,6 +60,12 @@ public sealed class DagEditorJsInterop( IJSRuntime js ) : GraphJsInteropBase<Dag
         await InvokeVoidAsync( "removeNodes", stepIds );
     }
 
+    /// <summary>Read current node data from the JS graph. Returns null if node not found.</summary>
+    public async Task<System.Text.Json.JsonElement?> GetNodeDataAsync( long stepId ) {
+        System.Text.Json.JsonElement result = await InvokeAsync<System.Text.Json.JsonElement>( "getNodeData", stepId );
+        return result.ValueKind == System.Text.Json.JsonValueKind.Null ? null : result;
+    }
+
     /// <summary>Update data fields on an existing node.</summary>
     public async Task UpdateNodeDataAsync( long stepId, object fields ) {
         await InvokeVoidAsync( "updateNodeData", stepId, fields );

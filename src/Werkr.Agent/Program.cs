@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -105,7 +106,7 @@ public partial class Program {
             // environment variables. Outside containers, the dev cert handles TLS.
             _ = builder.WebHost.ConfigureKestrel( options => {
                 options.ConfigureEndpointDefaults( listenOptions => {
-                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
                 } );
 
                 options.Limits.Http2.KeepAlivePingDelay = TimeSpan.FromSeconds( 30 );
@@ -265,26 +266,26 @@ public partial class Program {
  ║    ║ \ \      / /__ _ __| | ___ __  ║    ║                         `--`
  ║    ║  \ \ /\ / / _ \ '__| |/ / '__| ║    ║
  ║____║   \ V  V /  __/ |  |   <| |    ║____║    \|/    \|/    \|/    \|/    \|/    \|/    \|/
-      ║    \_/\_/ \___|_|  |_|\_\_|    ║        --*--  --*--  --*--  --*--  --*--  --*--  --*--
+ ╚════║    \_/\_/ \___|_|  |_|\_\_|    ║════╝   --*--  --*--  --*--  --*--  --*--  --*--  --*--
       ╚════════════════════════════════╝          |      |      |      |      |      |      |
               |AGENT|     | gRPC|                 |      |      |      |      |      |      |
 ++++++++++++++++++++++++++++++++++++++++._______._|_.__._|_.__._|_.__._|_.__._|_.__._|_.__._|_.
 """
                 : """
-    ╔════════════════════════════════╗
-    ║ ┌────────────────────────────┐ ║
-    ║ │      ---          ---      │ ║
-    ║ │       •            •       │ ║
-╔═══║ │   ______________________   │ ║═══╗
-║   ║ └────────────────────────────┘ ║   ║
-║   ║ __        __        _          ║   ║
-║   ║ \ \      / /__ _ __| | ___ __  ║   ║
-║   ║  \ \ /\ / / _ \ '__| |/ / '__| ║   ║
-║___║   \ V  V /  __/ |  |   <| |    ║___║
-    ║    \_/\_/ \___|_|  |_|\_\_|    ║
-    ╚════════════════════════════════╝
-            |AGENT|     | gRPC|
-    ++++++++++++++++++++++++++++++++++
+     ╔════════════════════════════════╗
+     ║ ┌────────────────────────────┐ ║
+     ║ │      ---          ---      │ ║
+     ║ │       •            •       │ ║
+╔════║ │   ______________________   │ ║════╗
+║    ║ └────────────────────────────┘ ║    ║
+║    ║ __        __        _          ║    ║
+║    ║ \ \      / /__ _ __| | ___ __  ║    ║
+║    ║  \ \ /\ / / _ \ '__| |/ / '__| ║    ║
+║____║   \ V  V /  __/ |  |   <| |    ║____║
+╚════║    \_/\_/ \___|_|  |_|\_\_|    ║════╝
+     ╚════════════════════════════════╝     
+             |AGENT|     | gRPC|            
++++++++++++++++++++++++++++++++++++++++++++
 """,
             contentType: "text/plain; charset=utf-8"
         );

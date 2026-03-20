@@ -510,10 +510,9 @@ public sealed partial class ScheduleService(
                 [id],
                 ct
             ),
+            // Populate ShiftMode from DbSchedule
+            ShiftMode = dbSchedule.ShiftMode
         };
-
-        // Populate ShiftMode from DbSchedule
-        schedule.ShiftMode = dbSchedule.ShiftMode;
 
         // Load holiday calendar link if attached
         ScheduleHolidayCalendar? link = await _db.ScheduleHolidayCalendars

@@ -2,9 +2,12 @@ namespace Werkr.Api.Endpoints;
 
 /// <summary>Maps the root and status endpoints.</summary>
 internal static class StatusEndpoints {
+
+    private static readonly Random s_random = new();
+
     /// <summary>Maps <c>GET /</c> and <c>GET /api/status</c>.</summary>
     public static WebApplication MapStatusEndpoints( this WebApplication app ) {
-        _ = app.MapGet( "/", ( ) => "Werkr API Service is running." );
+        _ = app.MapGet( "/", GetApiArt );
 
         _ = app.MapGet( "/api/v1/status", ( ) => {
             return Results.Ok( new { status = "ok" } );
@@ -14,4 +17,53 @@ internal static class StatusEndpoints {
 
         return app;
     }
+
+    private static IResult GetApiArt( ) {
+
+        return Results.Text(
+            content: s_random.Next( 0, 10 ) == 0
+                ? """
+      ╔════════════════════════════════╗
+      ║ ┌────────────────────────────┐ ║
+      ║ │      ---          ---      │ ║
+      ║ │       •            •       │ ║
+ ╔════║ │   \____________________/   │ ║════╗                                          ,--,
+ ║    ║ └────────────────────────────┘ ║    ║                                          \ /
+ ║    ║                                ║    ║                                         {|||)<
+ ║    ║ __        __        _          ║    ║                                          / \
+ ║    ║ \ \      / /__ _ __| | ___ __  ║    ║                                          `--`
+ ║    ║  \ \ /\ / / _ \ '__| |/ / '__| ║    ║
+ ║    ║   \ V  V /  __/ |  |   <| |    ║    ║
+ ║____║    \_/\_/ \___|_|  |_|\_\_|    ║____║
+ ╚════║                                ║════╝
+      ╚════════════════════════════════╝         \|/    \|/    \|/    \|/    \|/    \|/    \|/   \|/    \|/    \|/    \|/
+              | API  |   | Http |               --*--  --*--  --*--  --*--  --*--  --*--  --*-- --*--  --*--  --*--  --*--
+              |      |   | gRPC |                 |      |      |      |      |      |      |     |      |      |      |
+              |      |   |      |                 |      |      |      |      |      |      |     |      |      |      |
+++++++++++++++++++++++++++++++++++++++++._______._|_.__._|_.__._|_.__._|_.__._|_.__._|_.__._|_._._|_.__._|_.__._|_.__._|_.
+"""
+                : """
+     ╔════════════════════════════════╗
+     ║ ┌────────────────────────────┐ ║
+     ║ │      ---          ---      │ ║
+     ║ │       •            •       │ ║     
+╔════║ │    ____________________    │ ║════╗
+║    ║ └────────────────────────────┘ ║    ║
+║    ║                                ║    ║
+║    ║ __        __        _          ║    ║
+║    ║ \ \      / /__ _ __| | ___ __  ║    ║
+║    ║  \ \ /\ / / _ \ '__| |/ / '__| ║    ║
+║    ║   \ V  V /  __/ |  |   <| |    ║    ║
+║____║    \_/\_/ \___|_|  |_|\_\_|    ║____║
+╚════║                                ║════╝
+     ╚════════════════════════════════╝     
+           | API  |   | Http |
+           |      |   | gRPC |
+           |      |   |      |
++++++++++++++++++++++++++++++++++++++++
+""",
+            contentType: "text/plain; charset=utf-8"
+        );
+    }
+
 }

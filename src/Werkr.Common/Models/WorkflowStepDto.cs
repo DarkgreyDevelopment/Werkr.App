@@ -4,7 +4,7 @@ namespace Werkr.Common.Models;
 public sealed record WorkflowStepDto(
     long Id,
     long WorkflowId,
-    long TaskId,
+    long? TaskId,
     int Order,
     string ControlStatement,
     string? ConditionExpression,

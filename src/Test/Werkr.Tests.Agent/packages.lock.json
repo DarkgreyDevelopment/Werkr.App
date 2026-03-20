@@ -1324,7 +1324,7 @@
         "dependencies": {
           "Grpc.AspNetCore": "[2.76.0, )",
           "MailKit": "[4.15.1, )",
-          "Microsoft.PowerShell.SDK": "[7.6.0-rc.1, )",
+          "Microsoft.PowerShell.SDK": "[7.6.0, )",
           "Serilog.AspNetCore": "[10.0.0, )",
           "Serilog.Sinks.Console": "[6.1.1, )",
           "Serilog.Sinks.File": "[7.0.0, )",

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Werkr.Common.Protos;
-using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Agent.Scheduling;
 
@@ -76,7 +75,7 @@ public sealed partial class CompositeNodeExecutor(
                 return CompositeExecutionResult.Fail(
                     $"Collection variable '{collectionVarName}' is not a JSON array (found {doc.RootElement.ValueKind})." );
             }
-            elements = [.. doc.RootElement.EnumerateArray()];
+            elements = [.. doc.RootElement.EnumerateArray( )];
         } catch (JsonException ex) {
             return CompositeExecutionResult.Fail(
                 $"Failed to parse collection variable '{collectionVarName}' as JSON: {ex.Message}" );

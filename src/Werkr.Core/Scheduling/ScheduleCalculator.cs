@@ -36,7 +36,6 @@ public static class ScheduleCalculator {
             ?? throw new InvalidOperationException( "Schedule must have a StartDateTime." );
 
         DateTime occurrence = startDt.UtcTime;
-        TimeOnly startTime = TimeOnly.FromDateTime( occurrence );
 
         // Add initial StartDateTime UtcTime to result list (if not past expiration)
         // then loop through and add any repeat occurrences.
@@ -76,8 +75,7 @@ public static class ScheduleCalculator {
                 schedule.Expiration,
                 endOfWindow,
                 result,
-                schedule.MonthlyRecurrence,
-                startTime
+                schedule.MonthlyRecurrence
             );
         }
 
@@ -631,8 +629,7 @@ public static class ScheduleCalculator {
         ExpirationDateTimeInfo? expiration,
         DateTime endOfWindow,
         HashSet<DateTime> result,
-        MonthlyRecurrence monthlyRecurrence,
-        TimeOnly startTime
+        MonthlyRecurrence monthlyRecurrence
     ) {
         int[] recurrenceMonths = monthlyRecurrence.MonthsOfYear.GetIntMonths( );
         if (monthlyRecurrence.DayNumbers != null) {
@@ -655,7 +652,6 @@ public static class ScheduleCalculator {
                 endOfWindow,
                 result,
                 monthlyRecurrence,
-                startTime,
                 recurrenceMonths
             );
         }
@@ -893,7 +889,6 @@ public static class ScheduleCalculator {
         DateTime endOfWindow,
         HashSet<DateTime> result,
         MonthlyRecurrence monthlyRecurrence,
-        TimeOnly startTime,
         int[] recurrenceMonths
     ) {
         int occurrenceYear = occurrence.Year;
@@ -909,7 +904,6 @@ public static class ScheduleCalculator {
             expiration,
             endOfWindow,
             result,
-            startTime,
             recurrenceMonths,
             daysOfWeek,
             weekOfDays,
@@ -934,7 +928,6 @@ public static class ScheduleCalculator {
             expiration,
             endOfWindow,
             result,
-            startTime,
             remainingRecurrenceMonths,
             recurrenceMonths,
             occurrenceYear,
@@ -955,7 +948,6 @@ public static class ScheduleCalculator {
         ExpirationDateTimeInfo? expiration,
         DateTime endOfWindow,
         HashSet<DateTime> result,
-        TimeOnly startTime,
         int[] recurrenceMonths,
         List<DayOfWeek> daysOfWeek,
         List<DayOfWeek> weekOfDays,
@@ -1004,7 +996,6 @@ public static class ScheduleCalculator {
                 expiration,
                 endOfWindow,
                 result,
-                startTime,
                 occurrenceYear,
                 occurrenceMonth,
                 weekNumbers,
@@ -1029,7 +1020,6 @@ public static class ScheduleCalculator {
         ExpirationDateTimeInfo? expiration,
         DateTime endOfWindow,
         HashSet<DateTime> result,
-        TimeOnly startTime,
         int[] remainingRecurrenceMonths,
         int[] recurrenceMonths,
         int occurrenceYear,
@@ -1066,7 +1056,6 @@ public static class ScheduleCalculator {
                     expiration,
                     endOfWindow,
                     result,
-                    startTime,
                     occurrenceYear,
                     month,
                     weekNumbers,
@@ -1115,7 +1104,6 @@ public static class ScheduleCalculator {
         ExpirationDateTimeInfo? expiration,
         DateTime endOfWindow,
         HashSet<DateTime> result,
-        TimeOnly startTime,
         int occurrenceYear,
         int occurrenceMonth,
         int[] weekNumbers,

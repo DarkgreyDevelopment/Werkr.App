@@ -1379,7 +1379,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("output_variable_name");
 
-                    b.Property<long>("TaskId")
+                    b.Property<long?>("TaskId")
                         .HasColumnType("INTEGER")
                         .HasColumnName("task_id");
 
@@ -1880,8 +1880,6 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
                         .HasConstraintName("fk_workflow_steps_tasks_task_id");
 
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")

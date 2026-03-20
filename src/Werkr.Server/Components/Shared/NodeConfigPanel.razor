@@ -55,6 +55,19 @@
                     </div>
                 }
             } else {
+                @* ── Action Badge ── *@
+                @if ( !string.IsNullOrWhiteSpace( ActionKey ) ) {
+                    <div class="mb-3">
+                        <label class="form-label">Action</label>
+                        <div class="form-control-plaintext form-control-sm">
+                            <span class="badge bg-primary me-1"><i class="bi bi-lock me-1"></i>@_actionDisplayName</span>
+                        </div>
+                        @if ( _actionDescription is not null ) {
+                            <div class="form-text">@_actionDescription</div>
+                        }
+                    </div>
+                }
+
                 @* ── Task ── *@
                 <div class="mb-3">
                     <label class="form-label">Task</label>
@@ -63,7 +76,7 @@
                             <select class="form-select form-select-sm" value="@_taskId" @onchange="OnTaskIdChanged">
                                 <option value="0">— select task —</option>
                                 @if ( Tasks is not null ) {
-                                    @foreach ( TaskDto t in Tasks ) {
+                                    @foreach ( TaskDto t in FilteredTasks ) {
                                         <option value="@t.Id">@t.Name</option>
                                     }
                                 }
@@ -192,6 +205,8 @@
     [Parameter] public string? CollectionVariableName { get; set; }
     [Parameter] public string? IterationVariableName { get; set; }
 
+    [Parameter] public string? ActionKey { get; set; }
+
     [Parameter] public EventCallback<(string Field, object? Value)> OnFieldChanged { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
@@ -209,6 +224,23 @@
     private string? _outputVariableName;
     private string? _collectionVariableName;
     private string? _iterationVariableName;
+    private string _actionDisplayName = "";
+    private string? _actionDescription;
+
+    /// <summary>Tasks filtered by ActionKey when set, otherwise all tasks.</summary>
+    private IEnumerable<TaskDto> FilteredTasks {
+        get {
+            if ( Tasks is null ) return [];
+            if ( string.IsNullOrWhiteSpace( ActionKey ) ) return Tasks;
+
+            if ( ActionRegistry.Actions.TryGetValue( ActionKey, out ActionFormDescriptor? desc ) ) {
+                return Tasks.Where( t => t.ActionType == "Action"
+                    && string.Equals( t.ActionSubType, ActionKey, StringComparison.OrdinalIgnoreCase ) );
+            }
+
+            return Tasks;
+        }
+    }
 
     protected override void OnParametersSet( ) {
         _taskId = TaskId;
@@ -221,6 +253,16 @@
         _outputVariableName = OutputVariableName;
         _collectionVariableName = CollectionVariableName;
         _iterationVariableName = IterationVariableName;
+
+        // Resolve action display info
+        if ( !string.IsNullOrWhiteSpace( ActionKey )
+            && ActionRegistry.Actions.TryGetValue( ActionKey, out ActionFormDescriptor? desc ) ) {
+            _actionDisplayName = desc.DisplayName;
+            _actionDescription = desc.Description;
+        } else {
+            _actionDisplayName = ActionKey ?? "";
+            _actionDescription = null;
+        }
     }
 
     private async Task Close( ) => await OnClose.InvokeAsync( );

@@ -1399,7 +1399,7 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(128)")
                         .HasColumnName("output_variable_name");
 
-                    b.Property<long>("TaskId")
+                    b.Property<long?>("TaskId")
                         .HasColumnType("bigint")
                         .HasColumnName("task_id");
 
@@ -1904,8 +1904,6 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
                         .HasConstraintName("fk_workflow_steps_tasks_task_id");
 
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")

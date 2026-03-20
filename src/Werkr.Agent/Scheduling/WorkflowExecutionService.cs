@@ -343,9 +343,9 @@ public sealed partial class WorkflowExecutionService(
         CancellationToken ct
     ) {
         // Handle composite steps (ForEach, etc.) before task validation
-        if (step.IsComposite && (CompositeType) step.CompositeType == CompositeType.ForEach) {
+        if (step.IsComposite && (CompositeType)step.CompositeType == CompositeType.ForEach) {
             return await ExecuteCompositeStepAsync(
-                step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, childWorkflowMap, ct );
+                step, workflowRunId, stepResults, variableCache, scheduleId, childWorkflowMap, ct );
         }
 
         ScheduledTaskDefinition? taskDef = step.Task;
@@ -438,7 +438,6 @@ public sealed partial class WorkflowExecutionService(
         ScheduledWorkflowStepDef step,
         Guid workflowRunId,
         ConcurrentDictionary<long, StepJobResult> stepResults,
-        Dictionary<long, bool> branchTaken,
         ConcurrentDictionary<string, string> variableCache,
         Guid? scheduleId,
         Dictionary<long, ChildWorkflowDefinition> childWorkflowMap,

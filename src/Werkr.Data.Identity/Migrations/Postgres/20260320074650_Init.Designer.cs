@@ -12,8 +12,8 @@ using Werkr.Data.Identity;
 namespace Werkr.Data.Identity.Migrations.Postgres
 {
     [DbContext(typeof(PostgresWerkrIdentityDbContext))]
-    [Migration("20260319045205_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260320074650_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

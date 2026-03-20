@@ -827,7 +827,7 @@ public sealed partial class ScheduleEvaluatorService(
         RuleType = (HolidayRuleType)proto.RuleType,
         Month = proto.Month > 0 ? proto.Month : null,
         Day = proto.Day > 0 ? proto.Day : null,
-        DayOfWeek = proto.DayOfWeek >= 0 && proto.DayOfWeek <= 6 ? (DayOfWeek)proto.DayOfWeek : null,
+        DayOfWeek = proto.DayOfWeek is >= 0 and <= 6 ? (DayOfWeek)proto.DayOfWeek : null,
         WeekNumber = proto.WeekNumber > 0 ? proto.WeekNumber : null,
         ObservanceRule = (ObservanceRule)proto.ObservanceRule,
         YearStart = proto.YearStart > 0 ? proto.YearStart : null,

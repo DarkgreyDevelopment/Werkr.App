@@ -11,8 +11,8 @@ using Werkr.Data.Identity;
 namespace Werkr.Data.Identity.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteWerkrIdentityDbContext))]
-    [Migration("20260319045212_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260320074707_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
