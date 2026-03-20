@@ -4,10 +4,11 @@
 
 .dag-canvas {
     width: 100%;
-    min-height: 400px;
+    height: 500px;
     border: 1px solid var(--bs-border-color);
     border-radius: 0.375rem;
     background-color: var(--bs-body-bg);
+    overflow: hidden;
 }
 
 .dag-minimap {

@@ -1,9 +1,6 @@
-# Outdated
-This document is outdated and needs to be revised.
-
 # Development
 
-This guide covers how to build, run, test, and contribute to the Werkr project. For architectural context, see [Architecture.md](Architecture.md).
+This guide covers how to build, run, test, and contribute to the Werkr project. For architectural context, see [Architecture.md](Architecture.md). For the definitive 1.0 featureset specification, see [1.0-Target-Featureset.md](1.0-Target-Featureset.md).
 
 ---
 
@@ -15,6 +12,7 @@ This guide covers how to build, run, test, and contribute to the Werkr project. 
 | **Docker** | Required for running PostgreSQL locally (via Aspire) and for integration tests (Testcontainers). |
 | **PostgreSQL 17** | Provided automatically by the Aspire AppHost or Docker Compose. No manual install needed if you have Docker. |
 | **PowerShell 7+** | The Agent embeds a PowerShell host — the SDK is useful for running project scripts. |
+| **Node.js 22+** | Required for building and testing the graph-ui TypeScript project in `src/Werkr.Server/graph-ui/`. |
 | **Git** | Conventional commits are used for versioning via GitVersion. |
 
 ---
@@ -39,7 +37,11 @@ Werkr_Complete/
 │   ├── Werkr.Server/                # Blazor Server UI + Identity
 │   ├── Werkr.ServiceDefaults/       # Aspire service defaults
 │   ├── Installer/Msi/               # WiX MSI projects + custom actions
-│   └── Test/                        # Test projects
+│   └── Test/
+│       ├── Werkr.Tests/              # API integration tests (Testcontainers)
+│       ├── Werkr.Tests.Agent/        # Agent end-to-end tests
+│       ├── Werkr.Tests.Data/         # Data layer unit tests
+│       └── Werkr.Tests.Server/       # Server integration tests (bunit)
 ├── Directory.Build.props       # Shared build properties (net10.0, nullable, etc.)
 ├── Directory.Packages.props    # Central package management
 ├── GitVersion.yml              # Versioning configuration
