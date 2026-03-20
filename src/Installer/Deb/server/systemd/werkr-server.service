@@ -1,0 +1,22 @@
+[Unit]
+Description=Werkr Server — Blazor UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/opt/werkr/serverbundle/Werkr.Server
+WorkingDirectory=/opt/werkr/serverbundle
+Restart=on-failure
+RestartSec=10
+User=werkr
+Group=werkr
+Environment=DOTNET_ENVIRONMENT=Production
+Environment=WERKR_CONFIG_PATH=/etc/werkr
+Environment=WERKR_DATA_DIR=/var/lib/werkr
+Environment=WERKR_LOG_DIR=/var/log/werkr
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

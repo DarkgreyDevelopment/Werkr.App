@@ -1,0 +1,6 @@
+Template: werkr-agent/config-path
+Type: string
+Default: /etc/werkr
+Description: Configuration directory for werkr-agent
+ The directory where werkr-agent stores its configuration files.
+ The default is /etc/werkr.

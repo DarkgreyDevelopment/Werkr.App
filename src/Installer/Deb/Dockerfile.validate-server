@@ -1,0 +1,180 @@
+# syntax=docker/dockerfile:1
+# -------------------------------------------------------------------
+#  Validates the ServerBundle .deb build pipeline end-to-end:
+#    1. Build Werkr.Server + Werkr.Api from source (.NET SDK)
+#    2. Package into .deb using static templates + dpkg-deb
+#    3. Install .deb into a clean Debian container
+#    4. Validate file layout, permissions, and binary startup
+#
+#  Usage:
+#    docker build -f src/Installer/Deb/Dockerfile.validate-server \
+#      -t werkr-server-deb-validate .
+#
+#    # Test Server binary:
+#    docker run --rm -it werkr-server-deb-validate
+#    # Test API binary:
+#    docker run --rm -it --entrypoint ./Werkr.Api werkr-server-deb-validate
+#
+#  Build context: repository root
+# -------------------------------------------------------------------
+
+# ==========================
+#  Stage 1: Build from source
+# ==========================
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+ARG TARGETARCH
+WORKDIR /src
+
+# Grpc.Tools 2.78.0's bundled protoc segfaults under BuildKit's seccomp
+# profile on ARM64. The system protoc (same binary, apt-installed) works
+# because it avoids the NuGet shim invocation path.
+# protobuf-compiler: Grpc.Tools 2.78.0 protoc segfaults under BuildKit on ARM64
+# Node.js 22: required for graph-ui TypeScript build in Werkr.Server
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends protobuf-compiler ca-certificates curl gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY Directory.Build.props Directory.Packages.props global.json Werkr.slnx ./
+COPY src/ src/
+
+# Pre-build graph-ui: MapStaticAssets() discovers wwwroot contents at project
+# evaluation time (before BeforeBuild targets). If dist/ is empty at that
+# point, the esbuild-generated chunks won't appear in the manifest → 404.
+# Building graph-ui BEFORE dotnet publish ensures the chunks exist at eval time.
+RUN cd src/Werkr.Server/graph-ui && npm install --ignore-scripts 2>&1 | tail -1 \
+    && NODE_ENV=production node esbuild.config.mjs
+
+# API first, then Server — Server must be last so its wwwroot (graph-ui
+# JS bundles, static assets) isn't wiped by the API publish.
+RUN dotnet publish src/Werkr.Api/Werkr.Api.csproj \
+      -c Release -r linux-${TARGETARCH} -o /app/publish --sc true \
+      -p:Protobuf_ProtocFullPath=/usr/bin/protoc \
+ && dotnet publish src/Werkr.Server/Werkr.Server.csproj \
+      -c Release -r linux-${TARGETARCH} -o /app/publish --sc true \
+      -p:Protobuf_ProtocFullPath=/usr/bin/protoc
+
+# ==========================
+#  Stage 2: Build the .deb
+# ==========================
+FROM ubuntu:24.04 AS package
+ARG TARGETARCH
+ARG VERSION=0.0.1
+
+WORKDIR /build
+
+# Copy published binaries (Server + API combined)
+COPY --from=build /app/publish /build/binaries/
+
+# Copy deb template files
+COPY src/Installer/Deb/server/ /build/templates/server/
+COPY src/Installer/Deb/rules   /build/templates/rules
+
+RUN set -e \
+    && DEB_ARCH=$([ "${TARGETARCH}" = "arm64" ] && echo "arm64" || echo "amd64") \
+    && STAGING="/build/staging" \
+    && mkdir -p "${STAGING}/DEBIAN" \
+    && mkdir -p "${STAGING}/opt/werkr/serverbundle" \
+    && mkdir -p "${STAGING}/etc/werkr" \
+    && echo '{}' > "${STAGING}/etc/werkr/appsettings.json" \
+    && chmod 640 "${STAGING}/etc/werkr/appsettings.json" \
+    && mkdir -p "${STAGING}/usr/lib/systemd/system" \
+    # Control file with version/arch substitution
+    && sed -e "s/{{VERSION}}/${VERSION}/g" \
+           -e "s/{{ARCHITECTURE}}/${DEB_ARCH}/g" \
+           /build/templates/server/DEBIAN/control.template \
+           > "${STAGING}/DEBIAN/control" \
+    # Static DEBIAN files
+    && cp /build/templates/server/DEBIAN/conffiles  "${STAGING}/DEBIAN/" \
+    && cp /build/templates/server/DEBIAN/templates  "${STAGING}/DEBIAN/" \
+    && cp /build/templates/server/DEBIAN/config     "${STAGING}/DEBIAN/" \
+    && cp /build/templates/server/DEBIAN/postinst   "${STAGING}/DEBIAN/" \
+    && cp /build/templates/server/DEBIAN/prerm      "${STAGING}/DEBIAN/" \
+    && cp /build/templates/server/DEBIAN/postrm     "${STAGING}/DEBIAN/" \
+    && cp /build/templates/rules                    "${STAGING}/DEBIAN/rules" \
+    # systemd units (both Server and API)
+    && cp /build/templates/server/systemd/werkr-server.service \
+          "${STAGING}/usr/lib/systemd/system/" \
+    && cp /build/templates/server/systemd/werkr-api.service \
+          "${STAGING}/usr/lib/systemd/system/" \
+    # Permissions on maintainer scripts
+    && chmod 755 "${STAGING}/DEBIAN/postinst" \
+                 "${STAGING}/DEBIAN/prerm" \
+                 "${STAGING}/DEBIAN/postrm" \
+                 "${STAGING}/DEBIAN/config" \
+                 "${STAGING}/DEBIAN/rules" \
+    # Copy binaries
+    && cp -a /build/binaries/* "${STAGING}/opt/werkr/serverbundle/" \
+    # Build the .deb
+    && dpkg-deb --build --root-owner-group \
+         "${STAGING}" "/build/werkr-server_${VERSION}_${DEB_ARCH}.deb" \
+    # Print package info for build log
+    && echo "======== Package Info ========" \
+    && dpkg-deb --info "/build/werkr-server_${VERSION}_${DEB_ARCH}.deb" \
+    && echo "======== Package Contents (first 30 entries) ========" \
+    && dpkg-deb --contents "/build/werkr-server_${VERSION}_${DEB_ARCH}.deb" | head -30
+
+# ==========================
+#  Stage 3: Validate .deb installation
+# ==========================
+FROM debian:bookworm-slim AS validate
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl libicu72 libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=package /build/werkr-server_*.deb /tmp/
+
+# Extract .deb (dpkg -x for container — no systemd/debconf needed)
+RUN dpkg -x /tmp/*.deb /
+
+# Create werkr user/group and directories (normally done by postinst)
+RUN groupadd --system werkr \
+    && useradd --system --no-create-home -g werkr werkr \
+    && mkdir -p /var/lib/werkr /var/log/werkr /etc/werkr \
+              /opt/werkr/serverbundle/keys \
+              /opt/werkr/serverbundle/config \
+              /opt/werkr/serverbundle/certs \
+    && echo '{}' > /etc/werkr/appsettings.json \
+    && chmod 640 /etc/werkr/appsettings.json \
+    && chown -R werkr:werkr /var/lib/werkr /var/log/werkr /etc/werkr \
+                            /opt/werkr/serverbundle
+
+# Validate file layout
+RUN echo "=== Validation ===" \
+    && test -x /opt/werkr/serverbundle/Werkr.Server \
+        && echo "PASS: Server binary is executable" \
+        || { echo "FAIL: Server binary not executable"; exit 1; } \
+    && test -x /opt/werkr/serverbundle/Werkr.Api \
+        && echo "PASS: API binary is executable" \
+        || { echo "FAIL: API binary not executable"; exit 1; } \
+    && test -f /usr/lib/systemd/system/werkr-server.service \
+        && echo "PASS: werkr-server systemd unit installed" \
+        || { echo "FAIL: werkr-server systemd unit missing"; exit 1; } \
+    && test -f /usr/lib/systemd/system/werkr-api.service \
+        && echo "PASS: werkr-api systemd unit installed" \
+        || { echo "FAIL: werkr-api systemd unit missing"; exit 1; } \
+    && test -f /etc/werkr/appsettings.json \
+        && echo "PASS: config file exists" \
+        || { echo "FAIL: config file missing"; exit 1; } \
+    && grep -q 'WERKR_LOG_DIR' /usr/lib/systemd/system/werkr-server.service \
+        && echo "PASS: WERKR_LOG_DIR in server systemd unit" \
+        || { echo "FAIL: WERKR_LOG_DIR missing from server systemd unit"; exit 1; } \
+    && grep -q 'WERKR_LOG_DIR' /usr/lib/systemd/system/werkr-api.service \
+        && echo "PASS: WERKR_LOG_DIR in api systemd unit" \
+        || { echo "FAIL: WERKR_LOG_DIR missing from api systemd unit"; exit 1; } \
+    && echo "=== All validation checks passed ==="
+
+USER werkr
+WORKDIR /opt/werkr/serverbundle
+
+EXPOSE 8443
+
+ENV ASPNETCORE_URLS=https://+:8443 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_ENVIRONMENT=Production \
+    WERKR_DATA_DIR=/var/lib/werkr \
+    WERKR_LOG_DIR=/var/log/werkr
+
+ENTRYPOINT ["./Werkr.Server"]

@@ -1,0 +1,9 @@
+Package: werkr-agent
+Version: {{VERSION}}
+Section: admin
+Priority: optional
+Architecture: {{ARCHITECTURE}}
+Depends: libicu74 | libicu72 | libicu70, libssl3 | libssl3t64
+Maintainer: Werkr <support@werkr.app>
+Description: Werkr Agent — background agent with gRPC and PowerShell
+Homepage: https://werkr.app

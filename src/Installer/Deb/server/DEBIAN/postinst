@@ -1,0 +1,76 @@
+#!/bin/sh
+set -e
+
+# Create werkr system user and group
+if ! getent group werkr >/dev/null 2>&1; then
+    groupadd --system werkr
+fi
+if ! getent passwd werkr >/dev/null 2>&1; then
+    useradd --system --gid werkr --no-create-home --shell /usr/sbin/nologin werkr
+fi
+
+# Ensure directories exist with correct ownership
+mkdir -p /etc/werkr
+mkdir -p /var/lib/werkr
+mkdir -p /var/log/werkr
+chown -R werkr:werkr /opt/werkr/serverbundle
+chown -R werkr:werkr /etc/werkr
+chown -R werkr:werkr /var/lib/werkr
+chown -R werkr:werkr /var/log/werkr
+
+# Create default config if it doesn't exist
+if [ ! -f "/etc/werkr/appsettings.json" ]; then
+    echo '{}' > "/etc/werkr/appsettings.json"
+    chown werkr:werkr "/etc/werkr/appsettings.json"
+    chmod 640 "/etc/werkr/appsettings.json"
+fi
+
+# debconf: read config path and install-components
+. /usr/share/debconf/confmodule
+db_get werkr-server/config-path || true
+WERKR_CONFIG_PATH="$RET"
+db_get werkr-server/install-components || true
+INSTALL_COMPONENTS="$RET"
+
+# Enable services based on install-components selection
+systemctl daemon-reload
+
+case "$INSTALL_COMPONENTS" in
+    server-only)
+        mkdir -p /etc/systemd/system/werkr-server.service.d
+        cat > /etc/systemd/system/werkr-server.service.d/override.conf << EOF
+[Service]
+Environment=WERKR_CONFIG_PATH=$WERKR_CONFIG_PATH
+EOF
+        systemctl enable werkr-server.service || true
+        systemctl restart werkr-server.service || true
+        ;;
+    api-only)
+        mkdir -p /etc/systemd/system/werkr-api.service.d
+        cat > /etc/systemd/system/werkr-api.service.d/override.conf << EOF
+[Service]
+Environment=WERKR_CONFIG_PATH=$WERKR_CONFIG_PATH
+EOF
+        systemctl enable werkr-api.service || true
+        systemctl restart werkr-api.service || true
+        ;;
+    *)
+        # all — enable both
+        mkdir -p /etc/systemd/system/werkr-server.service.d
+        cat > /etc/systemd/system/werkr-server.service.d/override.conf << EOF
+[Service]
+Environment=WERKR_CONFIG_PATH=$WERKR_CONFIG_PATH
+EOF
+        mkdir -p /etc/systemd/system/werkr-api.service.d
+        cat > /etc/systemd/system/werkr-api.service.d/override.conf << EOF
+[Service]
+Environment=WERKR_CONFIG_PATH=$WERKR_CONFIG_PATH
+EOF
+        systemctl enable werkr-server.service || true
+        systemctl restart werkr-server.service || true
+        systemctl enable werkr-api.service || true
+        systemctl restart werkr-api.service || true
+        ;;
+esac
+
+#DEBHELPER#

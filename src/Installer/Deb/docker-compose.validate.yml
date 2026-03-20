@@ -1,0 +1,119 @@
+# Validates .deb-installed binaries with PostgreSQL + TLS.
+#
+# Build images first:
+#   docker build -f src/Installer/Deb/Dockerfile.validate-agent  -t werkr-agent-deb-validate .
+#   docker build -f src/Installer/Deb/Dockerfile.validate-server -t werkr-server-deb-validate .
+#
+# Generate certs (if not already present):
+#   See scripts/docker-build.ps1 or use openssl to create certs/ directory
+#
+# Then:
+#   docker compose -f src/Installer/Deb/docker-compose.validate.yml up -d
+#   docker compose -f src/Installer/Deb/docker-compose.validate.yml down -v
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: werkr
+      POSTGRES_PASSWORD: werkr_dev_password
+      POSTGRES_DB: werkrdb
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U werkr -d werkrdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  werkr-api:
+    image: werkr-server-deb-validate:latest
+    entrypoint: ["./Werkr.Api"]
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: "https://+:8443"
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /app/certs/werkr-server.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: werkr-dev
+      SSL_CERT_FILE: /app/certs/werkr-ca.pem
+      ConnectionStrings__werkrdb: "Host=postgres;Port=5432;Database=werkrdb;Username=werkr;Password=werkr_dev_password"
+      Werkr__ServerUrl: "https://werkr-api:8443"
+      Jwt__SigningKey: "werkr-dev-signing-key-do-not-use-in-production-min32chars!"
+      Jwt__Issuer: werkr-api
+      Jwt__Audience: werkr
+      Serilog__MinimumLevel__Default: Information
+    volumes:
+      - ../../../certs/werkr-server.pfx:/app/certs/werkr-server.pfx:ro
+      - ../../../certs/werkr-ca.pem:/app/certs/werkr-ca.pem:ro
+    ports:
+      - "5001:8443"
+    healthcheck:
+      test: ["CMD", "curl", "--cacert", "/app/certs/werkr-ca.pem", "-sf", "https://localhost:8443/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  werkr-server:
+    image: werkr-server-deb-validate:latest
+    restart: unless-stopped
+    depends_on:
+      werkr-api:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: "https://+:8443"
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /app/certs/werkr-server.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: werkr-dev
+      SSL_CERT_FILE: /app/certs/werkr-ca.pem
+      ConnectionStrings__werkridentitydb: "Host=postgres;Port=5432;Database=werkrdb;Username=werkr;Password=werkr_dev_password"
+      services__api__https__0: "https://werkr-api:8443"
+      Werkr__SeedTestOperator: "false"
+      Serilog__MinimumLevel__Default: Information
+    volumes:
+      - ../../../certs/werkr-server.pfx:/app/certs/werkr-server.pfx:ro
+      - ../../../certs/werkr-ca.pem:/app/certs/werkr-ca.pem:ro
+    ports:
+      - "5050:8443"
+    healthcheck:
+      test: ["CMD", "curl", "--cacert", "/app/certs/werkr-ca.pem", "-sf", "https://localhost:8443/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  werkr-agent:
+    image: werkr-agent-deb-validate:latest
+    restart: unless-stopped
+    depends_on:
+      werkr-api:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: "https://+:8443"
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /app/certs/werkr-agent.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: werkr-dev
+      SSL_CERT_FILE: /app/certs/werkr-ca.pem
+      Serilog__MinimumLevel__Default: Information
+    volumes:
+      - ../../../certs/werkr-agent.pfx:/app/certs/werkr-agent.pfx:ro
+      - ../../../certs/werkr-ca.pem:/app/certs/werkr-ca.pem:ro
+    ports:
+      - "5100:8443"
+    healthcheck:
+      test: ["CMD", "curl", "--cacert", "/app/certs/werkr-ca.pem", "-sf", "https://localhost:8443/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
