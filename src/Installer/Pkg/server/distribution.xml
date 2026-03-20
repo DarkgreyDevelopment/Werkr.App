@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>Werkr Server</title>
+    <organization>app.werkr</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true"/>
+
+    <allowed-os-versions>
+        <os-version min="15.0"/>
+    </allowed-os-versions>
+
+    <choices-outline>
+        <line choice="default">
+            <line choice="app.werkr.server"/>
+        </line>
+    </choices-outline>
+
+    <choice id="default"/>
+    <choice id="app.werkr.server"
+            visible="false"
+            title="Werkr Server"
+            description="Werkr Server (Blazor UI) and API (REST + gRPC host)">
+        <pkg-ref id="app.werkr.server"/>
+    </choice>
+
+    <pkg-ref id="app.werkr.server"
+             version="{{VERSION}}"
+             onConclusion="none">app.werkr.server.pkg</pkg-ref>
+</installer-gui-script>
