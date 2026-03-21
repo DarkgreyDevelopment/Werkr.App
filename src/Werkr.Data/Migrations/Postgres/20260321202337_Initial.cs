@@ -40,6 +40,59 @@ namespace Werkr.Data.Migrations.Postgres
                 });
 
             migrationBuilder.CreateTable(
+                name: "configuration_entries",
+                schema: "werkr",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    value = table.Column<string>(type: "text", nullable: false),
+                    value_type = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    category = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    scope_level = table.Column<int>(type: "integer", nullable: false),
+                    scope_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    sync_version = table.Column<long>(type: "bigint", nullable: false),
+                    validation_rules = table.Column<string>(type: "text", nullable: true),
+                    default_value = table.Column<string>(type: "text", nullable: false),
+                    created_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    modified_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    modified_by_user_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    version = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_configuration_entries", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "credentials",
+                schema: "werkr",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    name = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    type = table.Column<string>(type: "text", nullable: false),
+                    encrypted_value = table.Column<string>(type: "text", nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    modified_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by_user_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    modified_by_user_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    version = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_credentials", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "holiday_calendars",
                 schema: "werkr",
                 columns: table => new
@@ -116,6 +169,27 @@ namespace Werkr.Data.Migrations.Postgres
                 });
 
             migrationBuilder.CreateTable(
+                name: "retention_policies",
+                schema: "werkr",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    entity_type = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    retention_days = table.Column<int>(type: "integer", nullable: false),
+                    is_enabled = table.Column<bool>(type: "boolean", nullable: false),
+                    modified_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    modified_by_user_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    version = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_retention_policies", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "saved_filters",
                 schema: "werkr",
                 columns: table => new
@@ -156,6 +230,32 @@ namespace Werkr.Data.Migrations.Postgres
                 });
 
             migrationBuilder.CreateTable(
+                name: "configuration_change_logs",
+                schema: "werkr",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    configuration_entry_id = table.Column<long>(type: "bigint", nullable: false),
+                    key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    previous_value = table.Column<string>(type: "text", nullable: true),
+                    new_value = table.Column<string>(type: "text", nullable: false),
+                    changed_by_user_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    changed_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_configuration_change_logs", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_configuration_change_logs_configuration_entries_configurati",
+                        column: x => x.configuration_entry_id,
+                        principalSchema: "werkr",
+                        principalTable: "configuration_entries",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "holiday_rules",
                 schema: "werkr",
                 columns: table => new
@@ -184,6 +284,33 @@ namespace Werkr.Data.Migrations.Postgres
                         column: x => x.holiday_calendar_id,
                         principalSchema: "werkr",
                         principalTable: "holiday_calendars",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "credential_agent_scopes",
+                schema: "werkr",
+                columns: table => new
+                {
+                    credential_id = table.Column<long>(type: "bigint", nullable: false),
+                    agent_connection_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_credential_agent_scopes", x => new { x.credential_id, x.agent_connection_id });
+                    table.ForeignKey(
+                        name: "fk_credential_agent_scopes_credentials_credential_id",
+                        column: x => x.credential_id,
+                        principalSchema: "werkr",
+                        principalTable: "credentials",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_credential_agent_scopes_registered_connections_agent_connec",
+                        column: x => x.agent_connection_id,
+                        principalSchema: "werkr",
+                        principalTable: "registered_connections",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -861,6 +988,50 @@ namespace Werkr.Data.Migrations.Postgres
                 descending: new bool[0]);
 
             migrationBuilder.CreateIndex(
+                name: "ix_configuration_change_logs_configuration_entry_id",
+                schema: "werkr",
+                table: "configuration_change_logs",
+                column: "configuration_entry_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_configuration_entries_category",
+                schema: "werkr",
+                table: "configuration_entries",
+                column: "category");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_configuration_entries_key_scope_level_scope_id",
+                schema: "werkr",
+                table: "configuration_entries",
+                columns: new[] { "key", "scope_level", "scope_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_configuration_entries_scope_id",
+                schema: "werkr",
+                table: "configuration_entries",
+                column: "scope_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_configuration_entries_sync_version",
+                schema: "werkr",
+                table: "configuration_entries",
+                column: "sync_version");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_credential_agent_scopes_agent_connection_id",
+                schema: "werkr",
+                table: "credential_agent_scopes",
+                column: "agent_connection_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_credentials_name",
+                schema: "werkr",
+                table: "credentials",
+                column: "name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_file_monitor_triggers_current_version_id",
                 schema: "werkr",
                 table: "file_monitor_triggers",
@@ -951,6 +1122,13 @@ namespace Werkr.Data.Migrations.Postgres
                 schema: "werkr",
                 table: "registration_bundles",
                 column: "bundle_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_retention_policies_entity_type",
+                schema: "werkr",
+                table: "retention_policies",
+                column: "entity_type",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -1365,6 +1543,11 @@ namespace Werkr.Data.Migrations.Postgres
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
+                name: "fk_workflow_steps_registered_connections_agent_connection_id_o",
+                schema: "werkr",
+                table: "workflow_steps");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_file_monitor_triggers_trigger_versions_current_version_id",
                 schema: "werkr",
                 table: "file_monitor_triggers");
@@ -1399,6 +1582,14 @@ namespace Werkr.Data.Migrations.Postgres
                 schema: "werkr");
 
             migrationBuilder.DropTable(
+                name: "configuration_change_logs",
+                schema: "werkr");
+
+            migrationBuilder.DropTable(
+                name: "credential_agent_scopes",
+                schema: "werkr");
+
+            migrationBuilder.DropTable(
                 name: "daily_recurrence",
                 schema: "werkr");
 
@@ -1412,6 +1603,10 @@ namespace Werkr.Data.Migrations.Postgres
 
             migrationBuilder.DropTable(
                 name: "registration_bundles",
+                schema: "werkr");
+
+            migrationBuilder.DropTable(
+                name: "retention_policies",
                 schema: "werkr");
 
             migrationBuilder.DropTable(
@@ -1463,6 +1658,14 @@ namespace Werkr.Data.Migrations.Postgres
                 schema: "werkr");
 
             migrationBuilder.DropTable(
+                name: "configuration_entries",
+                schema: "werkr");
+
+            migrationBuilder.DropTable(
+                name: "credentials",
+                schema: "werkr");
+
+            migrationBuilder.DropTable(
                 name: "holiday_rules",
                 schema: "werkr");
 
@@ -1483,6 +1686,10 @@ namespace Werkr.Data.Migrations.Postgres
                 schema: "werkr");
 
             migrationBuilder.DropTable(
+                name: "registered_connections",
+                schema: "werkr");
+
+            migrationBuilder.DropTable(
                 name: "trigger_versions",
                 schema: "werkr");
 
@@ -1500,10 +1707,6 @@ namespace Werkr.Data.Migrations.Postgres
 
             migrationBuilder.DropTable(
                 name: "workflow_steps",
-                schema: "werkr");
-
-            migrationBuilder.DropTable(
-                name: "registered_connections",
                 schema: "werkr");
 
             migrationBuilder.DropTable(

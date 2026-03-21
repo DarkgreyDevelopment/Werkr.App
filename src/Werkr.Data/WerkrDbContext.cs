@@ -9,6 +9,7 @@ using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Encryption;
 using Werkr.Data.Entities;
 using Werkr.Data.Entities.Audit;
+using Werkr.Data.Entities.Configuration;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Settings;
@@ -127,6 +128,21 @@ public class WerkrDbContext : DbContext {
     /// <summary>Immutable trigger version snapshots.</summary>
     public DbSet<TriggerVersion> TriggerVersions => Set<TriggerVersion>( );
 
+    /// <summary>Hierarchical configuration entries.</summary>
+    public DbSet<ConfigurationEntry> ConfigurationEntries => Set<ConfigurationEntry>( );
+
+    /// <summary>Append-only configuration change history.</summary>
+    public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs => Set<ConfigurationChangeLog>( );
+
+    /// <summary>Encrypted credentials.</summary>
+    public DbSet<Credential> Credentials => Set<Credential>( );
+
+    /// <summary>Per-agent credential scoping (join table).</summary>
+    public DbSet<CredentialAgentScope> CredentialAgentScopes => Set<CredentialAgentScope>( );
+
+    /// <summary>Data retention policies per entity type.</summary>
+    public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>( );
+
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
         base.OnModelCreating( modelBuilder );
@@ -219,7 +235,8 @@ public class WerkrDbContext : DbContext {
                 )
             );
 
-            // RegisteredConnection.AllowedPaths stored as JSON
+            // RegisteredConnection.AllowedPaths stored as JSON (deprecated — migrated to ConfigurationEntry)
+#pragma warning disable CS0618
             PropertyBuilder<string[]> allowedPathsProp = entity.Property( e => e.AllowedPaths )
                 .HasConversion(
                     v => JsonSerializer.Serialize( v, (JsonSerializerOptions?)null ),
@@ -232,6 +249,7 @@ public class WerkrDbContext : DbContext {
                     v => v == null ? Array.Empty<string>( ) : v.ToArray( )
                 )
             );
+#pragma warning restore CS0618
         } );
 
         // WerkrTask.TargetTags stored as JSON
@@ -607,13 +625,78 @@ public class WerkrDbContext : DbContext {
                 .OnDelete( DeleteBehavior.SetNull );
         } );
 
+        // ConfigurationEntry — unique composite index on (Key, ScopeLevel, ScopeId), plus Category/ScopeId/SyncVersion indexes
+        _ = modelBuilder.Entity<ConfigurationEntry>( entity => {
+            _ = entity.HasIndex( e => new { e.Key, e.ScopeLevel, e.ScopeId } )
+                .IsUnique( );
+            _ = entity.HasIndex( e => e.Category );
+            _ = entity.HasIndex( e => e.ScopeId );
+            _ = entity.HasIndex( e => e.SyncVersion );
+        } );
+
+        // ConfigurationChangeLog — FK to ConfigurationEntry with cascade delete, index on ConfigurationEntryId
+        _ = modelBuilder.Entity<ConfigurationChangeLog>( entity => {
+            _ = entity.HasOne( e => e.ConfigurationEntry )
+                .WithMany( c => c.ChangeLogs )
+                .HasForeignKey( e => e.ConfigurationEntryId )
+                .OnDelete( DeleteBehavior.Cascade );
+            _ = entity.HasIndex( e => e.ConfigurationEntryId );
+        } );
+
+        // Credential — unique index on Name
+        _ = modelBuilder.Entity<Credential>( entity => {
+            _ = entity.HasIndex( e => e.Name ).IsUnique( );
+        } );
+
+        // CredentialAgentScope — composite PK, cascade delete from Credential
+        _ = modelBuilder.Entity<CredentialAgentScope>( entity => {
+            _ = entity.HasKey( e => new { e.CredentialId, e.AgentConnectionId } );
+
+            _ = entity.HasOne( e => e.Credential )
+                .WithMany( c => c.AgentScopes )
+                .HasForeignKey( e => e.CredentialId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.AgentConnection )
+                .WithMany( )
+                .HasForeignKey( e => e.AgentConnectionId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
+        // RetentionPolicy — unique index on EntityType
+        _ = modelBuilder.Entity<RetentionPolicy>( entity => {
+            _ = entity.HasIndex( e => e.EntityType ).IsUnique( );
+        } );
+
         // Field-level encryption for sensitive columns (§9 Data Protection)
         if (FieldEncryption is not null) {
             EncryptedStringConverter encString = new( FieldEncryption );
+            EncryptedRSAParametersConverter encRsa = new( FieldEncryption );
+            EncryptedByteArrayConverter encBytes = new( FieldEncryption );
 
             // WorkflowRunVariable.Value — runtime variable payloads (JSON)
             _ = modelBuilder.Entity<WorkflowRunVariable>( entity => {
                 _ = entity.Property( e => e.Value ).HasConversion( encString );
+            } );
+
+            // Credential.EncryptedValue — credential secrets
+            _ = modelBuilder.Entity<Credential>( entity => {
+                _ = entity.Property( e => e.EncryptedValue ).HasConversion( encString );
+            } );
+
+            // RegisteredConnection — all sensitive key material (§9 Encryption Expansion)
+            _ = modelBuilder.Entity<RegisteredConnection>( entity => {
+                _ = entity.Property( e => e.OutboundApiKey ).HasConversion( encString );
+                _ = entity.Property( e => e.LocalPrivateKey ).HasConversion( encRsa );
+                _ = entity.Property( e => e.SharedKey ).HasConversion( encBytes );
+                // PreviousSharedKey is byte[]? — encrypted via hex converter + grace period semantics;
+                // nullable byte[] converter requires separate handling, deferred to key rotation pass
+            } );
+
+            // ConfigurationEntry.Value + DefaultValue — all config values encrypted at rest
+            _ = modelBuilder.Entity<ConfigurationEntry>( entity => {
+                _ = entity.Property( e => e.Value ).HasConversion( encString );
+                _ = entity.Property( e => e.DefaultValue ).HasConversion( encString );
             } );
         }
     }
@@ -697,6 +780,10 @@ public class WerkrDbContext : DbContext {
         // ActorType ↔ string (audit events)
         _ = configurationBuilder.Properties<ActorType>( )
             .HaveConversion<ActorTypeStringConverter>( );
+
+        // CredentialType ↔ string
+        _ = configurationBuilder.Properties<CredentialType>( )
+            .HaveConversion<CredentialTypeStringConverter>( );
     }
 
     /// <inheritdoc/>
@@ -845,4 +932,9 @@ public class WerkrDbContext : DbContext {
         : ValueConverter<VersionBindingMode, string>(
             v => v.ToString( ),
             v => Enum.Parse<VersionBindingMode>( v ) );
+
+    private sealed class CredentialTypeStringConverter( )
+        : ValueConverter<CredentialType, string>(
+            v => v.ToString( ),
+            v => Enum.Parse<CredentialType>( v ) );
 }

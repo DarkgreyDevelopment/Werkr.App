@@ -97,11 +97,9 @@ internal static class WorkflowVersionEndpoints {
             string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
             WorkflowVersion? newVersion = await versionService.RollbackAsync( workflowId, versionId, userId, ct );
 
-            if (newVersion is null) {
-                return Results.NotFound( new { message = "Version or workflow not found." } );
-            }
-
-            return Results.Ok( WorkflowMapper.ToVersionDto( newVersion ) );
+            return newVersion is null
+                ? Results.NotFound( new { message = "Version or workflow not found." } )
+                : Results.Ok( WorkflowMapper.ToVersionDto( newVersion ) );
         } )
         .WithName( "RollbackWorkflowVersion" )
         .RequireAuthorization( Policies.CanUpdate );

@@ -29,7 +29,7 @@ public sealed record WorkflowDefinitionSnapshot(
     /// </summary>
     public static WorkflowDefinitionSnapshot FromWorkflow( Workflow workflow ) {
         WorkflowStepSnapshot[]? steps = workflow.Steps.Count > 0
-            ? workflow.Steps.Select( s => new WorkflowStepSnapshot(
+            ? [.. workflow.Steps.Select( s => new WorkflowStepSnapshot(
                 StepId: s.Id,
                 TaskId: s.TaskId,
                 TaskVersionId: s.TaskVersionId,
@@ -46,28 +46,27 @@ public sealed record WorkflowDefinitionSnapshot(
                 ChildWorkflowId: s.ChildWorkflowId,
                 IterationVariableName: s.IterationVariableName,
                 CollectionVariableName: s.CollectionVariableName
-            ) ).ToArray( )
+            ) )]
             : null;
 
-        WorkflowEdgeSnapshot[]? edges = workflow.Steps
+        WorkflowEdgeSnapshot[]? edges = [.. workflow.Steps
             .SelectMany( s => s.Dependencies.Select( d => new WorkflowEdgeSnapshot(
                 StepId: d.StepId,
                 DependsOnStepId: d.DependsOnStepId
-            ) ) )
-            .ToArray( );
-        if( edges.Length == 0 ) {
+            ) ) )];
+        if (edges.Length == 0) {
             edges = null;
         }
 
         WorkflowVariableSnapshot[]? variables = workflow.Variables.Count > 0
-            ? workflow.Variables.Select( v => new WorkflowVariableSnapshot(
+            ? [.. workflow.Variables.Select( v => new WorkflowVariableSnapshot(
                 Name: v.Name,
                 Description: v.Description,
                 DefaultValue: v.DefaultValue,
                 DataType: v.DataType,
                 IsRequired: v.IsRequired,
                 LogRedaction: v.LogRedaction
-            ) ).ToArray( )
+            ) )]
             : null;
 
         return new(

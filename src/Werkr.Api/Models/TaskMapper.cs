@@ -5,7 +5,6 @@ using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Tasks;
 using Werkr.Data.Entities.Tasks;
-using TaskDefinitionSnapshot = Werkr.Data.Entities.Tasks.TaskDefinitionSnapshot;
 
 namespace Werkr.Api.Models;
 

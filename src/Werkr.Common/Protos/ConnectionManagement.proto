@@ -18,6 +18,11 @@ service ConnectionManagement {
   // response contains RotateSharedKeyResponse. Uses current PSK for envelope encryption;
   // new key is additionally RSA-encrypted inside for defense-in-depth.
   rpc RotateSharedKey (EncryptedEnvelope) returns (EncryptedEnvelope);
+
+  // Push notification when configuration has changed.
+  // Request envelope contains NotifyConfigurationChangedRequest;
+  // response contains NotifyConfigurationChangedResponse.
+  rpc NotifyConfigurationChanged (EncryptedEnvelope) returns (EncryptedEnvelope);
 }
 
 // --- NotifyServerUrlChanged ---
@@ -70,4 +75,16 @@ message RotateSharedKeyResponse {
   bool success = 1;
   // The key ID now active on the agent.
   string active_key_id = 2;
+}
+
+// --- NotifyConfigurationChanged ---
+
+message NotifyConfigurationChangedRequest {
+  // The new maximum sync version on the server.
+  int64 new_version = 1;
+}
+
+message NotifyConfigurationChangedResponse {
+  // Whether the agent acknowledged and will trigger a sync.
+  bool acknowledged = 1;
 }

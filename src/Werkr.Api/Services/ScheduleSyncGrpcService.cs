@@ -27,6 +27,7 @@ namespace Werkr.Api.Services;
 /// <param name="holidayDateService">Holiday date materialization service.</param>
 /// <param name="holidayCalendarService">Holiday calendar CRUD service.</param>
 /// <param name="auditService">Audit service for recording schedule audit events.</param>
+/// <param name="credentialService">Credential service for resolving credentials at dispatch time.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ScheduleSyncGrpcService(
     WerkrDbContext dbContext,
@@ -34,6 +35,7 @@ public sealed partial class ScheduleSyncGrpcService(
     HolidayDateService holidayDateService,
     HolidayCalendarService holidayCalendarService,
     IAuditService auditService,
+    Werkr.Core.Credentials.ICredentialService credentialService,
     ILogger<ScheduleSyncGrpcService> logger
 ) : ScheduleSync.ScheduleSyncBase {
 
@@ -89,6 +91,7 @@ public sealed partial class ScheduleSyncGrpcService(
             }
 
             ScheduledTaskDefinition taskDef = MapTaskDefinition( task, schedule );
+            await ResolveCredentialsForTaskDefAsync( taskDef, connection.Id, context.CancellationToken );
             response.Tasks.Add( taskDef );
         }
 
@@ -249,6 +252,9 @@ public sealed partial class ScheduleSyncGrpcService(
                 }
             }
 
+            // Resolve credentials for all task definitions in the workflow
+            await ResolveCredentialsForWorkflowDefAsync( workflowDef, connection.Id, context.CancellationToken );
+
             response.Workflows.Add( workflowDef );
         }
 
@@ -327,6 +333,67 @@ public sealed partial class ScheduleSyncGrpcService(
         }
 
         return def;
+    }
+
+    /// <summary>
+    /// Resolves credentials for all task definitions within a workflow definition,
+    /// including child workflow steps.
+    /// </summary>
+    private async Task ResolveCredentialsForWorkflowDefAsync(
+        ScheduledWorkflowDefinition workflowDef, Guid agentConnectionId, CancellationToken ct
+    ) {
+        foreach (ScheduledWorkflowStepDef step in workflowDef.Steps) {
+            if (step.Task is not null) {
+                await ResolveCredentialsForTaskDefAsync( step.Task, agentConnectionId, ct );
+            }
+        }
+
+        foreach (ChildWorkflowDefinition child in workflowDef.ChildWorkflows) {
+            foreach (ScheduledWorkflowStepDef childStep in child.Steps) {
+                if (childStep.Task is not null) {
+                    await ResolveCredentialsForTaskDefAsync( childStep.Task, agentConnectionId, ct );
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Resolves credentials referenced in a task definition's ActionParameters
+    /// and populates the proto's resolved_credentials map.
+    /// </summary>
+    private async Task ResolveCredentialsForTaskDefAsync(
+        ScheduledTaskDefinition taskDef, Guid agentConnectionId, CancellationToken ct
+    ) {
+        IReadOnlyList<string> credentialNames = Werkr.Core.Credentials.CredentialResolver
+            .FindCredentialReferences( taskDef.ActionParametersJson );
+
+        foreach (string name in credentialNames) {
+            try {
+                Common.Models.CredentialResolveResult result = await credentialService.ResolveForAgentAsync(
+                    name, agentConnectionId, "system", ct );
+
+                if (result is { Found: true, InScope: true, DecryptedValue: not null }) {
+                    taskDef.ResolvedCredentials[name] = result.DecryptedValue;
+                } else if (result is { Found: true, InScope: false }) {
+                    logger.LogError(
+                        "Credential '{CredentialName}' exists but agent {AgentId} is out of scope (task {TaskId}). Dispatch rejected.",
+                        name, agentConnectionId, taskDef.TaskId );
+                    throw new Grpc.Core.RpcException( new Grpc.Core.Status(
+                        Grpc.Core.StatusCode.PermissionDenied,
+                        $"Credential '{name}' is not scoped to this agent." ) );
+                } else if (!result.Found) {
+                    logger.LogWarning(
+                        "Credential '{CredentialName}' not found for task {TaskId}.",
+                        name, taskDef.TaskId );
+                }
+            } catch (Grpc.Core.RpcException) {
+                throw; // Re-throw scope rejections
+            } catch (Exception ex) {
+                logger.LogWarning( ex,
+                    "Failed to resolve credential '{CredentialName}' for task {TaskId}.",
+                    name, taskDef.TaskId );
+            }
+        }
     }
 
     /// <summary>Maps a <see cref="Schedule"/> composite to a proto definition.</summary>

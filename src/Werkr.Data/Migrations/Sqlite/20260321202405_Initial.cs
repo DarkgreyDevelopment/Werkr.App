@@ -35,6 +35,57 @@ namespace Werkr.Data.Migrations.Sqlite
                 });
 
             migrationBuilder.CreateTable(
+                name: "configuration_entries",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    key = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    value = table.Column<string>(type: "TEXT", nullable: false),
+                    value_type = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
+                    category = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    scope_level = table.Column<int>(type: "INTEGER", nullable: false),
+                    scope_id = table.Column<string>(type: "TEXT", maxLength: 128, nullable: true),
+                    sync_version = table.Column<long>(type: "INTEGER", nullable: false),
+                    validation_rules = table.Column<string>(type: "TEXT", nullable: true),
+                    default_value = table.Column<string>(type: "TEXT", nullable: false),
+                    created_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    modified_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    modified_by_user_id = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    created = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    last_updated = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    version = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_configuration_entries", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "credentials",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    name = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    type = table.Column<string>(type: "TEXT", nullable: false),
+                    encrypted_value = table.Column<string>(type: "TEXT", nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    created_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    modified_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by_user_id = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    modified_by_user_id = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    created = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    last_updated = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    version = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_credentials", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "holiday_calendars",
                 columns: table => new
                 {
@@ -108,6 +159,26 @@ namespace Werkr.Data.Migrations.Sqlite
                 });
 
             migrationBuilder.CreateTable(
+                name: "retention_policies",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    entity_type = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    retention_days = table.Column<int>(type: "INTEGER", nullable: false),
+                    is_enabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    modified_utc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    modified_by_user_id = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    created = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    last_updated = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    version = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_retention_policies", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "saved_filters",
                 columns: table => new
                 {
@@ -146,6 +217,30 @@ namespace Werkr.Data.Migrations.Sqlite
                 });
 
             migrationBuilder.CreateTable(
+                name: "configuration_change_logs",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    configuration_entry_id = table.Column<long>(type: "INTEGER", nullable: false),
+                    key = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    previous_value = table.Column<string>(type: "TEXT", nullable: true),
+                    new_value = table.Column<string>(type: "TEXT", nullable: false),
+                    changed_by_user_id = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    changed_utc = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_configuration_change_logs", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_configuration_change_logs_configuration_entries_configuration_entry_id",
+                        column: x => x.configuration_entry_id,
+                        principalTable: "configuration_entries",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "holiday_rules",
                 columns: table => new
                 {
@@ -172,6 +267,30 @@ namespace Werkr.Data.Migrations.Sqlite
                         name: "fk_holiday_rules_holiday_calendars_holiday_calendar_id",
                         column: x => x.holiday_calendar_id,
                         principalTable: "holiday_calendars",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "credential_agent_scopes",
+                columns: table => new
+                {
+                    credential_id = table.Column<long>(type: "INTEGER", nullable: false),
+                    agent_connection_id = table.Column<Guid>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_credential_agent_scopes", x => new { x.credential_id, x.agent_connection_id });
+                    table.ForeignKey(
+                        name: "fk_credential_agent_scopes_credentials_credential_id",
+                        column: x => x.credential_id,
+                        principalTable: "credentials",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_credential_agent_scopes_registered_connections_agent_connection_id",
+                        column: x => x.agent_connection_id,
+                        principalTable: "registered_connections",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -797,6 +916,43 @@ namespace Werkr.Data.Migrations.Sqlite
                 descending: new bool[0]);
 
             migrationBuilder.CreateIndex(
+                name: "ix_configuration_change_logs_configuration_entry_id",
+                table: "configuration_change_logs",
+                column: "configuration_entry_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_configuration_entries_category",
+                table: "configuration_entries",
+                column: "category");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_configuration_entries_key_scope_level_scope_id",
+                table: "configuration_entries",
+                columns: new[] { "key", "scope_level", "scope_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_configuration_entries_scope_id",
+                table: "configuration_entries",
+                column: "scope_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_configuration_entries_sync_version",
+                table: "configuration_entries",
+                column: "sync_version");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_credential_agent_scopes_agent_connection_id",
+                table: "credential_agent_scopes",
+                column: "agent_connection_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_credentials_name",
+                table: "credentials",
+                column: "name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_file_monitor_triggers_current_version_id",
                 table: "file_monitor_triggers",
                 column: "current_version_id");
@@ -872,6 +1028,12 @@ namespace Werkr.Data.Migrations.Sqlite
                 name: "ix_registration_bundles_bundle_id",
                 table: "registration_bundles",
                 column: "bundle_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_retention_policies_entity_type",
+                table: "retention_policies",
+                column: "entity_type",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -1212,6 +1374,10 @@ namespace Werkr.Data.Migrations.Sqlite
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
+                name: "fk_workflow_steps_registered_connections_agent_connection_id_override",
+                table: "workflow_steps");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_file_monitor_triggers_trigger_versions_current_version_id",
                 table: "file_monitor_triggers");
 
@@ -1239,6 +1405,12 @@ namespace Werkr.Data.Migrations.Sqlite
                 name: "audit_events");
 
             migrationBuilder.DropTable(
+                name: "configuration_change_logs");
+
+            migrationBuilder.DropTable(
+                name: "credential_agent_scopes");
+
+            migrationBuilder.DropTable(
                 name: "daily_recurrence");
 
             migrationBuilder.DropTable(
@@ -1249,6 +1421,9 @@ namespace Werkr.Data.Migrations.Sqlite
 
             migrationBuilder.DropTable(
                 name: "registration_bundles");
+
+            migrationBuilder.DropTable(
+                name: "retention_policies");
 
             migrationBuilder.DropTable(
                 name: "saved_filters");
@@ -1287,6 +1462,12 @@ namespace Werkr.Data.Migrations.Sqlite
                 name: "workflow_variables");
 
             migrationBuilder.DropTable(
+                name: "configuration_entries");
+
+            migrationBuilder.DropTable(
+                name: "credentials");
+
+            migrationBuilder.DropTable(
                 name: "holiday_rules");
 
             migrationBuilder.DropTable(
@@ -1302,6 +1483,9 @@ namespace Werkr.Data.Migrations.Sqlite
                 name: "workflow_runs");
 
             migrationBuilder.DropTable(
+                name: "registered_connections");
+
+            migrationBuilder.DropTable(
                 name: "trigger_versions");
 
             migrationBuilder.DropTable(
@@ -1315,9 +1499,6 @@ namespace Werkr.Data.Migrations.Sqlite
 
             migrationBuilder.DropTable(
                 name: "workflow_steps");
-
-            migrationBuilder.DropTable(
-                name: "registered_connections");
 
             migrationBuilder.DropTable(
                 name: "tasks");

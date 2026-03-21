@@ -11,7 +11,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteWerkrDbContext))]
-    [Migration("20260321052632_Initial")]
+    [Migration("20260321202405_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -106,6 +106,298 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasDatabaseName("ix_audit_events_entity_type_entity_id");
 
                     b.ToTable("audit_events", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationChangeLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChangedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("changed_by_user_id");
+
+                    b.Property<DateTime>("ChangedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("changed_utc");
+
+                    b.Property<long>("ConfigurationEntryId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("configuration_entry_id");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key");
+
+                    b.Property<string>("NewValue")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("new_value");
+
+                    b.Property<string>("PreviousValue")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_configuration_change_logs");
+
+                    b.HasIndex("ConfigurationEntryId")
+                        .HasDatabaseName("ix_configuration_change_logs_configuration_entry_id");
+
+                    b.ToTable("configuration_change_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("DefaultValue")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("default_value");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("ModifiedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_by_user_id");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<string>("ScopeId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_id");
+
+                    b.Property<int>("ScopeLevel")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("scope_level");
+
+                    b.Property<long>("SyncVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("sync_version");
+
+                    b.Property<string>("ValidationRules")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("validation_rules");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("value");
+
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("value_type");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_configuration_entries");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("ix_configuration_entries_category");
+
+                    b.HasIndex("ScopeId")
+                        .HasDatabaseName("ix_configuration_entries_scope_id");
+
+                    b.HasIndex("SyncVersion")
+                        .HasDatabaseName("ix_configuration_entries_sync_version");
+
+                    b.HasIndex("Key", "ScopeLevel", "ScopeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuration_entries_key_scope_level_scope_id");
+
+                    b.ToTable("configuration_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.Credential", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("EncryptedValue")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("encrypted_value");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("ModifiedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_by_user_id");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("type");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_credentials");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_credentials_name");
+
+                    b.ToTable("credentials", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.CredentialAgentScope", b =>
+                {
+                    b.Property<long>("CredentialId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("credential_id");
+
+                    b.Property<Guid>("AgentConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("agent_connection_id");
+
+                    b.HasKey("CredentialId", "AgentConnectionId")
+                        .HasName("pk_credential_agent_scopes");
+
+                    b.HasIndex("AgentConnectionId")
+                        .HasDatabaseName("ix_credential_agent_scopes_agent_connection_id");
+
+                    b.ToTable("credential_agent_scopes", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.RetentionPolicy", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("entity_type");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("ModifiedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_by_user_id");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<int>("RetentionDays")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("retention_days");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_retention_policies");
+
+                    b.HasIndex("EntityType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_retention_policies_entity_type");
+
+                    b.ToTable("retention_policies", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
@@ -1785,6 +2077,39 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.ToTable("workflow_versions", (string)null);
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationChangeLog", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Configuration.ConfigurationEntry", "ConfigurationEntry")
+                        .WithMany("ChangeLogs")
+                        .HasForeignKey("ConfigurationEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_configuration_change_logs_configuration_entries_configuration_entry_id");
+
+                    b.Navigation("ConfigurationEntry");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.CredentialAgentScope", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "AgentConnection")
+                        .WithMany()
+                        .HasForeignKey("AgentConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_credential_agent_scopes_registered_connections_agent_connection_id");
+
+                    b.HasOne("Werkr.Data.Entities.Configuration.Credential", "Credential")
+                        .WithMany("AgentScopes")
+                        .HasForeignKey("CredentialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_credential_agent_scopes_credentials_credential_id");
+
+                    b.Navigation("AgentConnection");
+
+                    b.Navigation("Credential");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DailyRecurrence", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
@@ -2242,6 +2567,16 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasConstraintName("fk_workflow_versions_workflows_workflow_id");
 
                     b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationEntry", b =>
+                {
+                    b.Navigation("ChangeLogs");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.Credential", b =>
+                {
+                    b.Navigation("AgentScopes");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DbSchedule", b =>

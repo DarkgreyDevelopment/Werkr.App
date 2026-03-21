@@ -106,10 +106,13 @@ public sealed partial class SendEmailHandler(
             await smtp.ConnectAsync( p.SmtpHost, p.Port, socketOptions, cancellationToken );
 
             if (!string.IsNullOrEmpty( p.CredentialName )) {
-                string? secretJson = await _secretStore.GetSecretAsync( p.CredentialName );
+                // Try server-resolved credentials first (from dispatch), then fall back to local secret store
+                string? secretJson = Werkr.Core.Credentials.ResolvedCredentialContext.TryResolve( p.CredentialName )
+                    ?? await _secretStore.GetSecretAsync( p.CredentialName );
+
                 if (string.IsNullOrEmpty( secretJson )) {
                     throw new InvalidOperationException(
-                        $"Credential '{p.CredentialName}' not found in secret store." );
+                        $"Credential '{p.CredentialName}' not found in resolved credentials or secret store." );
                 }
 
                 SmtpCredentials creds = JsonSerializer.Deserialize<SmtpCredentials>( secretJson, ActionJson.SerializerOptions )

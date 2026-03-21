@@ -8,6 +8,7 @@ namespace Werkr.Data.Entities.Settings;
 /// Global application configuration stored in the database.
 /// Exactly one row exists; seeded on first startup.
 /// </summary>
+[Obsolete( "Use ConfigurationEntry for hierarchical settings. Retained for rollback safety." )]
 [Table( "config_settings" )]
 public class ConfigurationSettings : ConcurrencyBase, IKey<Guid> {
 

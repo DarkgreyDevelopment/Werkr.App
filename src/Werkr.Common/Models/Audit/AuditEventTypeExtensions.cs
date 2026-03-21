@@ -45,7 +45,15 @@ public static class AuditEventTypeExtensions {
             [AuditEventType.WorkflowEnabled] = "workflow.enabled",
             [AuditEventType.TriggerVersionCreated] = "trigger.version.created",
             [AuditEventType.TriggerBindingUpdated] = "trigger.binding.updated",
+            [AuditEventType.ConfigUpdated] = "config.updated",
+            [AuditEventType.CredentialCreated] = "credential.created",
+            [AuditEventType.CredentialUpdated] = "credential.updated",
+            [AuditEventType.CredentialRenamed] = "credential.renamed",
+            [AuditEventType.CredentialDeleted] = "credential.deleted",
+            [AuditEventType.CredentialScopeUpdated] = "credential.scope.updated",
+            [AuditEventType.CredentialAccessed] = "credential.accessed",
             [AuditEventType.AuditRetentionCleanup] = "audit.retention.cleanup",
+            [AuditEventType.RetentionSweepCompleted] = "retention.sweep.completed",
         }.ToFrozenDictionary( );
 
     private static readonly FrozenDictionary<string, AuditEventType> s_fromId =

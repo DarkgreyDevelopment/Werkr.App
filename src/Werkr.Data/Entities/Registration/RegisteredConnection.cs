@@ -112,6 +112,7 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     /// handler paths are validated against these prefixes on the Agent before execution.
     /// Stored as a JSON column, following the same pattern as <see cref="Tags"/>.
     /// </summary>
+    [Obsolete( "Use ConfigurationEntry with key 'agent.pathAllowlist' (ScopeLevel=1). Retained for migration." )]
     public string[] AllowedPaths { get; set; } = [];
 
     /// <summary>

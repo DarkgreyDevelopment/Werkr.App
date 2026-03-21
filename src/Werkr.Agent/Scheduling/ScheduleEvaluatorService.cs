@@ -903,6 +903,12 @@ public sealed partial class ScheduleEvaluatorService(
                 timeoutCts.CancelAfter( TimeSpan.FromMinutes( taskDef.TimeoutMinutes ) );
             }
 
+            // Set resolved credentials from server dispatch (AsyncLocal context)
+            if (taskDef.ResolvedCredentials.Count > 0) {
+                Werkr.Core.Credentials.ResolvedCredentialContext.Current =
+                    new Dictionary<string, string>( taskDef.ResolvedCredentials );
+            }
+
             OperatorExecution execution = RunOperator( taskDef, actionType, timeoutCts.Token );
 
             // Resolve schedule ID for output streaming

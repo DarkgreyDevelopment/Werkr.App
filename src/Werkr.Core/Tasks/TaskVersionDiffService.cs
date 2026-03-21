@@ -39,11 +39,7 @@ public sealed class TaskVersionDiffService( WerkrDbContext dbContext ) {
         TaskDefinitionSnapshot? fromSnapshot = TaskDefinitionSnapshot.FromJson( from.Definition );
         TaskDefinitionSnapshot? toSnapshot = TaskDefinitionSnapshot.FromJson( to.Definition );
 
-        if (fromSnapshot is null || toSnapshot is null) {
-            return null;
-        }
-
-        return ComputeDiff( fromSnapshot, toSnapshot );
+        return fromSnapshot is null || toSnapshot is null ? null : ComputeDiff( fromSnapshot, toSnapshot );
     }
 
     /// <summary>

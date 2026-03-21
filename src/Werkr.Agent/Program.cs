@@ -9,6 +9,7 @@ using Serilog;
 using Serilog.Settings.Configuration;
 using Serilog.Sinks.OpenTelemetry;
 using Werkr.Agent.Communication;
+using Werkr.Agent.Configuration;
 using Werkr.Agent.Interceptors;
 using Werkr.Agent.Operators;
 using Werkr.Agent.Registration;
@@ -183,6 +184,13 @@ public partial class Program {
             _ = builder.Services.AddSingleton<OutputStreamingService>( );
             _ = builder.Services.AddSingleton( Channel.CreateUnbounded<string>(
                 new UnboundedChannelOptions { SingleReader = true } ) );
+
+            // Configuration sync channel + services
+            _ = builder.Services.AddSingleton( Channel.CreateUnbounded<long>(
+                new UnboundedChannelOptions { SingleReader = true } ) );
+            _ = builder.Services.AddSingleton<AgentConfigurationProvider>( );
+            _ = builder.Services.AddHostedService<ConfigurationSyncBackgroundService>( );
+
             _ = builder.Services.AddSingleton<TriggerEventClient>( );
             _ = builder.Services.AddSingleton<FileMonitorService>( );
             _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<FileMonitorService>( ) );

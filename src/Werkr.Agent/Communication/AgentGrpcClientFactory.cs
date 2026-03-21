@@ -102,6 +102,17 @@ public sealed partial class AgentGrpcClientFactory(
     }
 
     /// <summary>
+    /// Creates a <see cref="ConfigurationSync.ConfigurationSyncClient"/> for
+    /// pulling configuration entries from the Server.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A configured gRPC client.</returns>
+    public async Task<ConfigurationSync.ConfigurationSyncClient> CreateConfigurationSyncClientAsync( CancellationToken ct = default ) {
+        await EnsureInitializedAsync( ct );
+        return new ConfigurationSync.ConfigurationSyncClient( _channel );
+    }
+
+    /// <summary>
     /// Creates gRPC <see cref="CallOptions"/> with bearer token, connection ID, call ID, and deadline.
     /// Mirrors the pattern from <c>AgentConnectionManager.CreateCallOptions</c>.
     /// </summary>

@@ -14,9 +14,12 @@ using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
 using Werkr.Core.Audit;
 using Werkr.Core.Communication;
+using Werkr.Core.Configuration;
+using Werkr.Core.Credentials;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Health;
 using Werkr.Core.Registration;
+using Werkr.Core.Retention;
 using Werkr.Core.Scheduling;
 using Werkr.Core.Security;
 using Werkr.Core.Tasks;
@@ -206,6 +209,13 @@ public class Program {
             // Trigger versioning service (Scoped)
             _ = builder.Services.AddScoped<Werkr.Core.Triggers.TriggerVersionService>( );
 
+            // Configuration resolution service (Scoped)
+            _ = builder.Services.AddScoped<IConfigurationResolutionService, ConfigurationResolutionService>( );
+            _ = builder.Services.AddScoped<ConfigurationChangeNotifier>( );
+
+            // Credential service (Scoped)
+            _ = builder.Services.AddScoped<ICredentialService, CredentialService>( );
+
             // Schedule invalidation dispatcher (Scoped — sends push notifications to agents)
             _ = builder.Services.AddScoped<ScheduleInvalidationDispatcher>( );
 
@@ -222,9 +232,28 @@ public class Program {
             _ = builder.Services.AddSingleton<IAuditEventTypeRegistry>( auditRegistry );
             _ = builder.Services.AddScoped<IAuditService, AuditService>( );
 
-            // Audit log cleanup
+            // Audit log cleanup (deprecated — will be removed once RetentionService fully replaces it)
             _ = builder.Services.Configure<AuditLogOptions>( builder.Configuration.GetSection( "AuditLog" ) );
             _ = builder.Services.AddHostedService<AuditLogCleanupService>( );
+
+            // Retention framework — policy-driven data lifecycle management
+            RetentionPolicyRegistry retentionRegistry = new( );
+            _ = builder.Services.AddSingleton( retentionRegistry );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.WorkflowRunRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.AuditLogRetentionProvider>( );
+            _ = builder.Services.AddSingleton<RetentionService>( sp => {
+                IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
+                ILogger<RetentionService> retentionLogger = sp.GetRequiredService<ILogger<RetentionService>>( );
+
+                // Register providers into the registry at startup
+                using IServiceScope providerScope = scopeFactory.CreateScope( );
+                foreach (IRetentionPolicyProvider provider in providerScope.ServiceProvider.GetServices<IRetentionPolicyProvider>( )) {
+                    retentionRegistry.Register( provider );
+                }
+
+                return new RetentionService( scopeFactory, retentionRegistry, retentionLogger );
+            } );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<RetentionService>( ) );
 
             // Key rotation background service — rotates SharedKey for all connected agents
             _ = builder.Services.AddSingleton<KeyRotationService>( sp => {
@@ -237,6 +266,10 @@ public class Program {
                     gracePeriod: gracePeriod );
             } );
             _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<KeyRotationService>( ) );
+
+            // Field-level encryption key rotation service (§9 key rotation with zero-downtime re-encryption)
+            _ = builder.Services.AddSingleton<Core.Encryption.IFieldEncryptionKeyRotationService,
+                Core.Encryption.FieldEncryptionKeyRotationService>( );
 
             WebApplication app = builder.Build( );
 
@@ -259,6 +292,15 @@ public class Program {
             // Seed trigger versions for pre-versioning triggers
             await Werkr.Data.Seeding.TriggerVersionSeeder.SeedAsync( app.Services );
 
+            // Seed configuration entries (migrates legacy ConfigurationSettings)
+            await Werkr.Data.Seeding.ConfigurationSeeder.SeedAsync( app.Services );
+
+            // Seed retention policies
+            await Werkr.Data.Seeding.RetentionPolicySeeder.SeedAsync( app.Services );
+
+            // Migrate per-agent path allowlists to ConfigurationEntry
+            await Werkr.Data.Seeding.PathAllowlistMigrationSeeder.SeedAsync( app.Services );
+
             // Configure the HTTP request pipeline.
             _ = app.UseExceptionHandler( );
 
@@ -276,6 +318,7 @@ public class Program {
             _ = app.MapGrpcService<VariableGrpcService>( );
             _ = app.MapGrpcService<TriggerEventGrpcService>( );
             _ = app.MapGrpcService<AuditEventGrpcService>( );
+            _ = app.MapGrpcService<ConfigurationSyncGrpcService>( );
 
             // REST endpoints
             _ = app.MapStatusEndpoints( );
@@ -298,6 +341,8 @@ public class Program {
             _ = app.MapFilterEndpoints( );
             _ = app.MapTriggerEndpoints( );
             _ = app.MapTriggerVersionEndpoints( );
+            _ = app.MapCredentialEndpoints( );
+            _ = app.MapRetentionEndpoints( );
 
             _ = app.MapDefaultEndpoints( );
 

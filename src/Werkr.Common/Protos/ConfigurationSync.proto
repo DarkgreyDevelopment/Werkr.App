@@ -1,0 +1,43 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+
+// Agent pulls configuration from the Server (API hosts this service).
+// All RPCs use EncryptedEnvelope. Inner payload types defined below.
+service ConfigurationSync {
+  // Request envelope contains ConfigSyncRequest; response contains ConfigSyncResponse.
+  rpc GetConfiguration (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message ConfigSyncRequest {
+  // Agent's connection ID for authentication and scope resolution.
+  string connection_id = 1;
+  // Last known sync version. 0 = full sync.
+  int64 last_known_version = 2;
+}
+
+message ConfigSyncResponse {
+  // Configuration entries (delta or full).
+  repeated ConfigEntryMessage entries = 1;
+  // Current maximum sync version on the server.
+  int64 current_version = 2;
+  // Credential metadata (names and types only, NOT values).
+  repeated CredentialMetadata credentials = 3;
+}
+
+message ConfigEntryMessage {
+  string key = 1;
+  string value = 2;
+  string value_type = 3;
+  string category = 4;
+  int64 version = 5;
+  bool deleted = 6;
+}
+
+message CredentialMetadata {
+  string name = 1;
+  string credential_type = 2;
+  bool is_scoped_to_this_agent = 3;
+}

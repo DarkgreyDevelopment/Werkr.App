@@ -61,8 +61,20 @@ public static class AuditEventRegistrationExtensions {
         registry.Register( AuditEventType.TriggerVersionCreated.ToEventId( ), "Trigger Version Created", "Trigger", "core" );
         registry.Register( AuditEventType.TriggerBindingUpdated.ToEventId( ), "Trigger Binding Updated", "Trigger", "core" );
 
+        // Configuration
+        registry.Register( AuditEventType.ConfigUpdated.ToEventId( ), "Config Updated", "Configuration", "core" );
+
+        // Credential
+        registry.Register( AuditEventType.CredentialCreated.ToEventId( ), "Credential Created", "Credential", "core" );
+        registry.Register( AuditEventType.CredentialUpdated.ToEventId( ), "Credential Updated", "Credential", "core" );
+        registry.Register( AuditEventType.CredentialRenamed.ToEventId( ), "Credential Renamed", "Credential", "core" );
+        registry.Register( AuditEventType.CredentialDeleted.ToEventId( ), "Credential Deleted", "Credential", "core" );
+        registry.Register( AuditEventType.CredentialScopeUpdated.ToEventId( ), "Credential Scope Updated", "Credential", "core" );
+        registry.Register( AuditEventType.CredentialAccessed.ToEventId( ), "Credential Accessed", "Credential", "core" );
+
         // Retention
         registry.Register( AuditEventType.AuditRetentionCleanup.ToEventId( ), "Retention Cleanup", "System", "core" );
+        registry.Register( AuditEventType.RetentionSweepCompleted.ToEventId( ), "Retention Sweep Completed", "System", "core" );
 
         return registry;
     }

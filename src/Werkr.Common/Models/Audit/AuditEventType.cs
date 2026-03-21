@@ -92,7 +92,27 @@ public enum AuditEventType {
     /// <summary>Trigger binding updated.</summary>
     TriggerBindingUpdated,
 
+    // ── Configuration ──
+    /// <summary>Configuration setting updated.</summary>
+    ConfigUpdated,
+
+    // ── Credential ──
+    /// <summary>Credential created.</summary>
+    CredentialCreated,
+    /// <summary>Credential value or metadata updated.</summary>
+    CredentialUpdated,
+    /// <summary>Credential renamed (with cascading task reference updates).</summary>
+    CredentialRenamed,
+    /// <summary>Credential deleted.</summary>
+    CredentialDeleted,
+    /// <summary>Credential agent scope updated.</summary>
+    CredentialScopeUpdated,
+    /// <summary>Credential value accessed (decrypted for dispatch).</summary>
+    CredentialAccessed,
+
     // ── Retention ──
     /// <summary>Audit retention cleanup executed.</summary>
     AuditRetentionCleanup,
+    /// <summary>Retention sweep completed (manual or scheduled).</summary>
+    RetentionSweepCompleted,
 }

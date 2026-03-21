@@ -12,7 +12,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Postgres
 {
     [DbContext(typeof(PostgresWerkrDbContext))]
-    [Migration("20260321052611_Initial")]
+    [Migration("20260321202337_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -114,6 +114,306 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasDatabaseName("ix_audit_events_entity_type_entity_id");
 
                     b.ToTable("audit_events", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationChangeLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ChangedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("changed_by_user_id");
+
+                    b.Property<DateTime>("ChangedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_utc");
+
+                    b.Property<long>("ConfigurationEntryId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("configuration_entry_id");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("NewValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("new_value");
+
+                    b.Property<string>("PreviousValue")
+                        .HasColumnType("text")
+                        .HasColumnName("previous_value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_configuration_change_logs");
+
+                    b.HasIndex("ConfigurationEntryId")
+                        .HasDatabaseName("ix_configuration_change_logs_configuration_entry_id");
+
+                    b.ToTable("configuration_change_logs", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("DefaultValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("default_value");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("ModifiedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("modified_by_user_id");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<string>("ScopeId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("scope_id");
+
+                    b.Property<int>("ScopeLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("scope_level");
+
+                    b.Property<long>("SyncVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sync_version");
+
+                    b.Property<string>("ValidationRules")
+                        .HasColumnType("text")
+                        .HasColumnName("validation_rules");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("value_type");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_configuration_entries");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("ix_configuration_entries_category");
+
+                    b.HasIndex("ScopeId")
+                        .HasDatabaseName("ix_configuration_entries_scope_id");
+
+                    b.HasIndex("SyncVersion")
+                        .HasDatabaseName("ix_configuration_entries_sync_version");
+
+                    b.HasIndex("Key", "ScopeLevel", "ScopeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuration_entries_key_scope_level_scope_id");
+
+                    b.ToTable("configuration_entries", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.Credential", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("EncryptedValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_value");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("ModifiedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("modified_by_user_id");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_credentials");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_credentials_name");
+
+                    b.ToTable("credentials", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.CredentialAgentScope", b =>
+                {
+                    b.Property<long>("CredentialId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("credential_id");
+
+                    b.Property<Guid>("AgentConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_connection_id");
+
+                    b.HasKey("CredentialId", "AgentConnectionId")
+                        .HasName("pk_credential_agent_scopes");
+
+                    b.HasIndex("AgentConnectionId")
+                        .HasDatabaseName("ix_credential_agent_scopes_agent_connection_id");
+
+                    b.ToTable("credential_agent_scopes", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.RetentionPolicy", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("ModifiedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("modified_by_user_id");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<int>("RetentionDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("retention_days");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_retention_policies");
+
+                    b.HasIndex("EntityType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_retention_policies_entity_type");
+
+                    b.ToTable("retention_policies", "werkr");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
@@ -1819,6 +2119,39 @@ namespace Werkr.Data.Migrations.Postgres
                     b.ToTable("workflow_versions", "werkr");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationChangeLog", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Configuration.ConfigurationEntry", "ConfigurationEntry")
+                        .WithMany("ChangeLogs")
+                        .HasForeignKey("ConfigurationEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_configuration_change_logs_configuration_entries_configurati");
+
+                    b.Navigation("ConfigurationEntry");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.CredentialAgentScope", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "AgentConnection")
+                        .WithMany()
+                        .HasForeignKey("AgentConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_credential_agent_scopes_registered_connections_agent_connec");
+
+                    b.HasOne("Werkr.Data.Entities.Configuration.Credential", "Credential")
+                        .WithMany("AgentScopes")
+                        .HasForeignKey("CredentialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_credential_agent_scopes_credentials_credential_id");
+
+                    b.Navigation("AgentConnection");
+
+                    b.Navigation("Credential");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DailyRecurrence", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
@@ -2276,6 +2609,16 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasConstraintName("fk_workflow_versions_workflows_workflow_id");
 
                     b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationEntry", b =>
+                {
+                    b.Navigation("ChangeLogs");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Configuration.Credential", b =>
+                {
+                    b.Navigation("AgentScopes");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DbSchedule", b =>

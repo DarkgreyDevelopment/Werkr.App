@@ -40,6 +40,7 @@ message ScheduledTaskDefinition {
   repeated string arguments = 9;
   string action_sub_type = 10;
   string action_parameters_json = 11;
+  map<string, string> resolved_credentials = 12;
 }
 
 message ScheduleDefinition {

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Threading.Channels;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Agent.Communication;
@@ -20,10 +21,12 @@ namespace Werkr.Agent.Services;
 /// The <see cref="AgentGrpcClientFactory"/> whose cached channel is reset
 /// when the server URL changes.
 /// </param>
+/// <param name="configChangeChannel">Channel for signalling configuration change notifications to the sync background service.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ConnectionManagementService(
     IServiceScopeFactory scopeFactory,
     AgentGrpcClientFactory clientFactory,
+    Channel<long> configChangeChannel,
     ILogger<ConnectionManagementService> logger
 ) : ConnectionManagement.ConnectionManagementBase {
 
@@ -218,6 +221,39 @@ public sealed partial class ConnectionManagementService(
             throw new RpcException( new Status( StatusCode.Internal,
                 $"Key rotation failed: {ex.Message}" ) );
         }
+    }
+
+    /// <summary>
+    /// Handles configuration change notifications from the Server.
+    /// Writes the new version number to a channel so the
+    /// <see cref="Configuration.ConfigurationSyncBackgroundService"/> triggers a delta sync.
+    /// </summary>
+    public override Task<EncryptedEnvelope> NotifyConfigurationChanged(
+        EncryptedEnvelope request,
+        ServerCallContext context
+    ) {
+        RegisteredConnection connection = GetConnection( context );
+        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
+
+        NotifyConfigurationChangedRequest inner =
+            PayloadEncryptor.DecryptFromEnvelope<NotifyConfigurationChangedRequest>(
+                request, connection.SharedKey );
+
+        if (logger.IsEnabled( LogLevel.Information )) {
+            logger.LogInformation(
+                "Received configuration change notification. New version: {Version}",
+                inner.NewVersion );
+        }
+
+        // Signal the sync background service via channel (non-blocking)
+        _ = configChangeChannel.Writer.TryWrite( inner.NewVersion );
+
+        NotifyConfigurationChangedResponse response = new( ) {
+            Acknowledged = true,
+        };
+
+        return Task.FromResult(
+            PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId ) );
     }
 
     private static RegisteredConnection GetConnection( ServerCallContext context ) {

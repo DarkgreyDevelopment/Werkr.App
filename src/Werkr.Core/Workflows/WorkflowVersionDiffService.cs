@@ -35,11 +35,7 @@ public sealed class WorkflowVersionDiffService( WerkrDbContext dbContext ) {
         WorkflowDefinitionSnapshot? fromSnapshot = WorkflowDefinitionSnapshot.FromJson( from.Definition );
         WorkflowDefinitionSnapshot? toSnapshot = WorkflowDefinitionSnapshot.FromJson( to.Definition );
 
-        if (fromSnapshot is null || toSnapshot is null) {
-            return null;
-        }
-
-        return ComputeDiff( fromSnapshot, toSnapshot );
+        return fromSnapshot is null || toSnapshot is null ? null : ComputeDiff( fromSnapshot, toSnapshot );
     }
 
     /// <summary>
