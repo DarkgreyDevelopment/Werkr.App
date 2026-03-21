@@ -1,10 +1,13 @@
+using System.Security.Claims;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Api.Services;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
+using Werkr.Common.Models.Audit;
 using Werkr.Common.Protos;
+using Werkr.Core.Audit;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Scheduling;
@@ -147,8 +150,10 @@ internal static class AgentEndpoints {
             async (
                 Guid id,
                 UpdateAgentRequest request,
+                ClaimsPrincipal user,
                 WerkrDbContext dbContext,
                 AgentConnectionManager connectionManager,
+                IAuditService auditService,
                 CancellationToken ct
             ) => {
                 if (string.IsNullOrWhiteSpace( request.ConnectionName )
@@ -188,6 +193,17 @@ internal static class AgentEndpoints {
                 }
 
                 _ = await dbContext.SaveChangesAsync( ct );
+
+                // Audit: agent updated
+                string? userId = user.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+                await auditService.LogAsync( new AuditEntry(
+                    EventTypeId: AuditEventType.AgentUpdated.ToEventId( ),
+                    ActorId: userId, ActorType: "User",
+                    EntityType: "Agent", EntityId: id.ToString( ),
+                    ActionPerformed: "Updated",
+                    Details: new { ConnectionName = connection.ConnectionName, RemoteUrl = connection.RemoteUrl }
+                ), ct );
+
                 return Results.NoContent( );
             } )
         .WithName( "UpdateAgent" )
@@ -197,8 +213,10 @@ internal static class AgentEndpoints {
             "/api/v1/agents/{id}/revoke",
             async (
                 Guid id,
+                ClaimsPrincipal user,
                 WerkrDbContext dbContext,
                 AgentConnectionManager connectionManager,
+                IAuditService auditService,
                 CancellationToken ct
             ) => {
                 RegisteredConnection? connection = await dbContext.RegisteredConnections
@@ -211,6 +229,19 @@ internal static class AgentEndpoints {
                 connection.Status = ConnectionStatus.Revoked;
                 _ = await dbContext.SaveChangesAsync( ct );
                 connectionManager.RemoveChannel( id );
+
+                // Audit: agent revoked
+                string? userId = user.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+                await auditService.LogAsync( new AuditEntry(
+                    EventTypeId: AuditEventType.AgentRevoked.ToEventId( ),
+                    ActorId: userId,
+                    ActorType: "User",
+                    EntityType: "Agent",
+                    EntityId: id.ToString( ),
+                    ActionPerformed: "Revoked",
+                    Details: new { AgentName = connection.ConnectionName }
+                ), ct );
+
                 return Results.Ok( new { message = $"Connection '{connection.ConnectionName}' revoked." } );
             } )
         .WithName( "RevokeAgent" )
@@ -531,9 +562,23 @@ internal static class AgentEndpoints {
         _ = app.MapPost( "/api/v1/agents/{id}/rotate-key", async (
             Guid id,
             KeyRotationService keyRotationService,
+            IAuditService auditService,
             CancellationToken ct
         ) => {
             bool success = await keyRotationService.RotateSingleAgentAsync( id, ct );
+
+            if (success) {
+                // Audit: agent key rotated
+                await auditService.LogAsync( new AuditEntry(
+                    EventTypeId: AuditEventType.AgentKeyRotated.ToEventId( ),
+                    ActorId: null,
+                    ActorType: "User",
+                    EntityType: "Agent",
+                    EntityId: id.ToString( ),
+                    ActionPerformed: "KeyRotated"
+                ), ct );
+            }
+
             return success
                 ? Results.Ok( new { message = "Key rotation completed successfully." } )
                 : Results.UnprocessableEntity( new { message = "Key rotation failed. Agent may be unreachable or not connected." } );

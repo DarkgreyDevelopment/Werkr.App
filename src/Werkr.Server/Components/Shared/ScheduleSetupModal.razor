@@ -254,12 +254,12 @@
                                         <table class="table table-sm table-striped">
                                             <thead><tr><th>Date/Time (UTC)</th><th>Holiday</th><th>Calendar</th><th>Mode</th></tr></thead>
                                             <tbody>
-                                                @foreach ( ScheduleAuditLogDto log in _auditLogs ) {
+                                                @foreach ( Werkr.Common.Models.Audit.AuditEventDto log in _auditLogs ) {
                                                     <tr>
-                                                        <td>@log.OccurrenceUtcTime.ToString( "G" )</td>
-                                                        <td>@log.HolidayName</td>
-                                                        <td>@log.CalendarName</td>
-                                                        <td><span class="badge bg-secondary">@log.Mode</span></td>
+                                                        <td>@log.TimestampUtc.ToString( "G" )</td>
+                                                        <td>@log.ActionPerformed</td>
+                                                        <td>@log.EventTypeId</td>
+                                                        <td><span class="badge bg-secondary">@log.EventCategory</span></td>
                                                     </tr>
                                                 }
                                             </tbody>
@@ -325,7 +325,7 @@
     private List<HolidayCalendarSummaryDto>? _availableCalendars;
     private string _selectedCalendarId = "";
     private string _selectedCalendarMode = "Blocklist";
-    private List<ScheduleAuditLogDto>? _auditLogs;
+    private List<Werkr.Common.Models.Audit.AuditEventDto>? _auditLogs;
 
     private bool IsEditing => _editScheduleId is not null;
 
@@ -413,8 +413,10 @@
             HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             DateTime from = DateTime.UtcNow.AddDays( -30 );
             DateTime to = DateTime.UtcNow;
-            string url = $"/api/v1/schedules/{_editScheduleId}/audit-log?from={from:O}&to={to:O}";
-            _auditLogs = await client.GetFromJsonAsync<List<ScheduleAuditLogDto>>( url ) ?? [];
+            string url = $"/api/v1/audit?entityType=Schedule&entityId={_editScheduleId}&fromUtc={from:O}&toUtc={to:O}&limit=50";
+            Werkr.Common.Models.PagedResult<Werkr.Common.Models.Audit.AuditEventDto>? result =
+                await client.GetFromJsonAsync<Werkr.Common.Models.PagedResult<Werkr.Common.Models.Audit.AuditEventDto>>( url );
+            _auditLogs = result?.Items?.ToList( ) ?? [];
         } catch {
             _auditLogs = [];
         }

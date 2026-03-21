@@ -153,7 +153,7 @@
 
         try {
             using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            List<ApiKeyDto>? result = await client.GetFromJsonAsync<List<ApiKeyDto>>( "/api/v1/keys" );
+            List<ApiKeyDto>? result = await client.GetFromJsonAsync<List<ApiKeyDto>>( "/api/v1/auth/keys" );
             _keys = result ?? [];
         } catch (Exception ex) {
             _errorMessage = $"Failed to load API keys: {ex.Message}";
@@ -174,7 +174,7 @@
         try {
             using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             ApiKeyCreateRequest request = new( _newKeyName.Trim( ), _newKeyExpiry );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/keys", request );
+            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/auth/keys", request );
 
             if (response.IsSuccessStatusCode) {
                 _createdKey = await response.Content.ReadFromJsonAsync<ApiKeyCreateResponse>( );
@@ -198,7 +198,7 @@
 
         try {
             using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/keys/{id}" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/auth/keys/{id}" );
 
             if (response.IsSuccessStatusCode) {
                 await LoadKeysAsync( );

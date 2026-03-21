@@ -1,11 +1,12 @@
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Models;
+using Werkr.Common.Models.Audit;
 using Werkr.Common.Protos;
+using Werkr.Core.Audit;
 using Werkr.Core.Communication;
 using Werkr.Core.Scheduling;
 using Werkr.Data;
-using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Models;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
@@ -25,12 +26,14 @@ namespace Werkr.Api.Services;
 /// <param name="scheduleService">Schedule service for loading composite schedules.</param>
 /// <param name="holidayDateService">Holiday date materialization service.</param>
 /// <param name="holidayCalendarService">Holiday calendar CRUD service.</param>
+/// <param name="auditService">Audit service for recording schedule audit events.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ScheduleSyncGrpcService(
     WerkrDbContext dbContext,
     ScheduleService scheduleService,
     HolidayDateService holidayDateService,
     HolidayCalendarService holidayCalendarService,
+    IAuditService auditService,
     ILogger<ScheduleSyncGrpcService> logger
 ) : ScheduleSync.ScheduleSyncBase {
 
@@ -548,7 +551,8 @@ public sealed partial class ScheduleSyncGrpcService(
     }
 
     /// <summary>
-    /// Persists audit log entries submitted by an agent for suppressed/required holiday occurrences.
+    /// Persists audit log entries submitted by an agent for suppressed/shifted holiday occurrences.
+    /// Writes to the unified <see cref="Werkr.Data.Entities.Audit.AuditEvent"/> table.
     /// </summary>
     public override async Task<EncryptedEnvelope> SubmitAuditLog(
         EncryptedEnvelope request,
@@ -568,25 +572,36 @@ public sealed partial class ScheduleSyncGrpcService(
             scheduleId, context.CancellationToken );
 
         string calendarName = link?.Calendar?.Name ?? "Unknown";
-        HolidayCalendarMode mode = link?.Mode ?? HolidayCalendarMode.Blocklist;
 
-        List<ScheduleAuditLog> logs = [.. inner.Entries.Select( e => new ScheduleAuditLog {
-            ScheduleId = scheduleId,
-            OccurrenceUtcTime = DateTime.Parse( e.OccurrenceUtc ).ToUniversalTime( ),
-            CalendarName = calendarName,
-            HolidayName = e.HolidayName,
-            Mode = mode,
-            Action = !string.IsNullOrEmpty( e.Action ) ? e.Action : "Suppressed",
-            ShiftedToUtcTime = !string.IsNullOrEmpty( e.ShiftedToUtc )
-                ? DateTime.Parse( e.ShiftedToUtc ).ToUniversalTime( ) : null,
-            CreatedUtc = DateTime.UtcNow,
-        } )];
+        int accepted = 0;
+        foreach (AuditLogEntry e in inner.Entries) {
+            string action = !string.IsNullOrEmpty( e.Action ) ? e.Action : "Suppressed";
+            string eventTypeId = string.Equals( action, "Shifted", StringComparison.OrdinalIgnoreCase )
+                ? AuditEventType.ScheduleOccurrenceShifted.ToEventId( )
+                : AuditEventType.ScheduleOccurrenceSuppressed.ToEventId( );
 
-        dbContext.ScheduleAuditLogs.AddRange( logs );
-        _ = await dbContext.SaveChangesAsync( context.CancellationToken );
+            object details = new {
+                ScheduleId = scheduleId.ToString( ),
+                OccurrenceUtcTime = e.OccurrenceUtc,
+                CalendarName = calendarName,
+                HolidayName = e.HolidayName,
+                ShiftedToUtcTime = !string.IsNullOrEmpty( e.ShiftedToUtc ) ? e.ShiftedToUtc : null
+            };
+
+            await auditService.LogAsync( new AuditEntry(
+                EventTypeId: eventTypeId,
+                ActorId: connection.Id.ToString( ),
+                ActorType: "Agent",
+                EntityType: "Schedule",
+                EntityId: scheduleId.ToString( ),
+                ActionPerformed: action,
+                Details: details
+            ), context.CancellationToken );
+            accepted++;
+        }
 
         SubmitAuditLogResponse response = new( ) {
-            AcceptedCount = logs.Count,
+            AcceptedCount = accepted,
         };
 
         return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );

@@ -1,0 +1,88 @@
+namespace Werkr.Common.Models.Audit;
+
+/// <summary>
+/// All built-in audit event types. The enum is the single source of truth;
+/// use <see cref="AuditEventTypeExtensions.ToEventId"/> to obtain the
+/// dotted string identifier stored in the database and sent over the wire.
+/// </summary>
+public enum AuditEventType {
+    // ── Security ──
+    /// <summary>Successful authentication.</summary>
+    AuthLoginSuccess,
+    /// <summary>Failed authentication attempt.</summary>
+    AuthLoginFailure,
+    /// <summary>Account locked due to repeated failures.</summary>
+    AuthLockout,
+    /// <summary>Failed two-factor authentication attempt.</summary>
+    Auth2FaFailure,
+    /// <summary>API key created.</summary>
+    ApiKeyCreated,
+    /// <summary>API key revoked.</summary>
+    ApiKeyRevoked,
+
+    // ── User ──
+    /// <summary>New user account created.</summary>
+    UserCreated,
+    /// <summary>User profile or roles updated.</summary>
+    UserUpdated,
+    /// <summary>User account deleted.</summary>
+    UserDeleted,
+    /// <summary>User account disabled.</summary>
+    UserDisabled,
+    /// <summary>User account enabled.</summary>
+    UserEnabled,
+    /// <summary>User password reset forced.</summary>
+    UserPasswordReset,
+
+    // ── Agent ──
+    /// <summary>New agent registered.</summary>
+    AgentRegistered,
+    /// <summary>Agent revoked.</summary>
+    AgentRevoked,
+    /// <summary>Agent connection details updated.</summary>
+    AgentUpdated,
+    /// <summary>Agent cryptographic key rotated.</summary>
+    AgentKeyRotated,
+
+    // ── Calendar ──
+    /// <summary>Holiday calendar created.</summary>
+    CalendarCreated,
+    /// <summary>Holiday calendar updated.</summary>
+    CalendarUpdated,
+    /// <summary>Holiday calendar deleted.</summary>
+    CalendarDeleted,
+    /// <summary>Holiday calendar cloned.</summary>
+    CalendarCloned,
+    /// <summary>Holiday calendar attached to a schedule.</summary>
+    CalendarAttached,
+    /// <summary>Holiday calendar detached from a schedule.</summary>
+    CalendarDetached,
+
+    // ── Schedule ──
+    /// <summary>Schedule occurrence suppressed by holiday calendar.</summary>
+    ScheduleOccurrenceSuppressed,
+    /// <summary>Schedule occurrence shifted by holiday calendar.</summary>
+    ScheduleOccurrenceShifted,
+
+    // ── Versioning ──
+    /// <summary>New task version created.</summary>
+    TaskVersionCreated,
+    /// <summary>New workflow version created.</summary>
+    WorkflowVersionCreated,
+    /// <summary>Workflow rolled back to a previous version.</summary>
+    WorkflowVersionRollback,
+    /// <summary>Workflow deleted.</summary>
+    WorkflowDeleted,
+    /// <summary>Workflow disabled.</summary>
+    WorkflowDisabled,
+    /// <summary>Workflow enabled.</summary>
+    WorkflowEnabled,
+    /// <summary>New trigger version created.</summary>
+    TriggerVersionCreated,
+    /// <summary>Trigger binding updated.</summary>
+    TriggerBindingUpdated,
+
+    // ── Retention ──
+    /// <summary>Audit retention cleanup executed.</summary>
+    AuditRetentionCleanup,
+}

@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
+using Werkr.Common.Models.Audit;
 using Werkr.Data.Identity.Entities;
 using Werkr.Data.Identity.Services;
 using Werkr.Server.Identity;
+using Werkr.Server.Services;
 
 namespace Werkr.Server.Endpoints;
 
@@ -49,6 +51,7 @@ public static class AuthEndpoints {
         _ = app.MapPost( "/api/v1/auth/keys", async (
             ApiKeyCreateRequest request,
             ApiKeyService apiKeyService,
+            AuditClient auditClient,
             ClaimsPrincipal user,
             CancellationToken ct
         ) => {
@@ -65,6 +68,16 @@ public static class AuthEndpoints {
             (ApiKey apiKey, string rawKey) = await apiKeyService.CreateAsync(
                 request.Name, userRole, userId, request.ExpiresUtc, ct
             );
+
+            // Audit: API key created — must succeed
+            bool audited = await auditClient.LogAsync(
+                AuditEventType.ApiKeyCreated, userId, "User",
+                "ApiKey", apiKey.Id.ToString( ), "Created",
+                new { KeyName = apiKey.Name, KeyPrefix = apiKey.KeyPrefix, Role = apiKey.Role }, ct );
+            if (!audited) {
+                _ = await apiKeyService.RevokeAsync( apiKey.Id, ct );
+                return Results.Problem( "API key created but audit recording failed. Key has been revoked." );
+            }
 
             return Results.Created( $"/api/v1/auth/keys/{apiKey.Id}", new ApiKeyCreateResponse(
                     apiKey.Id, apiKey.Name, rawKey, apiKey.KeyPrefix, apiKey.Role,
@@ -93,10 +106,21 @@ public static class AuthEndpoints {
         _ = app.MapDelete( "/api/v1/auth/keys/{id}", async (
             Guid id,
             ApiKeyService apiKeyService,
+            AuditClient auditClient,
+            ClaimsPrincipal user,
             CancellationToken ct
         ) => {
             bool revoked = await apiKeyService.RevokeAsync( id, ct );
-            return revoked ? Results.NoContent( ) : Results.NotFound( );
+            if (!revoked) {
+                return Results.NotFound( );
+            }
+
+            // Audit: API key revoked — must succeed
+            string? userId = user.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+            bool audited = await auditClient.LogAsync(
+                AuditEventType.ApiKeyRevoked, userId, "User",
+                "ApiKey", id.ToString( ), "Revoked", ct: ct );
+            return !audited ? Results.Problem( "API key revoked but audit recording failed." ) : Results.NoContent( );
         } )
         .WithName( "RevokeApiKey" )
         .WithTags( "Auth" )

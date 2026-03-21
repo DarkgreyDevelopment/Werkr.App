@@ -1,7 +1,7 @@
 namespace Werkr.Api.Services;
 
 /// <summary>
-/// Configuration options for schedule audit log retention.
+/// Configuration options for audit event log retention.
 /// Bound from the "AuditLog" configuration section.
 /// </summary>
 public sealed class AuditLogOptions {
@@ -21,4 +21,10 @@ public sealed class AuditLogOptions {
     /// Hard minimum sweep interval in minutes.
     /// </summary>
     public const int MinSweepIntervalMinutes = 15;
+
+    /// <summary>
+    /// Maximum number of rows allowed in a single export request.
+    /// Default is 100,000 to prevent unbounded result sets.
+    /// </summary>
+    public int MaxExportRows { get; set; } = 100_000;
 }

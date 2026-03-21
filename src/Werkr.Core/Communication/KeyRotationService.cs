@@ -7,7 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Werkr.Common.Models;
+using Werkr.Common.Models.Audit;
 using Werkr.Common.Protos;
+using Werkr.Core.Audit;
 using Werkr.Core.Cryptography;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
@@ -73,6 +75,7 @@ public partial class KeyRotationService(
     private async Task RotateAllAgentsAsync( CancellationToken ct ) {
         using IServiceScope scope = scopeFactory.CreateScope( );
         WerkrDbContext dbContext = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
+        IAuditService? auditService = scope.ServiceProvider.GetService<IAuditService>( );
 
         List<RegisteredConnection> agents = await dbContext.RegisteredConnections
             .Where( c => c.IsServer && c.Status == ConnectionStatus.Connected )
@@ -94,6 +97,7 @@ public partial class KeyRotationService(
             _ = await RotateAgentKeyAsync(
                 agent,
                 dbContext,
+                auditService,
                 ct
             );
         }
@@ -162,6 +166,7 @@ public partial class KeyRotationService(
         return await RotateAgentKeyAsync(
             agent,
             dbContext,
+            null,
             ct
         );
     }
@@ -169,6 +174,7 @@ public partial class KeyRotationService(
     internal async Task<bool> RotateAgentKeyAsync(
         RegisteredConnection agent,
         WerkrDbContext dbContext,
+        IAuditService? auditService,
         CancellationToken ct
     ) {
         try {
@@ -248,6 +254,22 @@ public partial class KeyRotationService(
                     agent.ConnectionName,
                     newKeyId
                 );
+            }
+
+            // Audit: background key rotation — best-effort, don't fail the rotation
+            if (auditService is not null) {
+                try {
+                    await auditService.LogAsync( new AuditEntry(
+                        EventTypeId: AuditEventType.AgentKeyRotated.ToEventId( ),
+                        ActorId: null, ActorType: "System",
+                        EntityType: "Agent", EntityId: agent.Id.ToString( ),
+                        ActionPerformed: "KeyRotated",
+                        Details: new { AgentName = agent.ConnectionName, Source = "BackgroundRotation" }
+                    ), ct );
+                } catch (Exception ex) when (ex is not OperationCanceledException) {
+                    logger.LogWarning( ex,
+                        "Failed to record audit event for key rotation of Agent {AgentId}.", agent.Id );
+                }
             }
 
             return true;

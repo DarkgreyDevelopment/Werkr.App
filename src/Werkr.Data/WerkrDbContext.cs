@@ -8,6 +8,7 @@ using Werkr.Common.Models;
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Encryption;
 using Werkr.Data.Entities;
+using Werkr.Data.Entities.Audit;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Settings;
@@ -99,8 +100,8 @@ public class WerkrDbContext : DbContext {
     /// <summary>Schedule-to-holiday-calendar junction.</summary>
     public DbSet<ScheduleHolidayCalendar> ScheduleHolidayCalendars => Set<ScheduleHolidayCalendar>( );
 
-    /// <summary>Schedule audit log for suppressed occurrences.</summary>
-    public DbSet<ScheduleAuditLog> ScheduleAuditLogs => Set<ScheduleAuditLog>( );
+    /// <summary>Append-only audit events for all auditable operations.</summary>
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>( );
 
     /// <summary>Task-to-schedule many-to-many join table.</summary>
     public DbSet<TaskSchedule> TaskSchedules => Set<TaskSchedule>( );
@@ -318,7 +319,9 @@ public class WerkrDbContext : DbContext {
 
         // HolidayRule
         _ = modelBuilder.Entity<HolidayRule>( entity => {
-            _ = entity.Property( e => e.Id ).UseIdentityAlwaysColumn( );
+            if (Database.ProviderName != "Microsoft.EntityFrameworkCore.Sqlite") {
+                _ = entity.Property( e => e.Id ).UseIdentityAlwaysColumn( );
+            }
 
             _ = entity.HasMany( e => e.GeneratedDates )
                 .WithOne( d => d.GeneratedByRule )
@@ -328,7 +331,9 @@ public class WerkrDbContext : DbContext {
 
         // HolidayDate — unique index on (CalendarId, Date): one entry per calendar per date.
         _ = modelBuilder.Entity<HolidayDate>( entity => {
-            _ = entity.Property( e => e.Id ).UseIdentityAlwaysColumn( );
+            if (Database.ProviderName != "Microsoft.EntityFrameworkCore.Sqlite") {
+                _ = entity.Property( e => e.Id ).UseIdentityAlwaysColumn( );
+            }
 
             _ = entity.HasIndex( e => new { e.HolidayCalendarId, e.Date } )
                 .IsUnique( );
@@ -350,15 +355,16 @@ public class WerkrDbContext : DbContext {
                 .OnDelete( DeleteBehavior.Cascade );
         } );
 
-        // ScheduleAuditLog
-        _ = modelBuilder.Entity<ScheduleAuditLog>( entity => {
-            _ = entity.Property( e => e.Id ).UseIdentityAlwaysColumn( );
-            _ = entity.HasIndex( e => new { e.ScheduleId, e.OccurrenceUtcTime } );
-
-            _ = entity.HasOne( e => e.Schedule )
-                .WithMany( )
-                .HasForeignKey( e => e.ScheduleId )
-                .OnDelete( DeleteBehavior.Cascade );
+        // AuditEvent — append-only audit table with multiple indexes for query performance
+        _ = modelBuilder.Entity<AuditEvent>( entity => {
+            if (Database.ProviderName != "Microsoft.EntityFrameworkCore.Sqlite") {
+                _ = entity.Property( e => e.Id ).UseIdentityAlwaysColumn( );
+            }
+            _ = entity.HasIndex( e => e.TimestampUtc ).IsDescending( );
+            _ = entity.HasIndex( e => e.EventTypeId );
+            _ = entity.HasIndex( e => e.EventCategory );
+            _ = entity.HasIndex( e => new { e.EntityType, e.EntityId } );
+            _ = entity.HasIndex( e => e.ActorId );
         } );
 
         // TaskSchedule — many-to-many join between WerkrTask and DbSchedule
@@ -590,6 +596,10 @@ public class WerkrDbContext : DbContext {
         // CompositeType ↔ string
         _ = configurationBuilder.Properties<CompositeType>( )
             .HaveConversion<CompositeTypeStringConverter>( );
+
+        // ActorType ↔ string (audit events)
+        _ = configurationBuilder.Properties<ActorType>( )
+            .HaveConversion<ActorTypeStringConverter>( );
     }
 
     /// <inheritdoc/>
@@ -733,4 +743,9 @@ public class WerkrDbContext : DbContext {
         : ValueConverter<CompositeType, string>(
             v => v.ToString( ),
             v => Enum.Parse<CompositeType>( v ) );
+
+    private sealed class ActorTypeStringConverter( )
+        : ValueConverter<ActorType, string>(
+            v => v.ToString( ),
+            v => Enum.Parse<ActorType>( v ) );
 }

@@ -6,7 +6,10 @@
 @inject SignInManager<WerkrUser> SignInManager
 @inject UserManager<WerkrUser> UserManager
 @inject NavigationManager Navigation
+@using Werkr.Common.Models.Audit
+@using Werkr.Server.Services
 @inject ILogger<Login> Logger
+@inject AuditClient AuditClient
 
 <PageTitle>Login — Werkr</PageTitle>
 
@@ -94,6 +97,13 @@
                 _errorMessage = "Your account has been disabled. Contact an administrator.";
                 Logger.LogWarning( "Login blocked for disabled account {Email} from {RemoteIp}",
                     _model.Email, remoteIp );
+
+                // Audit: login failure for disabled account — best-effort
+                _ = await AuditClient.LogAsync(
+                    AuditEventType.AuthLoginFailure, user.Id, "User",
+                    "User", user.Id, "LoginFailed",
+                    new { Email = _model.Email, RemoteIp = remoteIp, Reason = "Account disabled" } );
+
                 return;
             }
 
@@ -107,11 +117,21 @@
                     _ = await UserManager.UpdateAsync( user );
                 }
 
-                string safeUrl = UrlValidator.IsLocalUrl( ReturnUrl ) ? ReturnUrl! : "/";
-
                 Logger.LogInformation( "Login succeeded for {Email} from {RemoteIp}",
                     _model!.Email, remoteIp );
 
+                // Audit: login success — must succeed before navigation commits
+                bool audited = await AuditClient.LogAsync(
+                    AuditEventType.AuthLoginSuccess, user?.Id, "User",
+                    "User", user?.Id, "Login",
+                    new { Email = _model.Email, RemoteIp = remoteIp } );
+                if (!audited) {
+                    await SignInManager.SignOutAsync( );
+                    _errorMessage = "Login succeeded but audit recording failed. Please try again.";
+                    return;
+                }
+
+                string safeUrl = UrlValidator.IsLocalUrl( ReturnUrl ) ? ReturnUrl! : "/";
                 Navigation.NavigateTo( safeUrl, forceLoad: true );
             } else if (result.IsLockedOut) {
                 _isLockedOut = true;
@@ -122,6 +142,12 @@
 
                 Logger.LogWarning( "Account locked out: {Email} from {RemoteIp}",
                     _model!.Email, remoteIp );
+
+                // Audit: lockout — best-effort
+                _ = await AuditClient.LogAsync(
+                    AuditEventType.AuthLockout, user?.Id, "User",
+                    "User", user?.Id, "Lockout",
+                    new { Email = _model.Email, RemoteIp = remoteIp } );
             } else if (result.RequiresTwoFactor) {
                 string safeUrl = UrlValidator.IsLocalUrl( ReturnUrl ) ? ReturnUrl! : "/";
                 string encodedReturnUrl = Uri.EscapeDataString( safeUrl );
@@ -131,6 +157,12 @@
 
                 Logger.LogWarning( "Login failed for {Email} from {RemoteIp}: {Reason}",
                     _model!.Email, remoteIp, "Invalid credentials" );
+
+                // Audit: login failure — best-effort
+                _ = await AuditClient.LogAsync(
+                    AuditEventType.AuthLoginFailure, null, "User",
+                    "User", null, "LoginFailed",
+                    new { Email = _model.Email, RemoteIp = remoteIp, Reason = "Invalid credentials" } );
             }
         } catch (NavigationException) {
             throw;
@@ -139,6 +171,12 @@
 
             Logger.LogWarning( ex, "Login failed for {Email} from {RemoteIp}: {Reason}",
                 _model!.Email, remoteIp, "Unhandled exception" );
+
+            // Audit: unhandled exception during login — best-effort
+            _ = await AuditClient.LogAsync(
+                AuditEventType.AuthLoginFailure, null, "User",
+                "User", null, "LoginFailed",
+                new { Email = _model!.Email, RemoteIp = remoteIp, Reason = "Unhandled exception" } );
         }
     }
 

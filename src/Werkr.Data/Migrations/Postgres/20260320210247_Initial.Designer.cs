@@ -12,8 +12,8 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Postgres
 {
     [DbContext(typeof(PostgresWerkrDbContext))]
-    [Migration("20260320074605_Init")]
-    partial class Init
+    [Migration("20260320210247_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,6 +25,97 @@ namespace Werkr.Data.Migrations.Postgres
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Werkr.Data.Entities.Audit.AuditEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActionPerformed")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("action_performed");
+
+                    b.Property<string>("ActorId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("actor_type");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasMaxLength(8192)
+                        .HasColumnType("character varying(8192)")
+                        .HasColumnName("details");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("EventCategory")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("event_category");
+
+                    b.Property<string>("EventTypeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<string>("SourceModule")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source_module");
+
+                    b.Property<string>("TimestampUtc")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("timestamp_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_events");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_audit_events_actor_id");
+
+                    b.HasIndex("EventCategory")
+                        .HasDatabaseName("ix_audit_events_event_category");
+
+                    b.HasIndex("EventTypeId")
+                        .HasDatabaseName("ix_audit_events_event_type_id");
+
+                    b.HasIndex("TimestampUtc")
+                        .IsDescending()
+                        .HasDatabaseName("ix_audit_events_timestamp_utc");
+
+                    b.HasIndex("EntityType", "EntityId")
+                        .HasDatabaseName("ix_audit_events_entity_type_entity_id");
+
+                    b.ToTable("audit_events", "werkr");
+                });
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
                 {
@@ -569,65 +660,6 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasName("pk_monthly_recurrence");
 
                     b.ToTable("monthly_recurrence", "werkr");
-                });
-
-            modelBuilder.Entity("Werkr.Data.Entities.Schedule.ScheduleAuditLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("action");
-
-                    b.Property<string>("CalendarName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("calendar_name");
-
-                    b.Property<string>("CreatedUtc")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("created_utc");
-
-                    b.Property<string>("HolidayName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("holiday_name");
-
-                    b.Property<string>("Mode")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("mode");
-
-                    b.Property<string>("OccurrenceUtcTime")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("occurrence_utc_time");
-
-                    b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("schedule_id");
-
-                    b.Property<string>("ShiftedToUtcTime")
-                        .HasColumnType("text")
-                        .HasColumnName("shifted_to_utc_time");
-
-                    b.HasKey("Id")
-                        .HasName("pk_schedule_audit_log");
-
-                    b.HasIndex("ScheduleId", "OccurrenceUtcTime")
-                        .HasDatabaseName("ix_schedule_audit_log_schedule_id_occurrence_utc_time");
-
-                    b.ToTable("schedule_audit_log", "werkr");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.ScheduleHolidayCalendar", b =>
@@ -1664,18 +1696,6 @@ namespace Werkr.Data.Migrations.Postgres
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_monthly_recurrence_schedules_schedule_id");
-
-                    b.Navigation("Schedule");
-                });
-
-            modelBuilder.Entity("Werkr.Data.Entities.Schedule.ScheduleAuditLog", b =>
-                {
-                    b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
-                        .WithMany()
-                        .HasForeignKey("ScheduleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_schedule_audit_log_schedules_schedule_id");
 
                     b.Navigation("Schedule");
                 });

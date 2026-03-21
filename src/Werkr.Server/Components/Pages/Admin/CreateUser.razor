@@ -9,9 +9,14 @@
 @using Werkr.Data.Identity.Entities
 @using Werkr.Data.Identity.Services
 @using Werkr.Server.Components.Shared
+@using Werkr.Common.Models.Audit
+@using Microsoft.AspNetCore.Components.Authorization
+@using Werkr.Server.Services
 @inject UserManager<WerkrUser> UserManager
+@inject AuthenticationStateProvider AuthState
 @inject NavigationManager Navigation
 @inject PasswordHistoryService PasswordHistoryService
+@inject AuditClient AuditClient
 
 <PageTitle>Create User</PageTitle>
 
@@ -145,6 +150,19 @@
         IdentityResult roleResult = await UserManager.AddToRolesAsync( user, roles );
         if (!roleResult.Succeeded) {
             _errorMessage = string.Join( " ", roleResult.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        // Audit: user created — must succeed or rollback
+        AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
+        string? currentUserId = UserManager.GetUserId( authState.User );
+        bool audited = await AuditClient.LogAsync(
+            AuditEventType.UserCreated, currentUserId, "User",
+            "User", user.Id, "Created",
+            new { Email = user.Email, Roles = roles } );
+        if (!audited) {
+            _ = await UserManager.DeleteAsync( user );
+            _errorMessage = "User was created but audit recording failed. The user has been removed. Please try again.";
             return;
         }
 

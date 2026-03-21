@@ -5,8 +5,11 @@
 @using Microsoft.AspNetCore.Identity
 @using Werkr.Data.Identity.Entities
 @using Werkr.Server.Helpers
+@using Werkr.Common.Models.Audit
+@using Werkr.Server.Services
 @inject SignInManager<WerkrUser> SignInManager
 @inject NavigationManager Navigation
+@inject AuditClient AuditClient
 
 <PageTitle>MFA Verification</PageTitle>
 
@@ -33,6 +36,9 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
     [SupplyParameterFromQuery( Name = "returnUrl" )]
     public string? ReturnUrl { get; set; }
 
@@ -62,6 +68,21 @@
             string safeUrl = UrlValidator.IsLocalUrl( ReturnUrl ) ? ReturnUrl! : "/";
             Navigation.NavigateTo( safeUrl, forceLoad: true );
             return;
+        }
+
+        // Audit: 2FA failure — best-effort
+        WerkrUser? failedUser = await SignInManager.GetTwoFactorAuthenticationUserAsync( );
+        string remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString( ) ?? "unknown";
+        _ = await AuditClient.LogAsync(
+            AuditEventType.Auth2FaFailure, failedUser?.Id, "User",
+            "User", failedUser?.Id, "2FA Failed",
+            new { RemoteIp = remoteIp } );
+
+        if (result.IsLockedOut) {
+            _ = await AuditClient.LogAsync(
+                AuditEventType.AuthLockout, failedUser?.Id, "User",
+                "User", failedUser?.Id, "Lockout",
+                new { RemoteIp = remoteIp, Reason = "MFA exhaustion" } );
         }
 
         _errorMessage = result.IsLockedOut

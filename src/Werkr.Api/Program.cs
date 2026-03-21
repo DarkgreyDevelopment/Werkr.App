@@ -12,6 +12,7 @@ using Werkr.Common;
 using Werkr.Common.Auth;
 using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
+using Werkr.Core.Audit;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Health;
@@ -208,6 +209,12 @@ public class Program {
             _ = builder.Services.AddScoped<HolidayDateService>( );
             _ = builder.Services.AddScoped<HolidayCalendarService>( );
 
+            // Audit event system
+            AuditEventTypeRegistry auditRegistry = new( );
+            _ = auditRegistry.RegisterCoreAuditEvents( );
+            _ = builder.Services.AddSingleton<IAuditEventTypeRegistry>( auditRegistry );
+            _ = builder.Services.AddScoped<IAuditService, AuditService>( );
+
             // Audit log cleanup
             _ = builder.Services.Configure<AuditLogOptions>( builder.Configuration.GetSection( "AuditLog" ) );
             _ = builder.Services.AddHostedService<AuditLogCleanupService>( );
@@ -252,6 +259,7 @@ public class Program {
             _ = app.MapGrpcService<OutputStreamingGrpcService>( );
             _ = app.MapGrpcService<VariableGrpcService>( );
             _ = app.MapGrpcService<TriggerEventGrpcService>( );
+            _ = app.MapGrpcService<AuditEventGrpcService>( );
 
             // REST endpoints
             _ = app.MapStatusEndpoints( );
@@ -266,6 +274,7 @@ public class Program {
             _ = app.MapWorkflowEndpoints( );
             _ = app.MapVariableEndpoints( );
             _ = app.MapHolidayCalendarEndpoints( );
+            _ = app.MapAuditEndpoints( );
             _ = app.MapEventEndpoints( );
             _ = app.MapShellEndpoints( );
             _ = app.MapFilterEndpoints( );

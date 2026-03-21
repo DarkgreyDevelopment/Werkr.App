@@ -18,6 +18,96 @@ namespace Werkr.Data.Migrations.Sqlite
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
+            modelBuilder.Entity("Werkr.Data.Entities.Audit.AuditEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn);
+
+                    b.Property<string>("ActionPerformed")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("action_performed");
+
+                    b.Property<string>("ActorId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("actor_type");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasMaxLength(8192)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("details");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("EventCategory")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_category");
+
+                    b.Property<string>("EventTypeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<string>("SourceModule")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_module");
+
+                    b.Property<string>("TimestampUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("timestamp_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_events");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_audit_events_actor_id");
+
+                    b.HasIndex("EventCategory")
+                        .HasDatabaseName("ix_audit_events_event_category");
+
+                    b.HasIndex("EventTypeId")
+                        .HasDatabaseName("ix_audit_events_event_type_id");
+
+                    b.HasIndex("TimestampUtc")
+                        .IsDescending()
+                        .HasDatabaseName("ix_audit_events_timestamp_utc");
+
+                    b.HasIndex("EntityType", "EntityId")
+                        .HasDatabaseName("ix_audit_events_entity_type_entity_id");
+
+                    b.ToTable("audit_events", (string)null);
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -559,64 +649,6 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasName("pk_monthly_recurrence");
 
                     b.ToTable("monthly_recurrence", (string)null);
-                });
-
-            modelBuilder.Entity("Werkr.Data.Entities.Schedule.ScheduleAuditLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("id")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn);
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT")
-                        .HasColumnName("action");
-
-                    b.Property<string>("CalendarName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT")
-                        .HasColumnName("calendar_name");
-
-                    b.Property<string>("CreatedUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("created_utc");
-
-                    b.Property<string>("HolidayName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT")
-                        .HasColumnName("holiday_name");
-
-                    b.Property<string>("Mode")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("mode");
-
-                    b.Property<string>("OccurrenceUtcTime")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("occurrence_utc_time");
-
-                    b.Property<Guid>("ScheduleId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("schedule_id");
-
-                    b.Property<string>("ShiftedToUtcTime")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("shifted_to_utc_time");
-
-                    b.HasKey("Id")
-                        .HasName("pk_schedule_audit_log");
-
-                    b.HasIndex("ScheduleId", "OccurrenceUtcTime")
-                        .HasDatabaseName("ix_schedule_audit_log_schedule_id_occurrence_utc_time");
-
-                    b.ToTable("schedule_audit_log", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.ScheduleHolidayCalendar", b =>
@@ -1637,18 +1669,6 @@ namespace Werkr.Data.Migrations.Sqlite
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_monthly_recurrence_schedules_schedule_id");
-
-                    b.Navigation("Schedule");
-                });
-
-            modelBuilder.Entity("Werkr.Data.Entities.Schedule.ScheduleAuditLog", b =>
-                {
-                    b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
-                        .WithMany()
-                        .HasForeignKey("ScheduleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_schedule_audit_log_schedules_schedule_id");
 
                     b.Navigation("Schedule");
                 });

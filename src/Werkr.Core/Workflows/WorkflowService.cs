@@ -766,15 +766,12 @@ public sealed partial class WorkflowService(
 
     /// <summary>Parse dependency mode with legacy alias support ("All" → AllSuccess, "Any" → AnySuccess).</summary>
     private static DependencyMode ParseDependencyMode( string value ) {
-        if (string.IsNullOrWhiteSpace( value )) {
-            return default;
-        }
-        if (string.Equals( value, "All", StringComparison.OrdinalIgnoreCase )) {
-            return DependencyMode.AllSuccess;
-        }
-        if (string.Equals( value, "Any", StringComparison.OrdinalIgnoreCase )) {
-            return DependencyMode.AnySuccess;
-        }
-        return Enum.Parse<DependencyMode>( value, ignoreCase: true );
+        return string.IsNullOrWhiteSpace( value )
+            ? default
+            : string.Equals( value, "All", StringComparison.OrdinalIgnoreCase )
+            ? DependencyMode.AllSuccess
+            : string.Equals( value, "Any", StringComparison.OrdinalIgnoreCase )
+            ? DependencyMode.AnySuccess
+            : Enum.Parse<DependencyMode>( value, ignoreCase: true );
     }
 }

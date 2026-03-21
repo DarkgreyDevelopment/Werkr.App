@@ -167,6 +167,9 @@ public class Program {
                 }
             } );
 
+            // Audit client — sends audit events to the API
+            _ = builder.Services.AddScoped<AuditClient>( );
+
             // Background health monitor — keeps agent DB status in sync with actual reachability
             _ = builder.Services.AddHostedService<AgentHealthMonitorService>( );
 
