@@ -13,5 +13,6 @@ public sealed record TaskUpdateRequest(
     string? SuccessCriteria = null,
     long? WorkflowId = null,
     string? ActionSubType = null,
-    string? ActionParameters = null
+    string? ActionParameters = null,
+    string? ChangeDescription = null
 );

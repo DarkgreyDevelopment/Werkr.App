@@ -42,7 +42,20 @@ internal static class WorkflowMapper {
             TargetTags: workflow.TargetTags,
             Annotations: DeserializeAnnotations( workflow.Annotations ),
             IsChildWorkflow: workflow.IsChildWorkflow,
-            ParentStepId: workflow.ParentStepId );
+            ParentStepId: workflow.ParentStepId,
+            CurrentVersionId: workflow.CurrentVersionId,
+            CurrentVersionNumber: workflow.CurrentVersion?.VersionNumber );
+
+    /// <summary>Maps a <see cref="WorkflowVersion"/> entity to a <see cref="WorkflowVersionDto"/>.</summary>
+    public static WorkflowVersionDto ToVersionDto( WorkflowVersion version ) =>
+        new(
+            Id: version.Id,
+            WorkflowId: version.WorkflowId,
+            VersionNumber: version.VersionNumber,
+            Definition: version.Definition,
+            CreatedUtc: version.Created,
+            CreatedByUserId: version.CreatedByUserId,
+            ChangeDescription: version.ChangeDescription );
 
     /// <summary>Maps a <see cref="WorkflowStep"/> entity to a <see cref="WorkflowStepDto"/>.</summary>
     public static WorkflowStepDto ToStepDto( WorkflowStep step ) =>
@@ -64,7 +77,10 @@ internal static class WorkflowMapper {
             CompositeType: step.CompositeType.ToString( ),
             ChildWorkflowId: step.ChildWorkflowId,
             IterationVariableName: step.IterationVariableName,
-            CollectionVariableName: step.CollectionVariableName );
+            CollectionVariableName: step.CollectionVariableName,
+            TaskVersionId: step.TaskVersionId,
+            TaskVersionNumber: step.TaskVersion?.VersionNumber,
+            TaskCurrentVersionNumber: step.Task?.CurrentVersion?.VersionNumber );
 
     /// <summary>Maps a <see cref="WorkflowStepDependency"/> to a <see cref="StepDependencyDto"/>.</summary>
     public static StepDependencyDto ToDepDto( WorkflowStepDependency dep ) =>

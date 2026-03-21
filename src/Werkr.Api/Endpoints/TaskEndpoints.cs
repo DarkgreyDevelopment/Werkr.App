@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Werkr.Api.Models;
 using Werkr.Api.Services;
 using Werkr.Common.Auth;
@@ -37,12 +38,14 @@ internal static class TaskEndpoints {
 
         _ = app.MapPost( "/api/v1/tasks", async (
             TaskCreateRequest request,
+            HttpContext httpContext,
             TaskService taskService,
             CancellationToken ct
         ) => {
             try {
+                string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
                 WerkrTask entity = TaskMapper.ToEntity( request );
-                WerkrTask created = await taskService.CreateAsync( entity, ct );
+                WerkrTask created = await taskService.CreateAsync( entity, userId, ct );
                 TaskDto dto = TaskMapper.ToDto( created );
                 return Results.Created( $"/api/v1/tasks/{dto.Id}", dto );
             } catch (System.ComponentModel.DataAnnotations.ValidationException ex) {
@@ -57,12 +60,14 @@ internal static class TaskEndpoints {
         _ = app.MapPut( "/api/v1/tasks/{id}", async (
             long id,
             TaskUpdateRequest request,
+            HttpContext httpContext,
             TaskService taskService,
             CancellationToken ct
         ) => {
             try {
+                string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
                 WerkrTask entity = TaskMapper.ToEntity( id, request );
-                WerkrTask updated = await taskService.UpdateAsync( entity, ct );
+                WerkrTask updated = await taskService.UpdateAsync( entity, userId, request.ChangeDescription, ct );
                 return Results.Ok( TaskMapper.ToDto( updated ) );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
@@ -77,11 +82,13 @@ internal static class TaskEndpoints {
 
         _ = app.MapDelete( "/api/v1/tasks/{id}", async (
             long id,
+            HttpContext httpContext,
             TaskService taskService,
             CancellationToken ct
         ) => {
             try {
-                await taskService.DeleteAsync( id, ct );
+                string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+                await taskService.DeleteAsync( id, userId, ct );
                 return Results.NoContent( );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
@@ -93,11 +100,13 @@ internal static class TaskEndpoints {
         _ = app.MapPut( "/api/v1/tasks/{id}/enabled", async (
             long id,
             TaskSetEnabledRequest request,
+            HttpContext httpContext,
             TaskService taskService,
             CancellationToken ct
         ) => {
             try {
-                await taskService.SetEnabledAsync( id, request.Enabled, ct );
+                string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+                await taskService.SetEnabledAsync( id, request.Enabled, userId, ct );
                 return Results.NoContent( );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );

@@ -19,5 +19,8 @@ public sealed record WorkflowStepDto(
     string CompositeType = "None",
     long? ChildWorkflowId = null,
     string? IterationVariableName = null,
-    string? CollectionVariableName = null
+    string? CollectionVariableName = null,
+    long? TaskVersionId = null,
+    int? TaskVersionNumber = null,
+    int? TaskCurrentVersionNumber = null
 );

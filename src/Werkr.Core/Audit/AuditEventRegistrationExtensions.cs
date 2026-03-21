@@ -32,6 +32,7 @@ public static class AuditEventRegistrationExtensions {
         registry.Register( AuditEventType.AgentRevoked.ToEventId( ), "Agent Revoked", "Agent", "core" );
         registry.Register( AuditEventType.AgentUpdated.ToEventId( ), "Agent Updated", "Agent", "core" );
         registry.Register( AuditEventType.AgentKeyRotated.ToEventId( ), "Agent Key Rotated", "Agent", "core" );
+        registry.Register( AuditEventType.AgentRegistrationCompleted.ToEventId( ), "Agent Registration Completed", "Agent", "core" );
 
         // Calendar
         registry.Register( AuditEventType.CalendarCreated.ToEventId( ), "Calendar Created", "Calendar", "scheduling" );
@@ -45,7 +46,12 @@ public static class AuditEventRegistrationExtensions {
         registry.Register( AuditEventType.ScheduleOccurrenceSuppressed.ToEventId( ), "Occurrence Suppressed", "Schedule", "scheduling" );
         registry.Register( AuditEventType.ScheduleOccurrenceShifted.ToEventId( ), "Occurrence Shifted", "Schedule", "scheduling" );
 
-        // Versioning (placeholders for subplans 2.1.2-2.1.4)
+        // Task
+        registry.Register( AuditEventType.TaskDeleted.ToEventId( ), "Task Deleted", "Task", "core" );
+        registry.Register( AuditEventType.TaskEnabled.ToEventId( ), "Task Enabled", "Task", "core" );
+        registry.Register( AuditEventType.TaskDisabled.ToEventId( ), "Task Disabled", "Task", "core" );
+
+        // Versioning
         registry.Register( AuditEventType.TaskVersionCreated.ToEventId( ), "Task Version Created", "Task", "core" );
         registry.Register( AuditEventType.WorkflowVersionCreated.ToEventId( ), "Workflow Version Created", "Workflow", "core" );
         registry.Register( AuditEventType.WorkflowVersionRollback.ToEventId( ), "Workflow Version Rollback", "Workflow", "core" );

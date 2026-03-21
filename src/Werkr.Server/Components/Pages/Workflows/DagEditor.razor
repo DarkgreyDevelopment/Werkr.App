@@ -8,6 +8,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthState
 @inject ILogger<DagEditor> Logger
+@inject IJSRuntime JS
 
 <PageTitle>Werkr - @( IsNewMode ? "New" : "Edit" ) Workflow</PageTitle>
 
@@ -20,6 +21,53 @@
 
 @if ( !string.IsNullOrWhiteSpace( _successMessage ) ) {
     <StatusBanner Visible="true" Level="success" Title="Success" Message="@_successMessage" />
+}
+
+@if ( _conflictDetected ) {
+    <div class="card border-warning mb-4">
+        <div class="card-header bg-warning text-dark">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Version Conflict</strong> — This workflow was modified by another user since you loaded it.
+        </div>
+        <div class="card-body">
+            <p>Your changes are based on version <strong>v@(_currentVersionNumber)</strong>, but the server has a newer version.</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-warning" @onclick="ConflictOverwriteAsync">
+                    <i class="bi bi-cloud-upload me-1"></i> Overwrite with My Changes
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="ConflictReloadAsync">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Reload Latest Version
+                </button>
+                <button class="btn btn-outline-info" @onclick="ConflictExportJsonAsync">
+                    <i class="bi bi-download me-1"></i> Export My Changes as JSON
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if ( _pinnedTriggerMismatches is { Count: > 0 } ) {
+    <div class="card border-info mb-4">
+        <div class="card-header bg-info text-white">
+            <i class="bi bi-pin-angle-fill me-2"></i>
+            <strong>Pinned Triggers Need Updating</strong>
+        </div>
+        <div class="card-body">
+            <p>The following pinned triggers still reference an older workflow version:</p>
+            <ul class="list-group list-group-flush mb-3">
+                @foreach ( PinnedTriggerMismatch trigger in _pinnedTriggerMismatches ) {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>@( trigger.Name ?? $"Trigger #{trigger.Id}" )</span>
+                        <button class="btn btn-outline-primary btn-sm"
+                                @onclick="( ) => UpdatePinnedTriggerAsync( trigger.Id, _workflow!.CurrentVersionId!.Value )">
+                            Update to Latest
+                        </button>
+                    </li>
+                }
+            </ul>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="( ) => _pinnedTriggerMismatches = null">Dismiss</button>
+        </div>
+    </div>
 }
 
 @if ( _isLoading ) {
@@ -139,12 +187,15 @@
                          ChildWorkflowId="_selectedChildWorkflowId"
                          CollectionVariableName="@_selectedCollectionVariable"
                          IterationVariableName="@_selectedIterationVariable"
+                         TaskVersionNumber="_selectedTaskVersionNumber"
+                         TaskCurrentVersionNumber="_selectedTaskCurrentVersionNumber"
                          OnFieldChanged="HandleFieldChangedAsync"
                          OnClose="HandleConfigPanelClose"
                          OnDelete="HandleDeleteSelectedAsync"
                          OnEditTaskRequested="HandleEditTaskAsync"
                          OnCreateTaskRequested="HandleCreateTaskAsync"
-                         OnRemoveDependency="HandleRemoveDependencyAsync" />
+                         OnRemoveDependency="HandleRemoveDependencyAsync"
+                         OnUpdateToLatestVersion="HandleUpdateToLatestVersionAsync" />
     </div>
 
     @* ── Status Bar ── *@
@@ -154,10 +205,73 @@
         @if ( _lastSaved.HasValue ) {
             <span>Last saved: @_lastSaved.Value.ToString( "HH:mm:ss" )</span>
         }
-        <span class="ms-auto badge @( _selectedStepId.HasValue ? "bg-success" : "bg-secondary" )">
-            DEBUG selectedStepId=@( _selectedStepId?.ToString() ?? "null" )
+        <span class="ms-auto badge @( _currentVersionNumber.HasValue ? "bg-info" : "bg-secondary" )">
+            @if ( _currentVersionNumber.HasValue ) {
+                <text>v@(_currentVersionNumber)</text>
+            } else {
+                <text>Draft</text>
+            }
         </span>
     </div>
+
+    @* ── Version History ── *@
+    @if ( !IsNewMode && _currentVersionNumber.HasValue ) {
+        <div class="card mb-4 mt-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">
+                        Version History
+                        <span class="badge bg-primary ms-2">Current: v@(_currentVersionNumber)</span>
+                    </h5>
+                </div>
+                @if ( _versions is { Items.Count: > 0 } ) {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Version</th>
+                                    <th>Created</th>
+                                    <th>Author</th>
+                                    <th>Description</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( WorkflowVersionDto v in _versions.Items ) {
+                                    <tr>
+                                        <td>
+                                            <span class="badge @( v.VersionNumber == _currentVersionNumber ? "bg-primary" : "bg-secondary" )">
+                                                v@(v.VersionNumber)
+                                            </span>
+                                        </td>
+                                        <td>@v.CreatedUtc.ToString( "g" )</td>
+                                        <td>@( v.CreatedByUserId ?? "System" )</td>
+                                        <td>@( v.ChangeDescription ?? "\u2014" )</td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <a href="/workflows/@_workflowId/versions/@v.Id"
+                                                   class="btn btn-outline-secondary btn-sm">View</a>
+                                                @if ( v.VersionNumber > 1 && GetPreviousVersionId( v.VersionNumber ) is long prevId ) {
+                                                    <a href="/workflows/@_workflowId/versions/diff?from=@prevId&to=@v.Id"
+                                                       class="btn btn-outline-info btn-sm">Diff</a>
+                                                }
+                                                @if ( v.VersionNumber != _currentVersionNumber ) {
+                                                    <button class="btn btn-outline-warning btn-sm"
+                                                            @onclick="( ) => RollbackAsync( v.Id )">Rollback</button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } else {
+                    <p class="text-muted mb-0">No version history available.</p>
+                }
+            </div>
+        </div>
+    }
 
     <TaskSetupModal @ref="_taskSetupModal" WorkflowId="_workflowId" OnTaskCreated="OnTaskCreatedAsync" OnTaskUpdated="OnTaskUpdatedAsync" />
 }
@@ -196,6 +310,14 @@
     private DateTime? _lastSaved;
     private bool _gridVisible;
 
+    // ── Version State ──
+    private int? _currentVersionNumber;
+    private PagedResult<WorkflowVersionDto>? _versions;
+
+    // ── Conflict Resolution State ──
+    private bool _conflictDetected;
+    private WorkflowUpdateRequest? _conflictLocalRequest;
+
     // ── Selected Node State ──
     private long? _selectedStepId;
     private long _selectedTaskId;
@@ -218,6 +340,8 @@
     // Track all state for unsaved temp nodes (stepId → state)
     private readonly Dictionary<long, TempNodeState> _tempNodes = new( );
     private string? _selectedActionKey;
+    private int? _selectedTaskVersionNumber;
+    private int? _selectedTaskCurrentVersionNumber;
 
     private static readonly System.Text.Json.JsonSerializerOptions s_jsonWeb = new( System.Text.Json.JsonSerializerDefaults.Web );
 
@@ -291,6 +415,9 @@
             _tasks = await Api.GetAsync<List<TaskDto>>( "/api/v1/tasks" );
             _stepCount = _workflow.Steps.Count;
             _edgeCount = _workflow.Steps.Sum( s => s.Dependencies.Count );
+
+            _currentVersionNumber = _workflow.CurrentVersionNumber;
+            await LoadVersionHistoryAsync( );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load workflow: {ex.Message}";
         } finally {
@@ -326,6 +453,9 @@
             _tempNodes.Clear( );
             _selectedStepId = null;
             _selectedActionKey = null;
+
+            _currentVersionNumber = _workflow?.CurrentVersionNumber;
+            await LoadVersionHistoryAsync( );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to reload after save: {ex.Message}";
         }
@@ -418,9 +548,15 @@
                     Description: _model.Description,
                     Enabled: _model.Enabled,
                     TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null,
-                    Annotations: annotations );
+                    Annotations: annotations,
+                    ExpectedVersionNumber: _currentVersionNumber );
 
                 HttpResponseMessage updateResponse = await Api.PutAsJsonAsync( $"/api/v1/workflows/{_workflowId}", updateRequest );
+                if ( updateResponse.StatusCode == System.Net.HttpStatusCode.Conflict ) {
+                    _conflictDetected = true;
+                    _conflictLocalRequest = updateRequest;
+                    return;
+                }
                 if ( !updateResponse.IsSuccessStatusCode ) {
                     string body = await updateResponse.Content.ReadAsStringAsync( );
                     _errorMessage = $"Failed to save workflow metadata: {body}";
@@ -454,6 +590,7 @@
             _lastSaved = DateTime.Now;
             _successMessage = "Changes saved.";
             await ReloadAfterSaveAsync( );
+            await CheckPinnedTriggersAsync( );
         } catch ( Exception ex ) {
             _errorMessage = $"Save failed: {ex.Message}";
         } finally {
@@ -593,6 +730,9 @@
             _selectedCollectionVariable = step.CollectionVariableName;
             _selectedIterationVariable = step.IterationVariableName;
 
+            _selectedTaskVersionNumber = step.TaskVersionNumber;
+            _selectedTaskCurrentVersionNumber = step.TaskCurrentVersionNumber;
+
             // Derive action key from the step's assigned task
             _selectedActionKey = step.TaskId.HasValue ? DeriveActionKeyFromTask( step.TaskId.Value ) : null;
         } else if ( _tempNodes.TryGetValue( stepId, out TempNodeState? ts ) ) {
@@ -612,6 +752,8 @@
             _selectedCollectionVariable = ts.CollectionVariableName;
             _selectedIterationVariable = ts.IterationVariableName;
             _selectedActionKey = ts.ActionKey;
+            _selectedTaskVersionNumber = null;
+            _selectedTaskCurrentVersionNumber = null;
         } else {
             // Unknown node — shouldn't happen, but fall back to defaults
             _selectedTaskId = 0;
@@ -629,6 +771,8 @@
             _selectedCollectionVariable = null;
             _selectedIterationVariable = null;
             _selectedActionKey = null;
+            _selectedTaskVersionNumber = null;
+            _selectedTaskCurrentVersionNumber = null;
         }
 
         await InvokeAsync( StateHasChanged );
@@ -756,6 +900,25 @@
         }
     }
 
+    private async Task HandleUpdateToLatestVersionAsync( ) {
+        if ( _selectedStepId is null || _workflow is null ) return;
+
+        // Find the step and its task to get the current version
+        WorkflowStepDto? step = _workflow.Steps.FirstOrDefault( s => s.Id == _selectedStepId );
+        if ( step?.TaskId is null ) return;
+
+        TaskDto? task = _tasks?.FirstOrDefault( t => t.Id == step.TaskId );
+        if ( task?.CurrentVersionId is null ) return;
+
+        // Update the step's TaskVersionId via the field change mechanism
+        await HandleFieldChangedAsync( ("taskVersionId", task.CurrentVersionId) );
+
+        // Update local display state
+        _selectedTaskVersionNumber = task.CurrentVersionNumber;
+        _selectedTaskCurrentVersionNumber = task.CurrentVersionNumber;
+        await InvokeAsync( StateHasChanged );
+    }
+
     private async Task HandleRemoveDependencyAsync( long depStepId ) {
         // Removing a dependency updates the graph via JS changeset
         if ( _selectedStepId is null || _canvas?.Interop is null ) return;
@@ -839,6 +1002,43 @@
         }
     }
 
+    // ── Version Helpers ──
+
+    private async Task LoadVersionHistoryAsync( ) {
+        try {
+            _versions = await Api.GetAsync<PagedResult<WorkflowVersionDto>>(
+                $"/api/v1/workflows/{_workflowId}/versions?limit=25" );
+        } catch {
+            // Non-critical — version history is informational
+        }
+    }
+
+    private long? GetPreviousVersionId( int versionNumber ) {
+        return _versions?.Items
+            .FirstOrDefault( v => v.VersionNumber == versionNumber - 1 )?.Id;
+    }
+
+    private async Task RollbackAsync( long versionId ) {
+        _errorMessage = null;
+        _successMessage = null;
+        try {
+            HttpResponseMessage response = await Api.PostAsync(
+                $"/api/v1/workflows/{_workflowId}/versions/{versionId}/rollback", null );
+            if ( response.IsSuccessStatusCode ) {
+                _successMessage = "Workflow rolled back successfully. Reloading...";
+                await LoadAsync( );
+                if ( _canvas?.Interop is not null && _workflow is not null ) {
+                    await LoadGraphIntoCanvasAsync( );
+                }
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Rollback failed: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Rollback failed: {ex.Message}";
+        }
+    }
+
     // ── Models ──
 
     private sealed class WorkflowFormModel {
@@ -847,6 +1047,91 @@
         public bool Enabled { get; set; } = true;
         public string[] TargetTags { get; set; } = [];
     }
+
+    // ── Conflict Resolution ──
+
+    private async Task ConflictOverwriteAsync( ) {
+        _conflictDetected = false;
+        if ( _conflictLocalRequest is null ) return;
+
+        // Resend without expectedVersionNumber to force overwrite
+        WorkflowUpdateRequest overwrite = _conflictLocalRequest with { ExpectedVersionNumber = null };
+        HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/workflows/{_workflowId}", overwrite );
+        if ( response.IsSuccessStatusCode ) {
+            _successMessage = "Workflow saved (overwrite).";
+            _conflictLocalRequest = null;
+            await LoadAsync( );
+        } else {
+            string body = await response.Content.ReadAsStringAsync( );
+            _errorMessage = $"Overwrite failed: {body}";
+        }
+    }
+
+    private async Task ConflictReloadAsync( ) {
+        _conflictDetected = false;
+        _conflictLocalRequest = null;
+        await LoadAsync( );
+        _successMessage = "Reloaded latest version from server.";
+    }
+
+    private async Task ConflictExportJsonAsync( ) {
+        if ( _model is null ) return;
+        string json = System.Text.Json.JsonSerializer.Serialize( new {
+            _model.Name,
+            _model.Description,
+            _model.Enabled,
+            _model.TargetTags,
+            ExportedAt = DateTime.UtcNow,
+            Note = "Exported from conflict resolution — contains your unsaved changes."
+        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true } );
+
+        // Trigger browser download via JS interop
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes( json );
+        string base64 = Convert.ToBase64String( bytes );
+        string fileName = $"workflow-{_workflowId}-conflict-export.json";
+        await JS.InvokeVoidAsync( "eval",
+            $"(() => {{ const a = document.createElement('a'); a.href = 'data:application/json;base64,{base64}'; a.download = '{fileName}'; a.click(); }})()" );
+    }
+
+    // ── Pinned Trigger Prompt (post-save) ──
+
+    private List<PinnedTriggerMismatch>? _pinnedTriggerMismatches;
+
+    private async Task CheckPinnedTriggersAsync( ) {
+        if ( _workflowId == 0 || _workflow is null ) return;
+        try {
+            // Load file monitor triggers for this workflow and check for pinned mismatches
+            List<PinnedTriggerMismatch>? triggers = await Api.GetAsync<List<PinnedTriggerMismatch>>(
+                $"/api/v1/triggers/file-monitor?workflowId={_workflowId}" );
+
+            _pinnedTriggerMismatches = triggers?
+                .Where( t => string.Equals( t.VersionBindingMode, "Pinned", StringComparison.OrdinalIgnoreCase )
+                             && t.PinnedWorkflowVersionId.HasValue
+                             && t.PinnedWorkflowVersionId != _workflow.CurrentVersionId )
+                .ToList( );
+        } catch {
+            // Best-effort — don't block save success
+        }
+    }
+
+    private async Task UpdatePinnedTriggerAsync( long triggerId, long newVersionId ) {
+        try {
+            await Api.PutAsJsonAsync( $"/api/v1/triggers/file-monitor/{triggerId}/binding", new {
+                VersionBindingMode = "Pinned",
+                PinnedWorkflowVersionId = newVersionId
+            } );
+            _pinnedTriggerMismatches?.RemoveAll( t => t.Id == triggerId );
+        } catch {
+            // ignore
+        }
+    }
+
+    private sealed record PinnedTriggerMismatch(
+        long Id,
+        string? Name,
+        string VersionBindingMode,
+        long? PinnedWorkflowVersionId
+    );
 
     /// <summary>C#-side state for an unsaved temp node. Single source of truth for config panel values.</summary>
     private sealed class TempNodeState {

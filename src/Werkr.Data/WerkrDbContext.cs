@@ -67,6 +67,12 @@ public class WerkrDbContext : DbContext {
     /// <summary>Tasks.</summary>
     public DbSet<WerkrTask> Tasks => Set<WerkrTask>( );
 
+    /// <summary>Immutable task version snapshots.</summary>
+    public DbSet<TaskVersion> TaskVersions => Set<TaskVersion>( );
+
+    /// <summary>Immutable workflow version snapshots.</summary>
+    public DbSet<WorkflowVersion> WorkflowVersions => Set<WorkflowVersion>( );
+
     /// <summary>Jobs.</summary>
     public DbSet<WerkrJob> Jobs => Set<WerkrJob>( );
 
@@ -117,6 +123,9 @@ public class WerkrDbContext : DbContext {
 
     /// <summary>File monitor triggers that watch directories and initiate workflow runs.</summary>
     public DbSet<FileMonitorTrigger> FileMonitorTriggers => Set<FileMonitorTrigger>( );
+
+    /// <summary>Immutable trigger version snapshots.</summary>
+    public DbSet<TriggerVersion> TriggerVersions => Set<TriggerVersion>( );
 
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
@@ -255,6 +264,35 @@ public class WerkrDbContext : DbContext {
             );
         } );
 
+        // TaskVersion — unique index on (TaskId, VersionNumber), standalone TaskId index, cascade delete from task
+        _ = modelBuilder.Entity<TaskVersion>( entity => {
+            _ = entity.HasIndex( e => new { e.TaskId, e.VersionNumber } )
+                .IsUnique( );
+
+            _ = entity.HasIndex( e => e.TaskId );
+
+            _ = entity.HasOne( e => e.Task )
+                .WithMany( t => t.Versions )
+                .HasForeignKey( e => e.TaskId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
+        // WerkrTask.CurrentVersionId FK — SetNull to avoid circular cascade with TaskVersion
+        _ = modelBuilder.Entity<WerkrTask>( entity => {
+            _ = entity.HasOne( e => e.CurrentVersion )
+                .WithMany( )
+                .HasForeignKey( e => e.CurrentVersionId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // WorkflowStep.TaskVersionId FK — SetNull on delete so steps survive version cleanup
+        _ = modelBuilder.Entity<WorkflowStep>( entity => {
+            _ = entity.HasOne( e => e.TaskVersion )
+                .WithMany( )
+                .HasForeignKey( e => e.TaskVersionId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
         // Workflow.TargetTags stored as JSON
         _ = modelBuilder.Entity<Workflow>( entity => {
             PropertyBuilder<string[]?> targetTagsProp = entity.Property( e => e.TargetTags )
@@ -269,6 +307,35 @@ public class WerkrDbContext : DbContext {
                     v => v == null ? null : v.ToArray( )
                 )
             );
+        } );
+
+        // WorkflowVersion — unique index on (WorkflowId, VersionNumber), standalone WorkflowId index, cascade delete from workflow
+        _ = modelBuilder.Entity<WorkflowVersion>( entity => {
+            _ = entity.HasIndex( e => new { e.WorkflowId, e.VersionNumber } )
+                .IsUnique( );
+
+            _ = entity.HasIndex( e => e.WorkflowId );
+
+            _ = entity.HasOne( e => e.Workflow )
+                .WithMany( w => w.Versions )
+                .HasForeignKey( e => e.WorkflowId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
+        // Workflow.CurrentVersionId FK — SetNull to avoid circular cascade with WorkflowVersion
+        _ = modelBuilder.Entity<Workflow>( entity => {
+            _ = entity.HasOne( e => e.CurrentVersion )
+                .WithMany( )
+                .HasForeignKey( e => e.CurrentVersionId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
+        // WorkflowRun.WorkflowVersionId FK — SetNull so runs survive version cleanup
+        _ = modelBuilder.Entity<WorkflowRun>( entity => {
+            _ = entity.HasOne( e => e.WorkflowVersion )
+                .WithMany( )
+                .HasForeignKey( e => e.WorkflowVersionId )
+                .OnDelete( DeleteBehavior.SetNull );
         } );
 
         // WorkflowStep.ChildWorkflow FK — SetNull on delete to avoid cascading removal of the parent step
@@ -514,6 +581,32 @@ public class WerkrDbContext : DbContext {
             );
         } );
 
+        // TriggerVersion — unique index on (TriggerId, VersionNumber), standalone TriggerId index, cascade delete from trigger
+        _ = modelBuilder.Entity<TriggerVersion>( entity => {
+            _ = entity.HasIndex( e => new { e.TriggerId, e.VersionNumber } )
+                .IsUnique( );
+
+            _ = entity.HasIndex( e => e.TriggerId );
+
+            _ = entity.HasOne( e => e.Trigger )
+                .WithMany( t => t.Versions )
+                .HasForeignKey( e => e.TriggerId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
+        // FileMonitorTrigger.CurrentVersionId FK — SetNull to avoid circular cascade
+        _ = modelBuilder.Entity<FileMonitorTrigger>( entity => {
+            _ = entity.HasOne( e => e.CurrentVersion )
+                .WithMany( )
+                .HasForeignKey( e => e.CurrentVersionId )
+                .OnDelete( DeleteBehavior.SetNull );
+
+            _ = entity.HasOne( e => e.PinnedWorkflowVersion )
+                .WithMany( )
+                .HasForeignKey( e => e.PinnedWorkflowVersionId )
+                .OnDelete( DeleteBehavior.SetNull );
+        } );
+
         // Field-level encryption for sensitive columns (§9 Data Protection)
         if (FieldEncryption is not null) {
             EncryptedStringConverter encString = new( FieldEncryption );
@@ -533,9 +626,9 @@ public class WerkrDbContext : DbContext {
         _ = configurationBuilder.Properties<TimeZoneInfo>( )
             .HaveConversion<TimeZoneInfoStringConverter>( );
 
-        // DateTime ↔ string (ISO 8601)
-        _ = configurationBuilder.Properties<DateTime>( )
-            .HaveConversion<DateTimeStringConverter>( );
+        // DateTime: EF Core + Npgsql maps to `timestamp with time zone` natively.
+        // SQLite continues using TEXT (its only type affinity) with proper EF Core metadata.
+        // No global converter needed.
 
         // RSAParameters ↔ string (JSON)
         _ = configurationBuilder.Properties<RSAParameters>( )
@@ -597,6 +690,10 @@ public class WerkrDbContext : DbContext {
         _ = configurationBuilder.Properties<CompositeType>( )
             .HaveConversion<CompositeTypeStringConverter>( );
 
+        // VersionBindingMode ↔ string
+        _ = configurationBuilder.Properties<VersionBindingMode>( )
+            .HaveConversion<VersionBindingModeStringConverter>( );
+
         // ActorType ↔ string (audit events)
         _ = configurationBuilder.Properties<ActorType>( )
             .HaveConversion<ActorTypeStringConverter>( );
@@ -647,11 +744,6 @@ public class WerkrDbContext : DbContext {
         : ValueConverter<TimeZoneInfo, string>(
             tz => tz.Id,
             id => TimeZoneInfo.FindSystemTimeZoneById( id ) );
-
-    private sealed class DateTimeStringConverter( )
-        : ValueConverter<DateTime, string>(
-            dt => dt.ToString( "o" ),
-            s => DateTime.Parse( s ).ToUniversalTime( ) );
 
     /// <summary>JSON options that include fields - required for <see cref="RSAParameters"/> which uses public fields, not properties.</summary>
     private static readonly JsonSerializerOptions s_rsaJsonOptions = new( ) { IncludeFields = true };
@@ -748,4 +840,9 @@ public class WerkrDbContext : DbContext {
         : ValueConverter<ActorType, string>(
             v => v.ToString( ),
             v => Enum.Parse<ActorType>( v ) );
+
+    private sealed class VersionBindingModeStringConverter( )
+        : ValueConverter<VersionBindingMode, string>(
+            v => v.ToString( ),
+            v => Enum.Parse<VersionBindingMode>( v ) );
 }

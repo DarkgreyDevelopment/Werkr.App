@@ -35,13 +35,23 @@
         </div>
         <div class="d-flex gap-2">
             <AuthorizeView Roles="Admin,Operator">
-                <button class="btn btn-outline-info btn-sm"
-                        @onclick="RunNowAsync" disabled="@_isRunning">
-                    @if ( _isRunning ) {
-                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                <div class="d-flex align-items-center gap-1">
+                    <button class="btn btn-outline-info btn-sm"
+                            @onclick="RunNowAsync" disabled="@_isRunning">
+                        @if ( _isRunning ) {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Run Now
+                    </button>
+                    @if ( _runVersions is { Items.Count: > 1 } ) {
+                        <select class="form-select form-select-sm" style="width: auto; max-width: 180px;"
+                                @bind="_selectedRunVersionId">
+                            @foreach ( WorkflowVersionDto v in _runVersions.Items ) {
+                                <option value="@v.Id">v@(v.VersionNumber)</option>
+                            }
+                        </select>
                     }
-                    Run Now
-                </button>
+                </div>
                 <a class="btn btn-outline-primary btn-sm" href="/workflows/@Id/dag-editor">Edit</a>
             </AuthorizeView>
             <a class="btn btn-outline-secondary btn-sm" href="/workflows/@Id/runs">View Runs</a>
@@ -117,6 +127,8 @@
     private bool _isLoading;
     private bool _isRunning;
     private string _activeTab = "graph";
+    private PagedResult<WorkflowVersionDto>? _runVersions;
+    private long? _selectedRunVersionId;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
         new( "Workflows", "/workflows" )
@@ -136,6 +148,11 @@
                 return;
             }
             _breadcrumbs = [new( "Workflows", "/workflows" ), new( _workflow.Name )];
+
+            // Load version list for manual run selector
+            _runVersions = await Api.GetAsync<PagedResult<WorkflowVersionDto>>(
+                $"/api/v1/workflows/{Id}/versions?limit=20" );
+            _selectedRunVersionId = _workflow.CurrentVersionId;
 
             // Load latest run status for DAG overlay
             HttpResponseMessage statusResponse = await Api.GetRawAsync(
@@ -195,8 +212,11 @@
         _isRunning = true;
         _errorMessage = null;
         try {
-            HttpResponseMessage response = await Api.PostAsync(
-                $"/api/v1/workflows/{Id}/execute", null );
+            string url = $"/api/v1/workflows/{Id}/execute";
+            if ( _selectedRunVersionId.HasValue && _selectedRunVersionId != _workflow?.CurrentVersionId ) {
+                url += $"?versionId={_selectedRunVersionId}";
+            }
+            HttpResponseMessage response = await Api.PostAsync( url, null );
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );
                 _errorMessage = $"Run failed: {body}";

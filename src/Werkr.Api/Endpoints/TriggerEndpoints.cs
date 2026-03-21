@@ -1,6 +1,10 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Auth;
+using Werkr.Common.Models.Audit;
+using Werkr.Core.Audit;
+using Werkr.Core.Triggers;
 using Werkr.Data;
 using Werkr.Data.Entities.Triggers;
 
@@ -40,7 +44,9 @@ internal static class TriggerEndpoints {
                     t.EventTypes,
                     t.DebounceMs,
                     t.Enabled,
-                    t.TargetTags ) )
+                    t.TargetTags,
+                    t.VersionBindingMode.ToString( ),
+                    t.PinnedWorkflowVersionId ) )
                 .ToListAsync( ct );
             return Results.Ok( triggers );
         } )
@@ -70,7 +76,9 @@ internal static class TriggerEndpoints {
                 trigger.EventTypes,
                 trigger.DebounceMs,
                 trigger.Enabled,
-                trigger.TargetTags );
+                trigger.TargetTags,
+                trigger.VersionBindingMode.ToString( ),
+                trigger.PinnedWorkflowVersionId );
             return Results.Ok( dto );
         } )
         .WithName( "GetFileMonitorTrigger" )
@@ -79,7 +87,9 @@ internal static class TriggerEndpoints {
         // POST /api/v1/triggers/file-monitor — Create
         _ = app.MapPost( "/api/v1/triggers/file-monitor", async (
             FileMonitorTriggerCreateRequest request,
+            HttpContext httpContext,
             WerkrDbContext dbContext,
+            TriggerVersionService triggerVersionService,
             CancellationToken ct
         ) => {
             bool workflowExists = await dbContext.Workflows.AnyAsync(
@@ -93,6 +103,13 @@ internal static class TriggerEndpoints {
                 return Results.BadRequest( new { message = "EventTypes must be a valid JSON array of strings." } );
             }
 
+            VersionBindingMode bindingMode = VersionBindingMode.Latest;
+            if (request.VersionBindingMode is not null) {
+                if (!Enum.TryParse( request.VersionBindingMode, ignoreCase: true, out bindingMode )) {
+                    return Results.BadRequest( new { message = $"Invalid VersionBindingMode: '{request.VersionBindingMode}'. Valid values: Latest, Pinned." } );
+                }
+            }
+
             FileMonitorTrigger entity = new( ) {
                 WorkflowId = request.WorkflowId,
                 WatchDirectory = request.WatchDirectory,
@@ -101,10 +118,15 @@ internal static class TriggerEndpoints {
                 DebounceMs = request.DebounceMs ?? 500,
                 Enabled = request.Enabled ?? true,
                 TargetTags = request.TargetTags,
+                VersionBindingMode = bindingMode,
+                PinnedWorkflowVersionId = request.PinnedWorkflowVersionId,
             };
 
             _ = dbContext.FileMonitorTriggers.Add( entity );
             _ = await dbContext.SaveChangesAsync( ct );
+
+            string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+            _ = await triggerVersionService.CreateVersionAsync( entity, userId, "Initial version", ct );
 
             return Results.Created( $"/api/v1/triggers/file-monitor/{entity.Id}",
                 new { entity.Id } );
@@ -116,7 +138,10 @@ internal static class TriggerEndpoints {
         _ = app.MapPut( "/api/v1/triggers/file-monitor/{id}", async (
             long id,
             FileMonitorTriggerUpdateRequest request,
+            HttpContext httpContext,
             WerkrDbContext dbContext,
+            TriggerVersionService triggerVersionService,
+            IAuditService auditService,
             CancellationToken ct
         ) => {
             FileMonitorTrigger? trigger = await dbContext.FileMonitorTriggers
@@ -124,6 +149,10 @@ internal static class TriggerEndpoints {
             if (trigger is null) {
                 return Results.NotFound( );
             }
+
+            // Capture old binding values for audit
+            VersionBindingMode oldBindingMode = trigger.VersionBindingMode;
+            long? oldPinnedVersionId = trigger.PinnedWorkflowVersionId;
 
             if (request.WorkflowId.HasValue) {
                 bool workflowExists = await dbContext.Workflows.AnyAsync(
@@ -161,7 +190,41 @@ internal static class TriggerEndpoints {
                 trigger.TargetTags = request.TargetTags;
             }
 
+            if (request.VersionBindingMode is not null) {
+                if (!Enum.TryParse( request.VersionBindingMode, ignoreCase: true, out VersionBindingMode parsedMode )) {
+                    return Results.BadRequest( new { message = $"Invalid VersionBindingMode: '{request.VersionBindingMode}'. Valid values: Latest, Pinned." } );
+                }
+                trigger.VersionBindingMode = parsedMode;
+            }
+
+            if (request.PinnedWorkflowVersionId.HasValue) {
+                trigger.PinnedWorkflowVersionId = request.PinnedWorkflowVersionId;
+            }
+
             _ = await dbContext.SaveChangesAsync( ct );
+
+            string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+            _ = await triggerVersionService.CreateVersionAsync( trigger, userId, null, ct );
+
+            // Emit audit event if binding mode or pinned version changed
+            if (trigger.VersionBindingMode != oldBindingMode || trigger.PinnedWorkflowVersionId != oldPinnedVersionId) {
+                await auditService.LogAsync( new AuditEntry(
+                    EventTypeId: AuditEventType.TriggerBindingUpdated.ToEventId( ),
+                    ActorId: userId,
+                    ActorType: userId is not null ? "user" : "system",
+                    EntityType: "Trigger",
+                    EntityId: trigger.Id.ToString( ),
+                    ActionPerformed: "Binding updated",
+                    Details: new {
+                        TriggerId = trigger.Id,
+                        OldBindingMode = oldBindingMode.ToString( ),
+                        NewBindingMode = trigger.VersionBindingMode.ToString( ),
+                        OldPinnedVersionId = oldPinnedVersionId,
+                        NewPinnedVersionId = trigger.PinnedWorkflowVersionId,
+                    }
+                ), ct );
+            }
+
             return Results.Ok( new { trigger.Id } );
         } )
         .WithName( "UpdateFileMonitorTrigger" )
@@ -234,6 +297,8 @@ internal static class TriggerEndpoints {
 /// <param name="DebounceMs">Debounce interval in milliseconds.</param>
 /// <param name="Enabled">Whether the trigger is active.</param>
 /// <param name="TargetTags">Optional JSON array of agent tags.</param>
+/// <param name="VersionBindingMode">How this trigger resolves which workflow version to execute (Latest or Pinned).</param>
+/// <param name="PinnedWorkflowVersionId">The pinned workflow version ID, if binding mode is Pinned.</param>
 internal sealed record FileMonitorTriggerDto(
     long Id,
     long WorkflowId,
@@ -243,7 +308,9 @@ internal sealed record FileMonitorTriggerDto(
     string EventTypes,
     int DebounceMs,
     bool Enabled,
-    string? TargetTags );
+    string? TargetTags,
+    string VersionBindingMode,
+    long? PinnedWorkflowVersionId );
 
 /// <summary>Request body for creating a file monitor trigger.</summary>
 /// <param name="WorkflowId">Target workflow ID.</param>
@@ -253,6 +320,8 @@ internal sealed record FileMonitorTriggerDto(
 /// <param name="DebounceMs">Optional debounce interval. Defaults to 500.</param>
 /// <param name="Enabled">Optional enabled flag. Defaults to true.</param>
 /// <param name="TargetTags">Optional JSON array of agent tags.</param>
+/// <param name="VersionBindingMode">Optional binding mode (Latest or Pinned). Defaults to Latest.</param>
+/// <param name="PinnedWorkflowVersionId">Optional pinned workflow version ID.</param>
 internal sealed record FileMonitorTriggerCreateRequest(
     long WorkflowId,
     string WatchDirectory,
@@ -260,7 +329,9 @@ internal sealed record FileMonitorTriggerCreateRequest(
     string? EventTypes = null,
     int? DebounceMs = null,
     bool? Enabled = null,
-    string? TargetTags = null );
+    string? TargetTags = null,
+    string? VersionBindingMode = null,
+    long? PinnedWorkflowVersionId = null );
 
 /// <summary>Request body for updating a file monitor trigger.</summary>
 /// <param name="WorkflowId">Optional new workflow ID.</param>
@@ -270,6 +341,8 @@ internal sealed record FileMonitorTriggerCreateRequest(
 /// <param name="DebounceMs">Optional new debounce interval.</param>
 /// <param name="Enabled">Optional new enabled flag.</param>
 /// <param name="TargetTags">Optional new target tags JSON.</param>
+/// <param name="VersionBindingMode">Optional new binding mode (Latest or Pinned).</param>
+/// <param name="PinnedWorkflowVersionId">Optional new pinned workflow version ID.</param>
 internal sealed record FileMonitorTriggerUpdateRequest(
     long? WorkflowId = null,
     string? WatchDirectory = null,
@@ -277,7 +350,9 @@ internal sealed record FileMonitorTriggerUpdateRequest(
     string? EventTypes = null,
     int? DebounceMs = null,
     bool? Enabled = null,
-    string? TargetTags = null );
+    string? TargetTags = null,
+    string? VersionBindingMode = null,
+    long? PinnedWorkflowVersionId = null );
 
 /// <summary>Request body for enabling/disabling a file monitor trigger.</summary>
 /// <param name="Enabled">Whether the trigger should be enabled.</param>

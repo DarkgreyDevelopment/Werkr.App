@@ -95,9 +95,22 @@ public class WerkrTask : ConcurrencyBase, IKey<long> {
     /// </summary>
     public string? ActionParameters { get; set; }
 
+    /// <summary>
+    /// Foreign key to the current (latest) task version.
+    /// Nullable for migration — existing tasks will be backfilled by <see cref="Seeding.TaskVersionSeeder"/>.
+    /// </summary>
+    public long? CurrentVersionId { get; set; }
+
     /// <summary>Navigation property for parent workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow? Workflow { get; set; }
+
+    /// <summary>Navigation to the current (latest) version snapshot.</summary>
+    [ForeignKey( nameof( CurrentVersionId ) )]
+    public TaskVersion? CurrentVersion { get; set; }
+
+    /// <summary>All version snapshots for this task.</summary>
+    public ICollection<TaskVersion> Versions { get; set; } = [];
 
     /// <summary>Navigation property for schedule links (many-to-many via TaskSchedule).</summary>
     public ICollection<TaskSchedule> TaskSchedules { get; set; } = [];

@@ -10,5 +10,7 @@ public sealed record WorkflowDto(
     string[]? TargetTags = null,
     List<AnnotationDto>? Annotations = null,
     bool IsChildWorkflow = false,
-    long? ParentStepId = null
+    long? ParentStepId = null,
+    long? CurrentVersionId = null,
+    int? CurrentVersionNumber = null
 );

@@ -35,7 +35,27 @@ public class FileMonitorTrigger {
     /// <summary>Optional JSON array of agent tags for routing. Null means all agents.</summary>
     public string? TargetTags { get; set; }
 
+    /// <summary>Foreign key to the current (latest) trigger version. Nullable for migration.</summary>
+    public long? CurrentVersionId { get; set; }
+
+    /// <summary>How this trigger resolves which workflow version to execute.</summary>
+    public VersionBindingMode VersionBindingMode { get; set; } = VersionBindingMode.Latest;
+
+    /// <summary>Foreign key to the pinned workflow version. Only used when <see cref="VersionBindingMode"/> is Pinned.</summary>
+    public long? PinnedWorkflowVersionId { get; set; }
+
     /// <summary>Navigation property to the target workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow Workflow { get; set; } = null!;
+
+    /// <summary>Navigation to the current (latest) version snapshot.</summary>
+    [ForeignKey( nameof( CurrentVersionId ) )]
+    public TriggerVersion? CurrentVersion { get; set; }
+
+    /// <summary>All version snapshots for this trigger.</summary>
+    public ICollection<TriggerVersion> Versions { get; set; } = [];
+
+    /// <summary>Navigation to the pinned workflow version.</summary>
+    [ForeignKey( nameof( PinnedWorkflowVersionId ) )]
+    public WorkflowVersion? PinnedWorkflowVersion { get; set; }
 }

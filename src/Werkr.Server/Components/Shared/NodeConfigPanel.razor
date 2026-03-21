@@ -98,6 +98,30 @@
                     }
                 </div>
 
+                @* ── Version Badge ── *@
+                @if ( TaskVersionNumber.HasValue ) {
+                    <div class="mb-3">
+                        <label class="form-label">Task Version</label>
+                        <div>
+                            @if ( TaskCurrentVersionNumber.HasValue && TaskVersionNumber == TaskCurrentVersionNumber ) {
+                                <span class="badge bg-success">
+                                    Latest (v@(TaskVersionNumber))
+                                </span>
+                            } else if ( TaskCurrentVersionNumber.HasValue ) {
+                                <span class="badge bg-warning text-dark">
+                                    Outdated (v@(TaskVersionNumber) → v@(TaskCurrentVersionNumber))
+                                </span>
+                                <button type="button" class="btn btn-outline-primary btn-sm ms-2"
+                                        @onclick="OnUpdateToLatest">
+                                    Update to Latest
+                                </button>
+                            } else {
+                                <span class="badge bg-secondary">v@(TaskVersionNumber)</span>
+                            }
+                        </div>
+                    </div>
+                }
+
                 @* ── Control Statement ── *@
                 <div class="mb-3">
                     <label class="form-label">Control Statement</label>
@@ -207,12 +231,17 @@
 
     [Parameter] public string? ActionKey { get; set; }
 
+    // Task version parameters
+    [Parameter] public int? TaskVersionNumber { get; set; }
+    [Parameter] public int? TaskCurrentVersionNumber { get; set; }
+
     [Parameter] public EventCallback<(string Field, object? Value)> OnFieldChanged { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
     [Parameter] public EventCallback OnEditTaskRequested { get; set; }
     [Parameter] public EventCallback OnCreateTaskRequested { get; set; }
     [Parameter] public EventCallback<long> OnRemoveDependency { get; set; }
+    [Parameter] public EventCallback OnUpdateToLatestVersion { get; set; }
 
     private long _taskId;
     private string _taskName = "";
@@ -269,6 +298,7 @@
     private async Task OnDeleteStep( ) => await OnDelete.InvokeAsync( );
     private async Task OnEditTask( ) => await OnEditTaskRequested.InvokeAsync( );
     private async Task OnCreateTask( ) => await OnCreateTaskRequested.InvokeAsync( );
+    private async Task OnUpdateToLatest( ) => await OnUpdateToLatestVersion.InvokeAsync( );
 
     private async Task OnTaskIdChanged( ChangeEventArgs e ) {
         if (long.TryParse( e.Value?.ToString( ), out long taskId )) {

@@ -69,8 +69,9 @@ public sealed partial class RunNowService(
         CancellationToken ct = default
     ) {
         Workflow workflow = await dbContext.Set<Workflow>( )
-            .Include(w => w.Variables)
-            .Include(w => w.Steps)
+            .Include( w => w.CurrentVersion )
+            .Include( w => w.Variables )
+            .Include( w => w.Steps )
             .FirstOrDefaultAsync( w => w.Id == workflowId, ct )
             ?? throw new KeyNotFoundException( $"Workflow {workflowId} not found." );
 
@@ -82,6 +83,9 @@ public sealed partial class RunNowService(
             WorkflowId = workflowId,
             StartTime = DateTime.UtcNow,
             Status = WorkflowRunStatus.Running,
+            WorkflowVersionId = workflow.CurrentVersionId,
+            WorkflowNameSnapshot = workflow.Name,
+            WorkflowVersionSnapshot = workflow.CurrentVersion?.VersionNumber,
         };
         _ = dbContext.Set<WorkflowRun>( ).Add( run );
 

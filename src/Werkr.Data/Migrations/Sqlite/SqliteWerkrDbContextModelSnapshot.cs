@@ -3,7 +3,6 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Werkr.Data;
 
 #nullable disable
@@ -23,8 +22,7 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
-                        .HasColumnName("id")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn);
+                        .HasColumnName("id");
 
                     b.Property<string>("ActionPerformed")
                         .IsRequired()
@@ -81,8 +79,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("source_module");
 
-                    b.Property<string>("TimestampUtc")
-                        .IsRequired()
+                    b.Property<DateTime>("TimestampUtc")
                         .HasColumnType("TEXT")
                         .HasColumnName("timestamp_utc");
 
@@ -137,8 +134,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("connection_name");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -156,16 +152,15 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_server");
 
-                    b.Property<string>("KeyRotatedAtUtc")
+                    b.Property<DateTime?>("KeyRotatedAtUtc")
                         .HasColumnType("TEXT")
                         .HasColumnName("key_rotated_at_utc");
 
-                    b.Property<string>("LastSeen")
+                    b.Property<DateTime?>("LastSeen")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_seen");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -260,13 +255,11 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("connection_name");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
-                    b.Property<string>("ExpiresAt")
-                        .IsRequired()
+                    b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("expires_at");
 
@@ -274,8 +267,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("key_size");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -320,8 +312,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -329,8 +320,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("day_interval");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -356,13 +346,11 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("catch_up_enabled");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -397,8 +385,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -406,8 +393,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("date");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -438,8 +424,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
-                    b.Property<string>("CreatedUtc")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_utc");
 
@@ -459,8 +444,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
 
-                    b.Property<string>("UpdatedUtc")
-                        .IsRequired()
+                    b.Property<DateTime>("UpdatedUtc")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_utc");
 
@@ -483,8 +467,7 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
-                        .HasColumnName("id")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn);
+                        .HasColumnName("id");
 
                     b.Property<DateOnly>("Date")
                         .HasColumnType("TEXT")
@@ -539,8 +522,7 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
-                        .HasColumnName("id")
-                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn);
+                        .HasColumnName("id");
 
                     b.Property<int?>("Day")
                         .HasColumnType("INTEGER")
@@ -614,8 +596,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -627,8 +608,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("days_of_week");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -685,13 +665,11 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -720,8 +698,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -729,8 +706,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("date");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -760,8 +736,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -769,8 +744,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("days_of_week");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -796,8 +770,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -811,8 +784,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_shared");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -861,8 +833,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at_utc");
 
@@ -879,6 +850,62 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.ToTable("task_schedules", (string)null);
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskVersion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChangeDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("change_description");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("definition");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<long>("TaskId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("task_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_versions");
+
+                    b.HasIndex("TaskId")
+                        .HasDatabaseName("ix_task_versions_task_id");
+
+                    b.HasIndex("TaskId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_task_versions_task_id_version_number");
+
+                    b.ToTable("task_versions", (string)null);
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -890,12 +917,11 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("agent_connection_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
-                    b.Property<string>("EndTime")
+                    b.Property<DateTime?>("EndTime")
                         .HasColumnType("TEXT")
                         .HasColumnName("end_time");
 
@@ -908,8 +934,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("exit_code");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -931,8 +956,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("StartTime")
-                        .IsRequired()
+                    b.Property<DateTime>("StartTime")
                         .HasColumnType("TEXT")
                         .HasColumnName("start_time");
 
@@ -1015,10 +1039,13 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("content");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
+
+                    b.Property<long?>("CurrentVersionId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("current_version_id");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1034,8 +1061,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_ephemeral");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -1075,6 +1101,9 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.HasKey("Id")
                         .HasName("pk_tasks");
 
+                    b.HasIndex("CurrentVersionId")
+                        .HasDatabaseName("ix_tasks_current_version_id");
+
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_tasks_workflow_id");
 
@@ -1087,6 +1116,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasColumnName("id");
+
+                    b.Property<long?>("CurrentVersionId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("current_version_id");
 
                     b.Property<int>("DebounceMs")
                         .HasColumnType("INTEGER")
@@ -1107,9 +1140,18 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("file_pattern");
 
+                    b.Property<long?>("PinnedWorkflowVersionId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("pinned_workflow_version_id");
+
                     b.Property<string>("TargetTags")
                         .HasColumnType("TEXT")
                         .HasColumnName("target_tags");
+
+                    b.Property<string>("VersionBindingMode")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("version_binding_mode");
 
                     b.Property<string>("WatchDirectory")
                         .IsRequired()
@@ -1124,10 +1166,72 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.HasKey("Id")
                         .HasName("pk_file_monitor_triggers");
 
+                    b.HasIndex("CurrentVersionId")
+                        .HasDatabaseName("ix_file_monitor_triggers_current_version_id");
+
+                    b.HasIndex("PinnedWorkflowVersionId")
+                        .HasDatabaseName("ix_file_monitor_triggers_pinned_workflow_version_id");
+
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_file_monitor_triggers_workflow_id");
 
                     b.ToTable("file_monitor_triggers", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Triggers.TriggerVersion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChangeDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("change_description");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("definition");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<long>("TriggerId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("trigger_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_trigger_versions");
+
+                    b.HasIndex("TriggerId")
+                        .HasDatabaseName("ix_trigger_versions_trigger_id");
+
+                    b.HasIndex("TriggerId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_trigger_versions_trigger_id_version_number");
+
+                    b.ToTable("trigger_versions", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
@@ -1141,10 +1245,13 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("annotations");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
+
+                    b.Property<long?>("CurrentVersionId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("current_version_id");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1160,8 +1267,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_child_workflow");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -1187,6 +1293,9 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.HasKey("Id")
                         .HasName("pk_workflows");
 
+                    b.HasIndex("CurrentVersionId")
+                        .HasDatabaseName("ix_workflows_current_version_id");
+
                     b.HasIndex("ParentStepId")
                         .HasDatabaseName("ix_workflows_parent_step_id");
 
@@ -1200,22 +1309,19 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
-                    b.Property<string>("EndTime")
+                    b.Property<DateTime?>("EndTime")
                         .HasColumnType("TEXT")
                         .HasColumnName("end_time");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
-                    b.Property<string>("StartTime")
-                        .IsRequired()
+                    b.Property<DateTime>("StartTime")
                         .HasColumnType("TEXT")
                         .HasColumnName("start_time");
 
@@ -1233,11 +1339,27 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("workflow_id");
 
+                    b.Property<string>("WorkflowNameSnapshot")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("workflow_name_snapshot");
+
+                    b.Property<long?>("WorkflowVersionId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("workflow_version_id");
+
+                    b.Property<int?>("WorkflowVersionSnapshot")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("workflow_version_snapshot");
+
                     b.HasKey("Id")
                         .HasName("pk_workflow_runs");
 
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_workflow_runs_workflow_id");
+
+                    b.HasIndex("WorkflowVersionId")
+                        .HasDatabaseName("ix_workflow_runs_workflow_version_id");
 
                     b.ToTable("workflow_runs", (string)null);
                 });
@@ -1249,8 +1371,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -1312,8 +1433,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at_utc");
 
@@ -1369,8 +1489,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("control_statement");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -1393,8 +1512,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("iteration_variable_name");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -1414,6 +1532,10 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Property<long?>("TaskId")
                         .HasColumnType("INTEGER")
                         .HasColumnName("task_id");
+
+                    b.Property<long?>("TaskVersionId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("task_version_id");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
@@ -1435,6 +1557,9 @@ namespace Werkr.Data.Migrations.Sqlite
 
                     b.HasIndex("TaskId")
                         .HasDatabaseName("ix_workflow_steps_task_id");
+
+                    b.HasIndex("TaskVersionId")
+                        .HasDatabaseName("ix_workflow_steps_task_version_id");
 
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_workflow_steps_workflow_id");
@@ -1472,12 +1597,11 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("attempt");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
-                    b.Property<string>("EndTime")
+                    b.Property<DateTime?>("EndTime")
                         .HasColumnType("TEXT")
                         .HasColumnName("end_time");
 
@@ -1490,8 +1614,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("job_id");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -1500,7 +1623,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("skip_reason");
 
-                    b.Property<string>("StartTime")
+                    b.Property<DateTime?>("StartTime")
                         .HasColumnType("TEXT")
                         .HasColumnName("start_time");
 
@@ -1548,8 +1671,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT")
                         .HasColumnName("created");
 
@@ -1571,8 +1693,7 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("is_required");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
@@ -1603,6 +1724,62 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasDatabaseName("ix_workflow_variables_workflow_id_name");
 
                     b.ToTable("workflow_variables", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVersion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChangeDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("change_description");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("definition");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version_number");
+
+                    b.Property<long>("WorkflowId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("workflow_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflow_versions");
+
+                    b.HasIndex("WorkflowId")
+                        .HasDatabaseName("ix_workflow_versions_workflow_id");
+
+                    b.HasIndex("WorkflowId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_workflow_versions_workflow_id_version_number");
+
+                    b.ToTable("workflow_versions", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DailyRecurrence", b =>
@@ -1751,6 +1928,18 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("Task");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskVersion", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
+                        .WithMany("Versions")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_versions_tasks_task_id");
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrJob", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "AgentConnection")
@@ -1794,16 +1983,36 @@ namespace Werkr.Data.Migrations.Sqlite
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrTask", b =>
                 {
+                    b.HasOne("Werkr.Data.Entities.Tasks.TaskVersion", "CurrentVersion")
+                        .WithMany()
+                        .HasForeignKey("CurrentVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_tasks_task_versions_current_version_id");
+
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
                         .WithMany("Tasks")
                         .HasForeignKey("WorkflowId")
                         .HasConstraintName("fk_tasks_workflows_workflow_id");
+
+                    b.Navigation("CurrentVersion");
 
                     b.Navigation("Workflow");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
                 {
+                    b.HasOne("Werkr.Data.Entities.Triggers.TriggerVersion", "CurrentVersion")
+                        .WithMany()
+                        .HasForeignKey("CurrentVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_file_monitor_triggers_trigger_versions_current_version_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowVersion", "PinnedWorkflowVersion")
+                        .WithMany()
+                        .HasForeignKey("PinnedWorkflowVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_file_monitor_triggers_workflow_versions_pinned_workflow_version_id");
+
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
                         .WithMany()
                         .HasForeignKey("WorkflowId")
@@ -1811,16 +2020,40 @@ namespace Werkr.Data.Migrations.Sqlite
                         .IsRequired()
                         .HasConstraintName("fk_file_monitor_triggers_workflows_workflow_id");
 
+                    b.Navigation("CurrentVersion");
+
+                    b.Navigation("PinnedWorkflowVersion");
+
                     b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Triggers.TriggerVersion", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Triggers.FileMonitorTrigger", "Trigger")
+                        .WithMany("Versions")
+                        .HasForeignKey("TriggerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_trigger_versions_file_monitor_triggers_trigger_id");
+
+                    b.Navigation("Trigger");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
                 {
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowVersion", "CurrentVersion")
+                        .WithMany()
+                        .HasForeignKey("CurrentVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflows_workflow_versions_current_version_id");
+
                     b.HasOne("Werkr.Data.Entities.Workflows.WorkflowStep", null)
                         .WithMany()
                         .HasForeignKey("ParentStepId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_workflows_workflow_steps_parent_step_id");
+
+                    b.Navigation("CurrentVersion");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRun", b =>
@@ -1832,7 +2065,15 @@ namespace Werkr.Data.Migrations.Sqlite
                         .IsRequired()
                         .HasConstraintName("fk_workflow_runs_workflows_workflow_id");
 
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowVersion", "WorkflowVersion")
+                        .WithMany()
+                        .HasForeignKey("WorkflowVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflow_runs_workflow_versions_workflow_version_id");
+
                     b.Navigation("Workflow");
+
+                    b.Navigation("WorkflowVersion");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRunVariable", b =>
@@ -1902,6 +2143,12 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasForeignKey("TaskId")
                         .HasConstraintName("fk_workflow_steps_tasks_task_id");
 
+                    b.HasOne("Werkr.Data.Entities.Tasks.TaskVersion", "TaskVersion")
+                        .WithMany()
+                        .HasForeignKey("TaskVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflow_steps_task_versions_task_version_id");
+
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
                         .WithMany("Steps")
                         .HasForeignKey("WorkflowId")
@@ -1914,6 +2161,8 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("ChildWorkflow");
 
                     b.Navigation("Task");
+
+                    b.Navigation("TaskVersion");
 
                     b.Navigation("Workflow");
                 });
@@ -1980,6 +2229,18 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("Workflow");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVersion", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
+                        .WithMany("Versions")
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_versions_workflows_workflow_id");
+
+                    b.Navigation("Workflow");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DbSchedule", b =>
                 {
                     b.Navigation("DailyRecurrence");
@@ -2018,6 +2279,13 @@ namespace Werkr.Data.Migrations.Sqlite
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrTask", b =>
                 {
                     b.Navigation("TaskSchedules");
+
+                    b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
+                {
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
@@ -2029,6 +2297,8 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("Tasks");
 
                     b.Navigation("Variables");
+
+                    b.Navigation("Versions");
 
                     b.Navigation("WorkflowSchedules");
                 });

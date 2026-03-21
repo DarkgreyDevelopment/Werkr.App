@@ -561,6 +561,7 @@ internal static class AgentEndpoints {
     private static void MapAgentKeyRotation( WebApplication app ) {
         _ = app.MapPost( "/api/v1/agents/{id}/rotate-key", async (
             Guid id,
+            ClaimsPrincipal user,
             KeyRotationService keyRotationService,
             IAuditService auditService,
             CancellationToken ct
@@ -569,9 +570,10 @@ internal static class AgentEndpoints {
 
             if (success) {
                 // Audit: agent key rotated
+                string? userId = user.FindFirst( ClaimTypes.NameIdentifier )?.Value;
                 await auditService.LogAsync( new AuditEntry(
                     EventTypeId: AuditEventType.AgentKeyRotated.ToEventId( ),
-                    ActorId: null,
+                    ActorId: userId,
                     ActorType: "User",
                     EntityType: "Agent",
                     EntityId: id.ToString( ),

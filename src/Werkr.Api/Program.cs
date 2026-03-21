@@ -189,6 +189,8 @@ public class Program {
                 builder.Configuration.GetSection( JobOutputOptions.SectionName ) );
             _ = builder.Services.Configure<WorkflowVariableOptions>(
                 builder.Configuration.GetSection( WorkflowVariableOptions.SectionName ) );
+            _ = builder.Services.AddScoped<TaskVersionService>( );
+            _ = builder.Services.AddScoped<TaskVersionDiffService>( );
             _ = builder.Services.AddScoped<TaskService>( );
             _ = builder.Services.AddScoped<AgentResolver>( );
             _ = builder.Services.AddScoped<JobOutputWriter>( );
@@ -197,7 +199,12 @@ public class Program {
 
             // Workflow services (Scoped — one per request)
             _ = builder.Services.AddScoped<Werkr.Core.Workflows.ConditionEvaluator>( );
+            _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowVersionService>( );
+            _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowVersionDiffService>( );
             _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowService>( );
+
+            // Trigger versioning service (Scoped)
+            _ = builder.Services.AddScoped<Werkr.Core.Triggers.TriggerVersionService>( );
 
             // Schedule invalidation dispatcher (Scoped — sends push notifications to agents)
             _ = builder.Services.AddScoped<ScheduleInvalidationDispatcher>( );
@@ -243,6 +250,15 @@ public class Program {
             // Seed system holiday calendars
             await HolidayCalendarSeeder.SeedAsync( app.Services );
 
+            // Seed task versions for pre-versioning tasks
+            await TaskVersionSeeder.SeedAsync( app.Services );
+
+            // Seed workflow versions for pre-versioning workflows
+            await Werkr.Data.Seeding.WorkflowVersionSeeder.SeedAsync( app.Services );
+
+            // Seed trigger versions for pre-versioning triggers
+            await Werkr.Data.Seeding.TriggerVersionSeeder.SeedAsync( app.Services );
+
             // Configure the HTTP request pipeline.
             _ = app.UseExceptionHandler( );
 
@@ -269,6 +285,8 @@ public class Program {
             _ = app.MapDiagnosticsEndpoints( );
             _ = app.MapScheduleEndpoints( );
             _ = app.MapTaskEndpoints( );
+            _ = app.MapTaskVersionEndpoints( );
+            _ = app.MapWorkflowVersionEndpoints( );
             _ = app.MapJobEndpoints( );
             _ = app.MapSettingsEndpoints( );
             _ = app.MapWorkflowEndpoints( );
@@ -279,6 +297,7 @@ public class Program {
             _ = app.MapShellEndpoints( );
             _ = app.MapFilterEndpoints( );
             _ = app.MapTriggerEndpoints( );
+            _ = app.MapTriggerVersionEndpoints( );
 
             _ = app.MapDefaultEndpoints( );
 

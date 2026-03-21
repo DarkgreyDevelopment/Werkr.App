@@ -78,7 +78,7 @@ public class AuditEventTypeRegistryTests {
         _ = registry.RegisterCoreAuditEvents( );
 
         IReadOnlyList<AuditEventTypeDto> all = registry.GetAll( );
-        Assert.HasCount( 33, all );
+        Assert.HasCount( 37, all );
     }
 
     [TestMethod]
@@ -106,6 +106,10 @@ public class AuditEventTypeRegistryTests {
     [DataRow( CalendarDetached )]
     [DataRow( ScheduleOccurrenceSuppressed )]
     [DataRow( ScheduleOccurrenceShifted )]
+    [DataRow( AgentRegistrationCompleted )]
+    [DataRow( TaskDeleted )]
+    [DataRow( TaskEnabled )]
+    [DataRow( TaskDisabled )]
     [DataRow( TaskVersionCreated )]
     [DataRow( WorkflowVersionCreated )]
     [DataRow( WorkflowVersionRollback )]

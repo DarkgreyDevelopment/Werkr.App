@@ -83,6 +83,43 @@
             <div class="form-text">Leave empty to target all agents.</div>
         </div>
 
+        <div class="mb-3">
+            <label class="form-label" for="bindingMode">Version Binding Mode</label>
+            <select class="form-select" id="bindingMode" @bind="_model.VersionBindingMode">
+                <option value="Latest">Latest (always use current workflow version)</option>
+                <option value="Pinned">Pinned (use a specific workflow version)</option>
+            </select>
+            <div class="form-text">Controls which workflow version this trigger executes.</div>
+        </div>
+
+        @if ( string.Equals( _model.VersionBindingMode, "Pinned", StringComparison.OrdinalIgnoreCase ) ) {
+            <div class="mb-3">
+                <label class="form-label" for="pinnedVersion">Pinned Workflow Version</label>
+                <select class="form-select" id="pinnedVersion" @bind="_model.PinnedWorkflowVersionId">
+                    <option value="0">-- Select a version --</option>
+                    @if ( _workflowVersions is not null ) {
+                        @foreach ( WorkflowVersionOption v in _workflowVersions ) {
+                            <option value="@v.Id">v@(v.VersionNumber) - @( v.ChangeDescription ?? "No description" ) (@v.CreatedUtc.ToString( "g" ))</option>
+                        }
+                    }
+                </select>
+                <div class="form-text">Select the specific workflow version to execute when this trigger fires.</div>
+
+                @if ( _model.PinnedWorkflowVersionId > 0
+                      && _workflowVersions is { Count: > 0 }
+                      && _workflowVersions[0].Id != _model.PinnedWorkflowVersionId ) {
+                    <div class="alert alert-warning small py-2 mt-2 mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        Pinned to an older version. Latest is v@(_workflowVersions[0].VersionNumber).
+                        <button type="button" class="btn btn-outline-warning btn-sm ms-2"
+                                @onclick="( ) => _model.PinnedWorkflowVersionId = _workflowVersions[0].Id">
+                            Update to Latest
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+
         <div class="mb-3 form-check">
             <input class="form-check-input" type="checkbox" id="enabled" @bind="_model.Enabled" />
             <label class="form-check-label" for="enabled">Enabled</label>
@@ -110,6 +147,7 @@
     private string? _successMessage;
     private TriggerFormModel _model = new( );
     private List<WorkflowOption>? _workflows;
+    private List<WorkflowVersionOption>? _workflowVersions;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
 
@@ -146,6 +184,15 @@
                             _model.EventRenamed = events.Contains( "renamed", StringComparer.OrdinalIgnoreCase );
                         }
                     } catch { /* ignore parse errors */ }
+
+                    // Parse version binding mode
+                    _model.VersionBindingMode = trigger.VersionBindingMode ?? "Latest";
+                    _model.PinnedWorkflowVersionId = trigger.PinnedWorkflowVersionId ?? 0;
+
+                    // Load workflow versions if in Pinned mode
+                    if ( trigger.WorkflowId > 0 ) {
+                        await LoadWorkflowVersionsAsync( trigger.WorkflowId );
+                    }
 
                     // Parse target tags
                     if ( !string.IsNullOrWhiteSpace( trigger.TargetTags ) ) {
@@ -213,6 +260,9 @@
                     debounceMs = _model.DebounceMs,
                     enabled = _model.Enabled,
                     targetTags = targetTagsJson,
+                    versionBindingMode = _model.VersionBindingMode,
+                    pinnedWorkflowVersionId = string.Equals( _model.VersionBindingMode, "Pinned", StringComparison.OrdinalIgnoreCase ) && _model.PinnedWorkflowVersionId > 0
+                        ? _model.PinnedWorkflowVersionId : (long?) null,
                 };
                 HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/triggers/file-monitor", body );
                 if ( response.IsSuccessStatusCode ) {
@@ -229,6 +279,9 @@
                     debounceMs = _model.DebounceMs,
                     enabled = _model.Enabled,
                     targetTags = targetTagsJson,
+                    versionBindingMode = _model.VersionBindingMode,
+                    pinnedWorkflowVersionId = string.Equals( _model.VersionBindingMode, "Pinned", StringComparison.OrdinalIgnoreCase ) && _model.PinnedWorkflowVersionId > 0
+                        ? _model.PinnedWorkflowVersionId : (long?) null,
                 };
                 HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/triggers/file-monitor/{Id}", body );
                 if ( response.IsSuccessStatusCode ) {
@@ -244,6 +297,16 @@
         }
     }
 
+    private async Task LoadWorkflowVersionsAsync( long workflowId ) {
+        try {
+            PagedResult<WorkflowVersionOption>? versions = await Api.GetAsync<PagedResult<WorkflowVersionOption>>(
+                $"/api/v1/workflows/{workflowId}/versions?limit=100" );
+            _workflowVersions = versions?.Items.ToList( ) ?? [];
+        } catch {
+            _workflowVersions = [];
+        }
+    }
+
     private sealed class TriggerFormModel {
         public long WorkflowId { get; set; }
         public string WatchDirectory { get; set; } = "";
@@ -255,9 +318,17 @@
         public int DebounceMs { get; set; } = 500;
         public bool Enabled { get; set; } = true;
         public string TargetTagsText { get; set; } = "";
+        public string VersionBindingMode { get; set; } = "Latest";
+        public long PinnedWorkflowVersionId { get; set; }
     }
 
     private sealed record WorkflowOption( long Id, string Name );
+
+    private sealed record WorkflowVersionOption(
+        long Id,
+        int VersionNumber,
+        DateTime CreatedUtc,
+        string? ChangeDescription );
 
     private sealed record FileMonitorTriggerDto(
         long Id,
@@ -268,5 +339,7 @@
         string EventTypes,
         int DebounceMs,
         bool Enabled,
-        string? TargetTags );
+        string? TargetTags,
+        string? VersionBindingMode,
+        long? PinnedWorkflowVersionId );
 }

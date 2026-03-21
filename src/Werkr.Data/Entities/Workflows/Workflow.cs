@@ -40,6 +40,16 @@ public class Workflow : ConcurrencyBase, IKey<long> {
     /// <summary>True if this workflow is a child workflow owned by a composite step. Excluded from list queries.</summary>
     public bool IsChildWorkflow { get; set; }
 
+    /// <summary>Foreign key to the current (latest) workflow version. Nullable for migration — existing workflows will be backfilled by seeder.</summary>
+    public long? CurrentVersionId { get; set; }
+
+    /// <summary>Navigation to the current (latest) version snapshot.</summary>
+    [ForeignKey( nameof( CurrentVersionId ) )]
+    public WorkflowVersion? CurrentVersion { get; set; }
+
+    /// <summary>All version snapshots for this workflow.</summary>
+    public ICollection<WorkflowVersion> Versions { get; set; } = [];
+
     /// <summary>Navigation property for workflow steps.</summary>
     public ICollection<WorkflowStep> Steps { get; set; } = [];
 

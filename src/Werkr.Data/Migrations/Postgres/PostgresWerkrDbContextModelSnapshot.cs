@@ -87,9 +87,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(64)")
                         .HasColumnName("source_module");
 
-                    b.Property<string>("TimestampUtc")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp_utc");
 
                     b.HasKey("Id")
@@ -143,9 +142,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(256)")
                         .HasColumnName("connection_name");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<bool>("EnforceAllowlist")
@@ -162,17 +160,16 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("is_server");
 
-                    b.Property<string>("KeyRotatedAtUtc")
-                        .HasColumnType("text")
+                    b.Property<DateTime?>("KeyRotatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("key_rotated_at_utc");
 
-                    b.Property<string>("LastSeen")
-                        .HasColumnType("text")
+                    b.Property<DateTime?>("LastSeen")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("LocalPrivateKey")
@@ -266,23 +263,20 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(256)")
                         .HasColumnName("connection_name");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
-                    b.Property<string>("ExpiresAt")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
                     b.Property<int>("KeySize")
                         .HasColumnType("integer")
                         .HasColumnName("key_size");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("ServerPrivateKey")
@@ -326,18 +320,16 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<int>("DayInterval")
                         .HasColumnType("integer")
                         .HasColumnName("day_interval");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("Version")
@@ -362,14 +354,12 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("catch_up_enabled");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Name")
@@ -403,18 +393,16 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date")
                         .HasColumnName("date");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<TimeOnly>("Time")
@@ -444,9 +432,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("CreatedUtc")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_utc");
 
                     b.Property<string>("Description")
@@ -465,9 +452,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
 
-                    b.Property<string>("UpdatedUtc")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_utc");
 
                     b.Property<int>("WorkingDays")
@@ -622,9 +608,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<string>("DayNumbers")
@@ -635,9 +620,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("integer")
                         .HasColumnName("days_of_week");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("MonthsOfYear")
@@ -693,14 +677,12 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("RepeatDurationMinutes")
@@ -728,18 +710,16 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date")
                         .HasColumnName("date");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<TimeOnly>("Time")
@@ -768,18 +748,16 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<int>("DaysOfWeek")
                         .HasColumnType("integer")
                         .HasColumnName("days_of_week");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("Version")
@@ -806,9 +784,8 @@ namespace Werkr.Data.Migrations.Postgres
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<string>("CriteriaJson")
@@ -821,9 +798,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("is_shared");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Name")
@@ -871,9 +847,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
 
                     b.Property<bool>("IsOneTime")
@@ -889,6 +864,64 @@ namespace Werkr.Data.Migrations.Postgres
                     b.ToTable("task_schedules", "werkr");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskVersion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ChangeDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("change_description");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("definition");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<long>("TaskId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("task_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_versions");
+
+                    b.HasIndex("TaskId")
+                        .HasDatabaseName("ix_task_versions_task_id");
+
+                    b.HasIndex("TaskId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_task_versions_task_id_version_number");
+
+                    b.ToTable("task_versions", "werkr");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -900,13 +933,12 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("agent_connection_id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
-                    b.Property<string>("EndTime")
-                        .HasColumnType("text")
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_time");
 
                     b.Property<string>("ErrorCategory")
@@ -918,9 +950,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("integer")
                         .HasColumnName("exit_code");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Output")
@@ -941,9 +972,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("StartTime")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("start_time");
 
                     b.Property<long?>("StepId")
@@ -1027,10 +1057,13 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(8000)")
                         .HasColumnName("content");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
+
+                    b.Property<long?>("CurrentVersionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("current_version_id");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1046,9 +1079,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("is_ephemeral");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Name")
@@ -1087,6 +1119,9 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasKey("Id")
                         .HasName("pk_tasks");
 
+                    b.HasIndex("CurrentVersionId")
+                        .HasDatabaseName("ix_tasks_current_version_id");
+
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_tasks_workflow_id");
 
@@ -1101,6 +1136,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("CurrentVersionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("current_version_id");
 
                     b.Property<int>("DebounceMs")
                         .HasColumnType("integer")
@@ -1121,9 +1160,18 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(200)")
                         .HasColumnName("file_pattern");
 
+                    b.Property<long?>("PinnedWorkflowVersionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("pinned_workflow_version_id");
+
                     b.Property<string>("TargetTags")
                         .HasColumnType("text")
                         .HasColumnName("target_tags");
+
+                    b.Property<string>("VersionBindingMode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("version_binding_mode");
 
                     b.Property<string>("WatchDirectory")
                         .IsRequired()
@@ -1138,10 +1186,74 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasKey("Id")
                         .HasName("pk_file_monitor_triggers");
 
+                    b.HasIndex("CurrentVersionId")
+                        .HasDatabaseName("ix_file_monitor_triggers_current_version_id");
+
+                    b.HasIndex("PinnedWorkflowVersionId")
+                        .HasDatabaseName("ix_file_monitor_triggers_pinned_workflow_version_id");
+
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_file_monitor_triggers_workflow_id");
 
                     b.ToTable("file_monitor_triggers", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Triggers.TriggerVersion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ChangeDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("change_description");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("definition");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<long>("TriggerId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("trigger_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_trigger_versions");
+
+                    b.HasIndex("TriggerId")
+                        .HasDatabaseName("ix_trigger_versions_trigger_id");
+
+                    b.HasIndex("TriggerId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_trigger_versions_trigger_id_version_number");
+
+                    b.ToTable("trigger_versions", "werkr");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
@@ -1157,10 +1269,13 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("annotations");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
+
+                    b.Property<long?>("CurrentVersionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("current_version_id");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1176,9 +1291,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("is_child_workflow");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Name")
@@ -1203,6 +1317,9 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasKey("Id")
                         .HasName("pk_workflows");
 
+                    b.HasIndex("CurrentVersionId")
+                        .HasDatabaseName("ix_workflows_current_version_id");
+
                     b.HasIndex("ParentStepId")
                         .HasDatabaseName("ix_workflows_parent_step_id");
 
@@ -1216,23 +1333,20 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
-                    b.Property<string>("EndTime")
-                        .HasColumnType("text")
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_time");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
-                    b.Property<string>("StartTime")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("start_time");
 
                     b.Property<string>("Status")
@@ -1249,11 +1363,27 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("bigint")
                         .HasColumnName("workflow_id");
 
+                    b.Property<string>("WorkflowNameSnapshot")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("workflow_name_snapshot");
+
+                    b.Property<long?>("WorkflowVersionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("workflow_version_id");
+
+                    b.Property<int?>("WorkflowVersionSnapshot")
+                        .HasColumnType("integer")
+                        .HasColumnName("workflow_version_snapshot");
+
                     b.HasKey("Id")
                         .HasName("pk_workflow_runs");
 
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_workflow_runs_workflow_id");
+
+                    b.HasIndex("WorkflowVersionId")
+                        .HasDatabaseName("ix_workflow_runs_workflow_version_id");
 
                     b.ToTable("workflow_runs", "werkr");
                 });
@@ -1267,9 +1397,8 @@ namespace Werkr.Data.Migrations.Postgres
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<Guid?>("ProducedByJobId")
@@ -1330,9 +1459,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
-                    b.Property<string>("CreatedAtUtc")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
 
                     b.Property<bool>("IsOneTime")
@@ -1389,9 +1517,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("control_statement");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<string>("DependencyMode")
@@ -1413,9 +1540,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(128)")
                         .HasColumnName("iteration_variable_name");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("MaxIterations")
@@ -1434,6 +1560,10 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Property<long?>("TaskId")
                         .HasColumnType("bigint")
                         .HasColumnName("task_id");
+
+                    b.Property<long?>("TaskVersionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("task_version_id");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
@@ -1455,6 +1585,9 @@ namespace Werkr.Data.Migrations.Postgres
 
                     b.HasIndex("TaskId")
                         .HasDatabaseName("ix_workflow_steps_task_id");
+
+                    b.HasIndex("TaskVersionId")
+                        .HasDatabaseName("ix_workflow_steps_task_version_id");
 
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_workflow_steps_workflow_id");
@@ -1494,13 +1627,12 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("integer")
                         .HasColumnName("attempt");
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
-                    b.Property<string>("EndTime")
-                        .HasColumnType("text")
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_time");
 
                     b.Property<string>("ErrorMessage")
@@ -1512,9 +1644,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("SkipReason")
@@ -1522,8 +1653,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("skip_reason");
 
-                    b.Property<string>("StartTime")
-                        .HasColumnType("text")
+                    b.Property<DateTime?>("StartTime")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("start_time");
 
                     b.Property<string>("Status")
@@ -1572,9 +1703,8 @@ namespace Werkr.Data.Migrations.Postgres
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("Created")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created");
 
                     b.Property<string>("DataType")
@@ -1595,9 +1725,8 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("is_required");
 
-                    b.Property<string>("LastUpdated")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
 
                     b.Property<bool>("LogRedaction")
@@ -1627,6 +1756,64 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasDatabaseName("ix_workflow_variables_workflow_id_name");
 
                     b.ToTable("workflow_variables", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVersion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ChangeDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("change_description");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("definition");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_number");
+
+                    b.Property<long>("WorkflowId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("workflow_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflow_versions");
+
+                    b.HasIndex("WorkflowId")
+                        .HasDatabaseName("ix_workflow_versions_workflow_id");
+
+                    b.HasIndex("WorkflowId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_workflow_versions_workflow_id_version_number");
+
+                    b.ToTable("workflow_versions", "werkr");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DailyRecurrence", b =>
@@ -1775,6 +1962,18 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Task");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskVersion", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Tasks.WerkrTask", "Task")
+                        .WithMany("Versions")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_versions_tasks_task_id");
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrJob", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "AgentConnection")
@@ -1818,16 +2017,36 @@ namespace Werkr.Data.Migrations.Postgres
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrTask", b =>
                 {
+                    b.HasOne("Werkr.Data.Entities.Tasks.TaskVersion", "CurrentVersion")
+                        .WithMany()
+                        .HasForeignKey("CurrentVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_tasks_task_versions_current_version_id");
+
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
                         .WithMany("Tasks")
                         .HasForeignKey("WorkflowId")
                         .HasConstraintName("fk_tasks_workflows_workflow_id");
+
+                    b.Navigation("CurrentVersion");
 
                     b.Navigation("Workflow");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
                 {
+                    b.HasOne("Werkr.Data.Entities.Triggers.TriggerVersion", "CurrentVersion")
+                        .WithMany()
+                        .HasForeignKey("CurrentVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_file_monitor_triggers_trigger_versions_current_version_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowVersion", "PinnedWorkflowVersion")
+                        .WithMany()
+                        .HasForeignKey("PinnedWorkflowVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_file_monitor_triggers_workflow_versions_pinned_workflow_ver");
+
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
                         .WithMany()
                         .HasForeignKey("WorkflowId")
@@ -1835,16 +2054,40 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsRequired()
                         .HasConstraintName("fk_file_monitor_triggers_workflows_workflow_id");
 
+                    b.Navigation("CurrentVersion");
+
+                    b.Navigation("PinnedWorkflowVersion");
+
                     b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Triggers.TriggerVersion", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Triggers.FileMonitorTrigger", "Trigger")
+                        .WithMany("Versions")
+                        .HasForeignKey("TriggerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_trigger_versions_file_monitor_triggers_trigger_id");
+
+                    b.Navigation("Trigger");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
                 {
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowVersion", "CurrentVersion")
+                        .WithMany()
+                        .HasForeignKey("CurrentVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflows_workflow_versions_current_version_id");
+
                     b.HasOne("Werkr.Data.Entities.Workflows.WorkflowStep", null)
                         .WithMany()
                         .HasForeignKey("ParentStepId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_workflows_workflow_steps_parent_step_id");
+
+                    b.Navigation("CurrentVersion");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRun", b =>
@@ -1856,7 +2099,15 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsRequired()
                         .HasConstraintName("fk_workflow_runs_workflows_workflow_id");
 
+                    b.HasOne("Werkr.Data.Entities.Workflows.WorkflowVersion", "WorkflowVersion")
+                        .WithMany()
+                        .HasForeignKey("WorkflowVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflow_runs_workflow_versions_workflow_version_id");
+
                     b.Navigation("Workflow");
+
+                    b.Navigation("WorkflowVersion");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRunVariable", b =>
@@ -1926,6 +2177,12 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasForeignKey("TaskId")
                         .HasConstraintName("fk_workflow_steps_tasks_task_id");
 
+                    b.HasOne("Werkr.Data.Entities.Tasks.TaskVersion", "TaskVersion")
+                        .WithMany()
+                        .HasForeignKey("TaskVersionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_workflow_steps_task_versions_task_version_id");
+
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
                         .WithMany("Steps")
                         .HasForeignKey("WorkflowId")
@@ -1938,6 +2195,8 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("ChildWorkflow");
 
                     b.Navigation("Task");
+
+                    b.Navigation("TaskVersion");
 
                     b.Navigation("Workflow");
                 });
@@ -2004,6 +2263,18 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Workflow");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVersion", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
+                        .WithMany("Versions")
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_versions_workflows_workflow_id");
+
+                    b.Navigation("Workflow");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DbSchedule", b =>
                 {
                     b.Navigation("DailyRecurrence");
@@ -2042,6 +2313,13 @@ namespace Werkr.Data.Migrations.Postgres
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrTask", b =>
                 {
                     b.Navigation("TaskSchedules");
+
+                    b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
+                {
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
@@ -2053,6 +2331,8 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Tasks");
 
                     b.Navigation("Variables");
+
+                    b.Navigation("Versions");
 
                     b.Navigation("WorkflowSchedules");
                 });

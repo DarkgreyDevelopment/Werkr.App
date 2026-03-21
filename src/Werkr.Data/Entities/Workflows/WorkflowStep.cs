@@ -87,9 +87,20 @@ public class WorkflowStep : ConcurrencyBase, IKey<long> {
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow? Workflow { get; set; }
 
+    /// <summary>
+    /// Foreign key to the specific task version this step is bound to.
+    /// This is the authoritative binding; <see cref="TaskId"/> remains as a denormalized reference.
+    /// Null for composite nodes and pre-versioning steps awaiting backfill.
+    /// </summary>
+    public long? TaskVersionId { get; set; }
+
     /// <summary>Navigation to the task associated with this step. Required for eager loading in WorkflowExecutor.</summary>
     [ForeignKey( nameof( TaskId ) )]
     public WerkrTask? Task { get; set; }
+
+    /// <summary>Navigation to the specific task version bound to this step.</summary>
+    [ForeignKey( nameof( TaskVersionId ) )]
+    public TaskVersion? TaskVersion { get; set; }
 
     /// <summary>Navigation to the overridden agent connection.</summary>
     [ForeignKey( nameof( AgentConnectionIdOverride ) )]

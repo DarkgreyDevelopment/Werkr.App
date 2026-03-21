@@ -35,8 +35,10 @@ public enum AuditEventType {
     UserPasswordReset,
 
     // ── Agent ──
-    /// <summary>New agent registered.</summary>
+    /// <summary>New agent registered (bundle generated).</summary>
     AgentRegistered,
+    /// <summary>Agent registration completed via gRPC handshake.</summary>
+    AgentRegistrationCompleted,
     /// <summary>Agent revoked.</summary>
     AgentRevoked,
     /// <summary>Agent connection details updated.</summary>
@@ -63,6 +65,14 @@ public enum AuditEventType {
     ScheduleOccurrenceSuppressed,
     /// <summary>Schedule occurrence shifted by holiday calendar.</summary>
     ScheduleOccurrenceShifted,
+
+    // ── Task ──
+    /// <summary>Task deleted.</summary>
+    TaskDeleted,
+    /// <summary>Task enabled.</summary>
+    TaskEnabled,
+    /// <summary>Task disabled.</summary>
+    TaskDisabled,
 
     // ── Versioning ──
     /// <summary>New task version created.</summary>

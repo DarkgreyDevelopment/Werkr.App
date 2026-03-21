@@ -66,12 +66,14 @@ internal static partial class WorkflowEndpoints {
 
         _ = app.MapPost( "/api/v1/workflows", async (
             WorkflowCreateRequest request,
+            HttpContext httpContext,
             WorkflowService workflowService,
             CancellationToken ct
         ) => {
             try {
+                string? userId = httpContext.User.FindFirst( System.Security.Claims.ClaimTypes.NameIdentifier )?.Value;
                 Workflow entity = WorkflowMapper.ToEntity( request );
-                Workflow created = await workflowService.CreateAsync( entity, ct );
+                Workflow created = await workflowService.CreateAsync( entity, userId, ct );
                 WorkflowDto dto = WorkflowMapper.ToDto( created );
                 return Results.Created( $"/api/v1/workflows/{dto.Id}", dto );
             } catch (ValidationException ex) {
@@ -84,6 +86,7 @@ internal static partial class WorkflowEndpoints {
         _ = app.MapPut( "/api/v1/workflows/{id}", async (
             long id,
             WorkflowUpdateRequest request,
+            HttpContext httpContext,
             WorkflowService workflowService,
             CancellationToken ct
         ) => {
@@ -127,11 +130,15 @@ internal static partial class WorkflowEndpoints {
                     request = request with { Annotations = sanitized };
                 }
 
+                string? userId = httpContext.User.FindFirst( System.Security.Claims.ClaimTypes.NameIdentifier )?.Value;
                 Workflow entity = WorkflowMapper.ToEntity( id, request );
-                Workflow updated = await workflowService.UpdateAsync( entity, ct );
+                Workflow updated = await workflowService.UpdateAsync(
+                    entity, userId, request.ChangeDescription, request.ExpectedVersionNumber, ct );
                 return Results.Ok( WorkflowMapper.ToDto( updated ) );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
+            } catch (InvalidOperationException ex) when (ex.Message.Contains( "Version conflict" )) {
+                return Results.Conflict( new { message = ex.Message } );
             } catch (ValidationException ex) {
                 return Results.BadRequest( new { message = ex.Message } );
             }
@@ -141,14 +148,18 @@ internal static partial class WorkflowEndpoints {
 
         _ = app.MapDelete( "/api/v1/workflows/{id}", async (
             long id,
+            HttpContext httpContext,
             WorkflowService workflowService,
             CancellationToken ct
         ) => {
             try {
-                await workflowService.DeleteAsync( id, ct );
+                string? userId = httpContext.User.FindFirst( System.Security.Claims.ClaimTypes.NameIdentifier )?.Value;
+                await workflowService.DeleteAsync( id, userId, ct );
                 return Results.NoContent( );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
+            } catch (InvalidOperationException ex) {
+                return Results.Conflict( new { message = ex.Message } );
             }
         } )
         .WithName( "DeleteWorkflow" )
@@ -157,24 +168,25 @@ internal static partial class WorkflowEndpoints {
         _ = app.MapPatch( "/api/v1/workflows/{id}/enabled", async (
             long id,
             WorkflowSetEnabledRequest request,
+            HttpContext httpContext,
             WorkflowService workflowService,
             WorkflowDisabledDispatcher disabledDispatcher,
             CancellationToken ct
         ) => {
-            Workflow? workflow = await workflowService.GetByIdAsync( id, ct );
-            if (workflow is null) {
+            try {
+                string? userId = httpContext.User.FindFirst( System.Security.Claims.ClaimTypes.NameIdentifier )?.Value;
+                await workflowService.SetEnabledAsync( id, request.Enabled, userId, ct );
+
+                // When disabling, notify agents so they can cancel in-flight runs
+                if (!request.Enabled) {
+                    await disabledDispatcher.NotifyDisabledAsync( id, ct );
+                }
+
+                Workflow? workflow = await workflowService.GetByIdAsync( id, ct );
+                return Results.Ok( WorkflowMapper.ToDto( workflow! ) );
+            } catch (KeyNotFoundException) {
                 return Results.NotFound( );
             }
-
-            workflow.Enabled = request.Enabled;
-            _ = await workflowService.UpdateAsync( workflow, ct );
-
-            // When disabling, notify agents so they can cancel in-flight runs
-            if (!request.Enabled) {
-                await disabledDispatcher.NotifyDisabledAsync( id, ct );
-            }
-
-            return Results.Ok( WorkflowMapper.ToDto( workflow ) );
         } )
         .WithName( "SetWorkflowEnabled" )
         .RequireAuthorization( Policies.CanUpdate );
@@ -386,8 +398,9 @@ internal static partial class WorkflowEndpoints {
             }
 
             try {
+                string? userId = httpContext.User.FindFirst( System.Security.Claims.ClaimTypes.NameIdentifier )?.Value;
                 WorkflowStepBatchResponse response =
-                    await workflowService.BatchUpdateStepsAsync( workflowId, request, ct );
+                    await workflowService.BatchUpdateStepsAsync( workflowId, request, userId, ct: ct );
                 return response.Success
                     ? Results.Ok( response )
                     : Results.BadRequest( response );
