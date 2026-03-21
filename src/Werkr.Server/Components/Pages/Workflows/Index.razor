@@ -4,7 +4,7 @@
 @using Werkr.Common.Models
 @using Werkr.Server.Helpers
 @attribute [Authorize]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 
 <PageTitle>Werkr - Workflow Dashboard</PageTitle>
@@ -256,9 +256,8 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             string url = BuildDashboardUrl( );
-            _dashboard = await client.GetFromJsonAsync<WorkflowDashboardPageDto>( url );
+            _dashboard = await Api.GetAsync<WorkflowDashboardPageDto>( url );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load workflows: {ex.Message}";
         } finally {
@@ -296,8 +295,7 @@
 
     private async Task DeleteConfirmedAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/workflows/{_pendingDeleteId}" );
+            HttpResponseMessage response = await Api.DeleteAsync( $"/api/v1/workflows/{_pendingDeleteId}" );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {
@@ -312,8 +310,7 @@
         _isRunning = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsync(
+            HttpResponseMessage response = await Api.PostAsync(
                 $"/api/v1/workflows/{workflowId}/execute", null );
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );

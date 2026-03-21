@@ -3,7 +3,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @implements IAsyncDisposable
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject ServerConfigCache ConfigCache
 
 <PageTitle>Werkr - Workflow Runs</PageTitle>
@@ -114,8 +114,7 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _runs = await client.GetFromJsonAsync<List<WorkflowRunDto>>(
+            _runs = await Api.GetAsync<List<WorkflowRunDto>>(
                 "/api/v1/workflows/runs?limit=50" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load runs: {ex.Message}";

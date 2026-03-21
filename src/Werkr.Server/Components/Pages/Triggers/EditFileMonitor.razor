@@ -2,7 +2,7 @@
 @page "/triggers/file-monitors/{Id:long}"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 
 <PageTitle>Werkr - @( _isNew ? "New" : "Edit" ) File Monitor Trigger</PageTitle>
@@ -121,15 +121,13 @@
         ];
 
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             // Load workflows for dropdown
-            List<WorkflowOption>? wfs = await client.GetFromJsonAsync<List<WorkflowOption>>( "/api/v1/workflows" );
+            List<WorkflowOption>? wfs = await Api.GetAsync<List<WorkflowOption>>( "/api/v1/workflows" );
             _workflows = wfs ?? [];
 
             if ( !_isNew ) {
                 // Load existing trigger
-                FileMonitorTriggerDto? trigger = await client.GetFromJsonAsync<FileMonitorTriggerDto>(
+                FileMonitorTriggerDto? trigger = await Api.GetAsync<FileMonitorTriggerDto>(
                     $"/api/v1/triggers/file-monitor/{Id}" );
                 if ( trigger is not null ) {
                     _model.WorkflowId = trigger.WorkflowId;
@@ -206,8 +204,6 @@
                 }
             }
 
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             if ( _isNew ) {
                 var body = new {
                     workflowId = _model.WorkflowId,
@@ -218,7 +214,7 @@
                     enabled = _model.Enabled,
                     targetTags = targetTagsJson,
                 };
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/triggers/file-monitor", body );
+                HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/triggers/file-monitor", body );
                 if ( response.IsSuccessStatusCode ) {
                     Navigation.NavigateTo( "/triggers/file-monitors" );
                     return;
@@ -234,7 +230,7 @@
                     enabled = _model.Enabled,
                     targetTags = targetTagsJson,
                 };
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/triggers/file-monitor/{Id}", body );
+                HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/triggers/file-monitor/{Id}", body );
                 if ( response.IsSuccessStatusCode ) {
                     _successMessage = "Trigger saved successfully.";
                 } else {

@@ -1,7 +1,7 @@
 ﻿@page "/workflows/{Id:long}/dag"
 @rendermode InteractiveServer
 @attribute [Authorize]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 <PageTitle>Werkr - Workflow DAG</PageTitle>
 
@@ -91,8 +91,7 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/v1/workflows/{Id}" );
+            _workflow = await Api.GetAsync<WorkflowDto>( $"/api/v1/workflows/{Id}" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load workflow: {ex.Message}";
         } finally {

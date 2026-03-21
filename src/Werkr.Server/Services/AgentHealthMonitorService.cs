@@ -15,7 +15,7 @@ public sealed partial class AgentHealthMonitorService(
     ILogger<AgentHealthMonitorService> logger
     ) : BackgroundService {
     /// <summary>
-    /// Factory used to create instances of the <c>"ApiService"</c> named HTTP client which has the <see cref="Identity.AuthForwardingHandler"/> in its pipeline.
+    /// Factory used to create instances of the <c>"ApiServiceSystem"</c> named HTTP client which has the <see cref="Identity.ServiceAuthForwardingHandler"/> in its pipeline.
     /// </summary>
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     /// <summary>
@@ -52,7 +52,7 @@ public sealed partial class AgentHealthMonitorService(
     /// Fetches the latest agent health data from <c>/api/agents/health</c> on the <c>Werkr.Api</c> and PUTs an updated status for each agent whose health result indicates a changed connection state. Unrecognised status strings are silently skipped.
     /// </summary>
     private async Task PollAndUpdateAsync( CancellationToken ct ) {
-        HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
+        HttpClient client = _httpClientFactory.CreateClient( "ApiServiceSystem" );
 
         // Get live health from the API (which does real gRPC checks)
         List<AgentHealthDto>? healthResults = await client.GetFromJsonAsync<List<AgentHealthDto>>(

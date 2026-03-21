@@ -1,7 +1,7 @@
 @page "/tasks/{Id:long}"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 
 <PageTitle>Werkr - Edit Task</PageTitle>
@@ -199,12 +199,10 @@
     protected override async Task OnInitializedAsync( ) {
         _isLoading = true;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             // Load workflows for dropdown
-            _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/v1/workflows" ) ?? [];
+            _workflows = await Api.GetAsync<List<WorkflowDto>>( "/api/v1/workflows" ) ?? [];
 
-            TaskDto? dto = await client.GetFromJsonAsync<TaskDto>( $"/api/v1/tasks/{Id}" );
+            TaskDto? dto = await Api.GetAsync<TaskDto>( $"/api/v1/tasks/{Id}" );
             if ( dto is null ) {
                 _errorMessage = "Task not found.";
                 return;
@@ -214,7 +212,7 @@
             _targetTags = dto.TargetTags;
             _syncIntervalMinutes = dto.SyncIntervalMinutes;
 
-            _jobs = await client.GetFromJsonAsync<List<JobListDto>>( $"/api/v1/tasks/{Id}/jobs?limit=25" );
+            _jobs = await Api.GetAsync<List<JobListDto>>( $"/api/v1/tasks/{Id}/jobs?limit=25" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load task: {ex.Message}";
         } finally {
@@ -232,8 +230,7 @@
         _model.TargetTags = string.Join( ",", _targetTags );
         try {
             TaskUpdateRequest request = _model.ToUpdateRequest( );
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/tasks/{Id}", request );
+            HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/tasks/{Id}", request );
             if ( response.IsSuccessStatusCode ) {
                 Navigation.NavigateTo( "/tasks" );
             } else {

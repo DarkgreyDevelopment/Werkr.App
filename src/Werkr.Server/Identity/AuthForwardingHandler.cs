@@ -27,12 +27,22 @@ public sealed partial class AuthForwardingHandler(
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken
     ) {
-        string token = _tokenService.GenerateServiceToken( );
-        request.Headers.Authorization = new AuthenticationHeaderValue( "Bearer", token );
+        string? userToken = UserTokenContext.CurrentToken;
+        string token;
 
-        if (_logger.IsEnabled( LogLevel.Debug )) {
-            _logger.LogDebug( "Attached self-minted service JWT to outgoing API request." );
+        if (userToken is not null) {
+            token = userToken;
+            if (_logger.IsEnabled( LogLevel.Debug )) {
+                _logger.LogDebug( "Attached user-forwarded JWT to outgoing API request." );
+            }
+        } else {
+            token = _tokenService.GenerateServiceToken( );
+            if (_logger.IsEnabled( LogLevel.Debug )) {
+                _logger.LogDebug( "Attached self-minted service JWT to outgoing API request (no user context)." );
+            }
         }
+
+        request.Headers.Authorization = new AuthenticationHeaderValue( "Bearer", token );
 
         return base.SendAsync( request, cancellationToken );
     }

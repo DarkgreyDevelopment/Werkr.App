@@ -12,4 +12,10 @@ public static class WerkrClaimTypes {
 
     /// <summary>Claim type for the API key display name.</summary>
     public const string ApiKeyName = "api_key_name";
+
+    /// <summary>
+    /// Claim type indicating how the token was originated.
+    /// Values: <c>"user-forwarded"</c>, <c>"service"</c>, <c>"api-key"</c>.
+    /// </summary>
+    public const string TokenOrigin = "token_origin";
 }

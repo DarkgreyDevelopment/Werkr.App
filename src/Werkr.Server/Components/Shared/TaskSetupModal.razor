@@ -1,5 +1,5 @@
 @rendermode InteractiveServer
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 @if ( _isVisible ) {
     <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
@@ -180,10 +180,9 @@
         _isSaving = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             if ( IsEditing ) {
                 TaskUpdateRequest request = _model.ToUpdateRequest( _targetTags );
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/tasks/{_editTaskId}", request );
+                HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/tasks/{_editTaskId}", request );
                 if ( response.IsSuccessStatusCode ) {
                     TaskDto? updated = await response.Content.ReadFromJsonAsync<TaskDto>( );
                     _isVisible = false;
@@ -196,7 +195,7 @@
                 }
             } else {
                 TaskCreateRequest request = _model.ToCreateRequest( WorkflowId, _targetTags );
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/tasks", request );
+                HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/tasks", request );
                 if ( response.IsSuccessStatusCode ) {
                     TaskDto? created = await response.Content.ReadFromJsonAsync<TaskDto>( );
                     _isVisible = false;

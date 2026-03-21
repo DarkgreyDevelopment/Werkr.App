@@ -1,7 +1,7 @@
 @using System.ComponentModel.DataAnnotations
 @using Werkr.Common.Models.Holidays
 @rendermode InteractiveServer
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 @if ( _isVisible ) {
     <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
@@ -384,8 +384,7 @@
 
     private async Task LoadCalendarsAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _availableCalendars = await client.GetFromJsonAsync<List<HolidayCalendarSummaryDto>>( "/api/v1/holiday-calendars" );
+            _availableCalendars = await Api.GetAsync<List<HolidayCalendarSummaryDto>>( "/api/v1/holiday-calendars" );
         } catch {
             // Non-critical: calendar list not loaded
         }
@@ -394,8 +393,7 @@
     private async Task LoadHolidayCalendarLinkAsync( ) {
         if ( _editScheduleId is null ) return;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            ScheduleHolidayCalendarDto? link = await client.GetFromJsonAsync<ScheduleHolidayCalendarDto>(
+            ScheduleHolidayCalendarDto? link = await Api.GetAsync<ScheduleHolidayCalendarDto>(
                 $"/api/v1/schedules/{_editScheduleId}/holiday-calendar" );
             if ( link is not null ) {
                 _selectedCalendarId = link.CalendarId.ToString( );
@@ -410,12 +408,11 @@
     private async Task LoadAuditLogAsync( ) {
         if ( _editScheduleId is null ) return;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             DateTime from = DateTime.UtcNow.AddDays( -30 );
             DateTime to = DateTime.UtcNow;
             string url = $"/api/v1/audit?entityType=Schedule&entityId={_editScheduleId}&fromUtc={from:O}&toUtc={to:O}&limit=50";
             Werkr.Common.Models.PagedResult<Werkr.Common.Models.Audit.AuditEventDto>? result =
-                await client.GetFromJsonAsync<Werkr.Common.Models.PagedResult<Werkr.Common.Models.Audit.AuditEventDto>>( url );
+                await Api.GetAsync<Werkr.Common.Models.PagedResult<Werkr.Common.Models.Audit.AuditEventDto>>( url );
             _auditLogs = result?.Items?.ToList( ) ?? [];
         } catch {
             _auditLogs = [];
@@ -426,14 +423,12 @@
         _isSaving = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             if ( IsEditing ) {
                 ScheduleUpdateRequest request = _model.ToUpdateRequest( );
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/v1/schedules/{_editScheduleId}", request );
+                HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/schedules/{_editScheduleId}", request );
                 if ( response.IsSuccessStatusCode ) {
-                    await SaveHolidayCalendarAsync( client, _editScheduleId!.Value );
-                    ScheduleDto? updated = await client.GetFromJsonAsync<ScheduleDto>( $"/api/v1/schedules/{_editScheduleId}" );
+                    await SaveHolidayCalendarAsync( _editScheduleId!.Value );
+                    ScheduleDto? updated = await Api.GetAsync<ScheduleDto>( $"/api/v1/schedules/{_editScheduleId}" );
                     _isVisible = false;
                     if ( updated is not null ) {
                         await OnScheduleUpdated.InvokeAsync( updated );
@@ -444,11 +439,11 @@
                 }
             } else {
                 ScheduleCreateRequest request = _model.ToCreateRequest( );
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/schedules", request );
+                HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/schedules", request );
                 if ( response.IsSuccessStatusCode ) {
                     ScheduleDto? created = await response.Content.ReadFromJsonAsync<ScheduleDto>( );
                     if ( created is not null ) {
-                        await SaveHolidayCalendarAsync( client, created.Id );
+                        await SaveHolidayCalendarAsync( created.Id );
                     }
                     _isVisible = false;
                     if ( created is not null ) {
@@ -468,12 +463,12 @@
         }
     }
 
-    private async Task SaveHolidayCalendarAsync( HttpClient client, Guid scheduleId ) {
+    private async Task SaveHolidayCalendarAsync( Guid scheduleId ) {
         if ( !string.IsNullOrEmpty( _selectedCalendarId ) && Guid.TryParse( _selectedCalendarId, out Guid calId ) ) {
             AttachHolidayCalendarRequest attachReq = new( calId, _selectedCalendarMode );
-            _ = await client.PutAsJsonAsync( $"/api/v1/schedules/{scheduleId}/holiday-calendar", attachReq );
+            _ = await Api.PutAsJsonAsync( $"/api/v1/schedules/{scheduleId}/holiday-calendar", attachReq );
         } else if ( IsEditing ) {
-            _ = await client.DeleteAsync( $"/api/v1/schedules/{scheduleId}/holiday-calendar" );
+            _ = await Api.DeleteAsync( $"/api/v1/schedules/{scheduleId}/holiday-calendar" );
         }
     }
 

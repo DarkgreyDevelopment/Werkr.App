@@ -1,7 +1,7 @@
 ﻿@page "/holiday-calendars"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 @using Werkr.Common.Models.Holidays
 
@@ -104,8 +104,7 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _calendars = await client.GetFromJsonAsync<List<HolidayCalendarSummaryDto>>( "/api/v1/holiday-calendars" );
+            _calendars = await Api.GetAsync<List<HolidayCalendarSummaryDto>>( "/api/v1/holiday-calendars" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load calendars: {ex.Message}";
         } finally {
@@ -121,8 +120,7 @@
 
     private async Task DeleteConfirmedAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/holiday-calendars/{_pendingDeleteId}" );
+            HttpResponseMessage response = await Api.DeleteAsync( $"/api/v1/holiday-calendars/{_pendingDeleteId}" );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {
@@ -135,9 +133,8 @@
 
     private async Task CloneAsync( HolidayCalendarSummaryDto cal ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             CloneHolidayCalendarRequest req = new( $"{cal.Name} (Copy)" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( $"/api/v1/holiday-calendars/{cal.Id}/clone", req );
+            HttpResponseMessage response = await Api.PostAsJsonAsync( $"/api/v1/holiday-calendars/{cal.Id}/clone", req );
             if ( response.IsSuccessStatusCode ) {
                 HolidayCalendarDto? cloned = await response.Content.ReadFromJsonAsync<HolidayCalendarDto>( );
                 if ( cloned is not null ) {

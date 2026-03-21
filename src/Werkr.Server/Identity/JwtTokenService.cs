@@ -81,6 +81,7 @@ public sealed partial class JwtTokenService {
             new( ClaimTypes.Role, apiKey.Role ),
             new( WerkrClaimTypes.ApiKeyId, apiKey.Id.ToString( ) ),
             new( WerkrClaimTypes.ApiKeyName, apiKey.Name ),
+            new( WerkrClaimTypes.TokenOrigin, "api-key" ),
             new( JwtRegisteredClaimNames.Jti, Guid.NewGuid( ).ToString( ) ),
         ];
 
@@ -112,6 +113,7 @@ public sealed partial class JwtTokenService {
             new( ClaimTypes.Role, "Admin" ),
             new( WerkrClaimTypes.ApiKeyId, Guid.Empty.ToString( ) ),
             new( WerkrClaimTypes.ApiKeyName, "werkr-server-internal" ),
+            new( WerkrClaimTypes.TokenOrigin, "service" ),
             new( JwtRegisteredClaimNames.Jti, Guid.NewGuid( ).ToString( ) ),
         ];
 
@@ -124,6 +126,49 @@ public sealed partial class JwtTokenService {
 
         if (_logger.IsEnabled( LogLevel.Debug )) {
             _logger.LogDebug( "Generated Server service JWT, expires in {Lifetime} minutes.", _tokenLifetime.TotalMinutes );
+        }
+
+        return tokenString;
+    }
+
+    /// <summary>
+    /// Mints a JWT carrying a real user's identity, roles, and resolved permissions.
+    /// Used by <see cref="BlazorUserTokenProvider"/> to forward user context to the API.
+    /// </summary>
+    /// <param name="userId">The user's identity ID (NameIdentifier claim).</param>
+    /// <param name="userName">The user's display name (Name claim).</param>
+    /// <param name="roles">The user's assigned roles.</param>
+    /// <param name="permissions">The user's resolved permissions from the role-permission mapping.</param>
+    /// <returns>The signed JWT token string.</returns>
+    public string GenerateUserToken(
+        string userId,
+        string userName,
+        IEnumerable<string> roles,
+        IReadOnlySet<Permission> permissions
+    ) {
+        List<Claim> claims = [
+            new( ClaimTypes.NameIdentifier, userId ),
+            new( ClaimTypes.Name, userName ),
+            new( WerkrClaimTypes.TokenOrigin, "user-forwarded" ),
+            new( JwtRegisteredClaimNames.Jti, Guid.NewGuid( ).ToString( ) ),
+        ];
+
+        foreach (string role in roles) {
+            claims.Add( new Claim( ClaimTypes.Role, role ) );
+        }
+
+        foreach (Permission permission in permissions) {
+            claims.Add( new Claim( WerkrClaimTypes.Permission, permission.ToString( ) ) );
+        }
+
+        string tokenString = MintToken( claims );
+
+        if (_logger.IsEnabled( LogLevel.Debug )) {
+            _logger.LogDebug(
+                "Generated user-forwarded JWT for '{UserName}' ({UserId}), expires in {Lifetime} minutes, permissions: {Permissions}.",
+                userName, userId, _tokenLifetime.TotalMinutes,
+                string.Join( ", ", permissions )
+            );
         }
 
         return tokenString;

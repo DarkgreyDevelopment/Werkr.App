@@ -1,7 +1,7 @@
 @page "/workflows/{Id:long}"
 @rendermode InteractiveServer
 @attribute [Authorize]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 
 <PageTitle>Werkr - Workflow Detail</PageTitle>
@@ -130,9 +130,7 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
-            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/v1/workflows/{Id}" );
+            _workflow = await Api.GetAsync<WorkflowDto>( $"/api/v1/workflows/{Id}" );
             if ( _workflow is null ) {
                 _errorMessage = "Workflow not found.";
                 return;
@@ -140,7 +138,7 @@
             _breadcrumbs = [new( "Workflows", "/workflows" ), new( _workflow.Name )];
 
             // Load latest run status for DAG overlay
-            HttpResponseMessage statusResponse = await client.GetAsync(
+            HttpResponseMessage statusResponse = await Api.GetRawAsync(
                 $"/api/v1/workflows/{Id}/latest-run-status" );
             if ( statusResponse.IsSuccessStatusCode ) {
                 _latestRunStatus = await statusResponse.Content
@@ -197,8 +195,7 @@
         _isRunning = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsync(
+            HttpResponseMessage response = await Api.PostAsync(
                 $"/api/v1/workflows/{Id}/execute", null );
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );

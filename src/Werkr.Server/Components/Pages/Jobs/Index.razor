@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 @using Werkr.Common.Models
 @attribute [Authorize]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 <PageTitle>Werkr - Jobs</PageTitle>
 
@@ -98,16 +98,14 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             string? taskIdStr = _activeCriteria?.Get( "taskId" );
             if ( long.TryParse( taskIdStr, out long taskId ) ) {
                 int limit = GetLimit( );
-                _jobs = await client.GetFromJsonAsync<List<JobListDto>>(
+                _jobs = await Api.GetAsync<List<JobListDto>>(
                     $"/api/v1/tasks/{taskId}/jobs?limit={limit}" );
             } else {
                 string url = BuildGlobalJobsUrl( );
-                _jobs = await client.GetFromJsonAsync<List<JobListDto>>( url );
+                _jobs = await Api.GetAsync<List<JobListDto>>( url );
             }
 
             // Client-side running filter — no server param for this

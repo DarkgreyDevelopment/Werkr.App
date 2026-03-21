@@ -5,7 +5,7 @@
 @using Werkr.Common.Models
 @using Werkr.Common.Models.Audit
 @attribute [Authorize( Roles = "Admin" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject IJSRuntime JS
 
 <PageTitle>Werkr - Audit Log</PageTitle>
@@ -227,16 +227,14 @@
 
     private async Task LoadFilterOptionsAsync( ) {
         try {
-            using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
-            List<string>? categories = await client.GetFromJsonAsync<List<string>>( "/api/v1/audit/categories" );
+            List<string>? categories = await Api.GetAsync<List<string>>( "/api/v1/audit/categories" );
             _categories = categories ?? [];
 
-            List<string>? modules = await client.GetFromJsonAsync<List<string>>( "/api/v1/audit/modules" );
+            List<string>? modules = await Api.GetAsync<List<string>>( "/api/v1/audit/modules" );
             _modules = modules ?? [];
 
             Dictionary<string, List<AuditEventTypeDto>>? grouped =
-                await client.GetFromJsonAsync<Dictionary<string, List<AuditEventTypeDto>>>( "/api/v1/audit/event-types" );
+                await Api.GetAsync<Dictionary<string, List<AuditEventTypeDto>>>( "/api/v1/audit/event-types" );
             _eventTypes = grouped is not null
                 ? [.. grouped.Values.SelectMany( v => v ).OrderBy( t => t.DisplayName )]
                 : [];
@@ -252,10 +250,8 @@
         _expandedIds.Clear( );
 
         try {
-            using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             string url = BuildQueryUrl( _pageSize, _currentOffset );
-            PagedResult<AuditEventDto>? result = await client.GetFromJsonAsync<PagedResult<AuditEventDto>>( url );
+            PagedResult<AuditEventDto>? result = await Api.GetAsync<PagedResult<AuditEventDto>>( url );
             _result = result;
         } catch (Exception ex) {
             _errorMessage = $"Failed to load audit events: {ex.Message}";
@@ -272,14 +268,12 @@
         _errorMessage = null;
 
         try {
-            using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             AuditExportRequest request = new(
                 BuildQueryRequest( 0, 0 ),
                 format
             );
 
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/audit/export", request );
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/audit/export", request );
             if (!response.IsSuccessStatusCode) {
                 _errorMessage = $"Export failed: {response.StatusCode}";
                 return;

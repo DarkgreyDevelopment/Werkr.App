@@ -1,13 +1,16 @@
 using Werkr.Common.Models.Audit;
+using Werkr.Server.Identity;
 
 namespace Werkr.Server.Services;
 
 /// <summary>
 /// Scoped service that sends audit events to the API via HTTP POST.
 /// Used by Server components that need to record audit events before committing operations.
+/// Sets <see cref="UserTokenContext"/> so the API receives the real user's identity.
 /// </summary>
 public sealed partial class AuditClient(
     IHttpClientFactory httpClientFactory,
+    IUserTokenProvider userTokenProvider,
     ILogger<AuditClient> logger
 ) {
     /// <summary>
@@ -26,6 +29,9 @@ public sealed partial class AuditClient(
     ) {
         string eventTypeId = eventType.ToEventId( );
         try {
+            string? userToken = await userTokenProvider.GetTokenAsync( );
+            UserTokenContext.CurrentToken = userToken;
+
             using HttpClient client = httpClientFactory.CreateClient( "ApiService" );
 
             AuditEntry request = new(

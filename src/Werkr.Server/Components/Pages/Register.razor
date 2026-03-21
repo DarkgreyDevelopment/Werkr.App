@@ -3,7 +3,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Werkr.Common.Models
 @attribute [Authorize( Roles = "Admin" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject IConfiguration Configuration
 
 <PageTitle>Werkr - Register Agent</PageTitle>
@@ -142,8 +142,6 @@
 
         _isGenerating = true;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             int? expirationMinutes = _model.ExpirationHours > 0
                 ? _model.ExpirationHours * 60
                 : 0;
@@ -158,7 +156,7 @@
                 ExpirationMinutes: expirationMinutes,
                 Tags: tags );
 
-            HttpResponseMessage response = await client.PostAsJsonAsync(
+            HttpResponseMessage response = await Api.PostAsJsonAsync(
                 "/api/v1/registration/generate",
                 request );
 

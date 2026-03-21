@@ -1,7 +1,7 @@
 @* Step detail side panel — shows I/O, log preview, and variables for a selected step. *@
 @using Werkr.Server.Services
 
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 @if ( Step is not null ) {
     <div class="card h-100">
@@ -82,8 +82,8 @@
         if ( Step?.JobId is null ) return;
         _fetchingLog = true;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _fullLog = await client.GetStringAsync( $"/api/v1/jobs/{Step.JobId}/output" );
+            HttpResponseMessage response = await Api.GetRawAsync( $"/api/v1/jobs/{Step.JobId}/output" );
+            _fullLog = await response.Content.ReadAsStringAsync( );
         } catch {
             _fullLog = "Failed to fetch log.";
         } finally {

@@ -6,7 +6,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @implements IAsyncDisposable
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject ServerConfigCache ConfigCache
 @inject NavigationManager Navigation
 
@@ -364,8 +364,7 @@
         _isLoading = _detail is null;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _detail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
+            _detail = await Api.GetAsync<WorkflowRunDetailDto>(
                 $"/api/v1/workflows/runs/{RunId}" );
             if ( _detail is null ) {
                 _errorMessage = "Run not found.";
@@ -374,7 +373,7 @@
 
             // Load workflow definition for DAG rendering (only once)
             if ( _workflow is null ) {
-                _workflow = await client.GetFromJsonAsync<WorkflowDto>(
+                _workflow = await Api.GetAsync<WorkflowDto>(
                     $"/api/v1/workflows/{_detail.WorkflowId}" );
             }
         } catch ( Exception ex ) {
@@ -441,10 +440,8 @@
         if ( _gridLoaded || _detail is null || _workflow is null ) return;
         _gridLoading = true;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             // Fetch recent runs for this workflow (limited to prevent excessive API calls)
-            List<WorkflowRunDto>? recentRuns = await client.GetFromJsonAsync<List<WorkflowRunDto>>(
+            List<WorkflowRunDto>? recentRuns = await Api.GetAsync<List<WorkflowRunDto>>(
                 $"/api/v1/workflows/{_detail.WorkflowId}/runs?limit=20" );
 
             if ( recentRuns is null || recentRuns.Count == 0 ) return;
@@ -468,7 +465,7 @@
                 } else {
                     // Fetch detail for other runs
                     try {
-                        WorkflowRunDetailDto? runDetail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
+                        WorkflowRunDetailDto? runDetail = await Api.GetAsync<WorkflowRunDetailDto>(
                             $"/api/v1/workflows/runs/{run.Id}" );
                         stepStatuses = runDetail?.StepExecutions
                             .GroupBy( e => e.StepId )
@@ -506,8 +503,7 @@
         _retrying = true;
         _retryMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsJsonAsync(
+            HttpResponseMessage response = await Api.PostAsJsonAsync(
                 $"/api/v1/workflows/{_detail.WorkflowId}/runs/{RunId}/retry-from/{stepId}",
                 new RetryFromFailedRequest( null ) );
 

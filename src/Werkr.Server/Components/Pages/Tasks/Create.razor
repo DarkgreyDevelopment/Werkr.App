@@ -1,7 +1,7 @@
 @page "/tasks/create"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 
 <PageTitle>Werkr - New Task</PageTitle>
@@ -139,8 +139,7 @@
 
     protected override async Task OnInitializedAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/v1/workflows" ) ?? [];
+            _workflows = await Api.GetAsync<List<WorkflowDto>>( "/api/v1/workflows" ) ?? [];
         } catch {
             // Non-critical — dropdown will be empty
         }
@@ -155,8 +154,7 @@
         _model.TargetTags = string.Join( ",", _targetTags );
         try {
             TaskCreateRequest request = _model.ToCreateRequest( );
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/v1/tasks", request );
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/tasks", request );
             if ( response.IsSuccessStatusCode ) {
                 Navigation.NavigateTo( "/tasks" );
             } else {

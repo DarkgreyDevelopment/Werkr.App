@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 @using Werkr.Common.Models
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 
 <PageTitle>Werkr - Tasks</PageTitle>
@@ -131,8 +131,7 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/v1/tasks" );
+            _tasks = await Api.GetAsync<List<TaskDto>>( "/api/v1/tasks" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load tasks: {ex.Message}";
         } finally {
@@ -148,8 +147,7 @@
 
     private async Task DeleteConfirmedAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/tasks/{_pendingDeleteId}" );
+            HttpResponseMessage response = await Api.DeleteAsync( $"/api/v1/tasks/{_pendingDeleteId}" );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {
@@ -164,8 +162,7 @@
         _isRunning = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( $"/api/v1/tasks/{taskId}/run", new TaskRunRequest( null ) );
+            HttpResponseMessage response = await Api.PostAsJsonAsync( $"/api/v1/tasks/{taskId}/run", new TaskRunRequest( null ) );
             if ( !response.IsSuccessStatusCode ) {
                 string body = await response.Content.ReadAsStringAsync( );
                 _errorMessage = $"Run failed: {body}";

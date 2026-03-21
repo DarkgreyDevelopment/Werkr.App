@@ -4,7 +4,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject ILogger<GanttTab> Logger
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 <HeadContent>
     <link rel="stylesheet" href="js/dist/timeline-view.css" />
@@ -45,15 +45,14 @@
         if ( RunId == _lastFetchedRunId ) return;
 
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            WorkflowRunDetailDto? detail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
+            WorkflowRunDetailDto? detail = await Api.GetAsync<WorkflowRunDetailDto>(
                 $"/api/v1/workflows/runs/{RunId}" );
             if ( detail is not null ) {
                 _lastFetchedRunId = RunId;
                 _effectiveExecutions = detail.StepExecutions;
                 // Fetch workflow steps if not provided
                 if ( Steps.Count == 0 ) {
-                    WorkflowDto? wf = await client.GetFromJsonAsync<WorkflowDto>(
+                    WorkflowDto? wf = await Api.GetAsync<WorkflowDto>(
                         $"/api/v1/workflows/{detail.WorkflowId}" );
                     _effectiveSteps = wf?.Steps ?? [];
                 } else {

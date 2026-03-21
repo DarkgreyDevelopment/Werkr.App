@@ -2,7 +2,7 @@
 @using System.ComponentModel.DataAnnotations
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 @using Werkr.Common.Models.Holidays
 
@@ -321,8 +321,7 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _calendar = await client.GetFromJsonAsync<HolidayCalendarDto>( $"/api/v1/holiday-calendars/{Id}" );
+            _calendar = await Api.GetAsync<HolidayCalendarDto>( $"/api/v1/holiday-calendars/{Id}" );
 
             if ( _calendar is not null ) {
                 // Guard: system calendars go to detail page
@@ -338,8 +337,8 @@
                 ];
             }
 
-            _rules = await client.GetFromJsonAsync<List<HolidayRuleDto>>( $"/api/v1/holiday-calendars/{Id}/rules" );
-            _manualDates = await client.GetFromJsonAsync<List<HolidayDateDto>>( $"/api/v1/holiday-calendars/{Id}/dates" );
+            _rules = await Api.GetAsync<List<HolidayRuleDto>>( $"/api/v1/holiday-calendars/{Id}/rules" );
+            _manualDates = await Api.GetAsync<List<HolidayDateDto>>( $"/api/v1/holiday-calendars/{Id}/dates" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load calendar: {ex.Message}";
         } finally {
@@ -351,9 +350,8 @@
         _errorMessage = null;
         _successMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HolidayCalendarUpdateRequest req = new( _infoModel.Name, _infoModel.Description ?? "" );
-            HttpResponseMessage res = await client.PutAsJsonAsync( $"/api/v1/holiday-calendars/{Id}", req );
+            HttpResponseMessage res = await Api.PutAsJsonAsync( $"/api/v1/holiday-calendars/{Id}", req );
             if ( res.IsSuccessStatusCode ) {
                 _successMessage = "Calendar info saved.";
                 _calendar = await res.Content.ReadFromJsonAsync<HolidayCalendarDto>( );
@@ -368,7 +366,6 @@
     private async Task AddRuleAsync( ) {
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HolidayRuleCreateRequest req = new(
                 Name: _newRuleName,
                 RuleType: _newRuleType,
@@ -379,7 +376,7 @@
                 ObservanceRule: _newRuleType == "FixedDate" ? _newRuleObservance : "None",
                 WindowStart: null, WindowEnd: null, WindowTimeZoneId: null,
                 YearStart: null, YearEnd: null );
-            HttpResponseMessage res = await client.PostAsJsonAsync( $"/api/v1/holiday-calendars/{Id}/rules", req );
+            HttpResponseMessage res = await Api.PostAsJsonAsync( $"/api/v1/holiday-calendars/{Id}/rules", req );
             if ( res.IsSuccessStatusCode ) {
                 _newRuleName = "";
                 await LoadAllAsync( );
@@ -399,8 +396,7 @@
 
     private async Task DeleteRuleConfirmedAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage res = await client.DeleteAsync( $"/api/v1/holiday-calendars/{Id}/rules/{_pendingDeleteRuleId}" );
+            HttpResponseMessage res = await Api.DeleteAsync( $"/api/v1/holiday-calendars/{Id}/rules/{_pendingDeleteRuleId}" );
             if ( res.IsSuccessStatusCode ) {
                 await LoadAllAsync( );
             } else {
@@ -414,7 +410,6 @@
     private async Task PreviewRuleAsync( HolidayRuleDto rule ) {
         _rulePreviewName = rule.Name;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             RulePreviewRequest req = new(
                 Name: rule.Name, RuleType: rule.RuleType,
                 Month: rule.Month, Day: rule.Day,
@@ -423,7 +418,7 @@
                 WindowStart: rule.WindowStart, WindowEnd: rule.WindowEnd,
                 WindowTimeZoneId: rule.WindowTimeZoneId,
                 YearStart: rule.YearStart, YearEnd: rule.YearEnd );
-            HttpResponseMessage res = await client.PostAsJsonAsync(
+            HttpResponseMessage res = await Api.PostAsJsonAsync(
                 $"/api/v1/holiday-calendars/rules/preview?startYear={_previewStartYear}&endYear={_previewEndYear}", req );
             if ( res.IsSuccessStatusCode ) {
                 RulePreviewResponse? preview = await res.Content.ReadFromJsonAsync<RulePreviewResponse>( );
@@ -437,9 +432,8 @@
     private async Task AddDateAsync( ) {
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HolidayDateCreateRequest req = new( _newDateValue.ToString( "yyyy-MM-dd" ), _newDateName, null, null, null );
-            HttpResponseMessage res = await client.PostAsJsonAsync( $"/api/v1/holiday-calendars/{Id}/dates", req );
+            HttpResponseMessage res = await Api.PostAsJsonAsync( $"/api/v1/holiday-calendars/{Id}/dates", req );
             if ( res.IsSuccessStatusCode ) {
                 _newDateName = "";
                 await LoadAllAsync( );
@@ -453,8 +447,7 @@
 
     private async Task RemoveDateAsync( long dateId ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage res = await client.DeleteAsync( $"/api/v1/holiday-calendars/{Id}/dates/{dateId}" );
+            HttpResponseMessage res = await Api.DeleteAsync( $"/api/v1/holiday-calendars/{Id}/dates/{dateId}" );
             if ( res.IsSuccessStatusCode ) {
                 await LoadAllAsync( );
             } else {
@@ -468,8 +461,7 @@
     private async Task PreviewCalendarAsync( ) {
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HolidayPreviewResponse? preview = await client.GetFromJsonAsync<HolidayPreviewResponse>(
+            HolidayPreviewResponse? preview = await Api.GetAsync<HolidayPreviewResponse>(
                 $"/api/v1/holiday-calendars/{Id}/preview?startYear={_previewStartYear}&endYear={_previewEndYear}" );
             _previewDates = preview?.Dates?.ToList( );
         } catch ( Exception ex ) {

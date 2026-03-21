@@ -1,5 +1,5 @@
 @rendermode InteractiveServer
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 <div class="d-flex flex-wrap gap-1 mb-2">
     @foreach (string tag in Value) {
@@ -59,8 +59,7 @@
 
     protected override async Task OnInitializedAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _allTags = await client.GetFromJsonAsync<List<string>>( "/api/v1/tags" ) ?? [];
+            _allTags = await Api.GetAsync<List<string>>( "/api/v1/tags" ) ?? [];
         } catch {
             _allTags = [];
         }
