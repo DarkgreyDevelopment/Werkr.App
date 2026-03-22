@@ -1,0 +1,48 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
+
+// API-hosted service (Agent calls API).
+// Agent-initiated key rotation fetch: agent asks if there's a pending key, then acknowledges activation.
+service KeyExchange {
+  // Agent fetches a pending key rotation.
+  // Request envelope contains FetchPendingKeyRequest; response contains FetchPendingKeyResponse.
+  rpc FetchPendingKey (EncryptedEnvelope) returns (EncryptedEnvelope);
+
+  // Agent acknowledges that the new key is active.
+  // Request envelope contains AcknowledgeKeyRequest; response contains AcknowledgeKeyResponse.
+  rpc AcknowledgeKey (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message FetchPendingKeyRequest {
+  // Agent's connection ID.
+  string connection_id = 1;
+}
+
+message FetchPendingKeyResponse {
+  // Whether a pending key rotation exists.
+  bool has_pending_key = 1;
+  // New AES-256 key encrypted with the Agent's RSA public key (defense-in-depth).
+  bytes rsa_encrypted_new_key = 2;
+  // Identifier for the new key (UUID).
+  string new_key_id = 3;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
+}
+
+message AcknowledgeKeyRequest {
+  // Agent's connection ID.
+  string connection_id = 1;
+  // The key ID the agent has activated.
+  string activated_key_id = 2;
+}
+
+message AcknowledgeKeyResponse {
+  // Whether the API accepted the acknowledgment.
+  bool success = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
+}
