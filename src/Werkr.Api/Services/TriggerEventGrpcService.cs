@@ -16,9 +16,11 @@ namespace Werkr.Api.Services;
 /// variables, and notifies agents via schedule invalidation.
 /// </summary>
 /// <param name="scopeFactory">Factory for creating DI scopes.</param>
+/// <param name="builder">Secure response builder for envelope encryption.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class TriggerEventGrpcService(
     IServiceScopeFactory scopeFactory,
+    SecureResponseBuilder builder,
     ILogger<TriggerEventGrpcService> logger
 ) : TriggerEventService.TriggerEventServiceBase {
 
@@ -30,11 +32,7 @@ public sealed partial class TriggerEventGrpcService(
         EncryptedEnvelope request,
         ServerCallContext context
     ) {
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        FileMonitorEventRequest inner = PayloadEncryptor.DecryptFromEnvelope<FileMonitorEventRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, FileMonitorEventRequest inner) = SecureResponseBuilder.DecryptRequest<FileMonitorEventRequest>( request, context );
 
         if (string.IsNullOrWhiteSpace( inner.ConnectionId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
@@ -60,7 +58,7 @@ public sealed partial class TriggerEventGrpcService(
                 Accepted = false,
                 Error = $"Trigger {inner.TriggerId} not found.",
             };
-            return PayloadEncryptor.EncryptToEnvelope( notFoundResp, connection.SharedKey, keyId );
+            return await builder.EncryptResponseAsync( notFoundResp, connection, context.CancellationToken );
         }
 
         if (!trigger.Enabled) {
@@ -68,7 +66,7 @@ public sealed partial class TriggerEventGrpcService(
                 Accepted = false,
                 Error = $"Trigger {inner.TriggerId} is disabled.",
             };
-            return PayloadEncryptor.EncryptToEnvelope( disabledResp, connection.SharedKey, keyId );
+            return await builder.EncryptResponseAsync( disabledResp, connection, context.CancellationToken );
         }
 
         if (!trigger.Workflow.Enabled) {
@@ -76,7 +74,7 @@ public sealed partial class TriggerEventGrpcService(
                 Accepted = false,
                 Error = $"Workflow {trigger.WorkflowId} is disabled.",
             };
-            return PayloadEncryptor.EncryptToEnvelope( wfDisabledResp, connection.SharedKey, keyId );
+            return await builder.EncryptResponseAsync( wfDisabledResp, connection, context.CancellationToken );
         }
 
         // Create trigger context variables
@@ -113,15 +111,6 @@ public sealed partial class TriggerEventGrpcService(
             WorkflowRunId = workflowRunId.ToString( ),
         };
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
-    }
-
-    /// <summary>
-    /// Extracts the <see cref="RegisteredConnection"/> from the gRPC call context's <c>UserState</c> dictionary.
-    /// </summary>
-    private static RegisteredConnection GetConnection( ServerCallContext context ) {
-        return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
-            ? connection
-            : throw new RpcException( new Status( StatusCode.Internal, "Connection not resolved by interceptor." ) );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 }

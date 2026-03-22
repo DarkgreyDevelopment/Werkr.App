@@ -12,7 +12,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Postgres
 {
     [DbContext(typeof(PostgresWerkrDbContext))]
-    [Migration("20260322093903_Initial")]
+    [Migration("20260322224246_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -758,6 +758,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("date")
                         .HasColumnName("date");
 
+                    b.Property<bool>("IsFixedOffset")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_fixed_offset");
+
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
@@ -1075,6 +1079,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("date")
                         .HasColumnName("date");
 
+                    b.Property<bool>("IsFixedOffset")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_fixed_offset");
+
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
@@ -1192,6 +1200,56 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasDatabaseName("ix_saved_filters_page_key_owner_id");
 
                     b.ToTable("saved_filters", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Settings.UserPreference", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("value");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_preferences");
+
+                    b.HasIndex("UserId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_preferences_user_id_key");
+
+                    b.ToTable("user_preferences", "werkr");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>

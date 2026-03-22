@@ -6,7 +6,10 @@
 
 <PageTitle>Werkr - Jobs</PageTitle>
 
-<h1>Job History</h1>
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Job History</h1>
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
+</div>
 <Breadcrumb Items="_breadcrumbs" />
 
 <p>Browse execution history across all tasks. Use the filters to narrow results.</p>
@@ -41,7 +44,7 @@
                         <td><a href="/jobs/@j.Id">@j.Id.ToString()[..8]…</a></td>
                         <td><a href="/tasks/@j.TaskId">@( j.TaskName ?? $"#{j.TaskId}" )</a></td>
                         <td>@( j.AgentName ?? "—" )</td>
-                        <td>@j.StartTime.ToString( "g" )</td>
+                        <td>@ConvertIfNeeded( j.StartTime ).ToString( "g" )</td>
                         <td>@j.RuntimeSeconds.ToString( "F1" )s</td>
                         <td>
                             @{ bool isRunning = j.EndTime is null && !j.Success; }
@@ -76,6 +79,7 @@
     private FilterCriteria? _activeCriteria;
     private string? _errorMessage;
     private bool _isLoading;
+    private TimeZoneInfo? _displayTz;
 
     private static readonly FilterDefinition _filterDefinition = new( [
         new FilterField( "taskId", "Task ID", FilterFieldType.Number ),
@@ -155,4 +159,9 @@
         _activeCriteria = null;
         await LoadAsync( );
     }
+
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
 }

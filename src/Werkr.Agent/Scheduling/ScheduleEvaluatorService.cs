@@ -1210,7 +1210,7 @@ public sealed partial class ScheduleEvaluatorService(
     /// </summary>
     internal static Schedule MapProtoToSchedule( ScheduleDefinition def ) {
         TimeZoneInfo startTz = !string.IsNullOrWhiteSpace( def.TimeZoneId )
-            ? TimeZoneInfo.FindSystemTimeZoneById( def.TimeZoneId )
+            ? TimeZoneResolver.FindOrCreate( def.TimeZoneId )
             : TimeZoneInfo.Utc;
 
         DateTime startLocal = ParseDateAndTime( def.StartDate, def.StartTime );
@@ -1219,6 +1219,7 @@ public sealed partial class ScheduleEvaluatorService(
             Date = DateOnly.FromDateTime( startLocal ),
             Time = TimeOnly.FromDateTime( startLocal ),
             TimeZone = startTz,
+            IsFixedOffset = def.IsFixedOffset,
         };
 
         // Parse schedule ID
@@ -1229,13 +1230,14 @@ public sealed partial class ScheduleEvaluatorService(
         ExpirationDateTimeInfo? expiration = null;
         if (!string.IsNullOrWhiteSpace( def.ExpirationDate )) {
             TimeZoneInfo expTz = !string.IsNullOrWhiteSpace( def.ExpirationTimeZoneId )
-                ? TimeZoneInfo.FindSystemTimeZoneById( def.ExpirationTimeZoneId )
+                ? TimeZoneResolver.FindOrCreate( def.ExpirationTimeZoneId )
                 : startTz;
             DateTime expLocal = ParseDateAndTime( def.ExpirationDate, def.ExpirationTime );
             expiration = new( ) {
                 Date = DateOnly.FromDateTime( expLocal ),
                 Time = TimeOnly.FromDateTime( expLocal ),
                 TimeZone = expTz,
+                IsFixedOffset = def.ExpirationIsFixedOffset,
             };
             if (Guid.TryParse( def.ScheduleId, out Guid expSchId )) {
                 expiration.ScheduleId = expSchId;

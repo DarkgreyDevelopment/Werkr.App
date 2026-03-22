@@ -1,3 +1,4 @@
+using Werkr.Data;
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Extensions;
 using Werkr.Data.Calendar.Models;
@@ -375,7 +376,7 @@ public static class ScheduleCalculator {
         }
 
         // Time-window holiday: convert UTC occurrence to holiday's timezone
-        TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById( holiday.WindowTimeZoneId );
+        TimeZoneInfo tz = TimeZoneResolver.FindOrCreate( holiday.WindowTimeZoneId );
         DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc(
             utcOccurrence,
             tz

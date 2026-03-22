@@ -45,7 +45,7 @@ public class ActionParameterEditorTests : BunitContext {
 
         // All <option> except the "— select action —" placeholder
         IReadOnlyList<AngleSharp.Dom.IElement> options = cut.FindAll( "select#actionSubType option[value]:not([value=''])" );
-        Assert.HasCount( 30, options, "Should list all 30 actions." );
+        Assert.HasCount( 31, options, "Should list all 31 actions." );
     }
 
     /// <summary>

@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Grpc.Core;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
+using Werkr.Data.Entities.Registration;
 
 namespace Werkr.Api.Services;
 
@@ -27,16 +28,18 @@ public sealed partial class OutputStreamingGrpcService(
     // ── Agent stream tracking ────────────────────────────────────────────────────
 
     /// <summary>
-    /// Holds per-agent stream state: the response writer for sending subscriptions
-    /// back to the agent and a set of SSE consumers keyed by execution.
+    /// Holds per-agent stream state: the response writer for sending encrypted
+    /// subscriptions back to the agent, the connection for encryption, and a set
+    /// of SSE consumers keyed by execution.
     /// </summary>
     private sealed class AgentStream {
-        public required IServerStreamWriter<OutputSubscription> ResponseWriter { get; init; }
+        public required IServerStreamWriter<EncryptedEnvelope> ResponseWriter { get; init; }
+        public required RegisteredConnection Connection { get; init; }
         public ConcurrentDictionary<string, Channel<OutputMessage>> Consumers { get; } = new( );
     }
 
-    /// <summary>All currently connected agent streams keyed by peer address.</summary>
-    private readonly ConcurrentDictionary<string, AgentStream> _agents = new( );
+    /// <summary>All currently connected agent streams keyed by connection ID.</summary>
+    private readonly ConcurrentDictionary<Guid, AgentStream> _agents = new( );
 
     /// <summary>
     /// Per-run rate limiter for <see cref="LogAppendedEvent"/> publishing.
@@ -89,25 +92,32 @@ public sealed partial class OutputStreamingGrpcService(
 
     /// <summary>
     /// Called once per agent when it opens the persistent output stream.
-    /// Reads incoming <see cref="OutputMessage"/> and fans them out to
-    /// any registered SSE consumers.
+    /// Reads incoming <see cref="EncryptedEnvelope"/> (containing <see cref="OutputMessage"/>)
+    /// and fans them out to any registered SSE consumers.
     /// </summary>
     public override async Task StreamOutput(
-        IAsyncStreamReader<OutputMessage> requestStream,
-        IServerStreamWriter<OutputSubscription> responseStream,
+        IAsyncStreamReader<EncryptedEnvelope> requestStream,
+        IServerStreamWriter<EncryptedEnvelope> responseStream,
         ServerCallContext context
     ) {
-        string peer = context.Peer ?? Guid.NewGuid( ).ToString( );
+        RegisteredConnection connection = SecureResponseBuilder.GetConnection( context );
+        Guid agentId = connection.Id;
 
-        AgentStream agentStream = new( ) { ResponseWriter = responseStream };
-        _ = _agents.TryAdd( peer, agentStream );
+        AgentStream agentStream = new( ) {
+            ResponseWriter = responseStream,
+            Connection = connection
+        };
+        _ = _agents.TryAdd( agentId, agentStream );
 
         if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation( "Agent output stream connected from {Peer}.", peer );
+            logger.LogInformation( "Agent output stream connected from {AgentId}.", agentId );
         }
 
         try {
-            await foreach (OutputMessage message in requestStream.ReadAllAsync( context.CancellationToken )) {
+            await foreach (EncryptedEnvelope envelope in requestStream.ReadAllAsync( context.CancellationToken )) {
+                OutputMessage message = PayloadEncryptor.DecryptFromEnvelope<OutputMessage>(
+                    envelope, connection.SharedKey );
+
                 string consumerKey = BuildConsumerKey( message.TaskId, message.ScheduleId );
 
                 // Fan out to any SSE consumers for this execution
@@ -142,12 +152,12 @@ public sealed partial class OutputStreamingGrpcService(
         } catch (OperationCanceledException) {
             // Agent disconnected or server shutting down
         } catch (Exception ex) {
-            logger.LogWarning( ex, "Agent output stream from {Peer} ended with error.", peer );
+            logger.LogWarning( ex, "Agent output stream from {AgentId} ended with error.", agentId );
         } finally {
-            _ = _agents.TryRemove( peer, out _ );
+            _ = _agents.TryRemove( agentId, out _ );
 
             if (logger.IsEnabled( LogLevel.Information )) {
-                logger.LogInformation( "Agent output stream disconnected from {Peer}.", peer );
+                logger.LogInformation( "Agent output stream disconnected from {AgentId}.", agentId );
             }
         }
     }
@@ -156,8 +166,8 @@ public sealed partial class OutputStreamingGrpcService(
 
     /// <summary>
     /// Subscribes a browser SSE consumer to output for a specific task/schedule
-    /// execution.  Sends an <see cref="OutputSubscription"/> to all connected agents
-    /// so that matching output is pushed over the stream.
+    /// execution.  Sends an encrypted <see cref="OutputSubscription"/> to all
+    /// connected agents so that matching output is pushed over the stream.
     /// </summary>
     /// <param name="taskId">The task to subscribe to.</param>
     /// <param name="scheduleId">The schedule to subscribe to.</param>
@@ -174,17 +184,22 @@ public sealed partial class OutputStreamingGrpcService(
             new UnboundedChannelOptions { SingleReader = true } );
 
         bool any = false;
-        foreach (KeyValuePair<string, AgentStream> kvp in _agents) {
+        foreach (KeyValuePair<Guid, AgentStream> kvp in _agents) {
             _ = kvp.Value.Consumers.TryAdd( consumerKey, channel );
             try {
-                await kvp.Value.ResponseWriter.WriteAsync( new OutputSubscription {
+                OutputSubscription subscription = new( ) {
                     TaskId = taskId,
                     ScheduleId = scheduleId,
                     Subscribe = true,
-                } );
+                };
+                string keyId = kvp.Value.Connection.ActiveKeyId
+                    ?? kvp.Value.Connection.Id.ToString( );
+                EncryptedEnvelope subEnvelope = PayloadEncryptor.EncryptToEnvelope(
+                    subscription, kvp.Value.Connection.SharedKey, keyId );
+                await kvp.Value.ResponseWriter.WriteAsync( subEnvelope );
                 any = true;
             } catch (Exception ex) {
-                logger.LogWarning( ex, "Failed to send subscribe to agent {Peer}.", kvp.Key );
+                logger.LogWarning( ex, "Failed to send subscribe to agent {AgentId}.", kvp.Key );
             }
         }
 
@@ -199,16 +214,21 @@ public sealed partial class OutputStreamingGrpcService(
     public async Task UnsubscribeAsync( long taskId, string scheduleId ) {
         string consumerKey = BuildConsumerKey( taskId, scheduleId );
 
-        foreach (KeyValuePair<string, AgentStream> kvp in _agents) {
+        foreach (KeyValuePair<Guid, AgentStream> kvp in _agents) {
             _ = kvp.Value.Consumers.TryRemove( consumerKey, out _ );
             try {
-                await kvp.Value.ResponseWriter.WriteAsync( new OutputSubscription {
+                OutputSubscription subscription = new( ) {
                     TaskId = taskId,
                     ScheduleId = scheduleId,
                     Subscribe = false,
-                } );
+                };
+                string keyId = kvp.Value.Connection.ActiveKeyId
+                    ?? kvp.Value.Connection.Id.ToString( );
+                EncryptedEnvelope subEnvelope = PayloadEncryptor.EncryptToEnvelope(
+                    subscription, kvp.Value.Connection.SharedKey, keyId );
+                await kvp.Value.ResponseWriter.WriteAsync( subEnvelope );
             } catch (Exception ex) {
-                logger.LogWarning( ex, "Failed to send unsubscribe to agent {Peer}.", kvp.Key );
+                logger.LogWarning( ex, "Failed to send unsubscribe to agent {AgentId}.", kvp.Key );
             }
         }
     }

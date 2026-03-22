@@ -2756,7 +2756,7 @@ public class ScheduleCalculatorTests {
                 StartLocal.Hour,
                 StartLocal.Minute,
                 StartLocal.Second,
-                DateTimeKind.Local
+                DateTimeKind.Unspecified
             ),
             LocalTz
         );

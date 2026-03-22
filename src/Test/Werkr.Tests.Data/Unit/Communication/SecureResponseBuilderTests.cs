@@ -1,11 +1,11 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Werkr.Common.Models;
 using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
-using Werkr.Common.Models;
 
 namespace Werkr.Tests.Data.Unit.Communication;
 

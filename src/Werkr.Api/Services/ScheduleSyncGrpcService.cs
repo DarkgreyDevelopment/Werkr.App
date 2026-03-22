@@ -28,6 +28,7 @@ namespace Werkr.Api.Services;
 /// <param name="holidayCalendarService">Holiday calendar CRUD service.</param>
 /// <param name="auditService">Audit service for recording schedule audit events.</param>
 /// <param name="credentialService">Credential service for resolving credentials at dispatch time.</param>
+/// <param name="builder">Secure response builder for envelope encryption.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ScheduleSyncGrpcService(
     WerkrDbContext dbContext,
@@ -36,6 +37,7 @@ public sealed partial class ScheduleSyncGrpcService(
     HolidayCalendarService holidayCalendarService,
     IAuditService auditService,
     Werkr.Core.Credentials.ICredentialService credentialService,
+    SecureResponseBuilder builder,
     ILogger<ScheduleSyncGrpcService> logger
 ) : ScheduleSync.ScheduleSyncBase {
 
@@ -48,11 +50,7 @@ public sealed partial class ScheduleSyncGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        AgentScheduleRequest inner = PayloadEncryptor.DecryptFromEnvelope<AgentScheduleRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, AgentScheduleRequest inner) = SecureResponseBuilder.DecryptRequest<AgentScheduleRequest>( request, context );
 
         if (string.IsNullOrWhiteSpace( inner.ConnectionId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
@@ -310,7 +308,7 @@ public sealed partial class ScheduleSyncGrpcService(
                 response.FileMonitorTriggers.Count.ToString( ), inner.ConnectionId );
         }
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>Maps a <see cref="WerkrTask"/> and <see cref="Schedule"/> to a proto definition.</summary>
@@ -407,12 +405,14 @@ public sealed partial class ScheduleSyncGrpcService(
             def.StartDate = schedule.StartDateTime.Date.ToString( "O" );
             def.StartTime = schedule.StartDateTime.Time.ToString( "O" );
             def.TimeZoneId = schedule.StartDateTime.TimeZone.Id;
+            def.IsFixedOffset = schedule.StartDateTime.IsFixedOffset;
         }
 
         if (schedule.Expiration is not null) {
             def.ExpirationDate = schedule.Expiration.Date.ToString( "O" );
             def.ExpirationTime = schedule.Expiration.Time.ToString( "O" );
             def.ExpirationTimeZoneId = schedule.Expiration.TimeZone.Id;
+            def.ExpirationIsFixedOffset = schedule.Expiration.IsFixedOffset;
         }
 
         if (schedule.DailyRecurrence is not null) {
@@ -570,11 +570,7 @@ public sealed partial class ScheduleSyncGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        GetBulkScheduleHolidayDatesRequest inner = PayloadEncryptor.DecryptFromEnvelope<GetBulkScheduleHolidayDatesRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, GetBulkScheduleHolidayDatesRequest inner) = SecureResponseBuilder.DecryptRequest<GetBulkScheduleHolidayDatesRequest>( request, context );
 
         DateOnly startDate = DateOnly.Parse( inner.StartDate );
         DateOnly endDate = DateOnly.Parse( inner.EndDate );
@@ -614,7 +610,7 @@ public sealed partial class ScheduleSyncGrpcService(
             response.Results.Add( result );
         }
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>
@@ -626,11 +622,7 @@ public sealed partial class ScheduleSyncGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        SubmitAuditLogRequest inner = PayloadEncryptor.DecryptFromEnvelope<SubmitAuditLogRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, SubmitAuditLogRequest inner) = SecureResponseBuilder.DecryptRequest<SubmitAuditLogRequest>( request, context );
 
         Guid scheduleId = Guid.Parse( inner.ScheduleId );
 
@@ -671,15 +663,6 @@ public sealed partial class ScheduleSyncGrpcService(
             AcceptedCount = accepted,
         };
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
-    }
-
-    /// <summary>
-    /// Extracts the <see cref="RegisteredConnection"/> from the gRPC call context's <c>UserState</c> dictionary, where it was placed by the <see cref="Interceptors.AgentBearerTokenInterceptor"/> during authentication.
-    /// </summary>
-    private static RegisteredConnection GetConnection( ServerCallContext context ) {
-        return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
-            ? connection
-            : throw new RpcException( new Status( StatusCode.Internal, "Connection not resolved by interceptor." ) );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 }

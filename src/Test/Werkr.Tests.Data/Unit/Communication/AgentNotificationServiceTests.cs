@@ -156,7 +156,7 @@ public class AgentNotificationServiceTests {
 
         // TTL should be ~24 hours (allow 1-minute tolerance for test execution time)
         TimeSpan ttl = row.ExpiresUtc - row.CreatedUtc;
-        Assert.IsTrue( ttl.TotalHours > 23.9 && ttl.TotalHours < 24.1,
+        Assert.IsTrue( ttl.TotalHours is > 23.9 and < 24.1,
             $"key_rotation TTL should be ~24h but was {ttl.TotalHours:F1}h." );
     }
 }

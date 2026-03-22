@@ -3,6 +3,7 @@ option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
 import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
 
 // Agent pulls configuration from the Server (API hosts this service).
 // All RPCs use EncryptedEnvelope. Inner payload types defined below.
@@ -25,6 +26,8 @@ message ConfigSyncResponse {
   int64 current_version = 2;
   // Credential metadata (names and types only, NOT values).
   repeated CredentialMetadata credentials = 3;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message ConfigEntryMessage {

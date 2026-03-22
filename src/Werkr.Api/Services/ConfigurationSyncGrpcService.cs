@@ -17,10 +17,12 @@ namespace Werkr.Api.Services;
 /// </summary>
 /// <param name="dbContext">Database context.</param>
 /// <param name="configService">Configuration resolution service.</param>
+/// <param name="builder">Secure response builder for envelope encryption.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ConfigurationSyncGrpcService(
     WerkrDbContext dbContext,
     IConfigurationResolutionService configService,
+    SecureResponseBuilder builder,
     ILogger<ConfigurationSyncGrpcService> logger
 ) : Werkr.Common.Protos.ConfigurationSync.ConfigurationSyncBase {
 
@@ -32,11 +34,7 @@ public sealed partial class ConfigurationSyncGrpcService(
         EncryptedEnvelope request,
         ServerCallContext context
     ) {
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        ConfigSyncRequest inner = PayloadEncryptor.DecryptFromEnvelope<ConfigSyncRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, ConfigSyncRequest inner) = SecureResponseBuilder.DecryptRequest<ConfigSyncRequest>( request, context );
 
         if (string.IsNullOrWhiteSpace( inner.ConnectionId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
@@ -90,13 +88,7 @@ public sealed partial class ConfigurationSyncGrpcService(
 
         LogConfigSync( logger, agentId, sinceVersion, entries.Count );
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
-    }
-
-    private static RegisteredConnection GetConnection( ServerCallContext context ) {
-        return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
-            ? connection
-            : throw new RpcException( new Status( StatusCode.Internal, "Connection not resolved by interceptor." ) );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     [LoggerMessage( Level = LogLevel.Debug, Message = "Config sync for agent {AgentId}: sinceVersion={SinceVersion}, returned {Count} entries" )]

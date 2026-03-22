@@ -172,6 +172,34 @@ public sealed partial class ConfigurationResolutionService(
     }
 
     /// <inheritdoc/>
+    public async Task DeleteOverrideAsync( string key, string agentId, string userId, CancellationToken ct ) {
+        ConfigurationEntry entry = await dbContext.ConfigurationEntries
+            .FirstOrDefaultAsync( e => e.Key == key && e.ScopeLevel == 1 && e.ScopeId == agentId, ct )
+            ?? throw new KeyNotFoundException( $"No agent override found for key '{key}' on agent '{agentId}'." );
+
+        string previousValue = entry.Value;
+        _ = dbContext.ConfigurationEntries.Remove( entry );
+
+        // Increment sync version so agents pick up the deletion via delta sync
+        long maxVersion = await dbContext.ConfigurationEntries
+            .MaxAsync( e => (long?)e.SyncVersion, ct ) ?? 0;
+
+        _ = await dbContext.SaveChangesAsync( ct );
+
+        await auditService.LogAsync( new AuditEntry(
+            EventTypeId: AuditEventType.ConfigUpdated.ToEventId( ),
+            ActorId: userId,
+            ActorType: "User",
+            EntityType: "ConfigurationEntry",
+            EntityId: entry.Id.ToString( ),
+            ActionPerformed: "OverrideRemoved",
+            Details: new { entry.Key, AgentId = agentId, PreviousValue = previousValue }
+        ), ct );
+
+        LogConfigUpdated( logger, key, 1, agentId );
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<ConfigurationChangeLogDto>> GetHistoryAsync(
         string key, int limit, CancellationToken ct
     ) {

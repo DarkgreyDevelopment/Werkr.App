@@ -47,10 +47,10 @@ public class RetentionProviderTests {
         CancellationToken ct = TestContext.CancellationToken;
         WorkflowRunRetentionProvider provider = new( _db );
 
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Succeeded, DateTime.UtcNow.AddDays( -200 ) );
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Failed, DateTime.UtcNow.AddDays( -200 ) );
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Cancelled, DateTime.UtcNow.AddDays( -200 ) );
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Succeeded, DateTime.UtcNow.AddDays( -10 ) ); // within retention
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Succeeded, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Failed, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Cancelled, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Succeeded, DateTime.UtcNow.AddDays( -10 ) ); // within retention
 
         RetentionSweepResult result = await provider.DeleteAgedRecordsAsync( 180, 1000, ct );
         Assert.AreEqual( 3, result.DeletedCount );
@@ -64,7 +64,7 @@ public class RetentionProviderTests {
         CancellationToken ct = TestContext.CancellationToken;
         WorkflowRunRetentionProvider provider = new( _db );
 
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Running, null, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Running, null, DateTime.UtcNow.AddDays( -200 ) );
 
         RetentionSweepResult result = await provider.DeleteAgedRecordsAsync( 180, 1000, ct );
         Assert.AreEqual( 0, result.DeletedCount );
@@ -75,7 +75,7 @@ public class RetentionProviderTests {
         CancellationToken ct = TestContext.CancellationToken;
         WorkflowRunRetentionProvider provider = new( _db );
 
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Pending, null, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Pending, null, DateTime.UtcNow.AddDays( -200 ) );
 
         RetentionSweepResult result = await provider.DeleteAgedRecordsAsync( 180, 1000, ct );
         Assert.AreEqual( 0, result.DeletedCount );
@@ -86,7 +86,7 @@ public class RetentionProviderTests {
         CancellationToken ct = TestContext.CancellationToken;
         WorkflowRunRetentionProvider provider = new( _db );
 
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Queued, null, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Queued, null, DateTime.UtcNow.AddDays( -200 ) );
 
         RetentionSweepResult result = await provider.DeleteAgedRecordsAsync( 180, 1000, ct );
         Assert.AreEqual( 0, result.DeletedCount );
@@ -97,7 +97,7 @@ public class RetentionProviderTests {
         CancellationToken ct = TestContext.CancellationToken;
         WorkflowRunRetentionProvider provider = new( _db );
 
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Paused, null, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Paused, null, DateTime.UtcNow.AddDays( -200 ) );
 
         RetentionSweepResult result = await provider.DeleteAgedRecordsAsync( 180, 1000, ct );
         Assert.AreEqual( 0, result.DeletedCount );
@@ -108,8 +108,8 @@ public class RetentionProviderTests {
         CancellationToken ct = TestContext.CancellationToken;
         WorkflowRunRetentionProvider provider = new( _db );
 
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Succeeded, DateTime.UtcNow.AddMinutes( -1 ) );
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Running, null, DateTime.UtcNow.AddDays( -1 ) ); // exempt
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Succeeded, DateTime.UtcNow.AddMinutes( -1 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Running, null, DateTime.UtcNow.AddDays( -1 ) ); // exempt
 
         RetentionSweepResult result = await provider.DeleteAgedRecordsAsync( 0, 1000, ct );
         Assert.AreEqual( 1, result.DeletedCount );
@@ -120,9 +120,9 @@ public class RetentionProviderTests {
         CancellationToken ct = TestContext.CancellationToken;
         WorkflowRunRetentionProvider provider = new( _db );
 
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Succeeded, DateTime.UtcNow.AddDays( -200 ) );
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Failed, DateTime.UtcNow.AddDays( -200 ) );
-        await SeedWorkflowRunAsync( WorkflowRunStatus.Running, null, DateTime.UtcNow.AddDays( -200 ) ); // exempt
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Succeeded, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Failed, DateTime.UtcNow.AddDays( -200 ) );
+        _ = await SeedWorkflowRunAsync( WorkflowRunStatus.Running, null, DateTime.UtcNow.AddDays( -200 ) ); // exempt
 
         RetentionPreview preview = await provider.PreviewAgedRecordsAsync( 180, ct );
         Assert.AreEqual( 2, preview.EligibleCount );
@@ -234,8 +234,8 @@ public class RetentionProviderTests {
     ) {
         // Need a workflow first (FK)
         Workflow wf = new( ) { Name = $"wf-{Guid.NewGuid( ):N}", Enabled = true };
-        _db.Workflows.Add( wf );
-        await _db.SaveChangesAsync( TestContext.CancellationToken );
+        _ = _db.Workflows.Add( wf );
+        _ = await _db.SaveChangesAsync( TestContext.CancellationToken );
 
         WorkflowRun run = new( ) {
             WorkflowId = wf.Id,
@@ -243,16 +243,16 @@ public class RetentionProviderTests {
             StartTime = startTime ?? DateTime.UtcNow.AddDays( -210 ),
             EndTime = endTime,
         };
-        _db.WorkflowRuns.Add( run );
-        await _db.SaveChangesAsync( TestContext.CancellationToken );
+        _ = _db.WorkflowRuns.Add( run );
+        _ = await _db.SaveChangesAsync( TestContext.CancellationToken );
         return run;
     }
 
     private async Task SeedJobAsync( Guid? workflowRunId, DateTime endTime ) {
         // Need a task first (FK)
         WerkrTask task = new( ) { Name = $"task-{Guid.NewGuid( ):N}", ActionType = TaskActionType.PowerShellCommand };
-        _db.Tasks.Add( task );
-        await _db.SaveChangesAsync( TestContext.CancellationToken );
+        _ = _db.Tasks.Add( task );
+        _ = await _db.SaveChangesAsync( TestContext.CancellationToken );
 
         WerkrJob job = new( ) {
             TaskId = task.Id,
@@ -261,8 +261,8 @@ public class RetentionProviderTests {
             EndTime = endTime,
             Success = true,
         };
-        _db.Jobs.Add( job );
-        await _db.SaveChangesAsync( TestContext.CancellationToken );
+        _ = _db.Jobs.Add( job );
+        _ = await _db.SaveChangesAsync( TestContext.CancellationToken );
     }
 
     private async Task SeedWorkflowRunVariableAsync( Guid runId ) {
@@ -272,7 +272,7 @@ public class RetentionProviderTests {
             Value = "test-value",
             Version = 1,
         };
-        _db.WorkflowRunVariables.Add( variable );
-        await _db.SaveChangesAsync( TestContext.CancellationToken );
+        _ = _db.WorkflowRunVariables.Add( variable );
+        _ = await _db.SaveChangesAsync( TestContext.CancellationToken );
     }
 }

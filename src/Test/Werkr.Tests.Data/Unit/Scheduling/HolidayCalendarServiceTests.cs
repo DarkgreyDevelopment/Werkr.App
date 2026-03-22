@@ -49,12 +49,11 @@ public class HolidayCalendarServiceTests {
         } );
         ServiceProvider sp = services.BuildServiceProvider( );
 
-        AgentConnectionManager connMgr = new(
-            sp.GetRequiredService<IServiceScopeFactory>( ),
-            NullLogger<AgentConnectionManager>.Instance );
+        AgentNotificationService notificationService = new(
+            NullLogger<AgentNotificationService>.Instance );
 
         ScheduleInvalidationDispatcher dispatcher = new(
-            connMgr,
+            notificationService,
             sp.GetRequiredService<IServiceScopeFactory>( ),
             NullLogger<ScheduleInvalidationDispatcher>.Instance );
 

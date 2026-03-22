@@ -19,11 +19,13 @@ namespace Werkr.Api.Services;
 /// <param name="dbContext">Database context.</param>
 /// <param name="jobBroadcaster">Singleton broadcaster for SSE push notifications.</param>
 /// <param name="workflowBroadcaster">Singleton broadcaster for workflow SSE events.</param>
+/// <param name="builder">Secure response builder for envelope encryption.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class JobReportingGrpcService(
     WerkrDbContext dbContext,
     JobEventBroadcaster jobBroadcaster,
     WorkflowEventBroadcaster workflowBroadcaster,
+    SecureResponseBuilder builder,
     ILogger<JobReportingGrpcService> logger
 ) : JobReporting.JobReportingBase {
 
@@ -35,11 +37,7 @@ public sealed partial class JobReportingGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        JobResultRequest inner = PayloadEncryptor.DecryptFromEnvelope<JobResultRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, JobResultRequest inner) = SecureResponseBuilder.DecryptRequest<JobResultRequest>( request, context );
 
         if (string.IsNullOrWhiteSpace( inner.ConnectionId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
@@ -216,16 +214,7 @@ public sealed partial class JobReportingGrpcService(
             Accepted = true,
             JobId = job.Id.ToString( ),
         };
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
-    }
-
-    /// <summary>
-    /// Extracts the authenticated <see cref="RegisteredConnection"/> from the gRPC call context's user state.
-    /// </summary>
-    private static RegisteredConnection GetConnection( ServerCallContext context ) {
-        return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
-            ? connection
-            : throw new RpcException( new Status( StatusCode.Internal, "Connection not resolved by interceptor." ) );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>
@@ -235,11 +224,7 @@ public sealed partial class JobReportingGrpcService(
         EncryptedEnvelope request,
         ServerCallContext context
     ) {
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        StepStartedRequest inner = PayloadEncryptor.DecryptFromEnvelope<StepStartedRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, StepStartedRequest inner) = SecureResponseBuilder.DecryptRequest<StepStartedRequest>( request, context );
 
         if (!Guid.TryParse( inner.WorkflowRunId, out Guid runId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid workflow_run_id." ) );
@@ -278,7 +263,7 @@ public sealed partial class JobReportingGrpcService(
         ) );
 
         StepEventResponse response = new( ) { Accepted = true };
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>
@@ -288,11 +273,7 @@ public sealed partial class JobReportingGrpcService(
         EncryptedEnvelope request,
         ServerCallContext context
     ) {
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        StepSkippedRequest inner = PayloadEncryptor.DecryptFromEnvelope<StepSkippedRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, StepSkippedRequest inner) = SecureResponseBuilder.DecryptRequest<StepSkippedRequest>( request, context );
 
         if (!Guid.TryParse( inner.WorkflowRunId, out Guid runId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid workflow_run_id." ) );
@@ -322,6 +303,6 @@ public sealed partial class JobReportingGrpcService(
         ) );
 
         StepEventResponse response = new( ) { Accepted = true };
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 }

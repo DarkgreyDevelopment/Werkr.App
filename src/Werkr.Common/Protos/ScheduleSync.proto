@@ -3,6 +3,7 @@ option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
 import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
 
 // Agent pulls assigned schedules from the Server (API hosts this service).
 // All RPCs use EncryptedEnvelope. Inner payload types defined below.
@@ -26,6 +27,8 @@ message AgentScheduleResponse {
   repeated ScheduledTaskDefinition tasks = 1;
   repeated ScheduledWorkflowDefinition workflows = 2;
   repeated FileMonitorTriggerDef file_monitor_triggers = 3;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message ScheduledTaskDefinition {
@@ -61,6 +64,8 @@ message ScheduleDefinition {
   bool catch_up_enabled = 15;
   int32 shift_mode = 16;             // 0=None, 1=NextBusinessDay, 2=PreviousBusinessDay, 3=NearestBusinessDay
   CalendarDefinition calendar = 17;  // Full calendar with rules for client-side evaluation
+  bool is_fixed_offset = 18;             // Start timezone is a fixed UTC offset (no DST)
+  bool expiration_is_fixed_offset = 19;  // Expiration timezone is a fixed UTC offset (no DST)
 }
 
 message DailyRecurrenceDef {
@@ -145,6 +150,8 @@ message ScheduleHolidayDateQuery {
 
 message GetBulkScheduleHolidayDatesResponse {
   repeated ScheduleHolidayDateResult results = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message ScheduleHolidayDateResult {
@@ -202,6 +209,8 @@ message AuditLogEntry {
 
 message SubmitAuditLogResponse {
   int32 accepted_count = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 // ── File Monitor Trigger Definitions ──

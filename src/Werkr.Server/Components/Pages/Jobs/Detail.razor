@@ -6,7 +6,10 @@
 
 <PageTitle>Werkr - Job Detail</PageTitle>
 
-<h1>Job Detail</h1>
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Job Detail</h1>
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
+</div>
 <Breadcrumb Items="_breadcrumbs" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
@@ -43,10 +46,10 @@
                 <dd class="col-sm-9">@_job.RuntimeSeconds.ToString( "F2" ) seconds</dd>
 
                 <dt class="col-sm-3">Started</dt>
-                <dd class="col-sm-9">@_job.StartTime.ToString( "G" )</dd>
+                <dd class="col-sm-9">@ConvertIfNeeded( _job.StartTime ).ToString( "G" )</dd>
 
                 <dt class="col-sm-3">Ended</dt>
-                <dd class="col-sm-9">@( _job.EndTime?.ToString( "G" ) ?? "Still running" )</dd>
+                <dd class="col-sm-9">@( _job.EndTime is not null ? ConvertIfNeeded( _job.EndTime.Value ).ToString( "G" ) : "Still running" )</dd>
 
                 <dt class="col-sm-3">Agent</dt>
                 <dd class="col-sm-9">
@@ -93,6 +96,7 @@
     private string? _errorMessage;
     private bool _isLoading;
     private bool _isLoadingOutput;
+    private TimeZoneInfo? _displayTz;
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
         new( "Task List", "/" ),
@@ -121,6 +125,11 @@
             _isLoading = false;
         }
     }
+
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
 
     private async Task LoadOutputAsync( ) {
         _isLoadingOutput = true;

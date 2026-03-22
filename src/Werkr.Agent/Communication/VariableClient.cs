@@ -51,8 +51,7 @@ public sealed partial class VariableClient(
             CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
             EncryptedEnvelope responseEnvelope = await client.GetVariableAsync( envelope, callOptions );
 
-            return PayloadEncryptor.DecryptFromEnvelope<GetVariableResponse>(
-                responseEnvelope, clientFactory.GetSharedKey( ) );
+            return clientFactory.DecryptAndCheckUrgency<GetVariableResponse>( responseEnvelope );
         } catch (Exception ex) {
             logger.LogWarning( ex,
                 "Failed to get variable '{Name}' for run {RunId}.",
@@ -107,8 +106,8 @@ public sealed partial class VariableClient(
 
             CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
             EncryptedEnvelope responseEnvelope = await client.SetVariableAsync( envelope, callOptions );
-            SetVariableResponse response = PayloadEncryptor.DecryptFromEnvelope<SetVariableResponse>(
-                responseEnvelope, clientFactory.GetSharedKey( ) );
+            SetVariableResponse response = clientFactory.DecryptAndCheckUrgency<SetVariableResponse>(
+                responseEnvelope );
 
             if (!response.Accepted) {
                 logger.LogWarning(
@@ -152,8 +151,8 @@ public sealed partial class VariableClient(
 
             CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
             EncryptedEnvelope responseEnvelope = await client.CreateWorkflowRunAsync( envelope, callOptions );
-            CreateWorkflowRunResponse response = PayloadEncryptor.DecryptFromEnvelope<CreateWorkflowRunResponse>(
-                responseEnvelope, clientFactory.GetSharedKey( ) );
+            CreateWorkflowRunResponse response = clientFactory.DecryptAndCheckUrgency<CreateWorkflowRunResponse>(
+                responseEnvelope );
 
             if (!response.Accepted) {
                 logger.LogWarning(

@@ -1,5 +1,6 @@
 using System.Text;
 
+using Werkr.Common.Scheduling;
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Extensions;
 using Werkr.Data.Calendar.Models;
@@ -22,7 +23,7 @@ public static class ScheduleDescriptionBuilder {
     /// <summary>
     /// Returns a friendly description string for the given schedule.
     /// </summary>
-    public static string GetFriendlyDescription( Schedule schedule ) {
+    public static string GetFriendlyDescription( Schedule schedule, string? languageCode = null ) {
         StringBuilder sb = new( );
 
         // Recurrence pattern
@@ -50,8 +51,9 @@ public static class ScheduleDescriptionBuilder {
 
         // Time and timezone
         if (schedule.StartDateTime is not null) {
+            string lang = languageCode ?? "en";
             string timeStr = schedule.StartDateTime.Time.ToString( "h:mm tt" );
-            string tzAbbrev = GetTimeZoneAbbreviation( schedule.StartDateTime.TimeZone );
+            string tzAbbrev = TimeZoneDisplayService.GetAbbreviation( schedule.StartDateTime.TimeZone, schedule.StartDateTime.TzTime, lang );
             _ = sb.Append( $" at {timeStr} {tzAbbrev}" );
         }
 
@@ -66,7 +68,7 @@ public static class ScheduleDescriptionBuilder {
         // Expiration
         if (schedule.Expiration is not null) {
             string expTimeStr = schedule.Expiration.Time.ToString( "h:mm tt" );
-            string expTzAbbrev = GetTimeZoneAbbreviation( schedule.Expiration.TimeZone );
+            string expTzAbbrev = TimeZoneDisplayService.GetAbbreviation( schedule.Expiration.TimeZone, schedule.Expiration.TzTime, languageCode ?? "en" );
             _ = sb.Append( $" until {schedule.Expiration.Date:yyyy-MM-dd} at {expTimeStr} {expTzAbbrev}" );
         }
 
@@ -186,27 +188,4 @@ public static class ScheduleDescriptionBuilder {
         return $"{number}{suffix}";
     }
 
-    private static string GetTimeZoneAbbreviation( TimeZoneInfo tz ) {
-        // Use the standard abbreviation (e.g., "EST", "PST", "UTC")
-        // TimeZoneInfo doesn't expose abbreviations directly, so derive from StandardName
-        if (tz == TimeZoneInfo.Utc) {
-            return "UTC";
-        }
-
-        string standardName = tz.StandardName;
-        // If the standard name is a short abbreviation already, use it
-        if (standardName.Length <= 5) {
-            return standardName;
-        }
-
-        // Otherwise, build an abbreviation from the capital letters
-        StringBuilder abbrev = new( );
-        foreach (char c in standardName) {
-            if (char.IsUpper( c )) {
-                _ = abbrev.Append( c );
-            }
-        }
-        string result = abbrev.ToString( );
-        return result.Length >= 2 ? result : standardName;
-    }
 }

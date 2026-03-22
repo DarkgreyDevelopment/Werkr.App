@@ -1,9 +1,14 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Werkr.Core.Security;
 using Werkr.Data;
 using Werkr.Data.Encryption;
+using Werkr.Data.Entities.Configuration;
+using Werkr.Data.Entities.Registration;
+using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Core.Encryption;
 
@@ -23,6 +28,10 @@ public sealed record RotationStatus(
 /// Service for rotating the field-level encryption key used by <see cref="FieldEncryptionProvider"/>.
 /// Generates a new key, stores it in the OS secret store, re-encrypts existing data in batches,
 /// and removes the old key after completion.
+/// <para>
+/// Re-encryption reads entity values through EF Core (value converters auto-decrypt with the old key)
+/// and writes re-encrypted ciphertext using raw SQL to bypass converters on the write path.
+/// </para>
 /// </summary>
 public sealed partial class FieldEncryptionKeyRotationService(
     ISecretStore secretStore,
@@ -47,7 +56,6 @@ public sealed partial class FieldEncryptionKeyRotationService(
         _totalRows = 0;
 
         try {
-            // Determine current key version
             int currentVersion = await GetCurrentKeyVersionAsync( );
             int newVersion = currentVersion + 1;
 
@@ -56,23 +64,19 @@ public sealed partial class FieldEncryptionKeyRotationService(
                 ? FieldEncryptionProvider.SecretStoreKey
                 : $"{FieldEncryptionProvider.SecretStoreKey}-v{currentVersion}";
 
-            // Read existing key
-            string? existingKey = await secretStore.GetSecretAsync( _previousKeyName ) ?? throw new InvalidOperationException( $"Current encryption key '{_previousKeyName}' not found in secret store." );
+            string? existingKey = await secretStore.GetSecretAsync( _previousKeyName )
+                ?? throw new InvalidOperationException( $"Current encryption key '{_previousKeyName}' not found in secret store." );
 
-            // Generate and store new key
             string newKey = FieldEncryptionProvider.GenerateKey( );
             await secretStore.SetSecretAsync( _currentKeyName, newKey );
 
-            // Re-encrypt in background
-            FieldEncryptionProvider oldProvider = new( existingKey );
             FieldEncryptionProvider newProvider = new( newKey );
 
-            await ReEncryptAllAsync( oldProvider, newProvider, ct );
+            await ReEncryptAllAsync( newProvider, ct );
 
-            // Update the primary key reference
+            // Update the primary key reference after all data is re-encrypted
             await secretStore.SetSecretAsync( FieldEncryptionProvider.SecretStoreKey, newKey );
 
-            // Remove old versioned key (keep primary updated)
             if (_previousKeyName != FieldEncryptionProvider.SecretStoreKey) {
                 await secretStore.DeleteSecretAsync( _previousKeyName );
             }
@@ -102,82 +106,234 @@ public sealed partial class FieldEncryptionKeyRotationService(
     );
 
     private async Task<int> GetCurrentKeyVersionAsync( ) {
-        // Check for versioned keys in descending order
         for (int v = 100; v >= 1; v--) {
             string? key = await secretStore.GetSecretAsync( $"{FieldEncryptionProvider.SecretStoreKey}-v{v}" );
             if (key is not null) {
                 return v;
             }
         }
-        return 0; // Only the unversioned base key exists
+        return 0;
     }
 
-    private async Task ReEncryptAllAsync(
-        FieldEncryptionProvider oldProvider, FieldEncryptionProvider newProvider, CancellationToken ct
-    ) {
+    /// <summary>
+    /// Re-encrypts all encrypted fields across all entity types.
+    /// Reads through EF (converters auto-decrypt with old key → plaintext),
+    /// encrypts with the new key, and writes via raw SQL (bypasses converters).
+    /// </summary>
+    private async Task ReEncryptAllAsync( FieldEncryptionProvider newProvider, CancellationToken ct ) {
         const int BatchSize = 100;
 
         using IServiceScope scope = scopeFactory.CreateScope( );
         WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
 
-        // Count total rows that need re-encryption
         int credCount = await db.Credentials.CountAsync( ct );
         int varCount = await db.WorkflowRunVariables.CountAsync( ct );
-        _totalRows = credCount + varCount;
+        int connCount = await db.RegisteredConnections.CountAsync( ct );
+        int configCount = await db.ConfigurationEntries.CountAsync( ct );
+        _totalRows = credCount + varCount + connCount + configCount;
 
-        // Re-encrypt Credential.EncryptedValue
-        await ReEncryptBatchedAsync(
-            db, db.Credentials, e => e.EncryptedValue,
-            ( e, v ) => e.EncryptedValue = v,
-            oldProvider, newProvider, BatchSize, ct );
-
-        // Re-encrypt WorkflowRunVariable.Value
-        await ReEncryptBatchedAsync(
-            db, db.WorkflowRunVariables, e => e.Value,
-            ( e, v ) => e.Value = v,
-            oldProvider, newProvider, BatchSize, ct );
+        await ReEncryptCredentialsAsync( db, newProvider, BatchSize, ct );
+        await ReEncryptWorkflowRunVariablesAsync( db, newProvider, BatchSize, ct );
+        await ReEncryptConfigurationEntriesAsync( db, newProvider, BatchSize, ct );
+        await ReEncryptRegisteredConnectionsAsync( db, newProvider, BatchSize, ct );
     }
 
-    private async Task ReEncryptBatchedAsync<TEntity>(
-        WerkrDbContext db,
-        DbSet<TEntity> dbSet,
-        Func<TEntity, string> getEncrypted,
-        Action<TEntity, string> setEncrypted,
-        FieldEncryptionProvider oldProvider,
-        FieldEncryptionProvider newProvider,
-        int batchSize,
-        CancellationToken ct
-    ) where TEntity : class {
+    private async Task ReEncryptCredentialsAsync(
+        WerkrDbContext db, FieldEncryptionProvider newProvider, int batchSize, CancellationToken ct
+    ) {
+        ColumnNames cols = GetColumnNames<Credential>( db,
+            nameof( Credential.Id ), nameof( Credential.EncryptedValue ) );
         int processed = 0;
-        int total = await dbSet.CountAsync( ct );
 
-        while (processed < total) {
-            List<TEntity> batch = await dbSet
+        while (true) {
+            var batch = await db.Credentials
+                .OrderBy( e => e.Id )
                 .Skip( processed )
                 .Take( batchSize )
+                .Select( e => new { e.Id, e.EncryptedValue } )
                 .ToListAsync( ct );
 
-            if (batch.Count == 0) {
-                break;
+            if (batch.Count == 0) { break; }
+
+            foreach (var item in batch) {
+                // item.EncryptedValue is plaintext (auto-decrypted by converter)
+                string newCipher = newProvider.Encrypt( item.EncryptedValue )!;
+                await UpdateRawAsync( db, cols.Table, cols.Columns[1], newCipher, cols.Columns[0], item.Id, ct );
             }
 
-            foreach (TEntity entity in batch) {
-                string encryptedValue = getEncrypted( entity );
-                // Decrypt with old key, re-encrypt with new key
-                string? plaintext = oldProvider.Decrypt( encryptedValue );
-                if (plaintext is not null) {
-                    string? reEncrypted = newProvider.Encrypt( plaintext );
-                    if (reEncrypted is not null) {
-                        setEncrypted( entity, reEncrypted );
-                    }
-                }
-            }
-
-            _ = await db.SaveChangesAsync( ct );
             processed += batch.Count;
             _ = Interlocked.Add( ref _processedRows, batch.Count );
         }
     }
+
+    private async Task ReEncryptWorkflowRunVariablesAsync(
+        WerkrDbContext db, FieldEncryptionProvider newProvider, int batchSize, CancellationToken ct
+    ) {
+        ColumnNames cols = GetColumnNames<WorkflowRunVariable>( db,
+            nameof( WorkflowRunVariable.Id ), nameof( WorkflowRunVariable.Value ) );
+        int processed = 0;
+
+        while (true) {
+            var batch = await db.WorkflowRunVariables
+                .OrderBy( e => e.Id )
+                .Skip( processed )
+                .Take( batchSize )
+                .Select( e => new { e.Id, e.Value } )
+                .ToListAsync( ct );
+
+            if (batch.Count == 0) { break; }
+
+            foreach (var item in batch) {
+                string newCipher = newProvider.Encrypt( item.Value )!;
+                await UpdateRawAsync( db, cols.Table, cols.Columns[1], newCipher, cols.Columns[0], item.Id, ct );
+            }
+
+            processed += batch.Count;
+            _ = Interlocked.Add( ref _processedRows, batch.Count );
+        }
+    }
+
+    private async Task ReEncryptConfigurationEntriesAsync(
+        WerkrDbContext db, FieldEncryptionProvider newProvider, int batchSize, CancellationToken ct
+    ) {
+        ColumnNames cols = GetColumnNames<ConfigurationEntry>( db,
+            nameof( ConfigurationEntry.Id ),
+            nameof( ConfigurationEntry.Value ),
+            nameof( ConfigurationEntry.DefaultValue ) );
+        int processed = 0;
+
+        while (true) {
+            var batch = await db.ConfigurationEntries
+                .OrderBy( e => e.Id )
+                .Skip( processed )
+                .Take( batchSize )
+                .Select( e => new { e.Id, e.Value, e.DefaultValue } )
+                .ToListAsync( ct );
+
+            if (batch.Count == 0) { break; }
+
+            foreach (var item in batch) {
+                string newValue = newProvider.Encrypt( item.Value )!;
+                string? newDefault = item.DefaultValue is not null ? newProvider.Encrypt( item.DefaultValue ) : null;
+
+                string sql = $"""UPDATE "{cols.Table}" SET "{cols.Columns[1]}" = @p0, "{cols.Columns[2]}" = @p1 WHERE "{cols.Columns[0]}" = @p2""";
+                _ = await db.Database.ExecuteSqlRawAsync( sql, [newValue, (object?)newDefault ?? DBNull.Value, item.Id], ct );
+            }
+
+            processed += batch.Count;
+            _ = Interlocked.Add( ref _processedRows, batch.Count );
+        }
+    }
+
+    private async Task ReEncryptRegisteredConnectionsAsync(
+        WerkrDbContext db, FieldEncryptionProvider newProvider, int batchSize, CancellationToken ct
+    ) {
+        ColumnNames cols = GetColumnNames<RegisteredConnection>( db,
+            nameof( RegisteredConnection.Id ),
+            nameof( RegisteredConnection.OutboundApiKey ),
+            nameof( RegisteredConnection.SharedKey ),
+            nameof( RegisteredConnection.PreviousSharedKey ),
+            nameof( RegisteredConnection.LocalPrivateKey ) );
+        int processed = 0;
+
+        while (true) {
+            var batch = await db.RegisteredConnections
+                .OrderBy( e => e.Id )
+                .Skip( processed )
+                .Take( batchSize )
+                .Select( e => new {
+                    e.Id,
+                    e.OutboundApiKey,
+                    e.SharedKey,
+                    e.PreviousSharedKey,
+                    e.LocalPrivateKey
+                } )
+                .ToListAsync( ct );
+
+            if (batch.Count == 0) { break; }
+
+            foreach (var conn in batch) {
+                // OutboundApiKey: string → encrypted string
+                string? newApiKey = conn.OutboundApiKey is not null
+                    ? newProvider.Encrypt( conn.OutboundApiKey )
+                    : null;
+
+                // SharedKey: byte[] → encrypted base64 string
+                string? newSharedKey = conn.SharedKey is not null
+                    ? newProvider.EncryptBytes( conn.SharedKey )
+                    : null;
+
+                // PreviousSharedKey: byte[]? → encrypted base64 string (nullable)
+                string? newPrevKey = conn.PreviousSharedKey is not null
+                    ? newProvider.EncryptBytes( conn.PreviousSharedKey )
+                    : null;
+
+                // LocalPrivateKey: RSAParameters → JSON → encrypted string
+                string? newPrivateKey = null;
+                if (conn.LocalPrivateKey.D is not null) {
+                    string json = JsonSerializer.Serialize( conn.LocalPrivateKey );
+                    newPrivateKey = newProvider.Encrypt( json );
+                }
+
+                string sql = $"""
+                    UPDATE "{cols.Table}"
+                    SET "{cols.Columns[1]}" = @p0,
+                        "{cols.Columns[2]}" = @p1,
+                        "{cols.Columns[3]}" = @p2,
+                        "{cols.Columns[4]}" = @p3
+                    WHERE "{cols.Columns[0]}" = @p4
+                    """;
+
+                _ = await db.Database.ExecuteSqlRawAsync( sql, [
+                    (object?) newApiKey ?? DBNull.Value,
+                    (object?) newSharedKey ?? DBNull.Value,
+                    (object?) newPrevKey ?? DBNull.Value,
+                    (object?) newPrivateKey ?? DBNull.Value,
+                    conn.Id
+                ], ct );
+            }
+
+            processed += batch.Count;
+            _ = Interlocked.Add( ref _processedRows, batch.Count );
+        }
+    }
+
+    /// <summary>
+    /// Executes a single-column UPDATE via raw SQL, bypassing EF value converters.
+    /// </summary>
+    private static async Task UpdateRawAsync<TId>(
+        WerkrDbContext db, string table, string column, string newValue, string idColumn, TId id, CancellationToken ct
+    ) {
+        string sql = $"""UPDATE "{table}" SET "{column}" = @p0 WHERE "{idColumn}" = @p1""";
+        _ = await db.Database.ExecuteSqlRawAsync( sql, [newValue, id!], ct );
+    }
+
+    /// <summary>
+    /// Resolves actual database table and column names from EF Core model metadata.
+    /// Handles provider-specific naming conventions (e.g. PostgreSQL snake_case).
+    /// </summary>
+    private static ColumnNames GetColumnNames<TEntity>( WerkrDbContext db, params string[] propertyNames ) {
+        IEntityType entityType = db.Model.FindEntityType( typeof( TEntity ) )
+            ?? throw new InvalidOperationException( $"Entity type {typeof( TEntity ).Name} not found in model." );
+
+        string tableName = entityType.GetTableName( )
+            ?? throw new InvalidOperationException( $"Table name not found for {typeof( TEntity ).Name}." );
+
+        string[] columns = new string[propertyNames.Length];
+        for (int i = 0; i < propertyNames.Length; i++) {
+            IProperty prop = entityType.FindProperty( propertyNames[i] )
+                ?? throw new InvalidOperationException( $"Property {propertyNames[i]} not found on {typeof( TEntity ).Name}." );
+
+            StoreObjectIdentifier storeObject = StoreObjectIdentifier.Table( tableName );
+            columns[i] = prop.GetColumnName( storeObject )
+                ?? prop.GetColumnName( )
+                ?? propertyNames[i];
+        }
+
+        return new ColumnNames( tableName, columns );
+    }
+
+    private readonly record struct ColumnNames( string Table, string[] Columns );
 
     [LoggerMessage( Level = LogLevel.Information, Message = "Key rotation to v{Version} completed. {RowCount} rows re-encrypted." )]
     private static partial void LogRotationCompleted( ILogger logger, int version, int rowCount );

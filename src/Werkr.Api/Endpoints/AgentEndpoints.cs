@@ -1,12 +1,9 @@
 using System.Security.Claims;
-using Grpc.Core;
-using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Api.Services;
 using Werkr.Common.Auth;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Audit;
-using Werkr.Common.Protos;
 using Werkr.Core.Audit;
 using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
@@ -65,7 +62,6 @@ internal static class AgentEndpoints {
             async (
                 Guid id,
                 WerkrDbContext dbContext,
-                AgentConnectionManager connectionManager,
                 CancellationToken ct
             ) => {
                 RegisteredConnection? connection = await dbContext.RegisteredConnections
@@ -74,53 +70,6 @@ internal static class AgentEndpoints {
 
                 if (connection is null) {
                     return Results.NotFound( );
-                }
-
-                bool? powerShellAvailable = null;
-                bool? systemShellAvailable = null;
-
-                if (connection.Status == ConnectionStatus.Connected) {
-                    try {
-                        (GrpcChannel channel, RegisteredConnection resolvedConnection)
-                            = await connectionManager.GetChannelAsync( id, ct );
-
-                        string keyId = resolvedConnection.ActiveKeyId ?? resolvedConnection.Id.ToString( );
-                        HeartbeatRequest heartbeat = new( ) { StatusMessage = "detail-probe" };
-                        EncryptedEnvelope requestEnvelope = PayloadEncryptor.EncryptToEnvelope(
-                            heartbeat, resolvedConnection.SharedKey, keyId );
-
-                        ConnectionManagement.ConnectionManagementClient client = new( channel );
-                        EncryptedEnvelope responseEnvelope = await client.HeartbeatAsync(
-                            requestEnvelope,
-                            AgentConnectionManager.CreateCallOptions(
-                                resolvedConnection,
-                                timeout: TimeSpan.FromSeconds( 5 ),
-                                cancellationToken: ct)
-                            );
-
-                        // Agent is reachable and shared key is valid
-                        HeartbeatResponse heartbeatResp = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
-                            responseEnvelope, resolvedConnection.SharedKey );
-
-                        // Shell availability is no longer reported via health checks;
-                        // the Heartbeat confirms the agent is alive and encryption works.
-                        powerShellAvailable = true;
-                        systemShellAvailable = true;
-
-                        // Persist agent version from heartbeat response
-                        if (!string.IsNullOrEmpty( heartbeatResp.AgentVersion )) {
-                            RegisteredConnection? tracked = await dbContext.RegisteredConnections
-                                .FirstOrDefaultAsync( c => c.Id == id && c.IsServer, ct );
-                            if (tracked is not null && tracked.AgentVersion != heartbeatResp.AgentVersion) {
-                                tracked.AgentVersion = heartbeatResp.AgentVersion;
-                                _ = await dbContext.SaveChangesAsync( ct );
-                            }
-                            connection = tracked ?? connection;
-                        }
-                    } catch (RpcException) {
-                        powerShellAvailable = null;
-                        systemShellAvailable = null;
-                    }
                 }
 
                 byte[] remotePublicKeyBytes = EncryptionProvider.SerializePublicKey( connection.RemotePublicKey );
@@ -135,8 +84,8 @@ internal static class AgentEndpoints {
                     fingerprint,
                     connection.Created,
                     connection.LastSeen,
-                    powerShellAvailable,
-                    systemShellAvailable,
+                    null,
+                    null,
                     string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion
                 );
 
@@ -288,14 +237,15 @@ internal static class AgentEndpoints {
     // ── Agent Health ──
 
     /// <summary>
-    /// Registers the aggregate agent health endpoint that probes all registered agents via gRPC heartbeat.
+    /// Registers the aggregate agent health endpoint backed by stored LastSeen/Status data.
     /// </summary>
     private static void MapAgentHealth( WebApplication app ) {
+        const int offlineThresholdSeconds = 180;
+
         _ = app.MapGet(
             "/api/v1/agents/health",
             async (
                 WerkrDbContext dbContext,
-                AgentConnectionManager connectionManager,
                 CancellationToken ct
             ) => {
                 List<RegisteredConnection> connections = await dbContext.RegisteredConnections
@@ -304,22 +254,32 @@ internal static class AgentEndpoints {
                     .OrderBy( c => c.ConnectionName )
                     .ToListAsync( ct );
 
-                using CancellationTokenSource timeoutSource = new( TimeSpan.FromSeconds( 10 ) );
-                using CancellationTokenSource linkedSource = CancellationTokenSource
-                    .CreateLinkedTokenSource( ct, timeoutSource.Token );
+                DateTime now = DateTime.UtcNow;
+                DateTime cutoff = now.AddSeconds( -offlineThresholdSeconds );
 
-                List<Task<AgentHealthDto>> tasks = [.. connections.Select(
-                    connection => BuildHealthAsync( connection, connectionManager, linkedSource.Token ) )];
+                List<AgentHealthDto> results = [.. connections.Select( c => {
+                    // Revoked agents always show as Revoked
+                    // Connected agents whose LastSeen is stale are shown as Unreachable
+                    string status = c.Status switch {
+                        ConnectionStatus.Revoked => "Revoked",
+                        ConnectionStatus.Connected when c.LastSeen.HasValue && c.LastSeen.Value < cutoff
+                            => "Unreachable",
+                        _ => c.Status.ToString( ),
+                    };
 
-                try {
-                    AgentHealthDto[] results = await Task.WhenAll( tasks );
-                    return Results.Ok( results.ToList( ) );
-                } catch (OperationCanceledException) {
-                    List<AgentHealthDto> partial = [.. tasks
-                        .Where( task => task.IsCompletedSuccessfully )
-                        .Select( task => task.Result )];
-                    return Results.Ok( partial );
-                }
+                    return new AgentHealthDto(
+                        c.Id,
+                        c.ConnectionName,
+                        status,
+                        null,
+                        null,
+                        c.LastSeen,
+                        now,
+                        string.IsNullOrEmpty( c.AgentVersion ) ? null : c.AgentVersion
+                    );
+                } )];
+
+                return Results.Ok( results );
             } )
         .WithName( "GetAgentHealth" )
         .RequireAuthorization( Policies.CanRead );
@@ -589,85 +549,4 @@ internal static class AgentEndpoints {
         .RequireAuthorization( Policies.IsAdmin );
     }
 
-    // ── Helper ──
-
-    /// <summary>
-    /// Builds a health DTO for a single agent by sending a gRPC heartbeat probe and evaluating the response.
-    /// </summary>
-    private static async Task<AgentHealthDto> BuildHealthAsync(
-        RegisteredConnection connection,
-        AgentConnectionManager connectionManager,
-        CancellationToken cancellationToken
-    ) {
-        // Skip Revoked agents entirely — they should never reconnect without explicit admin action.
-        if (connection.Status == ConnectionStatus.Revoked) {
-            return new AgentHealthDto(
-                connection.Id,
-                connection.ConnectionName,
-                connection.Status.ToString( ),
-                null,
-                null,
-                connection.LastSeen,
-                DateTime.UtcNow,
-                string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion
-            );
-        }
-
-        try {
-            (GrpcChannel channel, RegisteredConnection resolvedConnection)
-                = await connectionManager.GetChannelAsync( connection.Id, cancellationToken );
-
-            string keyId = resolvedConnection.ActiveKeyId ?? resolvedConnection.Id.ToString( );
-            HeartbeatRequest heartbeat = new( ) { StatusMessage = "health-probe" };
-            EncryptedEnvelope requestEnvelope = PayloadEncryptor.EncryptToEnvelope(
-                heartbeat, resolvedConnection.SharedKey, keyId );
-
-            ConnectionManagement.ConnectionManagementClient client = new( channel );
-            EncryptedEnvelope responseEnvelope = await client.HeartbeatAsync(
-                requestEnvelope,
-                AgentConnectionManager.CreateCallOptions(
-                    resolvedConnection,
-                    timeout: TimeSpan.FromSeconds( 5 ),
-                    cancellationToken: cancellationToken ) );
-
-            HeartbeatResponse heartbeatResp = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
-                responseEnvelope, resolvedConnection.SharedKey );
-
-            string? agentVersion = !string.IsNullOrEmpty( heartbeatResp.AgentVersion )
-                ? heartbeatResp.AgentVersion
-                : string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion;
-
-            return new AgentHealthDto(
-                connection.Id,
-                connection.ConnectionName,
-                "Connected",
-                true,
-                true,
-                connection.LastSeen,
-                DateTime.UtcNow,
-                agentVersion );
-        } catch (OperationCanceledException) {
-            throw;
-        } catch (RpcException) {
-            return new AgentHealthDto(
-                connection.Id,
-                connection.ConnectionName,
-                "Unreachable",
-                null,
-                null,
-                connection.LastSeen,
-                DateTime.UtcNow,
-                string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion );
-        } catch (Exception) {
-            return new AgentHealthDto(
-                connection.Id,
-                connection.ConnectionName,
-                "Unreachable",
-                null,
-                null,
-                connection.LastSeen,
-                DateTime.UtcNow,
-                string.IsNullOrEmpty( connection.AgentVersion ) ? null : connection.AgentVersion );
-        }
-    }
 }

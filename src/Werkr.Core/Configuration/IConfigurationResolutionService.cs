@@ -34,6 +34,9 @@ public interface IConfigurationResolutionService {
     /// <summary>Returns the change history for a configuration key.</summary>
     Task<IReadOnlyList<ConfigurationChangeLogDto>> GetHistoryAsync( string key, int limit, CancellationToken ct );
 
+    /// <summary>Deletes an agent-scoped override, reverting the key to its global value.</summary>
+    Task DeleteOverrideAsync( string key, string agentId, string userId, CancellationToken ct );
+
     /// <summary>Returns the current maximum sync version (for delta sync baseline).</summary>
     Task<long> GetCurrentVersionAsync( CancellationToken ct );
 

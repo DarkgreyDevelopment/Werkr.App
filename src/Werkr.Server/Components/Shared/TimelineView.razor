@@ -14,7 +14,7 @@
                         <span class="badge ms-2 @StatusDisplayHelper.GetStatusBadgeClass( latest.Status )">@latest.Status</span>
                     </span>
                     @if ( latest.StartTime.HasValue ) {
-                        <small class="text-muted">@latest.StartTime.Value.ToString( "T" )</small>
+                        <small class="text-muted">@ConvertIfNeeded( latest.StartTime.Value ).ToString( "T" )</small>
                     }
                 </div>
                 @if ( group.Count( ) > 1 ) {
@@ -23,7 +23,7 @@
                             <li class="list-group-item py-1 px-3 small">
                                 Attempt @attempt.Attempt — @attempt.Status
                                 @if ( attempt.StartTime.HasValue ) {
-                                    <span class="text-muted ms-2">@attempt.StartTime.Value.ToString( "T" )</span>
+                                    <span class="text-muted ms-2">@ConvertIfNeeded( attempt.StartTime.Value ).ToString( "T" )</span>
                                 }
                             </li>
                         }
@@ -36,7 +36,11 @@
 
 @code {
     [Parameter] public IReadOnlyList<StepExecutionDto>? StepExecutions { get; set; }
+    [Parameter] public TimeZoneInfo? DisplayTimeZone { get; set; }
     [Parameter] public EventCallback<StepExecutionDto> OnStepSelected { get; set; }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        DisplayTimeZone is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), DisplayTimeZone ) : dt;
 
     private static string GetHeaderClass( string status ) =>
         "border-start border-3 " + status switch {

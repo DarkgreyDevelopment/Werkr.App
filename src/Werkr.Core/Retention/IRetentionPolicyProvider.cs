@@ -15,12 +15,13 @@ public interface IRetentionPolicyProvider {
 
     /// <summary>
     /// Deletes records older than <paramref name="retentionDays"/> in batches.
+    /// Captures date range metadata before deletion for audit trail purposes.
     /// </summary>
     /// <param name="retentionDays">Number of days to retain. Records older than this are eligible.</param>
     /// <param name="batchSize">Maximum records to delete in a single database round-trip.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>Total number of records deleted.</returns>
-    Task<int> DeleteAgedRecordsAsync( int retentionDays, int batchSize, CancellationToken ct );
+    /// <returns>Result containing the count of deleted records and the date range of the oldest/newest deleted.</returns>
+    Task<RetentionSweepResult> DeleteAgedRecordsAsync( int retentionDays, int batchSize, CancellationToken ct );
 
     /// <summary>
     /// Returns a preview of how many records would be deleted without actually deleting them.

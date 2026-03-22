@@ -32,8 +32,8 @@ public sealed class JobOutputRetentionProvider( WerkrDbContext db ) : IRetention
                     .Where( r => r.Id == j.WorkflowRunId && s_terminalStatuses.Contains( r.Status ) )
                     .Any( ) );
 
-        DateTime? oldest = await eligible.MinAsync( j => (DateTime?) j.EndTime, ct );
-        DateTime? newest = await eligible.MaxAsync( j => (DateTime?) j.EndTime, ct );
+        DateTime? oldest = await eligible.MinAsync( j =>  j.EndTime, ct );
+        DateTime? newest = await eligible.MaxAsync( j =>  j.EndTime, ct );
 
         // Batch-delete in a loop to avoid locking large numbers of rows at once
         int totalDeleted = 0;

@@ -1,5 +1,6 @@
 @using System.ComponentModel.DataAnnotations
 @using Werkr.Common.Models.Holidays
+@using Werkr.Common.Scheduling
 @rendermode InteractiveServer
 @inject Werkr.Server.Services.ApiServiceAccessor Api
 
@@ -46,11 +47,25 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Time Zone</label>
-                                <InputSelect class="form-select" @bind-Value="_model.TimeZoneId">
-                                    @foreach ( TimeZoneInfo zone in s_timeZones ) {
-                                        <option value="@zone.Id">@zone.DisplayName</option>
-                                    }
-                                </InputSelect>
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="sched-fixedStartTz"
+                                           checked="@_model.UseFixedStartOffset"
+                                           @onchange="e => _model.UseFixedStartOffset = (bool)(e.Value ?? false)" />
+                                    <label class="form-check-label" for="sched-fixedStartTz">Use fixed GMT offset</label>
+                                </div>
+                                @if ( _model.UseFixedStartOffset ) {
+                                    <InputSelect class="form-select" @bind-Value="_model.TimeZoneId">
+                                        @foreach ( FixedOffsetListItem item in s_fixedOffsets ) {
+                                            <option value="@item.Id">@item.Label</option>
+                                        }
+                                    </InputSelect>
+                                } else {
+                                    <InputSelect class="form-select" @bind-Value="_model.TimeZoneId">
+                                        @foreach ( TimeZoneListItem item in s_timeZoneItems ) {
+                                            <option value="@item.Id">@item.DisplayName — @item.Abbreviation</option>
+                                        }
+                                    </InputSelect>
+                                }
                             </div>
                         </div>
 
@@ -187,11 +202,25 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Time Zone</label>
-                                    <InputSelect class="form-select" @bind-Value="_model.ExpirationTimeZoneId">
-                                        @foreach ( TimeZoneInfo zone in s_timeZones ) {
-                                            <option value="@zone.Id">@zone.DisplayName</option>
-                                        }
-                                    </InputSelect>
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" id="sched-fixedExpTz"
+                                               checked="@_model.UseFixedExpirationOffset"
+                                               @onchange="e => _model.UseFixedExpirationOffset = (bool)(e.Value ?? false)" />
+                                        <label class="form-check-label" for="sched-fixedExpTz">Use fixed GMT offset</label>
+                                    </div>
+                                    @if ( _model.UseFixedExpirationOffset ) {
+                                        <InputSelect class="form-select" @bind-Value="_model.ExpirationTimeZoneId">
+                                            @foreach ( FixedOffsetListItem item in s_fixedOffsets ) {
+                                                <option value="@item.Id">@item.Label</option>
+                                            }
+                                        </InputSelect>
+                                    } else {
+                                        <InputSelect class="form-select" @bind-Value="_model.ExpirationTimeZoneId">
+                                            @foreach ( TimeZoneListItem item in s_timeZoneItems ) {
+                                                <option value="@item.Id">@item.DisplayName — @item.Abbreviation</option>
+                                            }
+                                        </InputSelect>
+                                    }
                                 </div>
                             </div>
                         }
@@ -343,8 +372,11 @@
         ("1st", 1), ("2nd", 2), ("3rd", 4), ("4th", 8), ("5th", 16), ("6th", 32)
     ];
 
-    private static readonly IReadOnlyList<TimeZoneInfo> s_timeZones =
-        TimeZoneInfo.GetSystemTimeZones( ).OrderBy( tz => tz.BaseUtcOffset ).ToList( );
+    private static readonly IReadOnlyList<TimeZoneListItem> s_timeZoneItems =
+        TimeZoneDisplayService.GetTimeZoneListItems( );
+
+    private static readonly IReadOnlyList<FixedOffsetListItem> s_fixedOffsets =
+        TimeZoneDisplayService.GetFixedOffsetListItems( );
 
     public async Task Show( ) {
         _model = new ScheduleFormModel( );
@@ -519,6 +551,8 @@
         public DateOnly ExpirationDate { get; set; } = DateOnly.FromDateTime( DateTime.Today.AddYears( 1 ) );
         public TimeOnly ExpirationTime { get; set; } = new( 23, 59 );
         public string ExpirationTimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
+        public bool UseFixedStartOffset { get; set; }
+        public bool UseFixedExpirationOffset { get; set; }
         public bool HasRepeat { get; set; }
 
         [Range( 1, 1440, ErrorMessage = "Repeat interval must be between 1 and 1440 minutes." )]
@@ -539,6 +573,7 @@
                 StartDate = dto.StartDateTime?.Date ?? DateOnly.FromDateTime( DateTime.Today ),
                 StartTime = dto.StartDateTime?.Time ?? new TimeOnly( 8, 0 ),
                 TimeZoneId = dto.StartDateTime?.TimeZoneId ?? TimeZoneInfo.Local.Id,
+                UseFixedStartOffset = dto.StartDateTime?.IsFixedOffset ?? false,
                 RecurrenceType = recType,
                 DayInterval = dto.DailyRecurrence?.DayInterval ?? 1,
                 WeekInterval = dto.WeeklyRecurrence?.WeekInterval ?? 1,
@@ -554,6 +589,7 @@
                 ExpirationDate = dto.Expiration?.Date ?? DateOnly.FromDateTime( DateTime.Today.AddYears( 1 ) ),
                 ExpirationTime = dto.Expiration?.Time ?? new TimeOnly( 23, 59 ),
                 ExpirationTimeZoneId = dto.Expiration?.TimeZoneId ?? TimeZoneInfo.Local.Id,
+                UseFixedExpirationOffset = dto.Expiration?.IsFixedOffset ?? false,
                 HasRepeat = dto.RepeatOptions is not null,
                 RepeatIntervalMinutes = dto.RepeatOptions?.RepeatIntervalMinutes ?? 15,
                 RepeatDurationMinutes = dto.RepeatOptions?.RepeatDurationMinutes ?? 60,
@@ -564,9 +600,9 @@
             return new ScheduleCreateRequest(
                 Name: Name,
                 StopTaskAfterMinutes: StopTaskAfterMinutes,
-                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId ),
+                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId, IsFixedOffset: UseFixedStartOffset ),
                 Expiration: HasExpiration
-                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId )
+                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId, IsFixedOffset: UseFixedExpirationOffset )
                     : null,
                 DailyRecurrence: RecurrenceType == "Daily" ? new DailyRecurrenceDto( DayInterval ) : null,
                 WeeklyRecurrence: RecurrenceType == "Weekly" ? new WeeklyRecurrenceDto( WeekInterval, DaysOfWeek ) : null,
@@ -586,9 +622,9 @@
             return new ScheduleUpdateRequest(
                 Name: Name,
                 StopTaskAfterMinutes: StopTaskAfterMinutes,
-                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId ),
+                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId, IsFixedOffset: UseFixedStartOffset ),
                 Expiration: HasExpiration
-                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId )
+                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId, IsFixedOffset: UseFixedExpirationOffset )
                     : null,
                 DailyRecurrence: RecurrenceType == "Daily" ? new DailyRecurrenceDto( DayInterval ) : null,
                 WeeklyRecurrence: RecurrenceType == "Weekly" ? new WeeklyRecurrenceDto( WeekInterval, DaysOfWeek ) : null,

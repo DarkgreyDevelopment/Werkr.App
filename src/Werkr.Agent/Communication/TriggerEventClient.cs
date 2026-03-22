@@ -55,8 +55,8 @@ public sealed class TriggerEventClient(
             CallOptions callOptions = clientFactory.CreateCallOptions( cancellationToken: ct );
             EncryptedEnvelope responseEnvelope = await client.ReportFileMonitorEventAsync( envelope, callOptions );
 
-            FileMonitorEventResponse response = PayloadEncryptor.DecryptFromEnvelope<FileMonitorEventResponse>(
-                responseEnvelope, clientFactory.GetSharedKey( ) );
+            FileMonitorEventResponse response = clientFactory.DecryptAndCheckUrgency<FileMonitorEventResponse>(
+                responseEnvelope );
 
             if (!response.Accepted) {
                 logger.LogWarning(

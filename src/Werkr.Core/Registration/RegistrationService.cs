@@ -164,6 +164,12 @@ public partial class RegistrationService(
 
             _ = dbContext.RegisteredConnections.Add( connection );
             bundle.Status = RegistrationStatus.Completed;
+
+            // Clear the ephemeral registration key — it was only needed for the
+            // registration RPC's EncryptedEnvelope. Ongoing communication uses
+            // the SharedKey established above.
+            bundle.RegistrationKey = null;
+
             _ = await dbContext.SaveChangesAsync( ct );
 
             if (logger.IsEnabled( LogLevel.Information )) {

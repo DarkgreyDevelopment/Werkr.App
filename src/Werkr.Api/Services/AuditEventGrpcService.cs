@@ -13,6 +13,7 @@ namespace Werkr.Api.Services;
 /// </summary>
 public sealed partial class AuditEventGrpcService(
     IAuditService auditService,
+    SecureResponseBuilder builder,
     ILogger<AuditEventGrpcService> logger
 ) : AuditEventService.AuditEventServiceBase {
 
@@ -26,11 +27,7 @@ public sealed partial class AuditEventGrpcService(
         EncryptedEnvelope request,
         ServerCallContext context
     ) {
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        SubmitAuditEventsRequest inner = PayloadEncryptor.DecryptFromEnvelope<SubmitAuditEventsRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, SubmitAuditEventsRequest inner) = SecureResponseBuilder.DecryptRequest<SubmitAuditEventsRequest>( request, context );
 
         if (inner.Entries.Count > MaxBatchSize) {
             throw new RpcException( new Status( StatusCode.InvalidArgument,
@@ -60,17 +57,8 @@ public sealed partial class AuditEventGrpcService(
             }
         }
 
-        return PayloadEncryptor.EncryptToEnvelope(
-            new SubmitAuditEventsResponse { AcceptedCount = accepted }, connection.SharedKey, keyId );
-    }
-
-    /// <summary>
-    /// Extracts the <see cref="RegisteredConnection"/> from the gRPC call context's <c>UserState</c> dictionary.
-    /// </summary>
-    private static RegisteredConnection GetConnection( ServerCallContext context ) {
-        return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
-            ? connection
-            : throw new RpcException( new Status( StatusCode.Internal, "Connection not resolved by interceptor." ) );
+        return await builder.EncryptResponseAsync(
+            new SubmitAuditEventsResponse { AcceptedCount = accepted }, connection, context.CancellationToken );
     }
 
     [LoggerMessage( Level = LogLevel.Warning,

@@ -63,10 +63,11 @@ public class CredentialIntegrationTests {
             Name: $"Ref-Task-{Guid.NewGuid( ):N}",
             Description: "Task referencing a credential",
             ActionType: "Action",
-            Content: "SendEmail",
+            Content: "",
             Arguments: null,
             TargetTags: ["test"],
-            ActionParameters: $$"""{"ActionType":"SendEmail","CredentialName":"{{cred.Name}}","SmtpHost":"mail.local"}""" );
+            ActionSubType: "SendEmail",
+            ActionParameters: $$"""{"SmtpHost":"mail.local","From":"test@test.com","To":["a@b.com"],"Subject":"test","CredentialName":"{{cred.Name}}"}""" );
 
         HttpResponseMessage taskResponse = await Api.PostAsJsonAsync( "/api/v1/tasks", taskRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, taskResponse.StatusCode );
@@ -91,10 +92,11 @@ public class CredentialIntegrationTests {
             Name: $"Rename-Task-{Guid.NewGuid( ):N}",
             Description: "Task for rename test",
             ActionType: "Action",
-            Content: "SendEmail",
+            Content: "",
             Arguments: null,
             TargetTags: ["test"],
-            ActionParameters: $$"""{"ActionType":"SendEmail","CredentialName":"{{cred.Name}}","SmtpHost":"mail.local"}""" );
+            ActionSubType: "SendEmail",
+            ActionParameters: $$"""{"SmtpHost":"mail.local","From":"test@test.com","To":["a@b.com"],"Subject":"test","CredentialName":"{{cred.Name}}"}""" );
 
         HttpResponseMessage taskResponse = await Api.PostAsJsonAsync( "/api/v1/tasks", taskRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, taskResponse.StatusCode );
@@ -115,7 +117,7 @@ public class CredentialIntegrationTests {
         Assert.Contains( newName, updatedTask.ActionParameters );
     }
 
-    /// <summary>Scope management updates and returns correctly.</summary>
+    /// <summary>Scope management updates and returns correctly (empty scope = all agents).</summary>
     [TestMethod]
     [Timeout( 60_000, CooperativeCancellation = true )]
     public async Task ScopeManagement_Works( ) {
@@ -123,20 +125,18 @@ public class CredentialIntegrationTests {
 
         CredentialCreateResponse cred = await CreateTestCredentialAsync( ct, "scope-test" );
 
-        // Update scopes with a random agent ID
-        Guid agentId = Guid.NewGuid( );
-        CredentialScopeUpdateRequest scopeReq = new( [agentId] );
+        // Update scopes with an empty list (unrestricted — available to all agents)
+        CredentialScopeUpdateRequest scopeReq = new( [] );
         HttpResponseMessage scopeResponse = await Api.PutAsJsonAsync(
             $"/api/v1/settings/credentials/{cred.Id}/scope", scopeReq, JsonOptions, ct );
-        Assert.AreEqual( HttpStatusCode.OK, scopeResponse.StatusCode );
+        Assert.AreEqual( HttpStatusCode.NoContent, scopeResponse.StatusCode );
 
-        // Verify scopes
+        // Verify scopes are empty
         List<CredentialDto>? all = await Api.GetFromJsonAsync<List<CredentialDto>>(
             "/api/v1/settings/credentials", JsonOptions, ct );
         Assert.IsNotNull( all );
         CredentialDto? updated = all.FirstOrDefault( c => c.Id == cred.Id );
         Assert.IsNotNull( updated );
-        Assert.HasCount( 1, updated.AgentScopeIds );
-        Assert.AreEqual( agentId, updated.AgentScopeIds[0] );
+        Assert.IsEmpty( updated.AgentScopeIds );
     }
 }

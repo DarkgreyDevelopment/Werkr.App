@@ -413,6 +413,47 @@ namespace Werkr.Data.Migrations.Postgres
                     b.ToTable("retention_policies", "werkr");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Registration.PendingAgentNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("channel");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_utc");
+
+                    b.Property<DateTime>("ExpiresUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_utc");
+
+                    b.Property<string>("Payload")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("payload");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pending_agent_notifications");
+
+                    b.HasIndex("ConnectionId", "CreatedUtc")
+                        .HasDatabaseName("ix_pending_agent_notifications_connection_id_created_utc");
+
+                    b.ToTable("pending_agent_notifications", "werkr");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -487,6 +528,15 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)")
                         .HasColumnName("outbound_api_key");
+
+                    b.Property<string>("PendingKeyId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("pending_key_id");
+
+                    b.Property<string>("PendingSharedKey")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_shared_key");
 
                     b.Property<string>("PreviousKeyId")
                         .HasMaxLength(128)
@@ -578,6 +628,10 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
+
+                    b.Property<string>("RegistrationKey")
+                        .HasColumnType("text")
+                        .HasColumnName("registration_key");
 
                     b.Property<string>("ServerPrivateKey")
                         .IsRequired()
@@ -700,6 +754,10 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date")
                         .HasColumnName("date");
+
+                    b.Property<bool>("IsFixedOffset")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_fixed_offset");
 
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("timestamp with time zone")
@@ -1018,6 +1076,10 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasColumnType("date")
                         .HasColumnName("date");
 
+                    b.Property<bool>("IsFixedOffset")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_fixed_offset");
+
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_updated");
@@ -1135,6 +1197,56 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasDatabaseName("ix_saved_filters_page_key_owner_id");
 
                     b.ToTable("saved_filters", "werkr");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Settings.UserPreference", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("value");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_preferences");
+
+                    b.HasIndex("UserId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_preferences_user_id_key");
+
+                    b.ToTable("user_preferences", "werkr");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>
@@ -2147,6 +2259,18 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("AgentConnection");
 
                     b.Navigation("Credential");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Registration.PendingAgentNotification", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "Connection")
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pending_agent_notifications_registered_connections_connecti");
+
+                    b.Navigation("Connection");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DailyRecurrence", b =>

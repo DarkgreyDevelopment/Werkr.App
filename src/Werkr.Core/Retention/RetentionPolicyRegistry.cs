@@ -42,6 +42,14 @@ public sealed class RetentionPolicyRegistry {
     }
 
     /// <summary>
+    /// Returns whether a provider is registered for the given entity type.
+    /// </summary>
+    public bool HasProvider( string entityType ) {
+        FrozenDictionary<string, IRetentionPolicyProvider> frozen = EnsureFrozen( );
+        return frozen.ContainsKey( entityType );
+    }
+
+    /// <summary>
     /// Returns all registered providers.
     /// </summary>
     public IReadOnlyCollection<IRetentionPolicyProvider> GetAll( ) {

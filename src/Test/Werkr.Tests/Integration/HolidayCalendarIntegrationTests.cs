@@ -393,15 +393,16 @@ public class HolidayCalendarIntegrationTests {
         string schedId = await CreateDailyScheduleAndReturnIdAsync( "IntTest_Audit_Empty", ct );
 
         string from = DateTime.UtcNow.AddDays( -30 ).ToString( "O" );
-        string to = DateTime.UtcNow.ToString( "O" );
+        string to = DateTime.UtcNow.AddSeconds( 1 ).ToString( "O" );
 
+        // Query the general audit endpoint filtered by this schedule's entity ID
         HttpResponseMessage getResp = await Api.GetAsync(
-            $"/api/v1/schedules/{schedId}/audit-log?from={from}&to={to}", ct );
+            $"/api/v1/audit?entityType=Schedule&entityId={schedId}&fromUtc={from}&toUtc={to}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
-        JsonElement[] logs = await getResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
-            ?? [];
-        Assert.IsEmpty( logs );
+        JsonElement result = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        JsonElement[] items = [.. result.GetProperty( "items" ).EnumerateArray( )];
+        Assert.IsEmpty( items );
     }
 
     // ── Federal Reserve — Columbus Day (H13) ───────────────────────────────────
@@ -468,28 +469,30 @@ public class HolidayCalendarIntegrationTests {
             $"/api/v1/schedules/{schedId}/holiday-calendar", attachReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, attachResp.StatusCode );
 
-        // Submit an audit log record
-        DateTime occurrenceTime = DateTime.UtcNow.AddHours( -1 );
+        // Submit an audit log record via the general audit endpoint
         var auditReq = new {
-            occurrenceUtcTime = occurrenceTime,
-            holidayName = "Test Holiday",
-            reason = "Blocked by Blocklist",
+            eventTypeId = "schedule.occurrence.suppressed",
+            actorId = "system",
+            actorType = "System",
+            entityType = "Schedule",
+            entityId = schedId,
+            actionPerformed = "HolidaySuppressed",
+            details = new { holidayName = "Test Holiday", reason = "Blocked by Blocklist" },
         };
         HttpResponseMessage postResp = await Api.PostAsJsonAsync(
-            $"/api/v1/schedules/{schedId}/audit-log", auditReq, JsonOptions, ct );
+            "/api/v1/audit", auditReq, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, postResp.StatusCode );
 
-        // Retrieve and verify
+        // Retrieve and verify via general audit endpoint filtered by entity
         string from = DateTime.UtcNow.AddDays( -1 ).ToString( "O" );
         string to = DateTime.UtcNow.AddDays( 1 ).ToString( "O" );
         HttpResponseMessage getResp = await Api.GetAsync(
-            $"/api/v1/schedules/{schedId}/audit-log?from={from}&to={to}", ct );
+            $"/api/v1/audit?entityType=Schedule&entityId={schedId}&fromUtc={from}&toUtc={to}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResp.StatusCode );
 
-        JsonElement[] logs = await getResp.Content.ReadFromJsonAsync<JsonElement[]>( JsonOptions, ct )
-            ?? [];
-        Assert.HasCount( 1, logs );
-        Assert.AreEqual( "Test Holiday", logs[0].GetProperty( "holidayName" ).GetString( ) );
+        JsonElement result = await getResp.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
+        JsonElement[] items = [.. result.GetProperty( "items" ).EnumerateArray( )];
+        Assert.HasCount( 1, items );
     }
 
     // ── Occurrence Filtering ───────────────────────────────────────────────────

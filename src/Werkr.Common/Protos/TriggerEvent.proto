@@ -3,6 +3,7 @@ option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
 import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
 
 // Agents report file monitor events to the API via this service.
 // All RPCs use EncryptedEnvelope. Inner payload types defined below.
@@ -24,4 +25,6 @@ message FileMonitorEventResponse {
   bool accepted = 1;
   string workflow_run_id = 2;
   string error = 3;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }

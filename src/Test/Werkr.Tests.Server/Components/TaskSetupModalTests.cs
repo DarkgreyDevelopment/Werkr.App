@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Werkr.Common.Models;
 using Werkr.Server.Components.Shared;
+using Werkr.Server.Identity;
+using Werkr.Server.Services;
 
 namespace Werkr.Tests.Server.Components;
 
@@ -23,6 +25,10 @@ public class TaskSetupModalTests : BunitContext {
         HttpClient client = new( handler ) { BaseAddress = new Uri( "http://localhost" ) };
         IHttpClientFactory factory = new FakeHttpClientFactory( client );
         _ = Services.AddSingleton( factory );
+        _ = Services.AddSingleton<IUserTokenProvider>( new FakeUserTokenProvider( ) );
+        _ = Services.AddScoped( sp => new ApiServiceAccessor(
+            sp.GetRequiredService<IHttpClientFactory>( ),
+            sp.GetRequiredService<IUserTokenProvider>( ) ) );
     }
 
     /// <summary>
@@ -261,5 +267,10 @@ public class TaskSetupModalTests : BunitContext {
     /// <summary>Fake <see cref="IHttpClientFactory"/> that always returns the same client.</summary>
     private sealed class FakeHttpClientFactory( HttpClient client ) : IHttpClientFactory {
         public HttpClient CreateClient( string name ) => client;
+    }
+
+    /// <summary>Fake <see cref="IUserTokenProvider"/> that returns a static test token.</summary>
+    private sealed class FakeUserTokenProvider : IUserTokenProvider {
+        public Task<string?> GetTokenAsync( ) => Task.FromResult<string?>( "fake-test-token" );
     }
 }

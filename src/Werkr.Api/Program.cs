@@ -98,6 +98,7 @@ public class Program {
 
             // Field-level encryption — transparently encrypts sensitive DB columns
             ISecretStore apiSecretStore = SecretStoreFactory.Create( );
+            _ = builder.Services.AddSingleton( apiSecretStore );
             string? fieldEncryptionKey = await apiSecretStore.GetSecretAsync(
                 FieldEncryptionProvider.SecretStoreKey );
             if (fieldEncryptionKey is null) {
@@ -173,13 +174,12 @@ public class Program {
             // Output streaming gRPC service (Singleton — receives agent output streams)
             _ = builder.Services.AddSingleton<OutputStreamingGrpcService>( );
 
-            // Agent health check background service — keeps DB status current
-            _ = builder.Services.AddHostedService<AgentHealthCheckService>( sp => {
+            // Agent staleness detection background service — marks stale agents offline and cleans expired notifications
+            _ = builder.Services.AddHostedService<AgentStalenessService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
-                AgentConnectionManager connectionManager = sp.GetRequiredService<AgentConnectionManager>( );
-                ILogger<AgentHealthCheckService> logger =
-                    sp.GetRequiredService<ILogger<AgentHealthCheckService>>( );
-                return new AgentHealthCheckService( scopeFactory, connectionManager, logger );
+                ILogger<AgentStalenessService> logger =
+                    sp.GetRequiredService<ILogger<AgentStalenessService>>( );
+                return new AgentStalenessService( scopeFactory, logger );
             } );
 
             // Schedule service (Scoped — one per request)
@@ -209,6 +209,12 @@ public class Program {
             // Trigger versioning service (Scoped)
             _ = builder.Services.AddScoped<Werkr.Core.Triggers.TriggerVersionService>( );
 
+            // Agent notification outbox (Scoped — participates in caller's transaction)
+            _ = builder.Services.AddScoped<AgentNotificationService>( );
+
+            // Secure gRPC response builder (Singleton — creates scoped DbContext for outbox checks)
+            _ = builder.Services.AddSingleton<SecureResponseBuilder>( );
+
             // Configuration resolution service (Scoped)
             _ = builder.Services.AddScoped<IConfigurationResolutionService, ConfigurationResolutionService>( );
             _ = builder.Services.AddScoped<ConfigurationChangeNotifier>( );
@@ -232,15 +238,13 @@ public class Program {
             _ = builder.Services.AddSingleton<IAuditEventTypeRegistry>( auditRegistry );
             _ = builder.Services.AddScoped<IAuditService, AuditService>( );
 
-            // Audit log cleanup (deprecated — will be removed once RetentionService fully replaces it)
-            _ = builder.Services.Configure<AuditLogOptions>( builder.Configuration.GetSection( "AuditLog" ) );
-            _ = builder.Services.AddHostedService<AuditLogCleanupService>( );
-
             // Retention framework — policy-driven data lifecycle management
             RetentionPolicyRegistry retentionRegistry = new( );
             _ = builder.Services.AddSingleton( retentionRegistry );
             _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.WorkflowRunRetentionProvider>( );
             _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.AuditLogRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.JobOutputRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.WorkflowRunVariableRetentionProvider>( );
             _ = builder.Services.AddSingleton<RetentionService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
                 ILogger<RetentionService> retentionLogger = sp.GetRequiredService<ILogger<RetentionService>>( );
@@ -255,14 +259,13 @@ public class Program {
             } );
             _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<RetentionService>( ) );
 
-            // Key rotation background service — rotates SharedKey for all connected agents
+            // Key rotation background service — two-phase rotation via notification outbox
             _ = builder.Services.AddSingleton<KeyRotationService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
-                AgentConnectionManager connectionManager = sp.GetRequiredService<AgentConnectionManager>( );
                 ILogger<KeyRotationService> logger =
                     sp.GetRequiredService<ILogger<KeyRotationService>>( );
                 TimeSpan gracePeriod = TimeSpan.FromMinutes( werkrConfig.KeyRotationGracePeriodMinutes );
-                return new KeyRotationService( scopeFactory, connectionManager, logger,
+                return new KeyRotationService( scopeFactory, logger,
                     gracePeriod: gracePeriod );
             } );
             _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<KeyRotationService>( ) );
@@ -319,6 +322,8 @@ public class Program {
             _ = app.MapGrpcService<TriggerEventGrpcService>( );
             _ = app.MapGrpcService<AuditEventGrpcService>( );
             _ = app.MapGrpcService<ConfigurationSyncGrpcService>( );
+            _ = app.MapGrpcService<KeyExchangeGrpcService>( );
+            _ = app.MapGrpcService<AgentHeartbeatGrpcService>( );
 
             // REST endpoints
             _ = app.MapStatusEndpoints( );
@@ -343,6 +348,7 @@ public class Program {
             _ = app.MapTriggerVersionEndpoints( );
             _ = app.MapCredentialEndpoints( );
             _ = app.MapRetentionEndpoints( );
+            _ = app.MapUserPreferenceEndpoints( );
 
             _ = app.MapDefaultEndpoints( );
 

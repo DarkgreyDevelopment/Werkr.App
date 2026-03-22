@@ -167,6 +167,11 @@ public partial class Program {
             } );
             _ = builder.Services.AddScoped<AgentRegistrationHandler>( );
 
+            // Urgency channel — signals HeartbeatBackgroundService to send immediate heartbeat
+            Channel<bool> urgencyChannel = Channel.CreateBounded<bool>(
+                new BoundedChannelOptions( 1 ) { FullMode = BoundedChannelFullMode.DropOldest } );
+            _ = builder.Services.AddSingleton( urgencyChannel );
+
             // Schedule evaluation services
             _ = builder.Services.AddSingleton<AgentGrpcClientFactory>( );
             _ = builder.Services.AddSingleton<VariableClient>( );
@@ -195,6 +200,7 @@ public partial class Program {
             _ = builder.Services.AddSingleton<FileMonitorService>( );
             _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<FileMonitorService>( ) );
             _ = builder.Services.AddHostedService<ScheduleEvaluatorService>( );
+            _ = builder.Services.AddHostedService<HeartbeatBackgroundService>( );
 
             WebApplication app = builder.Build( );
 
@@ -220,7 +226,6 @@ public partial class Program {
 
             // Map gRPC services
             _ = app.MapGrpcService<OutputFetchService>( );
-            _ = app.MapGrpcService<ScheduleInvalidationService>( );
             _ = app.MapGrpcService<ConnectionManagementService>( );
 
             // Sweep stale variable temp files from previous runs (crash recovery)

@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Werkr.Common.Models.Audit;
-using Werkr.Core.Audit;
 using Werkr.Data;
 using Werkr.Data.Entities.Audit;
 
@@ -9,23 +7,24 @@ namespace Werkr.Core.Retention.Providers;
 /// <summary>
 /// Retention provider for <see cref="AuditEvent"/> records.
 /// Deletes audit events whose <c>TimestampUtc</c> is older than the configured
-/// retention period, then records a self-deletion summary audit event.
+/// retention period. Audit logging of the deletion is handled by the
+/// <c>RetentionService</c> within the same transaction.
 /// </summary>
-public sealed class AuditLogRetentionProvider( WerkrDbContext db, IAuditService auditService ) : IRetentionPolicyProvider {
+public sealed class AuditLogRetentionProvider( WerkrDbContext db ) : IRetentionPolicyProvider {
 
     /// <inheritdoc />
     public string EntityType => "audit_log";
 
     /// <inheritdoc />
-    public async Task<int> DeleteAgedRecordsAsync( int retentionDays, int batchSize, CancellationToken ct ) {
+    public async Task<RetentionSweepResult> DeleteAgedRecordsAsync( int retentionDays, int batchSize, CancellationToken ct ) {
         DateTime cutoff = DateTime.UtcNow.AddDays( -retentionDays );
 
-        // Gather summary before deletion (same pattern as AuditLogCleanupService)
+        // Gather summary before deletion — date range and category breakdown
         IQueryable<AuditEvent> expiredQuery = db.AuditEvents.Where( e => e.TimestampUtc < cutoff );
         int countToDelete = await expiredQuery.CountAsync( ct );
 
         if (countToDelete == 0) {
-            return 0;
+            return new RetentionSweepResult( EntityType, 0, null, null );
         }
 
         DateTime? earliest = await expiredQuery.MinAsync( e => (DateTime?) e.TimestampUtc, ct );
@@ -52,27 +51,7 @@ public sealed class AuditLogRetentionProvider( WerkrDbContext db, IAuditService 
             }
         }
 
-        // Record a self-deletion summary audit event
-        if (totalDeleted > 0) {
-            object summary = new {
-                deletedCount = totalDeleted,
-                earliestTimestamp = earliest,
-                latestTimestamp = latest,
-                categoryCounts
-            };
-
-            await auditService.LogAsync( new AuditEntry(
-                EventTypeId: AuditEventType.AuditRetentionCleanup.ToEventId( ),
-                ActorId: null,
-                ActorType: "System",
-                EntityType: null,
-                EntityId: null,
-                ActionPerformed: "RetentionSweep",
-                Details: summary
-            ), ct );
-        }
-
-        return totalDeleted;
+        return new RetentionSweepResult( EntityType, totalDeleted, earliest, latest, categoryCounts );
     }
 
     /// <inheritdoc />

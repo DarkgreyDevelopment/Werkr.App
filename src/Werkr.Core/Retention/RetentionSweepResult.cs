@@ -7,9 +7,11 @@ namespace Werkr.Core.Retention;
 /// <param name="DeletedCount">Number of records deleted during this sweep.</param>
 /// <param name="OldestDeleted">Timestamp of the oldest deleted record, or null if none were deleted.</param>
 /// <param name="NewestDeleted">Timestamp of the newest deleted record, or null if none were deleted.</param>
+/// <param name="AdditionalDetails">Optional provider-specific detail (e.g. audit log category breakdown).</param>
 public sealed record RetentionSweepResult(
     string EntityType,
     int DeletedCount,
     DateTime? OldestDeleted,
-    DateTime? NewestDeleted
+    DateTime? NewestDeleted,
+    object? AdditionalDetails = null
 );

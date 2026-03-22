@@ -166,6 +166,35 @@ internal static class SettingsEndpoints {
         .WithName( "GetAgentEffectiveSettings" )
         .RequireAuthorization( Policies.IsAdmin );
 
+        _ = app.MapDelete( "/api/v1/agents/{agentId}/settings/{key}", async (
+            string agentId,
+            string key,
+            HttpContext httpContext,
+            IConfigurationResolutionService configService,
+            ConfigurationChangeNotifier notifier,
+            CancellationToken ct
+        ) => {
+            try {
+                string userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value ?? "unknown";
+                await configService.DeleteOverrideAsync( key, agentId, userId, ct );
+
+                _ = Task.Run( async ( ) => {
+                    try {
+                        long version = await configService.GetCurrentVersionAsync( CancellationToken.None );
+                        await notifier.NotifyAsync( version, agentId, CancellationToken.None );
+                    } catch (Exception ex) {
+                        Log.Warning( ex, "Failed to push config change notification after override removal for key {Key}.", key );
+                    }
+                }, CancellationToken.None );
+
+                return Results.NoContent( );
+            } catch (KeyNotFoundException) {
+                return Results.NotFound( );
+            }
+        } )
+        .WithName( "DeleteAgentSettingOverride" )
+        .RequireAuthorization( Policies.IsAdmin );
+
         // ── Encryption key rotation ──
         _ = app.MapPost( "/api/v1/settings/encryption/rotate", async (
             Core.Encryption.IFieldEncryptionKeyRotationService rotationService,

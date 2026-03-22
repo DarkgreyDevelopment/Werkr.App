@@ -61,8 +61,8 @@ internal static class RetentionEndpoints {
             IAuditService auditService,
             CancellationToken ct
         ) => {
-            if (request.RetentionDays < 1) {
-                return Results.BadRequest( new { message = "RetentionDays must be at least 1." } );
+            if (request.RetentionDays < 0) {
+                return Results.BadRequest( new { message = "RetentionDays must be 0 or greater." } );
             }
 
             RetentionPolicy? policy = await db.RetentionPolicies

@@ -124,4 +124,18 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     /// <summary>Last-known agent version, updated at registration and on each heartbeat.</summary>
     [MaxLength( 128 )]
     public string AgentVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// New AES-256 key awaiting agent acknowledgment during two-phase rotation.
+    /// Stored as the raw 32-byte key; RSA-encrypted on the fly for FetchPendingKey responses.
+    /// Null when no rotation is pending.
+    /// </summary>
+    public byte[]? PendingSharedKey { get; set; }
+
+    /// <summary>
+    /// Key ID for the pending key.
+    /// Null when no rotation is pending.
+    /// </summary>
+    [MaxLength( 128 )]
+    public string? PendingKeyId { get; set; }
 }

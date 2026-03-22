@@ -3,6 +3,7 @@ option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
 import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
 
 // Agent fetches/pushes variable values during workflow execution.
 // Hosted by the API. All RPCs use EncryptedEnvelope.
@@ -33,6 +34,8 @@ message GetVariableResponse {
   bool found = 1;
   string value = 2;           // JSON blob
   int32 version = 3;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message SetVariableRequest {
@@ -48,6 +51,8 @@ message SetVariableResponse {
   bool accepted = 1;
   int32 version = 2;           // assigned version number
   string error = 3;            // non-empty on rejection (size limit, invalid JSON, etc.)
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message CreateWorkflowRunRequest {
@@ -59,6 +64,8 @@ message CreateWorkflowRunResponse {
   bool accepted = 1;
   string workflow_run_id = 2;  // API-generated run ID
   string error = 3;            // non-empty on rejection
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message CompleteWorkflowRunRequest {
@@ -71,6 +78,8 @@ message CompleteWorkflowRunRequest {
 
 message CompleteWorkflowRunResponse {
   bool accepted = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message GetStepExecutionsRequest {
@@ -80,6 +89,8 @@ message GetStepExecutionsRequest {
 
 message GetStepExecutionsResponse {
   repeated StepExecutionEntry entries = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message StepExecutionEntry {

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Audit;
 using Werkr.Core.Audit;
@@ -13,6 +14,8 @@ namespace Werkr.Api.Services;
 /// Background service that periodically sweeps aged records according to
 /// <see cref="RetentionPolicy"/> rows in the database. Providers registered
 /// in <see cref="RetentionPolicyRegistry"/> perform the actual deletion.
+/// Each provider's deletion and its corresponding audit event are committed
+/// in the same transaction so that a later failure cannot cause audit gaps.
 /// </summary>
 public sealed partial class RetentionService(
     IServiceScopeFactory scopeFactory,
@@ -71,7 +74,6 @@ public sealed partial class RetentionService(
     public async Task<IReadOnlyList<RetentionSweepResult>> SweepNowAsync( bool dryRun, CancellationToken ct ) {
         using IServiceScope scope = _scopeFactory.CreateScope( );
         WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
-        IAuditService auditService = scope.ServiceProvider.GetRequiredService<IAuditService>( );
 
         List<RetentionPolicy> policies = await db.RetentionPolicies
             .Where( p => p.IsEnabled )
@@ -81,41 +83,52 @@ public sealed partial class RetentionService(
         List<RetentionSweepResult> results = [];
 
         foreach (RetentionPolicy policy in policies) {
-            IRetentionPolicyProvider? provider = _registry.GetProvider( policy.EntityType );
-            if (provider is null) {
+            if (!_registry.HasProvider( policy.EntityType )) {
                 LogProviderNotFound( _logger, policy.EntityType );
                 continue;
             }
 
             if (dryRun) {
+                IRetentionPolicyProvider provider = ResolveScopedProvider( scope, policy.EntityType );
                 RetentionPreview preview = await provider.PreviewAgedRecordsAsync( policy.RetentionDays, ct );
                 results.Add( new RetentionSweepResult(
                     preview.EntityType, preview.EligibleCount,
                     preview.OldestTimestamp, preview.NewestTimestamp ) );
             } else {
-                // For audit log provider, we need a scoped instance that has the same db context
-                IRetentionPolicyProvider scopedProvider = ResolveScopedProvider( scope, provider.EntityType );
-                int deleted = await scopedProvider.DeleteAgedRecordsAsync(
-                    policy.RetentionDays, DefaultBatchSize, ct );
-
-                RetentionSweepResult result = new( policy.EntityType, deleted, null, null );
+                RetentionSweepResult result = await SweepEntityAsync(
+                    scope, policy, ct );
                 results.Add( result );
-
-                if (deleted > 0) {
-                    LogRecordsDeleted( _logger, deleted, policy.EntityType, policy.RetentionDays );
-                }
-            }
-        }
-
-        // Log a summary audit event for the sweep
-        if (!dryRun && results.Count > 0) {
-            int totalDeleted = results.Sum( r => r.DeletedCount );
-            if (totalDeleted > 0) {
-                await LogSweepAuditEventAsync( auditService, results, ct );
             }
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Sweeps a single entity type: resolves the scoped provider, deletes aged
+    /// records, and emits an audit event — all within the same transaction.
+    /// </summary>
+    private async Task<RetentionSweepResult> SweepEntityAsync(
+        IServiceScope scope, RetentionPolicy policy, CancellationToken ct
+    ) {
+        WerkrDbContext db = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
+        IAuditService auditService = scope.ServiceProvider.GetRequiredService<IAuditService>( );
+        IRetentionPolicyProvider scopedProvider = ResolveScopedProvider( scope, policy.EntityType );
+
+        await using IDbContextTransaction tx = await db.Database.BeginTransactionAsync( ct );
+
+        RetentionSweepResult result = await scopedProvider.DeleteAgedRecordsAsync(
+            policy.RetentionDays, DefaultBatchSize, ct );
+
+        if (result.DeletedCount > 0) {
+            await LogEntityRetentionAuditEventAsync(
+                auditService, result, policy.RetentionDays, ct );
+            LogRecordsDeleted( _logger, result.DeletedCount, policy.EntityType, policy.RetentionDays );
+        }
+
+        await tx.CommitAsync( ct );
+
+        return result;
     }
 
     /// <summary>
@@ -141,20 +154,33 @@ public sealed partial class RetentionService(
         return 1440; // default 24 hours
     }
 
-    private static async Task LogSweepAuditEventAsync(
-        IAuditService auditService, IReadOnlyList<RetentionSweepResult> results, CancellationToken ct ) {
+    /// <summary>
+    /// Logs an audit event for a single entity type's retention deletion.
+    /// Uses <see cref="AuditEventType.AuditRetentionCleanup"/> for audit log
+    /// self-deletion (per spec §12) and <see cref="AuditEventType.RetentionSweepCompleted"/>
+    /// for all other entity types.
+    /// </summary>
+    private static async Task LogEntityRetentionAuditEventAsync(
+        IAuditService auditService, RetentionSweepResult result, int retentionDays, CancellationToken ct
+    ) {
+        AuditEventType eventType = result.EntityType == "audit_log"
+            ? AuditEventType.AuditRetentionCleanup
+            : AuditEventType.RetentionSweepCompleted;
+
         object details = new {
-            results = results.Select( r => new {
-                entityType = r.EntityType,
-                deletedCount = r.DeletedCount
-            } ).ToArray( )
+            entityType = result.EntityType,
+            deletedCount = result.DeletedCount,
+            oldestDeleted = result.OldestDeleted,
+            newestDeleted = result.NewestDeleted,
+            retentionDays,
+            additionalDetails = result.AdditionalDetails,
         };
 
         await auditService.LogAsync( new AuditEntry(
-            EventTypeId: AuditEventType.RetentionSweepCompleted.ToEventId( ),
+            EventTypeId: eventType.ToEventId( ),
             ActorId: null,
             ActorType: "System",
-            EntityType: null,
+            EntityType: result.EntityType,
             EntityId: null,
             ActionPerformed: "RetentionSweep",
             Details: details

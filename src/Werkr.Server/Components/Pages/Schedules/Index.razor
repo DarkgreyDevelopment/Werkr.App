@@ -1,6 +1,8 @@
 ﻿@page "/schedules"
 @rendermode InteractiveServer
 @using Werkr.Common.Models
+@using Werkr.Common.Scheduling
+@using Werkr.Data
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
@@ -171,7 +173,21 @@
     }
 
     private static string FormatStart( StartDateTimeDto? start ) {
-        return start is null ? "—" : $"{start.Date:yyyy-MM-dd} {start.Time:HH:mm} ({start.TimeZoneId})";
+        if (start is null) return "—";
+        string tzLabel = FormatTimeZoneLabel( start.TimeZoneId, start.IsFixedOffset,
+            start.Date.ToDateTime( start.Time ) );
+        return $"{start.Date:yyyy-MM-dd} {start.Time:HH:mm} ({tzLabel})";
+    }
+
+    private static string FormatTimeZoneLabel( string tzId, bool isFixedOffset, DateTime instant ) {
+        try {
+            TimeZoneInfo tz = TimeZoneResolver.FindOrCreate( tzId );
+            return isFixedOffset
+                ? TimeZoneDisplayService.GetFixedOffsetLabel( tz.BaseUtcOffset )
+                : TimeZoneDisplayService.GetAbbreviation( tz, instant );
+        } catch {
+            return tzId;
+        }
     }
 
     private static string FormatExpiration( ExpirationDateTimeDto? exp ) {

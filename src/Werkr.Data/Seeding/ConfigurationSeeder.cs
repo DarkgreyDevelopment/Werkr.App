@@ -33,9 +33,14 @@ public static class ConfigurationSeeder {
             return;
         }
 
-        // Try to read legacy settings for migration
+        // Try to read legacy settings for migration (may not exist in new schemas)
 #pragma warning disable CS0618 // Intentional: migrating values from obsolete ConfigurationSettings
-        ConfigurationSettings? legacy = await db.Set<ConfigurationSettings>( ).FirstOrDefaultAsync( );
+        ConfigurationSettings? legacy = null;
+        try {
+            legacy = await db.Set<ConfigurationSettings>( ).FirstOrDefaultAsync( );
+        } catch (InvalidOperationException) {
+            // ConfigurationSettings entity removed from model — no legacy data to migrate
+        }
 #pragma warning restore CS0618
 
         ConfigurationEntry[] entries = BuildDefaults( legacy );

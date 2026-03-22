@@ -23,6 +23,9 @@ public abstract class DateTimeInfoBase : ConcurrencyBase {
     [Required]
     public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Utc;
 
+    /// <summary>When true, <see cref="TimeZone"/> is a fixed UTC offset with no DST rules.</summary>
+    public bool IsFixedOffset { get; set; }
+
     /// <summary>Gets the combined DateTime in the specified timezone.</summary>
     [NotMapped]
     public DateTime TzTime => Date.ToDateTime( Time );

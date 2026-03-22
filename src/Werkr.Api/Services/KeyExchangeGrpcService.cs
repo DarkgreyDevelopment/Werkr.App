@@ -41,13 +41,8 @@ public sealed partial class KeyExchangeGrpcService(
         WerkrDbContext dbContext = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
 
         RegisteredConnection? agent = await dbContext.RegisteredConnections
-            .FirstOrDefaultAsync( c => c.Id == connection.Id && c.IsServer, ct );
-
-        if (agent is null) {
-            throw new RpcException( new Status( StatusCode.NotFound,
+            .FirstOrDefaultAsync( c => c.Id == connection.Id && c.IsServer, ct ) ?? throw new RpcException( new Status( StatusCode.NotFound,
                 "Agent connection not found." ) );
-        }
-
         FetchPendingKeyResponse response;
 
         if (agent.PendingSharedKey is not null && agent.PendingKeyId is not null) {
@@ -89,12 +84,8 @@ public sealed partial class KeyExchangeGrpcService(
         WerkrDbContext dbContext = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
 
         RegisteredConnection? agent = await dbContext.RegisteredConnections
-            .FirstOrDefaultAsync( c => c.Id == connection.Id && c.IsServer, ct );
-
-        if (agent is null) {
-            throw new RpcException( new Status( StatusCode.NotFound,
+            .FirstOrDefaultAsync( c => c.Id == connection.Id && c.IsServer, ct ) ?? throw new RpcException( new Status( StatusCode.NotFound,
                 "Agent connection not found." ) );
-        }
 
         // Verify the activated key ID matches the pending key
         if (inner.ActivatedKeyId != agent.PendingKeyId) {

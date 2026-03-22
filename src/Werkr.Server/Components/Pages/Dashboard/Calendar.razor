@@ -8,7 +8,10 @@
 
 <PageTitle>Werkr - Calendar</PageTitle>
 
-<h1>Calendar</h1>
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Calendar</h1>
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
+</div>
 <Breadcrumb Items="_breadcrumbs" />
 
 <p>Visual overview of scheduled occurrences.</p>
@@ -111,7 +114,7 @@
                             List<(string Name, DateTime Occ)> hits = GetWeeklySlotHits( day, slot, slotEnd );
                             <td class="@( hits.Count > 0 ? "weekly-cell-active" : "" )">
                                 @foreach (var hit in hits) {
-                                    <div class="weekly-event" title="@hit.Name @hit.Occ.ToString( "HH:mm" )">
+                                    <div class="weekly-event" title="@hit.Name @ConvertIfNeeded( hit.Occ ).ToString( "HH:mm" )">
                                         <small>@hit.Name</small>
                                     </div>
                                 }
@@ -134,7 +137,7 @@
                 <div class="calendar-date">@cell.Date.Day</div>
                 @foreach ( CalendarEvent evt in cell.Events ) {
                     <div class="calendar-event" title="@evt.ScheduleName">
-                        <small>@evt.Time.ToString( "HH:mm" ) @evt.ScheduleName</small>
+                        <small>@ConvertTimeOnly( evt.Time ).ToString( "HH:mm" ) @evt.ScheduleName</small>
                     </div>
                 }
             </div>
@@ -154,6 +157,7 @@
     private string? _errorMessage;
     private bool _isLoading;
     private bool _disposed;
+    private TimeZoneInfo? _displayTz;
     private PeriodicTimer? _refreshTimer;
     private CancellationTokenSource? _cts;
 
@@ -340,6 +344,17 @@
             _cts.Dispose( );
         }
         _refreshTimer?.Dispose( );
+    }
+
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
+
+    private TimeOnly ConvertTimeOnly( TimeOnly t ) {
+        if ( _displayTz is null ) return t;
+        DateTime utc = DateTime.SpecifyKind( DateTime.Today.Add( t.ToTimeSpan( ) ), DateTimeKind.Utc );
+        return TimeOnly.FromDateTime( TimeZoneInfo.ConvertTimeFromUtc( utc, _displayTz ) );
     }
 
     private sealed record CalendarCell( DateOnly Date, bool IsCurrentMonth, bool IsToday, List<CalendarEvent> Events );

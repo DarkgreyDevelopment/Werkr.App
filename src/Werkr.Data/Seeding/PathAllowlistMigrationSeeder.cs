@@ -26,9 +26,10 @@ public static class PathAllowlistMigrationSeeder {
             .CreateLogger( "Werkr.Data.Seeding.PathAllowlistMigrationSeeder" );
 
 #pragma warning disable CS0618 // Intentional: migrating values from obsolete AllowedPaths
-        List<RegisteredConnection> agents = await db.RegisteredConnections
-            .Where( c => c.IsServer && c.AllowedPaths.Length > 0 )
-            .ToListAsync( );
+        List<RegisteredConnection> agents = [.. (await db.RegisteredConnections
+            .Where( c => c.IsServer )
+            .ToListAsync( ))
+            .Where( c => c.AllowedPaths.Length > 0 )];
 
         if (agents.Count == 0) {
             return;

@@ -202,6 +202,13 @@ public static class ActionRegistry {
             new( "UsePolling", "Use Polling", FieldType.Bool, DefaultValue: "false", HelpText: "Recommended for network or UNC paths." ),
         ] ),
 
+        // ── Iteration operations ────────────────────────────────────
+        new( "ForEach", "For Each", "Iterate over a collection, executing child steps for each item.",
+            "Iteration", typeof( ForEachParameters ), [
+            new( "CollectionExpression", "Collection Expression", FieldType.Text, Required: true,
+                 Placeholder: "$(items)", HelpText: "Expression resolving to the collection to iterate." ),
+        ] ),
+
         // ── Network operations ───────────────────────────────────────
         new( "HttpRequest", "HTTP Request", "Send an HTTP request and capture the response.",
             "Network", typeof( HttpRequestParameters ), [

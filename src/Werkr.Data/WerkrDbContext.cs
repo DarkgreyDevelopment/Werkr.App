@@ -122,6 +122,9 @@ public class WerkrDbContext : DbContext {
     /// <summary>Named saved filter views (personal and shared).</summary>
     public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>( );
 
+    /// <summary>Per-user key-value preferences.</summary>
+    public DbSet<UserPreference> UserPreferences => Set<UserPreference>( );
+
     /// <summary>File monitor triggers that watch directories and initiate workflow runs.</summary>
     public DbSet<FileMonitorTrigger> FileMonitorTriggers => Set<FileMonitorTrigger>( );
 
@@ -142,6 +145,9 @@ public class WerkrDbContext : DbContext {
 
     /// <summary>Data retention policies per entity type.</summary>
     public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>( );
+
+    /// <summary>Durable notification queue for agent heartbeat responses.</summary>
+    public DbSet<PendingAgentNotification> PendingAgentNotifications => Set<PendingAgentNotification>( );
 
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
@@ -196,6 +202,14 @@ public class WerkrDbContext : DbContext {
             );
 
             entity.Property( e => e.PreviousSharedKey ).Metadata.SetValueComparer(
+                new ValueComparer<byte[]?>(
+                    ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
+                    v => v == null ? 0 : v.Aggregate( 0, ( hash, b ) => HashCode.Combine( hash, b ) ),
+                    v => v == null ? null : v.ToArray( )
+                )
+            );
+
+            entity.Property( e => e.PendingSharedKey ).Metadata.SetValueComparer(
                 new ValueComparer<byte[]?>(
                     ( a, b ) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual( b )),
                     v => v == null ? 0 : v.Aggregate( 0, ( hash, b ) => HashCode.Combine( hash, b ) ),
@@ -569,6 +583,11 @@ public class WerkrDbContext : DbContext {
             _ = entity.HasIndex( e => new { e.PageKey, e.IsShared } );
         } );
 
+        // UserPreference — per-user key-value preferences
+        _ = modelBuilder.Entity<UserPreference>( entity => {
+            _ = entity.HasIndex( e => new { e.UserId, e.Key } ).IsUnique( );
+        } );
+
         // FileMonitorTrigger — FK to Workflow with cascade delete, JSON conversions
         _ = modelBuilder.Entity<FileMonitorTrigger>( entity => {
             _ = entity.HasOne( e => e.Workflow )
@@ -668,11 +687,22 @@ public class WerkrDbContext : DbContext {
             _ = entity.HasIndex( e => e.EntityType ).IsUnique( );
         } );
 
+        // PendingAgentNotification — composite index for heartbeat drain, FK cascade to RegisteredConnection
+        _ = modelBuilder.Entity<PendingAgentNotification>( entity => {
+            _ = entity.HasIndex( e => new { e.ConnectionId, e.CreatedUtc } );
+
+            _ = entity.HasOne( e => e.Connection )
+                .WithMany( )
+                .HasForeignKey( e => e.ConnectionId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
         // Field-level encryption for sensitive columns (§9 Data Protection)
         if (FieldEncryption is not null) {
             EncryptedStringConverter encString = new( FieldEncryption );
             EncryptedRSAParametersConverter encRsa = new( FieldEncryption );
             EncryptedByteArrayConverter encBytes = new( FieldEncryption );
+            EncryptedNullableByteArrayConverter encNullableBytes = new( FieldEncryption );
 
             // WorkflowRunVariable.Value — runtime variable payloads (JSON)
             _ = modelBuilder.Entity<WorkflowRunVariable>( entity => {
@@ -689,8 +719,13 @@ public class WerkrDbContext : DbContext {
                 _ = entity.Property( e => e.OutboundApiKey ).HasConversion( encString );
                 _ = entity.Property( e => e.LocalPrivateKey ).HasConversion( encRsa );
                 _ = entity.Property( e => e.SharedKey ).HasConversion( encBytes );
-                // PreviousSharedKey is byte[]? — encrypted via hex converter + grace period semantics;
-                // nullable byte[] converter requires separate handling, deferred to key rotation pass
+                _ = entity.Property( e => e.PreviousSharedKey ).HasConversion( encNullableBytes );
+                _ = entity.Property( e => e.PendingSharedKey ).HasConversion( encNullableBytes );
+            } );
+
+            // RegistrationBundle — registration key material
+            _ = modelBuilder.Entity<RegistrationBundle>( entity => {
+                _ = entity.Property( e => e.RegistrationKey ).HasConversion( encNullableBytes );
             } );
 
             // ConfigurationEntry.Value + DefaultValue — all config values encrypted at rest
@@ -830,7 +865,7 @@ public class WerkrDbContext : DbContext {
     private sealed class TimeZoneInfoStringConverter( )
         : ValueConverter<TimeZoneInfo, string>(
             tz => tz.Id,
-            id => TimeZoneInfo.FindSystemTimeZoneById( id ) );
+            id => TimeZoneResolver.FindOrCreate( id ) );
 
     /// <summary>JSON options that include fields - required for <see cref="RSAParameters"/> which uses public fields, not properties.</summary>
     private static readonly JsonSerializerOptions s_rsaJsonOptions = new( ) { IncludeFields = true };

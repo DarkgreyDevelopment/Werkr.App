@@ -51,7 +51,7 @@ public class FieldEncryptionTests {
 
     [TestMethod]
     public void Encrypt_NullString_ReturnsNull( ) {
-        Assert.IsNull( _provider.Encrypt( (string?)null ) );
+        Assert.IsNull( _provider.Encrypt( null ) );
     }
 
     [TestMethod]
@@ -145,7 +145,7 @@ public class FieldEncryptionTests {
         using (SqliteWerkrDbContext db = new( options ) { FieldEncryption = encProvider }) {
             _ = db.Database.EnsureCreated( );
 
-            db.ConfigurationEntries.Add( new ConfigurationEntry {
+            _ = db.ConfigurationEntries.Add( new ConfigurationEntry {
                 Key = "test.setting",
                 Value = "plaintext-secret-value",
                 ValueType = "string",
@@ -203,7 +203,7 @@ public class FieldEncryptionTests {
         using (SqliteWerkrDbContext db = new( options ) { FieldEncryption = encProvider }) {
             _ = db.Database.EnsureCreated( );
 
-            db.Credentials.Add( new Credential {
+            _ = db.Credentials.Add( new Credential {
                 Name = "smtp-password",
                 Type = CredentialType.Password,
                 EncryptedValue = "my-super-secret-password",
@@ -249,7 +249,7 @@ public class FieldEncryptionTests {
         byte[] data = RandomNumberGenerator.GetBytes( 32 );
         object? encrypted = typedConverter.ConvertToProvider( data );
         Assert.IsNotNull( encrypted );
-        Assert.IsInstanceOfType<string>( encrypted );
+        _ = Assert.IsInstanceOfType<string>( encrypted );
 
         object? decrypted = typedConverter.ConvertFromProvider( encrypted );
         Assert.IsNotNull( decrypted );

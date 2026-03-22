@@ -68,10 +68,21 @@ public partial class AgentBearerTokenInterceptor(
 
     /// <summary>
     /// Validates the bearer token and connection ID metadata headers on inbound gRPC calls.
+    /// For registration calls (identified by <c>x-werkr-bundle-id</c> header), looks up the
+    /// <see cref="RegistrationBundle"/> and stores the registration key in context for the service.
     /// </summary>
     private async Task ValidateBearerTokenAsync( ServerCallContext context ) {
-        // If no connection-id header is present, this is a user/service call — let JWT handle it.
+        // Registration path: x-werkr-bundle-id present but no x-werkr-connection-id.
+        // Look up the bundle and store its RegistrationKey for the gRPC service to decrypt.
+        string? bundleIdHex = context.RequestHeaders.GetValue( "x-werkr-bundle-id" );
         string? connectionIdStr = context.RequestHeaders.GetValue( "x-werkr-connection-id" );
+
+        if (!string.IsNullOrEmpty( bundleIdHex ) && string.IsNullOrEmpty( connectionIdStr )) {
+            await ResolveRegistrationBundleAsync( context, bundleIdHex );
+            return;
+        }
+
+        // If no connection-id header is present, this is a user/service call — let JWT handle it.
         if (string.IsNullOrEmpty( connectionIdStr )) {
             return;
         }
@@ -130,5 +141,42 @@ public partial class AgentBearerTokenInterceptor(
         if (!string.IsNullOrEmpty( callId )) {
             context.UserState["CallId"] = callId;
         }
+    }
+
+    /// <summary>
+    /// Resolves a <see cref="RegistrationBundle"/> by its hex-encoded BundleId header.
+    /// Stores the bundle's <c>RegistrationKey</c> and the bundle entity itself in
+    /// <see cref="ServerCallContext.UserState"/> so the registration gRPC service can
+    /// decrypt the request and encrypt the response.
+    /// </summary>
+    private async Task ResolveRegistrationBundleAsync( ServerCallContext context, string bundleIdHex ) {
+        byte[] bundleId;
+        try {
+            bundleId = Convert.FromHexString( bundleIdHex );
+        } catch (FormatException) {
+            throw new RpcException( new Status( StatusCode.Unauthenticated,
+                "Invalid x-werkr-bundle-id header." ) );
+        }
+
+        using IServiceScope scope = scopeFactory.CreateScope( );
+        WerkrDbContext dbContext = scope.ServiceProvider.GetRequiredService<WerkrDbContext>( );
+
+        RegistrationBundle? bundle = await dbContext.RegistrationBundles
+            .FirstOrDefaultAsync( b => b.BundleId == bundleId );
+
+        if (bundle is null) {
+            logger.LogWarning( "Registration call rejected: unknown bundle ID." );
+            throw new RpcException( new Status( StatusCode.Unauthenticated,
+                "Unknown registration bundle." ) );
+        }
+
+        if (bundle.RegistrationKey is null) {
+            logger.LogWarning( "Registration call rejected: bundle has no registration key (already consumed?)." );
+            throw new RpcException( new Status( StatusCode.Unauthenticated,
+                "Registration bundle key unavailable." ) );
+        }
+
+        context.UserState["RegistrationKey"] = bundle.RegistrationKey;
+        context.UserState["RegistrationBundle"] = bundle;
     }
 }

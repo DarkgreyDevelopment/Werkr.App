@@ -1,4 +1,5 @@
 using Werkr.Common.Models;
+using Werkr.Data;
 
 namespace Werkr.Server.Utilities;
 
@@ -261,7 +262,7 @@ internal static class SchedulePreviewCalculator {
     /// </summary>
     private static TimeZoneInfo GetTimeZone( string timeZoneId ) {
         try {
-            return TimeZoneInfo.FindSystemTimeZoneById( timeZoneId );
+            return TimeZoneResolver.FindOrCreate( timeZoneId );
         } catch {
             return TimeZoneInfo.Utc;
         }

@@ -28,6 +28,9 @@
             <button class="nav-link @(_activeTab == "diagnostics" ? "active" : "")" @onclick='() => _activeTab = "diagnostics"'>Diagnostics</button>
         </li>
         <li class="nav-item">
+            <button class="nav-link @(_activeTab == "retention" ? "active" : "")" @onclick="ActivateRetentionTab">Retention</button>
+        </li>
+        <li class="nav-item">
             <button class="nav-link @(_activeTab == "tools" ? "active" : "")" @onclick='() => _activeTab = "tools"'>Tools</button>
         </li>
     </ul>
@@ -171,6 +174,7 @@
                             <th>Override Value</th>
                             <th>Type</th>
                             <th>Category</th>
+                            <th style="width: 180px;"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -200,10 +204,54 @@
                                 </td>
                                 <td><span class="badge bg-secondary">@entry.ValueType</span></td>
                                 <td>@entry.Category</td>
+                                <td>
+                                    @if ( entry.Source == "Agent Override" ) {
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                @onclick="() => StartOverrideEdit( entry )">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => RemoveOverrideAsync( entry )">Remove</button>
+                                    } else {
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick="() => StartOverrideCreate( entry )">Add Override</button>
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+            </div>
+        }
+
+        @* Agent override create/edit modal *@
+        @if ( _showOverrideModal ) {
+            <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">@( _overrideIsEdit ? "Edit" : "Add" ) Agent Override</h5>
+                            <button type="button" class="btn-close" @onclick="CloseOverrideModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <dl class="row mb-3">
+                                <dt class="col-sm-4">Key</dt>
+                                <dd class="col-sm-8"><code>@_overrideKey</code></dd>
+                                <dt class="col-sm-4">Global Value</dt>
+                                <dd class="col-sm-8"><code>@_overrideGlobalValue</code></dd>
+                            </dl>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Override Value</label>
+                                <input class="form-control" @bind="_overrideValue" />
+                                @if ( !string.IsNullOrEmpty( _overrideValidationHint ) ) {
+                                    <small class="text-muted d-block mt-1">@_overrideValidationHint</small>
+                                }
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CloseOverrideModal">Cancel</button>
+                            <button class="btn btn-primary" @onclick="SaveOverrideAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         }
 
@@ -479,6 +527,140 @@
         </div>
     }
 
+    @* ── Retention Tab ── *@
+    @if ( _activeTab == "retention" ) {
+        <div class="mb-3">
+            <button class="btn btn-outline-secondary" @onclick="LoadRetentionPoliciesAsync" disabled="@_isLoading">
+                @if ( _isLoading ) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                Refresh
+            </button>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Retention Policies</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Entity Type</th>
+                                <th>Retention (Days)</th>
+                                <th>Enabled</th>
+                                <th>Last Modified</th>
+                                <th style="width: 100px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( RetentionPolicyDto policy in _retentionPolicies ) {
+                                <tr>
+                                    <td><code>@policy.EntityType</code></td>
+                                    <td>
+                                        @if ( _editRetentionType == policy.EntityType ) {
+                                            <input type="number" class="form-control form-control-sm" style="max-width: 120px;"
+                                                   min="0" @bind="_editRetentionDays" />
+                                        } else {
+                                            @policy.RetentionDays
+                                            @if ( policy.RetentionDays == 0 ) {
+                                                <span class="badge bg-danger ms-1">Immediate</span>
+                                            }
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @(policy.IsEnabled ? "bg-success" : "bg-secondary")">
+                                            @(policy.IsEnabled ? "Yes" : "No")
+                                        </span>
+                                    </td>
+                                    <td><small class="text-muted">@policy.ModifiedUtc.ToString("g")</small></td>
+                                    <td>
+                                        @if ( _editRetentionType == policy.EntityType ) {
+                                            <button class="btn btn-sm btn-success me-1" @onclick="() => SaveRetentionPolicyAsync( policy )">Save</button>
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="CancelRetentionEdit">Cancel</button>
+                                        } else {
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => StartRetentionEdit( policy )">Edit</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Manual Sweep</h5>
+                <p class="text-muted">Preview what would be deleted, then confirm to execute.</p>
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-outline-info" @onclick="DryRunSweepAsync" disabled="@_isSweeping">
+                        @if ( _isSweeping && _sweepIsDryRun ) {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Preview (Dry Run)
+                    </button>
+                    <button class="btn btn-warning" @onclick="ConfirmSweepAsync" disabled="@(_isSweeping || _sweepPreview.Count == 0)">
+                        @if ( _isSweeping && !_sweepIsDryRun ) {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Execute Sweep
+                    </button>
+                </div>
+
+                @if ( _sweepPreview.Count > 0 ) {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Entity Type</th>
+                                    <th>@(_sweepExecuted ? "Deleted" : "Eligible")</th>
+                                    <th>Oldest</th>
+                                    <th>Newest</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( SweepResultDto r in _sweepPreview ) {
+                                    <tr>
+                                        <td><code>@r.EntityType</code></td>
+                                        <td>@r.DeletedCount</td>
+                                        <td><small>@(r.OldestDeleted?.ToString("g") ?? "-")</small></td>
+                                        <td><small>@(r.NewestDeleted?.ToString("g") ?? "-")</small></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Low retention warning modal *@
+        @if ( _showLowRetentionWarning ) {
+            <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Low Retention Warning</h5>
+                            <button type="button" class="btn-close" @onclick="CancelRetentionEdit"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning mb-0">
+                                <strong>Warning:</strong> Setting retention to <strong>@_editRetentionDays days</strong>
+                                for <code>@_editRetentionType</code> is below the recommended minimum of 7 days.
+                                Records may be deleted very quickly. Are you sure?
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CancelRetentionEdit">Cancel</button>
+                            <button class="btn btn-danger" @onclick="ConfirmLowRetentionSaveAsync">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
     @* ── Tools Tab ── *@
     @if ( _activeTab == "tools" ) {
         <div class="card mt-3 mb-4">
@@ -508,6 +690,42 @@
                             <span><strong>@_notifyResult.Failed</strong> agents failed:</span>
                             <span>@string.Join( ", ", _notifyResult.FailedAgents )</span>
                         }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3 mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Encryption Key Rotation</h5>
+                <p class="text-muted">
+                    Rotate the field-level encryption key used for sensitive data at rest.
+                    A new key is generated, all encrypted fields are re-encrypted, and the old key is removed.
+                </p>
+                @if ( _rotationStatus is not null && _rotationStatus.InProgress ) {
+                    <div class="progress mb-3" style="height: 24px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar"
+                             style="width: @(_rotationStatus.PercentComplete)%">
+                            @($"{_rotationStatus.PercentComplete:F1}%  ({_rotationStatus.ProcessedRows}/{_rotationStatus.TotalRows})")
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-secondary" @onclick="RefreshRotationStatusAsync">
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Refresh Status
+                    </button>
+                } else {
+                    <button class="btn btn-warning" @onclick="StartKeyRotationAsync" disabled="@_isRotating">
+                        @if ( _isRotating ) {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Rotate Encryption Key
+                    </button>
+                }
+
+                @if ( _rotationStatus is not null && !_rotationStatus.InProgress && _rotationStatus.ProcessedRows > 0 ) {
+                    <div class="alert alert-success mt-3 mb-0">
+                        Key rotation completed. <strong>@_rotationStatus.ProcessedRows</strong> rows re-encrypted.
                     </div>
                 }
             </div>
@@ -558,6 +776,14 @@
             ? _agentSettings
             : _agentSettings.Where( e => e.Category == _filterCategory );
 
+    // Agent override modal state
+    private bool _showOverrideModal;
+    private bool _overrideIsEdit;
+    private string _overrideKey = "";
+    private string _overrideGlobalValue = "";
+    private string _overrideValue = "";
+    private string _overrideValidationHint = "";
+
     // Credential state
     private List<CredentialDto> _credentials = [];
     private bool _showCreateModal;
@@ -588,6 +814,24 @@
     private string _notifyNewUrl = string.Empty;
     private bool _isNotifying;
     private NotifyUrlChangeResponse? _notifyResult;
+
+    // Retention state
+    private List<RetentionPolicyDto> _retentionPolicies = [];
+    private string? _editRetentionType;
+    private int _editRetentionDays;
+    private bool _showLowRetentionWarning;
+    private bool _isSweeping;
+    private bool _sweepIsDryRun;
+    private bool _sweepExecuted;
+    private List<SweepResultDto> _sweepPreview = [];
+
+    // Key rotation state
+    private RotationStatusDto? _rotationStatus;
+    private bool _isRotating;
+
+    // Local DTOs for types not in Werkr.Common (they live in Werkr.Core which Server doesn't reference)
+    private sealed record SweepResultDto( string EntityType, int DeletedCount, DateTime? OldestDeleted, DateTime? NewestDeleted );
+    private sealed record RotationStatusDto( bool InProgress, int TotalRows, int ProcessedRows, double PercentComplete, string? CurrentKeyName, string? PreviousKeyName );
 
     protected override async Task OnInitializedAsync( ) {
         LoadInfrastructureConfig( );
@@ -702,6 +946,84 @@
                 $"/api/v1/agents/{_selectedAgentId}/settings" ) ?? [];
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load agent settings: {ex.Message}";
+        }
+    }
+
+    // Agent override management
+    private void StartOverrideCreate( EffectiveConfigurationDto entry ) {
+        _overrideIsEdit = false;
+        _overrideKey = entry.Key;
+        _overrideGlobalValue = entry.GlobalValue;
+        _overrideValue = entry.GlobalValue;
+        _overrideValidationHint = entry.ValidationRules is not null
+            ? GetValidationHintFromRules( entry.ValidationRules ) : "";
+        _showOverrideModal = true;
+    }
+
+    private void StartOverrideEdit( EffectiveConfigurationDto entry ) {
+        _overrideIsEdit = true;
+        _overrideKey = entry.Key;
+        _overrideGlobalValue = entry.GlobalValue;
+        _overrideValue = entry.OverrideValue ?? entry.GlobalValue;
+        _overrideValidationHint = entry.ValidationRules is not null
+            ? GetValidationHintFromRules( entry.ValidationRules ) : "";
+        _showOverrideModal = true;
+    }
+
+    private void CloseOverrideModal( ) {
+        _showOverrideModal = false;
+        _overrideKey = "";
+        _overrideGlobalValue = "";
+        _overrideValue = "";
+        _overrideValidationHint = "";
+    }
+
+    private async Task SaveOverrideAsync( ) {
+        try {
+            ConfigurationUpdateRequest request = new( _overrideValue, ScopeLevel: 1, ScopeId: _selectedAgentId );
+            HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/settings/{_overrideKey}", request );
+
+            if (response.IsSuccessStatusCode) {
+                _successMessage = _overrideIsEdit
+                    ? $"Override for '{_overrideKey}' updated."
+                    : $"Override for '{_overrideKey}' created.";
+                CloseOverrideModal( );
+                await OnAgentSelectedAsync( );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to save override: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to save override: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveOverrideAsync( EffectiveConfigurationDto entry ) {
+        try {
+            HttpResponseMessage response = await Api.DeleteAsync(
+                $"/api/v1/agents/{_selectedAgentId}/settings/{entry.Key}" );
+
+            if (response.IsSuccessStatusCode) {
+                _successMessage = $"Override for '{entry.Key}' removed.";
+                await OnAgentSelectedAsync( );
+            } else {
+                _errorMessage = $"Failed to remove override: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to remove override: {ex.Message}";
+        }
+    }
+
+    private static string GetValidationHintFromRules( string validationRules ) {
+        try {
+            using JsonDocument doc = JsonDocument.Parse( validationRules );
+            JsonElement root = doc.RootElement;
+            List<string> parts = [];
+            if ( root.TryGetProperty( "min", out JsonElement minEl ) ) { parts.Add( $"Min: {minEl}" ); }
+            if ( root.TryGetProperty( "max", out JsonElement maxEl ) ) { parts.Add( $"Max: {maxEl}" ); }
+            return parts.Count > 0 ? string.Join( " | ", parts ) : "";
+        } catch {
+            return "";
         }
     }
 
@@ -919,6 +1241,141 @@
 
     private static string FormatNullableBoolean( bool? value ) =>
         value switch { true => "Yes", false => "No", null => "Unknown" };
+
+    // ── Retention ──
+
+    private async Task ActivateRetentionTab( ) {
+        _activeTab = "retention";
+        if ( _retentionPolicies.Count == 0 ) {
+            await LoadRetentionPoliciesAsync( );
+        }
+    }
+
+    private async Task LoadRetentionPoliciesAsync( ) {
+        _isLoading = true;
+        try {
+            _retentionPolicies = await Api.GetAsync<List<RetentionPolicyDto>>( "/api/v1/retention/policies" ) ?? [];
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load retention policies: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void StartRetentionEdit( RetentionPolicyDto policy ) {
+        _editRetentionType = policy.EntityType;
+        _editRetentionDays = policy.RetentionDays;
+    }
+
+    private void CancelRetentionEdit( ) {
+        _editRetentionType = null;
+        _showLowRetentionWarning = false;
+    }
+
+    private async Task SaveRetentionPolicyAsync( RetentionPolicyDto policy ) {
+        if ( _editRetentionDays < 7 ) {
+            _showLowRetentionWarning = true;
+            return;
+        }
+
+        await CommitRetentionSaveAsync( );
+    }
+
+    private async Task ConfirmLowRetentionSaveAsync( ) {
+        _showLowRetentionWarning = false;
+        await CommitRetentionSaveAsync( );
+    }
+
+    private async Task CommitRetentionSaveAsync( ) {
+        try {
+            RetentionPolicyUpdateRequest request = new( _editRetentionDays );
+            HttpResponseMessage response = await Api.PutAsJsonAsync(
+                $"/api/v1/retention/policies/{_editRetentionType}", request );
+
+            if ( response.IsSuccessStatusCode ) {
+                _successMessage = $"Retention policy for '{_editRetentionType}' updated to {_editRetentionDays} days.";
+                _editRetentionType = null;
+                await LoadRetentionPoliciesAsync( );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to update retention policy: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to update retention policy: {ex.Message}";
+        }
+    }
+
+    private async Task DryRunSweepAsync( ) {
+        _isSweeping = true;
+        _sweepIsDryRun = true;
+        _sweepExecuted = false;
+        try {
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/retention/sweep?dryRun=true", new { } );
+            if ( response.IsSuccessStatusCode ) {
+                _sweepPreview = await response.Content.ReadFromJsonAsync<List<SweepResultDto>>( ) ?? [];
+            } else {
+                _errorMessage = $"Dry-run sweep failed: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Dry-run sweep failed: {ex.Message}";
+        } finally {
+            _isSweeping = false;
+        }
+    }
+
+    private async Task ConfirmSweepAsync( ) {
+        _isSweeping = true;
+        _sweepIsDryRun = false;
+        try {
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/retention/sweep", new { } );
+            if ( response.IsSuccessStatusCode ) {
+                List<SweepResultDto>? results = await response.Content.ReadFromJsonAsync<List<SweepResultDto>>( );
+                if ( results is not null ) {
+                    _sweepPreview = results;
+                    _sweepExecuted = true;
+                    int total = results.Sum( r => r.DeletedCount );
+                    _successMessage = $"Retention sweep completed. {total} total records deleted.";
+                }
+            } else {
+                _errorMessage = $"Sweep execution failed: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Sweep execution failed: {ex.Message}";
+        } finally {
+            _isSweeping = false;
+        }
+    }
+
+    // ── Key Rotation ──
+
+    private async Task StartKeyRotationAsync( ) {
+        _isRotating = true;
+        _errorMessage = null;
+        try {
+            HttpResponseMessage response = await Api.PostAsJsonAsync(
+                "/api/v1/settings/encryption/rotate", new { } );
+            if ( response.IsSuccessStatusCode ) {
+                _rotationStatus = await response.Content.ReadFromJsonAsync<RotationStatusDto>( );
+                if ( _rotationStatus is not null && !_rotationStatus.InProgress ) {
+                    _successMessage = $"Key rotation completed. {_rotationStatus.ProcessedRows} rows re-encrypted.";
+                }
+            } else {
+                _errorMessage = $"Key rotation failed: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Key rotation failed: {ex.Message}";
+        } finally {
+            _isRotating = false;
+        }
+    }
+
+    private async Task RefreshRotationStatusAsync( ) {
+        try {
+            _rotationStatus = await Api.GetAsync<RotationStatusDto>( "/api/v1/settings/encryption/rotate/status" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to get rotation status: {ex.Message}";
+        }
+    }
 
     // ── URL Notification ──
 

@@ -32,29 +32,7 @@ public static class RetentionPolicySeeder {
         }
 
         DateTime now = DateTime.UtcNow;
-
-        RetentionPolicy[] defaults = [
-            new RetentionPolicy {
-                EntityType = "workflow_run",
-                RetentionDays = 180,
-                IsEnabled = true,
-                ModifiedUtc = now,
-                ModifiedByUserId = "system",
-                Created = now,
-                LastUpdated = now,
-                Version = 1,
-            },
-            new RetentionPolicy {
-                EntityType = "audit_log",
-                RetentionDays = 365,
-                IsEnabled = true,
-                ModifiedUtc = now,
-                ModifiedByUserId = "system",
-                Created = now,
-                LastUpdated = now,
-                Version = 1,
-            },
-        ];
+        RetentionPolicy[] defaults = BuildAllDefaults( now );
 
         db.RetentionPolicies.AddRange( defaults );
         _ = await db.SaveChangesAsync( );
@@ -97,6 +75,46 @@ public static class RetentionPolicySeeder {
             EntityType = "audit_log",
             RetentionDays = 365,
             IsEnabled = true,
+            ModifiedUtc = now,
+            ModifiedByUserId = "system",
+            Created = now,
+            LastUpdated = now,
+            Version = 1,
+        },
+        new RetentionPolicy {
+            EntityType = "job_output",
+            RetentionDays = 180,
+            IsEnabled = true,
+            ModifiedUtc = now,
+            ModifiedByUserId = "system",
+            Created = now,
+            LastUpdated = now,
+            Version = 1,
+        },
+        new RetentionPolicy {
+            EntityType = "variable_version",
+            RetentionDays = 180,
+            IsEnabled = true,
+            ModifiedUtc = now,
+            ModifiedByUserId = "system",
+            Created = now,
+            LastUpdated = now,
+            Version = 1,
+        },
+        new RetentionPolicy {
+            EntityType = "dlq_entry",
+            RetentionDays = 30,
+            IsEnabled = false,
+            ModifiedUtc = now,
+            ModifiedByUserId = "system",
+            Created = now,
+            LastUpdated = now,
+            Version = 1,
+        },
+        new RetentionPolicy {
+            EntityType = "notification",
+            RetentionDays = 90,
+            IsEnabled = false,
             ModifiedUtc = now,
             ModifiedByUserId = "system",
             Created = now,

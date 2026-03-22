@@ -262,11 +262,17 @@
           "System.Composition.Runtime": "9.0.0"
         }
       },
+      "TimeZoneConverter": {
+        "type": "Transitive",
+        "resolved": "7.0.0",
+        "contentHash": "sFbY65N/5GdsHx7nkdHFHUG+5Ar4W0w6Aks7Y2X+Q4NOTw6XyX2Il7jm+4tPkc//4mA3nG0RdxI8gKgoJitdLw=="
+      },
       "werkr.common": {
         "type": "Project",
         "dependencies": {
           "Google.Protobuf": "[3.34.1, )",
           "Microsoft.IdentityModel.Tokens": "[8.16.0, )",
+          "TimeZoneNames": "[7.0.0, )",
           "Werkr.Common.Configuration": "[1.0.0, )"
         }
       },
@@ -348,6 +354,15 @@
           "Microsoft.EntityFrameworkCore": "[10.0.4, 11.0.0)",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.4, 11.0.0)",
           "Npgsql": "10.0.2"
+        }
+      },
+      "TimeZoneNames": {
+        "type": "CentralTransitive",
+        "requested": "[7.0.0, )",
+        "resolved": "7.0.0",
+        "contentHash": "zc1sIJZMDH7pPO1Gqte9yjMEFSILShTRNuxVxnNdiZP4NGGSi3ZGe2OSrW2phjzM/QKe3pKOwUXfQmJMjDBOKQ==",
+        "dependencies": {
+          "TimeZoneConverter": "7.0.0"
         }
       }
     }

@@ -122,6 +122,7 @@ public sealed partial class ScheduleService(
             startDt.Date = schedule.StartDateTime!.Date;
             startDt.Time = schedule.StartDateTime.Time;
             startDt.TimeZone = schedule.StartDateTime.TimeZone;
+            startDt.IsFixedOffset = schedule.StartDateTime.IsFixedOffset;
         }
 
         // Update Expiration
@@ -137,6 +138,7 @@ public sealed partial class ScheduleService(
                 expiration.Date = schedule.Expiration.Date;
                 expiration.Time = schedule.Expiration.Time;
                 expiration.TimeZone = schedule.Expiration.TimeZone;
+                expiration.IsFixedOffset = schedule.Expiration.IsFixedOffset;
             }
         } else if (expiration is not null) {
             _ = _db.ExpirationDateTimeInfos.Remove( expiration );

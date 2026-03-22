@@ -397,6 +397,45 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.ToTable("retention_policies", (string)null);
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Registration.PendingAgentNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("connection_id");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<DateTime>("ExpiresUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_utc");
+
+                    b.Property<string>("Payload")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pending_agent_notifications");
+
+                    b.HasIndex("ConnectionId", "CreatedUtc")
+                        .HasDatabaseName("ix_pending_agent_notifications_connection_id_created_utc");
+
+                    b.ToTable("pending_agent_notifications", (string)null);
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -471,6 +510,15 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasMaxLength(512)
                         .HasColumnType("TEXT")
                         .HasColumnName("outbound_api_key");
+
+                    b.Property<string>("PendingKeyId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("pending_key_id");
+
+                    b.Property<string>("PendingSharedKey")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("pending_shared_key");
 
                     b.Property<string>("PreviousKeyId")
                         .HasMaxLength(128)
@@ -562,6 +610,10 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
+
+                    b.Property<string>("RegistrationKey")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("registration_key");
 
                     b.Property<string>("ServerPrivateKey")
                         .IsRequired()
@@ -684,6 +736,10 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Property<DateOnly>("Date")
                         .HasColumnType("TEXT")
                         .HasColumnName("date");
+
+                    b.Property<bool>("IsFixedOffset")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_fixed_offset");
 
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
@@ -998,6 +1054,10 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("date");
 
+                    b.Property<bool>("IsFixedOffset")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_fixed_offset");
+
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
@@ -1113,6 +1173,54 @@ namespace Werkr.Data.Migrations.Sqlite
                         .HasDatabaseName("ix_saved_filters_page_key_owner_id");
 
                     b.ToTable("saved_filters", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Settings.UserPreference", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("value");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_preferences");
+
+                    b.HasIndex("UserId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_preferences_user_id_key");
+
+                    b.ToTable("user_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>
@@ -2105,6 +2213,18 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("AgentConnection");
 
                     b.Navigation("Credential");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Registration.PendingAgentNotification", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "Connection")
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pending_agent_notifications_registered_connections_connection_id");
+
+                    b.Navigation("Connection");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DailyRecurrence", b =>

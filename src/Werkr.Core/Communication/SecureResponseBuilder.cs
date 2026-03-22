@@ -24,7 +24,7 @@ public sealed class SecureResponseBuilder( IServiceScopeFactory scopeFactory ) {
     public static (RegisteredConnection Connection, T Message) DecryptRequest<T>(
         EncryptedEnvelope envelope,
         ServerCallContext context )
-        where T : IMessage<T>, new( ) {
+        where T : IMessage<T>, new() {
 
         RegisteredConnection connection = GetConnection( context );
         T message = PayloadEncryptor.DecryptFromEnvelope<T>(

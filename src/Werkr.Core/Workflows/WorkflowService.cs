@@ -154,8 +154,9 @@ public sealed partial class WorkflowService(
             throw new InvalidOperationException( "Workflow must be disabled before deletion." );
         }
 
+        WorkflowRunStatus[] nonTerminalStatuses = [WorkflowRunStatus.Running, WorkflowRunStatus.Pending, WorkflowRunStatus.Queued, WorkflowRunStatus.Paused];
         bool hasActiveRuns = await dbContext.WorkflowRuns.AnyAsync(
-            r => r.WorkflowId == workflowId && r.Status == WorkflowRunStatus.Running, ct );
+            r => r.WorkflowId == workflowId && nonTerminalStatuses.Contains( r.Status ), ct );
         if (hasActiveRuns) {
             throw new InvalidOperationException( "Cannot delete a workflow with active runs." );
         }

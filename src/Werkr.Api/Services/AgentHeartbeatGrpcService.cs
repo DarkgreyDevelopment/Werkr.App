@@ -47,12 +47,8 @@ public sealed partial class AgentHeartbeatGrpcService(
 
         // Load the tracked connection
         RegisteredConnection? agent = await dbContext.RegisteredConnections
-            .FirstOrDefaultAsync( c => c.Id == connection.Id && c.IsServer, ct );
-
-        if (agent is null) {
-            throw new RpcException( new Status( StatusCode.NotFound,
+            .FirstOrDefaultAsync( c => c.Id == connection.Id && c.IsServer, ct ) ?? throw new RpcException( new Status( StatusCode.NotFound,
                 "Agent connection not found." ) );
-        }
 
         // Update LastSeen and transition to Connected if needed
         agent.LastSeen = DateTime.UtcNow;

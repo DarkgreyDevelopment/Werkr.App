@@ -15,6 +15,7 @@
 <div class="d-flex align-items-center gap-2 mb-3">
     <h1 class="mb-0">Workflow Run Detail</h1>
     <ConnectionStatus State="@_connectionState" />
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
 </div>
 <Breadcrumb Items="_breadcrumbs" />
 
@@ -42,10 +43,10 @@
                 </dd>
 
                 <dt class="col-sm-3">Started</dt>
-                <dd class="col-sm-9">@_detail.StartTime.ToString( "G" )</dd>
+                <dd class="col-sm-9">@ConvertIfNeeded( _detail.StartTime ).ToString( "G" )</dd>
 
                 <dt class="col-sm-3">Ended</dt>
-                <dd class="col-sm-9">@( _detail.EndTime?.ToString( "G" ) ?? "Still running" )</dd>
+                <dd class="col-sm-9">@( _detail.EndTime is not null ? ConvertIfNeeded( _detail.EndTime.Value ).ToString( "G" ) : "Still running" )</dd>
             </dl>
 
             @if ( _detail.Status == "Failed" ) {
@@ -139,7 +140,7 @@
                                         <td>
                                             <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( se.Status )">@se.Status</span>
                                         </td>
-                                        <td>@( se.StartTime?.ToString( "T" ) ?? "—" )</td>
+                                        <td>@( se.StartTime is not null ? ConvertIfNeeded( se.StartTime.Value ).ToString( "T" ) : "—" )</td>
                                         <td>@( duration?.ToString( "F1" ) ?? "—" )@( duration.HasValue ? "s" : "" )</td>
                                         <td>
                                             @if ( job is not null ) {
@@ -162,6 +163,7 @@
                 case "timeline":
                     @* ── Timeline: Event Groups ── *@
                     <TimelineView StepExecutions="_detail.StepExecutions"
+                                  DisplayTimeZone="_displayTz"
                                   OnStepSelected="( step ) => SelectStep( step )" />
                     break;
 
@@ -171,6 +173,7 @@
                               StepExecutions="_detail.StepExecutions"
                               Steps="_workflow?.Steps ?? []"
                               IsRunActive="@( _detail.EndTime is null )"
+                              DisplayTimeZone="_displayTz"
                               OnStepSelected="( step ) => SelectStep( step )" />
                     break;
 
@@ -224,6 +227,9 @@
     private IReadOnlyList<RunGridView.RunGridEntry>? _gridRuns;
     private bool _gridLoading;
     private bool _gridLoaded;
+
+    // Timezone
+    private TimeZoneInfo? _displayTz;
 
     // Retry
     private bool _retrying;
@@ -392,6 +398,13 @@
             }
         }
     }
+
+    // ── Timezone ──
+
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
 
     // ── UI Helpers ──
 

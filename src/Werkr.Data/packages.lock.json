@@ -451,6 +451,11 @@
           "System.Composition.Runtime": "9.0.0"
         }
       },
+      "TimeZoneConverter": {
+        "type": "Transitive",
+        "resolved": "7.0.0",
+        "contentHash": "sFbY65N/5GdsHx7nkdHFHUG+5Ar4W0w6Aks7Y2X+Q4NOTw6XyX2Il7jm+4tPkc//4mA3nG0RdxI8gKgoJitdLw=="
+      },
       "werkr.common": {
         "type": "Project",
         "dependencies": {
@@ -458,6 +463,7 @@
           "Microsoft.AspNetCore.Authorization": "[10.0.5, )",
           "Microsoft.Extensions.Configuration.Json": "[10.0.5, )",
           "Microsoft.IdentityModel.Tokens": "[8.16.0, )",
+          "TimeZoneNames": "[7.0.0, )",
           "Werkr.Common.Configuration": "[1.0.0, )"
         }
       },
@@ -529,6 +535,15 @@
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
           "Microsoft.IdentityModel.Logging": "8.16.0"
+        }
+      },
+      "TimeZoneNames": {
+        "type": "CentralTransitive",
+        "requested": "[7.0.0, )",
+        "resolved": "7.0.0",
+        "contentHash": "zc1sIJZMDH7pPO1Gqte9yjMEFSILShTRNuxVxnNdiZP4NGGSi3ZGe2OSrW2phjzM/QKe3pKOwUXfQmJMjDBOKQ==",
+        "dependencies": {
+          "TimeZoneConverter": "7.0.0"
         }
       }
     }

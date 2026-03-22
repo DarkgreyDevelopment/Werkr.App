@@ -20,12 +20,14 @@ namespace Werkr.Api.Services;
 /// <param name="variableOptions">Variable size configuration.</param>
 /// <param name="workflowBroadcaster">Workflow event broadcaster for run lifecycle events.</param>
 /// <param name="outputStreaming">Output streaming service for rate-limit state cleanup.</param>
+/// <param name="builder">Secure response builder for envelope encryption.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class VariableGrpcService(
     WerkrDbContext dbContext,
     IOptions<WorkflowVariableOptions> variableOptions,
     WorkflowEventBroadcaster workflowBroadcaster,
     OutputStreamingGrpcService outputStreaming,
+    SecureResponseBuilder builder,
     ILogger<VariableGrpcService> logger
 ) : VariableService.VariableServiceBase {
 
@@ -37,11 +39,7 @@ public sealed partial class VariableGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        GetVariableRequest inner = PayloadEncryptor.DecryptFromEnvelope<GetVariableRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, GetVariableRequest inner) = SecureResponseBuilder.DecryptRequest<GetVariableRequest>( request, context );
 
         if (string.IsNullOrWhiteSpace( inner.ConnectionId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
@@ -72,7 +70,7 @@ public sealed partial class VariableGrpcService(
                 response.Found.ToString( ), response.Version.ToString( ) );
         }
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>
@@ -84,11 +82,7 @@ public sealed partial class VariableGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        SetVariableRequest inner = PayloadEncryptor.DecryptFromEnvelope<SetVariableRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, SetVariableRequest inner) = SecureResponseBuilder.DecryptRequest<SetVariableRequest>( request, context );
 
         if (string.IsNullOrWhiteSpace( inner.ConnectionId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
@@ -104,7 +98,7 @@ public sealed partial class VariableGrpcService(
                 Accepted = false,
                 Error = "Value is not valid JSON.",
             };
-            return PayloadEncryptor.EncryptToEnvelope( badJsonResponse, connection.SharedKey, keyId );
+            return await builder.EncryptResponseAsync( badJsonResponse, connection, context.CancellationToken );
         }
 
         // Validate size
@@ -114,7 +108,7 @@ public sealed partial class VariableGrpcService(
                 Accepted = false,
                 Error = $"Value exceeds maximum size of {maxSize} bytes.",
             };
-            return PayloadEncryptor.EncryptToEnvelope( tooBigResponse, connection.SharedKey, keyId );
+            return await builder.EncryptResponseAsync( tooBigResponse, connection, context.CancellationToken );
         }
 
         // Parse optional FK values
@@ -159,7 +153,7 @@ public sealed partial class VariableGrpcService(
             Version = nextVersion,
         };
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>
@@ -171,11 +165,7 @@ public sealed partial class VariableGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        CreateWorkflowRunRequest inner = PayloadEncryptor.DecryptFromEnvelope<CreateWorkflowRunRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, CreateWorkflowRunRequest inner) = SecureResponseBuilder.DecryptRequest<CreateWorkflowRunRequest>( request, context );
 
         if (string.IsNullOrWhiteSpace( inner.ConnectionId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
@@ -190,7 +180,7 @@ public sealed partial class VariableGrpcService(
                 Accepted = false,
                 Error = $"Workflow {inner.WorkflowId} not found.",
             };
-            return PayloadEncryptor.EncryptToEnvelope( notFoundResponse, connection.SharedKey, keyId );
+            return await builder.EncryptResponseAsync( notFoundResponse, connection, context.CancellationToken );
         }
 
         Guid workflowRunId = Guid.NewGuid( );
@@ -231,16 +221,7 @@ public sealed partial class VariableGrpcService(
             WorkflowRunId = workflowRunId.ToString( ),
         };
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
-    }
-
-    /// <summary>
-    /// Extracts the <see cref="RegisteredConnection"/> from the gRPC call context's <c>UserState</c> dictionary.
-    /// </summary>
-    private static RegisteredConnection GetConnection( ServerCallContext context ) {
-        return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
-            ? connection
-            : throw new RpcException( new Status( StatusCode.Internal, "Connection not resolved by interceptor." ) );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>
@@ -250,11 +231,7 @@ public sealed partial class VariableGrpcService(
         EncryptedEnvelope request,
         ServerCallContext context
     ) {
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        CompleteWorkflowRunRequest inner = PayloadEncryptor.DecryptFromEnvelope<CompleteWorkflowRunRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, CompleteWorkflowRunRequest inner) = SecureResponseBuilder.DecryptRequest<CompleteWorkflowRunRequest>( request, context );
 
         if (!Guid.TryParse( inner.WorkflowRunId, out Guid runId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid workflow_run_id." ) );
@@ -300,7 +277,7 @@ public sealed partial class VariableGrpcService(
         }
 
         CompleteWorkflowRunResponse response = new( ) { Accepted = true };
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>
@@ -310,11 +287,7 @@ public sealed partial class VariableGrpcService(
         EncryptedEnvelope request,
         ServerCallContext context
     ) {
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        GetStepExecutionsRequest inner = PayloadEncryptor.DecryptFromEnvelope<GetStepExecutionsRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, GetStepExecutionsRequest inner) = SecureResponseBuilder.DecryptRequest<GetStepExecutionsRequest>( request, context );
 
         if (!Guid.TryParse( inner.WorkflowRunId, out Guid runId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Invalid workflow_run_id." ) );
@@ -354,7 +327,7 @@ public sealed partial class VariableGrpcService(
             } );
         }
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>

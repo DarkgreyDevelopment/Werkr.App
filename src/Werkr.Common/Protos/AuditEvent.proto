@@ -3,6 +3,7 @@ option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
 import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
 
 // Generic audit event submission from agents.
 // Request envelope contains SubmitAuditEventsRequest; response contains SubmitAuditEventsResponse.
@@ -27,4 +28,6 @@ message GenericAuditEntry {
 
 message SubmitAuditEventsResponse {
   int32 accepted_count = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }

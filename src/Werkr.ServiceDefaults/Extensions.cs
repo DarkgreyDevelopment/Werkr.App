@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 
 namespace Werkr.ServiceDefaults;
 
@@ -62,15 +64,24 @@ public static class Extensions {
         _ = builder.Services.AddOpenTelemetry( )
             .WithLogging( )
             .WithMetrics( metrics => {
-                _ = metrics.AddMeter( "Microsoft.AspNetCore.Hosting" )
-                    .AddMeter( "Microsoft.AspNetCore.Server.Kestrel" )
-                    .AddMeter( "System.Net.Http" )
-                    .AddMeter( "System.Runtime" );
+                _ = metrics.AddAspNetCoreInstrumentation( )
+                    .AddHttpClientInstrumentation( )
+                    .AddRuntimeInstrumentation( );
             } )
             .WithTracing( tracing => {
                 _ = tracing.AddSource( builder.Environment.ApplicationName )
-                    .AddSource( "Microsoft.AspNetCore" )
-                    .AddSource( "System.Net.Http" );
+                    .AddAspNetCoreInstrumentation( options => {
+                        // Filter out health-check endpoint noise
+                        options.Filter = httpContext =>
+                            !httpContext.Request.Path.StartsWithSegments( "/health" )
+                            && !httpContext.Request.Path.StartsWithSegments( "/alive" );
+                        options.RecordException = true;
+                    } )
+                    .AddHttpClientInstrumentation( options => {
+                        options.RecordException = true;
+                    } )
+                    .AddGrpcClientInstrumentation( )
+                    .AddEntityFrameworkCoreInstrumentation( );
             } );
 
         _ = builder.AddOpenTelemetryExporters( );

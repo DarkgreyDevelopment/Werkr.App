@@ -29,18 +29,18 @@ public class PayloadEncryptorTests {
     }
 
     /// <summary>
-    /// Verifies that encrypting and decrypting a <see cref="HeartbeatRequest"/> preserves the message content.
+    /// Verifies that encrypting and decrypting an <see cref="AgentHeartbeatRequest"/> preserves the message content.
     /// </summary>
     [TestMethod]
     public void EncryptDecryptEnvelope_RoundTrip( ) {
-        HeartbeatRequest original = new( ) { StatusMessage = "Hello, encrypted world!" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "Hello, encrypted world!" };
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             _sharedKey,
             TestKeyId
         );
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             _sharedKey
         );
@@ -52,18 +52,18 @@ public class PayloadEncryptorTests {
     }
 
     /// <summary>
-    /// Verifies that an empty <see cref="HeartbeatRequest"/> round-trips correctly through encryption.
+    /// Verifies that an empty <see cref="AgentHeartbeatRequest"/> round-trips correctly through encryption.
     /// </summary>
     [TestMethod]
     public void EncryptDecryptEnvelope_EmptyMessage_RoundTrip( ) {
-        HeartbeatRequest original = new( );
+        AgentHeartbeatRequest original = new( );
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             _sharedKey,
             TestKeyId
         );
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             _sharedKey
         );
@@ -79,7 +79,7 @@ public class PayloadEncryptorTests {
     /// </summary>
     [TestMethod]
     public void EncryptDecryptEnvelope_LargePayload_RoundTrip( ) {
-        HeartbeatRequest original = new( ) {
+        AgentHeartbeatRequest original = new( ) {
             StatusMessage = new string(
             'A',
             100_000
@@ -91,7 +91,7 @@ public class PayloadEncryptorTests {
             _sharedKey,
             TestKeyId
         );
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             _sharedKey
         );
@@ -107,7 +107,7 @@ public class PayloadEncryptorTests {
     /// </summary>
     [TestMethod]
     public void EncryptToEnvelope_SetsKeyId( ) {
-        HeartbeatRequest original = new( ) { StatusMessage = "test payload" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "test payload" };
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
@@ -129,7 +129,7 @@ public class PayloadEncryptorTests {
     /// </summary>
     [TestMethod]
     public void EncryptToEnvelope_DifferentIvEachCall( ) {
-        HeartbeatRequest original = new( ) { StatusMessage = "same plaintext" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "same plaintext" };
 
         EncryptedEnvelope envelope1 = PayloadEncryptor.EncryptToEnvelope(
             original,
@@ -153,7 +153,7 @@ public class PayloadEncryptorTests {
     /// </summary>
     [TestMethod]
     public void DecryptFromEnvelope_WrongKey_Throws( ) {
-        HeartbeatRequest original = new( ) { StatusMessage = "secret data" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "secret data" };
         byte[] wrongKey = EncryptionProvider.GenerateRandomBytes( 32 );
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
@@ -162,7 +162,7 @@ public class PayloadEncryptorTests {
             TestKeyId
         );
 
-        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             wrongKey
         ) );
@@ -173,7 +173,7 @@ public class PayloadEncryptorTests {
     /// </summary>
     [TestMethod]
     public void DecryptFromEnvelope_TamperedCiphertext_Throws( ) {
-        HeartbeatRequest original = new( ) { StatusMessage = "secret data" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "secret data" };
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
@@ -191,7 +191,7 @@ public class PayloadEncryptorTests {
             KeyId = envelope.KeyId,
         };
 
-        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             tampered,
             _sharedKey
         ) );
@@ -202,7 +202,7 @@ public class PayloadEncryptorTests {
     /// </summary>
     [TestMethod]
     public void DecryptFromEnvelope_TamperedIv_Throws( ) {
-        HeartbeatRequest original = new( ) { StatusMessage = "secret data" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "secret data" };
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
@@ -220,7 +220,7 @@ public class PayloadEncryptorTests {
             KeyId = envelope.KeyId,
         };
 
-        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             tampered,
             _sharedKey
         ) );
@@ -231,7 +231,7 @@ public class PayloadEncryptorTests {
     /// </summary>
     [TestMethod]
     public void DecryptFromEnvelope_TamperedAuthTag_Throws( ) {
-        HeartbeatRequest original = new( ) { StatusMessage = "secret data" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "secret data" };
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
@@ -249,7 +249,7 @@ public class PayloadEncryptorTests {
             KeyId = envelope.KeyId,
         };
 
-        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             tampered,
             _sharedKey
         ) );
@@ -265,14 +265,14 @@ public class PayloadEncryptorTests {
         string currentKeyId = "key-2";
         string previousKeyId = "key-1";
 
-        HeartbeatRequest original = new( ) { StatusMessage = "rotated" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "rotated" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             currentKey,
             currentKeyId
         );
 
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             currentKey,
             currentKeyId,
@@ -296,14 +296,14 @@ public class PayloadEncryptorTests {
         string currentKeyId = "key-2";
         string previousKeyId = "key-1";
 
-        HeartbeatRequest original = new( ) { StatusMessage = "in-flight" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "in-flight" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             previousKey,
             previousKeyId
         );
 
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             currentKey,
             currentKeyId,
