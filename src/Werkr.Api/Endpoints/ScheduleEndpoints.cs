@@ -179,12 +179,10 @@ internal static partial class ScheduleEndpoints {
 
     private static string? ValidateSingle( string timeZoneId, bool isFixedOffset, string label ) {
         bool looksFixed = FixedOffsetPattern( ).IsMatch( timeZoneId );
-        if (isFixedOffset && !looksFixed) {
-            return $"Schedule {label}: IsFixedOffset is true but TimeZoneId '{timeZoneId}' is not a fixed-offset identifier (expected format: UTC±HH or UTC±HH:MM).";
-        }
-        if (!isFixedOffset && looksFixed) {
-            return $"Schedule {label}: IsFixedOffset is false but TimeZoneId '{timeZoneId}' is a fixed-offset identifier. Set IsFixedOffset to true for fixed offsets.";
-        }
-        return null;
+        return isFixedOffset && !looksFixed
+            ? $"Schedule {label}: IsFixedOffset is true but TimeZoneId '{timeZoneId}' is not a fixed-offset identifier (expected format: UTC±HH or UTC±HH:MM)."
+            : !isFixedOffset && looksFixed
+            ? $"Schedule {label}: IsFixedOffset is false but TimeZoneId '{timeZoneId}' is a fixed-offset identifier. Set IsFixedOffset to true for fixed offsets."
+            : null;
     }
 }

@@ -121,6 +121,16 @@ public static class RetentionPolicySeeder {
             LastUpdated = now,
             Version = 1,
         },
+        new RetentionPolicy {
+            EntityType = "notification_delivery",
+            RetentionDays = 30,
+            IsEnabled = true,
+            ModifiedUtc = now,
+            ModifiedByUserId = "system",
+            Created = now,
+            LastUpdated = now,
+            Version = 1,
+        },
     ];
 
     private static readonly Action<ILogger, int, Exception?> s_logSeeded =

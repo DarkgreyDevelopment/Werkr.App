@@ -397,6 +397,368 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.ToTable("retention_policies", (string)null);
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationChannel", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChannelType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel_type");
+
+                    b.Property<string>("Configuration")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("configuration");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_channels");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_channels_name");
+
+                    b.ToTable("notification_channels", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<long>("ChannelId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("channel_id");
+
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_utc");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("EventTypeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<DateTime?>("LastAttemptUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_attempt_utc");
+
+                    b.Property<int>("MaxAttempts")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("max_attempts");
+
+                    b.Property<DateTime?>("NextRetryUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("next_retry_utc");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("RecipientId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_deliveries");
+
+                    b.HasIndex("ChannelId")
+                        .HasDatabaseName("ix_notification_deliveries_channel_id");
+
+                    b.HasIndex("Status", "NextRetryUtc")
+                        .HasDatabaseName("ix_notification_deliveries_status_next_retry_utc");
+
+                    b.ToTable("notification_deliveries", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationSubscription", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<long>("ChannelId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("channel_id");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("EventCategoryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_category_id");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<int>("SubscriptionType")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("subscription_type");
+
+                    b.Property<string>("Tag")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tag");
+
+                    b.Property<long?>("WorkflowId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("workflow_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_subscriptions");
+
+                    b.HasIndex("ChannelId")
+                        .HasDatabaseName("ix_notification_subscriptions_channel_id");
+
+                    b.HasIndex("EventCategoryId")
+                        .HasDatabaseName("ix_notification_subscriptions_event_category_id");
+
+                    b.HasIndex("Tag")
+                        .HasDatabaseName("ix_notification_subscriptions_tag");
+
+                    b.HasIndex("WorkflowId")
+                        .HasDatabaseName("ix_notification_subscriptions_workflow_id");
+
+                    b.ToTable("notification_subscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationTemplate", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("body");
+
+                    b.Property<string>("ChannelType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel_type");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("EventTypeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_default");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("subject");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_templates");
+
+                    b.HasIndex("EventTypeId", "ChannelType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_templates_event_type_id_channel_type");
+
+                    b.ToTable("notification_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.UserNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("body");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("EventCategoryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_category_id");
+
+                    b.Property<string>("EventTypeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_read");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("link");
+
+                    b.Property<DateTime?>("ReadUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("read_utc");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_notifications");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedUtc")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_user_notifications_user_id_is_read_created_utc");
+
+                    b.ToTable("user_notifications", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.UserNotificationPreference", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChannelType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel_type");
+
+                    b.Property<string>("EventCategoryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_category_id");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<TimeOnly?>("QuietHoursEnd")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quiet_hours_end");
+
+                    b.Property<TimeOnly?>("QuietHoursStart")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quiet_hours_start");
+
+                    b.Property<string>("QuietHoursTimezone")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quiet_hours_timezone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_notification_preferences");
+
+                    b.HasIndex("UserId", "EventCategoryId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_notification_preferences_user_id_event_category_id");
+
+                    b.ToTable("user_notification_preferences", (string)null);
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Registration.PendingAgentNotification", b =>
                 {
                     b.Property<long>("Id")
@@ -2213,6 +2575,38 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.Navigation("AgentConnection");
 
                     b.Navigation("Credential");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationDelivery", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Notifications.NotificationChannel", "Channel")
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_deliveries_notification_channels_channel_id");
+
+                    b.Navigation("Channel");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationSubscription", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Notifications.NotificationChannel", "Channel")
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_subscriptions_notification_channels_channel_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_notification_subscriptions_workflows_workflow_id");
+
+                    b.Navigation("Channel");
+
+                    b.Navigation("Workflow");
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.PendingAgentNotification", b =>

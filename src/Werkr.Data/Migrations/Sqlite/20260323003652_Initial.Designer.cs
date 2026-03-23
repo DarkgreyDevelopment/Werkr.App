@@ -4,94 +4,86 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Werkr.Data;
 
 #nullable disable
 
-namespace Werkr.Data.Migrations.Postgres
+namespace Werkr.Data.Migrations.Sqlite
 {
-    [DbContext(typeof(PostgresWerkrDbContext))]
-    [Migration("20260322224246_Initial")]
+    [DbContext(typeof(SqliteWerkrDbContext))]
+    [Migration("20260323003652_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasDefaultSchema("werkr")
-                .HasAnnotation("ProductVersion", "10.0.5")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
-
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
             modelBuilder.Entity("Werkr.Data.Entities.Audit.AuditEvent", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
 
                     b.Property<string>("ActionPerformed")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("action_performed");
 
                     b.Property<string>("ActorId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("actor_id");
 
                     b.Property<string>("ActorType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("actor_type");
 
                     b.Property<string>("CorrelationId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("correlation_id");
 
                     b.Property<string>("Details")
                         .IsRequired()
                         .HasMaxLength(8192)
-                        .HasColumnType("character varying(8192)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("details");
 
                     b.Property<string>("EntityId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("entity_id");
 
                     b.Property<string>("EntityType")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("entity_type");
 
                     b.Property<string>("EventCategory")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("event_category");
 
                     b.Property<string>("EventTypeId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("event_type_id");
 
                     b.Property<string>("SourceModule")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("source_module");
 
                     b.Property<DateTime>("TimestampUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("timestamp_utc");
 
                     b.HasKey("Id")
@@ -113,45 +105,43 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("EntityType", "EntityId")
                         .HasDatabaseName("ix_audit_events_entity_type_entity_id");
 
-                    b.ToTable("audit_events", "werkr");
+                    b.ToTable("audit_events", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationChangeLog", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("ChangedByUserId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("changed_by_user_id");
 
                     b.Property<DateTime>("ChangedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("changed_utc");
 
                     b.Property<long>("ConfigurationEntryId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("configuration_entry_id");
 
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("key");
 
                     b.Property<string>("NewValue")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("new_value");
 
                     b.Property<string>("PreviousValue")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("previous_value");
 
                     b.HasKey("Id")
@@ -160,93 +150,91 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("ConfigurationEntryId")
                         .HasDatabaseName("ix_configuration_change_logs_configuration_entry_id");
 
-                    b.ToTable("configuration_change_logs", "werkr");
+                    b.ToTable("configuration_change_logs", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationEntry", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("category");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateTime>("CreatedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_utc");
 
                     b.Property<string>("DefaultValue")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("default_value");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("key");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("ModifiedByUserId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("modified_by_user_id");
 
                     b.Property<DateTime>("ModifiedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("modified_utc");
 
                     b.Property<string>("ScopeId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("scope_id");
 
                     b.Property<int>("ScopeLevel")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("scope_level");
 
                     b.Property<long>("SyncVersion")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sync_version");
 
                     b.Property<string>("ValidationRules")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("validation_rules");
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("value");
 
                     b.Property<string>("ValueType")
                         .IsRequired()
                         .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("value_type");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -265,70 +253,68 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_configuration_entries_key_scope_level_scope_id");
 
-                    b.ToTable("configuration_entries", "werkr");
+                    b.ToTable("configuration_entries", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Configuration.Credential", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_by_user_id");
 
                     b.Property<DateTime>("CreatedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_utc");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<string>("EncryptedValue")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("encrypted_value");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("ModifiedByUserId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("modified_by_user_id");
 
                     b.Property<DateTime>("ModifiedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("modified_utc");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("type");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -338,17 +324,17 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_credentials_name");
 
-                    b.ToTable("credentials", "werkr");
+                    b.ToTable("credentials", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Configuration.CredentialAgentScope", b =>
                 {
                     b.Property<long>("CredentialId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("credential_id");
 
                     b.Property<Guid>("AgentConnectionId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("agent_connection_id");
 
                     b.HasKey("CredentialId", "AgentConnectionId")
@@ -357,53 +343,51 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("AgentConnectionId")
                         .HasDatabaseName("ix_credential_agent_scopes_agent_connection_id");
 
-                    b.ToTable("credential_agent_scopes", "werkr");
+                    b.ToTable("credential_agent_scopes", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Configuration.RetentionPolicy", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("entity_type");
 
                     b.Property<bool>("IsEnabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_enabled");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("ModifiedByUserId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("modified_by_user_id");
 
                     b.Property<DateTime>("ModifiedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("modified_utc");
 
                     b.Property<int>("RetentionDays")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("retention_days");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -413,39 +397,399 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_retention_policies_entity_type");
 
-                    b.ToTable("retention_policies", "werkr");
+                    b.ToTable("retention_policies", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationChannel", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChannelType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel_type");
+
+                    b.Property<string>("Configuration")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("configuration");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_updated");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_channels");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_channels_name");
+
+                    b.ToTable("notification_channels", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<long>("ChannelId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("channel_id");
+
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_utc");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("EventTypeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<DateTime?>("LastAttemptUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_attempt_utc");
+
+                    b.Property<int>("MaxAttempts")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("max_attempts");
+
+                    b.Property<DateTime?>("NextRetryUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("next_retry_utc");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("RecipientId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_deliveries");
+
+                    b.HasIndex("ChannelId")
+                        .HasDatabaseName("ix_notification_deliveries_channel_id");
+
+                    b.HasIndex("Status", "NextRetryUtc")
+                        .HasDatabaseName("ix_notification_deliveries_status_next_retry_utc");
+
+                    b.ToTable("notification_deliveries", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationSubscription", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<long>("ChannelId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("channel_id");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("EventCategoryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_category_id");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<int>("SubscriptionType")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("subscription_type");
+
+                    b.Property<string>("Tag")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tag");
+
+                    b.Property<long?>("WorkflowId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("workflow_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_subscriptions");
+
+                    b.HasIndex("ChannelId")
+                        .HasDatabaseName("ix_notification_subscriptions_channel_id");
+
+                    b.HasIndex("EventCategoryId")
+                        .HasDatabaseName("ix_notification_subscriptions_event_category_id");
+
+                    b.HasIndex("Tag")
+                        .HasDatabaseName("ix_notification_subscriptions_tag");
+
+                    b.HasIndex("WorkflowId")
+                        .HasDatabaseName("ix_notification_subscriptions_workflow_id");
+
+                    b.ToTable("notification_subscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationTemplate", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("body");
+
+                    b.Property<string>("ChannelType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel_type");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("EventTypeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_default");
+
+                    b.Property<DateTime>("ModifiedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("modified_utc");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("subject");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_templates");
+
+                    b.HasIndex("EventTypeId", "ChannelType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_templates_event_type_id_channel_type");
+
+                    b.ToTable("notification_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.UserNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("body");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("EventCategoryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_category_id");
+
+                    b.Property<string>("EventTypeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_type_id");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_read");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("link");
+
+                    b.Property<DateTime?>("ReadUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("read_utc");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_notifications");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedUtc")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_user_notifications_user_id_is_read_created_utc");
+
+                    b.ToTable("user_notifications", (string)null);
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.UserNotificationPreference", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChannelType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel_type");
+
+                    b.Property<string>("EventCategoryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_category_id");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<TimeOnly?>("QuietHoursEnd")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quiet_hours_end");
+
+                    b.Property<TimeOnly?>("QuietHoursStart")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quiet_hours_start");
+
+                    b.Property<string>("QuietHoursTimezone")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quiet_hours_timezone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_notification_preferences");
+
+                    b.HasIndex("UserId", "EventCategoryId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_notification_preferences_user_id_event_category_id");
+
+                    b.ToTable("user_notification_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.PendingAgentNotification", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Channel")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("channel");
 
                     b.Property<Guid>("ConnectionId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("connection_id");
 
                     b.Property<DateTime>("CreatedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_utc");
 
                     b.Property<DateTime>("ExpiresUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("expires_utc");
 
                     b.Property<string>("Payload")
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("payload");
 
                     b.HasKey("Id")
@@ -454,131 +798,131 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("ConnectionId", "CreatedUtc")
                         .HasDatabaseName("ix_pending_agent_notifications_connection_id_created_utc");
 
-                    b.ToTable("pending_agent_notifications", "werkr");
+                    b.ToTable("pending_agent_notifications", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegisteredConnection", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<string>("ActiveKeyId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("active_key_id");
 
                     b.Property<string>("AgentVersion")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("agent_version");
 
                     b.Property<string>("AllowedPaths")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("allowed_paths");
 
                     b.Property<string>("ConnectionName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("connection_name");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<bool>("EnforceAllowlist")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("enforce_allowlist");
 
                     b.Property<string>("InboundApiKeyHash")
                         .IsRequired()
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("inbound_api_key_hash");
 
                     b.Property<bool>("IsServer")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_server");
 
                     b.Property<DateTime?>("KeyRotatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("key_rotated_at_utc");
 
                     b.Property<DateTime?>("LastSeen")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_seen");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("LocalPrivateKey")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("local_private_key");
 
                     b.Property<string>("LocalPublicKey")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("local_public_key");
 
                     b.Property<string>("OutboundApiKey")
                         .IsRequired()
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("outbound_api_key");
 
                     b.Property<string>("PendingKeyId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("pending_key_id");
 
                     b.Property<string>("PendingSharedKey")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("pending_shared_key");
 
                     b.Property<string>("PreviousKeyId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("previous_key_id");
 
                     b.Property<string>("PreviousSharedKey")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("previous_shared_key");
 
                     b.Property<string>("RemotePublicKey")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("remote_public_key");
 
                     b.Property<string>("RemoteUrl")
                         .IsRequired()
                         .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("remote_url");
 
                     b.Property<string>("SharedKey")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("shared_key");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.Property<string>("Tags")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("tags");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -590,75 +934,75 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("RemoteUrl")
                         .HasDatabaseName("ix_registered_connections_remote_url");
 
-                    b.ToTable("registered_connections", "werkr");
+                    b.ToTable("registered_connections", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Registration.RegistrationBundle", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<string>("AllowedPaths")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("allowed_paths");
 
                     b.Property<string>("BundleId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("bundle_id");
 
                     b.Property<string>("ConnectionName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("connection_name");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("expires_at");
 
                     b.Property<int>("KeySize")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("key_size");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("RegistrationKey")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("registration_key");
 
                     b.Property<string>("ServerPrivateKey")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("server_private_key");
 
                     b.Property<string>("ServerPublicKey")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("server_public_key");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
-                    b.PrimitiveCollection<string[]>("Tags")
+                    b.PrimitiveCollection<string>("Tags")
                         .IsRequired()
-                        .HasColumnType("text[]")
+                        .HasColumnType("TEXT")
                         .HasColumnName("tags");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -668,157 +1012,157 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_registration_bundles_bundle_id");
 
-                    b.ToTable("registration_bundles", "werkr");
+                    b.ToTable("registration_bundles", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DailyRecurrence", b =>
                 {
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<int>("DayInterval")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("day_interval");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("ScheduleId")
                         .HasName("pk_daily_recurrence");
 
-                    b.ToTable("daily_recurrence", "werkr");
+                    b.ToTable("daily_recurrence", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.DbSchedule", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<bool>("CatchUpEnabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("catch_up_enabled");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<int>("ShiftMode")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("shift_mode");
 
                     b.Property<long>("StopTaskAfterMinutes")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("stop_task_after_minutes");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
                         .HasName("pk_schedules");
 
-                    b.ToTable("schedules", "werkr");
+                    b.ToTable("schedules", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.ExpirationDateTimeInfo", b =>
                 {
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateOnly>("Date")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date");
 
                     b.Property<bool>("IsFixedOffset")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_fixed_offset");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<TimeOnly>("Time")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("time");
 
                     b.Property<string>("TimeZone")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("time_zone");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("ScheduleId")
                         .HasName("pk_schedule_expiration");
 
-                    b.ToTable("schedule_expiration", "werkr");
+                    b.ToTable("schedule_expiration", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.HolidayCalendar", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_utc");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<bool>("IsSystemCalendar")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_system_calendar");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<DateTime>("UpdatedUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("updated_utc");
 
                     b.Property<int>("WorkingDays")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("working_days");
 
                     b.HasKey("Id")
@@ -828,51 +1172,49 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_holiday_calendars_name");
 
-                    b.ToTable("holiday_calendars", "werkr");
+                    b.ToTable("holiday_calendars", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.HolidayDate", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
-
                     b.Property<DateOnly>("Date")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date");
 
                     b.Property<Guid>("HolidayCalendarId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("holiday_calendar_id");
 
                     b.Property<long?>("HolidayRuleId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("holiday_rule_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<TimeOnly?>("WindowEnd")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("window_end");
 
                     b.Property<TimeOnly?>("WindowStart")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("window_start");
 
                     b.Property<string>("WindowTimeZoneId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("window_time_zone_id");
 
                     b.Property<int>("Year")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("year");
 
                     b.HasKey("Id")
@@ -885,73 +1227,71 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_holiday_dates_holiday_calendar_id_date");
 
-                    b.ToTable("holiday_dates", "werkr");
+                    b.ToTable("holiday_dates", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.HolidayRule", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
-
                     b.Property<int?>("Day")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("day");
 
                     b.Property<int?>("DayOfWeek")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("day_of_week");
 
                     b.Property<Guid>("HolidayCalendarId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("holiday_calendar_id");
 
                     b.Property<int?>("Month")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("month");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("ObservanceRule")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("observance_rule");
 
                     b.Property<string>("RuleType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("rule_type");
 
                     b.Property<int?>("WeekNumber")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("week_number");
 
                     b.Property<TimeOnly?>("WindowEnd")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("window_end");
 
                     b.Property<TimeOnly?>("WindowStart")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("window_start");
 
                     b.Property<string>("WindowTimeZoneId")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("window_time_zone_id");
 
                     b.Property<int?>("YearEnd")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("year_end");
 
                     b.Property<int?>("YearStart")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("year_start");
 
                     b.HasKey("Id")
@@ -960,63 +1300,63 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("HolidayCalendarId")
                         .HasDatabaseName("ix_holiday_rules_holiday_calendar_id");
 
-                    b.ToTable("holiday_rules", "werkr");
+                    b.ToTable("holiday_rules", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.MonthlyRecurrence", b =>
                 {
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("DayNumbers")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("day_numbers");
 
                     b.Property<int?>("DaysOfWeek")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("days_of_week");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("MonthsOfYear")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("months_of_year");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<int?>("WeekNumber")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("week_number");
 
                     b.HasKey("ScheduleId")
                         .HasName("pk_monthly_recurrence");
 
-                    b.ToTable("monthly_recurrence", "werkr");
+                    b.ToTable("monthly_recurrence", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.ScheduleHolidayCalendar", b =>
                 {
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<Guid>("HolidayCalendarId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("holiday_calendar_id");
 
                     b.Property<string>("Mode")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("mode");
 
                     b.HasKey("ScheduleId", "HolidayCalendarId")
@@ -1029,165 +1369,163 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_schedule_holiday_calendars_schedule_id");
 
-                    b.ToTable("schedule_holiday_calendars", "werkr");
+                    b.ToTable("schedule_holiday_calendars", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.ScheduleRepeatOptions", b =>
                 {
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("RepeatDurationMinutes")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("repeat_duration_minutes");
 
                     b.Property<int>("RepeatIntervalMinutes")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("repeat_interval_minutes");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("ScheduleId")
                         .HasName("pk_schedule_repeat_options");
 
-                    b.ToTable("schedule_repeat_options", "werkr");
+                    b.ToTable("schedule_repeat_options", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.StartDateTimeInfo", b =>
                 {
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateOnly>("Date")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date");
 
                     b.Property<bool>("IsFixedOffset")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_fixed_offset");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<TimeOnly>("Time")
-                        .HasColumnType("time without time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("time");
 
                     b.Property<string>("TimeZone")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("time_zone");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("ScheduleId")
                         .HasName("pk_schedule_start_datetimeinfo");
 
-                    b.ToTable("schedule_start_datetimeinfo", "werkr");
+                    b.ToTable("schedule_start_datetimeinfo", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Schedule.WeeklyRecurrence", b =>
                 {
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<int>("DaysOfWeek")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("days_of_week");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<int>("WeekInterval")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("week_interval");
 
                     b.HasKey("ScheduleId")
                         .HasName("pk_weekly_recurrence");
 
-                    b.ToTable("weekly_recurrence", "werkr");
+                    b.ToTable("weekly_recurrence", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Settings.SavedFilter", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("CriteriaJson")
                         .IsRequired()
                         .HasMaxLength(4096)
-                        .HasColumnType("character varying(4096)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("criteria_json");
 
                     b.Property<bool>("IsShared")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_shared");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("OwnerId")
                         .IsRequired()
                         .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("owner_id");
 
                     b.Property<string>("PageKey")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("page_key");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -1199,47 +1537,45 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("PageKey", "OwnerId")
                         .HasDatabaseName("ix_saved_filters_page_key_owner_id");
 
-                    b.ToTable("saved_filters", "werkr");
+                    b.ToTable("saved_filters", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Settings.UserPreference", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("key");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("user_id");
 
                     b.Property<string>("Value")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("value");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -1249,25 +1585,25 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_user_preferences_user_id_key");
 
-                    b.ToTable("user_preferences", "werkr");
+                    b.ToTable("user_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskSchedule", b =>
                 {
                     b.Property<long>("TaskId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("task_id");
 
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at_utc");
 
                     b.Property<bool>("IsOneTime")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_one_time");
 
                     b.HasKey("TaskId", "ScheduleId")
@@ -1276,52 +1612,50 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("ScheduleId")
                         .HasDatabaseName("ix_task_schedules_schedule_id");
 
-                    b.ToTable("task_schedules", "werkr");
+                    b.ToTable("task_schedules", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.TaskVersion", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("ChangeDescription")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("change_description");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("CreatedByUserId")
                         .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_by_user_id");
 
                     b.Property<string>("Definition")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("definition");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<long>("TaskId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("task_id");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<int>("VersionNumber")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version_number");
 
                     b.HasKey("Id")
@@ -1334,88 +1668,88 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_task_versions_task_id_version_number");
 
-                    b.ToTable("task_versions", "werkr");
+                    b.ToTable("task_versions", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrJob", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<Guid?>("AgentConnectionId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("agent_connection_id");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateTime?>("EndTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("end_time");
 
                     b.Property<string>("ErrorCategory")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("error_category");
 
                     b.Property<int?>("ExitCode")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("exit_code");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Output")
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("output");
 
                     b.Property<string>("OutputPath")
                         .HasMaxLength(512)
-                        .HasColumnType("character varying(512)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("output_path");
 
                     b.Property<double>("RuntimeSeconds")
-                        .HasColumnType("double precision")
+                        .HasColumnType("REAL")
                         .HasColumnName("runtime_seconds");
 
                     b.Property<Guid?>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("start_time");
 
                     b.Property<long?>("StepId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("step_id");
 
                     b.Property<bool>("Success")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("success");
 
                     b.Property<long>("TaskId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("task_id");
 
                     b.Property<string>("TaskSnapshot")
                         .IsRequired()
                         .HasMaxLength(8000)
-                        .HasColumnType("character varying(8000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("task_snapshot");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<Guid?>("WorkflowRunId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("workflow_run_id");
 
                     b.HasKey("Id")
@@ -1436,99 +1770,97 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("WorkflowRunId", "StepId")
                         .HasDatabaseName("IX_jobs_WorkflowRunId_StepId");
 
-                    b.ToTable("jobs", "werkr");
+                    b.ToTable("jobs", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Tasks.WerkrTask", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<string>("ActionParameters")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("action_parameters");
 
                     b.Property<string>("ActionSubType")
                         .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("action_sub_type");
 
                     b.Property<string>("ActionType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("action_type");
 
                     b.Property<string>("Arguments")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("arguments");
 
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(8000)
-                        .HasColumnType("character varying(8000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("content");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<long?>("CurrentVersionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("current_version_id");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("enabled");
 
                     b.Property<bool>("IsEphemeral")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_ephemeral");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("SuccessCriteria")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("success_criteria");
 
                     b.Property<int>("SyncIntervalMinutes")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sync_interval_minutes");
 
                     b.Property<string>("TargetTags")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("target_tags");
 
                     b.Property<long?>("TimeoutMinutes")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("timeout_minutes");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<long?>("WorkflowId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_id");
 
                     b.HasKey("Id")
@@ -1540,62 +1872,60 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_tasks_workflow_id");
 
-                    b.ToTable("tasks", "werkr");
+                    b.ToTable("tasks", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Triggers.FileMonitorTrigger", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<long?>("CurrentVersionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("current_version_id");
 
                     b.Property<int>("DebounceMs")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("debounce_ms");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("enabled");
 
                     b.Property<string>("EventTypes")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("event_types");
 
                     b.Property<string>("FilePattern")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("file_pattern");
 
                     b.Property<long?>("PinnedWorkflowVersionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("pinned_workflow_version_id");
 
                     b.Property<string>("TargetTags")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("target_tags");
 
                     b.Property<string>("VersionBindingMode")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("version_binding_mode");
 
                     b.Property<string>("WatchDirectory")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("watch_directory");
 
                     b.Property<long>("WorkflowId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_id");
 
                     b.HasKey("Id")
@@ -1610,52 +1940,50 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_file_monitor_triggers_workflow_id");
 
-                    b.ToTable("file_monitor_triggers", "werkr");
+                    b.ToTable("file_monitor_triggers", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Triggers.TriggerVersion", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("ChangeDescription")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("change_description");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("CreatedByUserId")
                         .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_by_user_id");
 
                     b.Property<string>("Definition")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("definition");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<long>("TriggerId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("trigger_id");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<int>("VersionNumber")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version_number");
 
                     b.HasKey("Id")
@@ -1668,65 +1996,63 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_trigger_versions_trigger_id_version_number");
 
-                    b.ToTable("trigger_versions", "werkr");
+                    b.ToTable("trigger_versions", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.Workflow", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<string>("Annotations")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("annotations");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<long?>("CurrentVersionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("current_version_id");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("enabled");
 
                     b.Property<bool>("IsChildWorkflow")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_child_workflow");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<long?>("ParentStepId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("parent_step_id");
 
                     b.Property<string>("TargetTags")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("target_tags");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -1738,57 +2064,57 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("ParentStepId")
                         .HasDatabaseName("ix_workflows_parent_step_id");
 
-                    b.ToTable("workflows", "werkr");
+                    b.ToTable("workflows", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRun", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateTime?>("EndTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("end_time");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("start_time");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<long>("WorkflowId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_id");
 
                     b.Property<string>("WorkflowNameSnapshot")
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("workflow_name_snapshot");
 
                     b.Property<long?>("WorkflowVersionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_version_id");
 
                     b.Property<int?>("WorkflowVersionSnapshot")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_version_snapshot");
 
                     b.HasKey("Id")
@@ -1800,52 +2126,50 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("WorkflowVersionId")
                         .HasDatabaseName("ix_workflow_runs_workflow_version_id");
 
-                    b.ToTable("workflow_runs", "werkr");
+                    b.ToTable("workflow_runs", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowRunVariable", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<Guid?>("ProducedByJobId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("produced_by_job_id");
 
                     b.Property<long?>("ProducedByStepId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("produced_by_step_id");
 
                     b.Property<string>("Source")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("source");
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("value");
 
                     b.Property<string>("VariableName")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("variable_name");
 
                     b.Property<int>("Version")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<Guid>("WorkflowRunId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("workflow_run_id");
 
                     b.HasKey("Id")
@@ -1861,29 +2185,29 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_workflow_run_variables_workflow_run_id_variable_name_version");
 
-                    b.ToTable("workflow_run_variables", "werkr");
+                    b.ToTable("workflow_run_variables", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowSchedule", b =>
                 {
                     b.Property<long>("WorkflowId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_id");
 
                     b.Property<Guid>("ScheduleId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("schedule_id");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at_utc");
 
                     b.Property<bool>("IsOneTime")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_one_time");
 
                     b.Property<Guid?>("WorkflowRunId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("workflow_run_id");
 
                     b.HasKey("WorkflowId", "ScheduleId")
@@ -1892,101 +2216,99 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("ScheduleId")
                         .HasDatabaseName("ix_workflow_schedules_schedule_id");
 
-                    b.ToTable("workflow_schedules", "werkr");
+                    b.ToTable("workflow_schedules", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStep", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<Guid?>("AgentConnectionIdOverride")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("agent_connection_id_override");
 
                     b.Property<long?>("ChildWorkflowId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("child_workflow_id");
 
                     b.Property<string>("CollectionVariableName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("collection_variable_name");
 
                     b.Property<string>("CompositeType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("composite_type");
 
                     b.Property<string>("ConditionExpression")
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("condition_expression");
 
                     b.Property<string>("ControlStatement")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("control_statement");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("DependencyMode")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("dependency_mode");
 
                     b.Property<string>("InputVariableName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("input_variable_name");
 
                     b.Property<bool>("IsComposite")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_composite");
 
                     b.Property<string>("IterationVariableName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("iteration_variable_name");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("MaxIterations")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("max_iterations");
 
                     b.Property<int>("Order")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("order");
 
                     b.Property<string>("OutputVariableName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("output_variable_name");
 
                     b.Property<long?>("TaskId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("task_id");
 
                     b.Property<long?>("TaskVersionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("task_version_id");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<long>("WorkflowId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_id");
 
                     b.HasKey("Id")
@@ -2007,17 +2329,17 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("WorkflowId")
                         .HasDatabaseName("ix_workflow_steps_workflow_id");
 
-                    b.ToTable("workflow_steps", "werkr");
+                    b.ToTable("workflow_steps", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStepDependency", b =>
                 {
                     b.Property<long>("StepId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("step_id");
 
                     b.Property<long>("DependsOnStepId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("depends_on_step_id");
 
                     b.HasKey("StepId", "DependsOnStepId")
@@ -2026,68 +2348,66 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasIndex("DependsOnStepId")
                         .HasDatabaseName("ix_workflow_step_dependencies_depends_on_step_id");
 
-                    b.ToTable("workflow_step_dependencies", "werkr");
+                    b.ToTable("workflow_step_dependencies", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowStepExecution", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<int>("Attempt")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("attempt");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<DateTime?>("EndTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("end_time");
 
                     b.Property<string>("ErrorMessage")
                         .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("error_message");
 
                     b.Property<Guid?>("JobId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("job_id");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<string>("SkipReason")
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("skip_reason");
 
                     b.Property<DateTime?>("StartTime")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("start_time");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.Property<long>("StepId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("step_id");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<Guid>("WorkflowRunId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("workflow_run_id");
 
                     b.HasKey("Id")
@@ -2106,61 +2426,59 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_workflow_step_executions_workflow_run_id_step_id_attempt");
 
-                    b.ToTable("workflow_step_executions", "werkr");
+                    b.ToTable("workflow_step_executions", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVariable", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("DataType")
                         .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("data_type");
 
                     b.Property<string>("DefaultValue")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("default_value");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<bool>("IsRequired")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_required");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<bool>("LogRedaction")
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("log_redaction");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<long>("WorkflowId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_id");
 
                     b.HasKey("Id")
@@ -2170,52 +2488,50 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_workflow_variables_workflow_id_name");
 
-                    b.ToTable("workflow_variables", "werkr");
+                    b.ToTable("workflow_variables", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Workflows.WorkflowVersion", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("ChangeDescription")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("change_description");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created");
 
                     b.Property<string>("CreatedByUserId")
                         .HasMaxLength(450)
-                        .HasColumnType("character varying(450)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_by_user_id");
 
                     b.Property<string>("Definition")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("definition");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_updated");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version");
 
                     b.Property<int>("VersionNumber")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("version_number");
 
                     b.Property<long>("WorkflowId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("workflow_id");
 
                     b.HasKey("Id")
@@ -2228,7 +2544,7 @@ namespace Werkr.Data.Migrations.Postgres
                         .IsUnique()
                         .HasDatabaseName("ix_workflow_versions_workflow_id_version_number");
 
-                    b.ToTable("workflow_versions", "werkr");
+                    b.ToTable("workflow_versions", (string)null);
                 });
 
             modelBuilder.Entity("Werkr.Data.Entities.Configuration.ConfigurationChangeLog", b =>
@@ -2238,7 +2554,7 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasForeignKey("ConfigurationEntryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_configuration_change_logs_configuration_entries_configurati");
+                        .HasConstraintName("fk_configuration_change_logs_configuration_entries_configuration_entry_id");
 
                     b.Navigation("ConfigurationEntry");
                 });
@@ -2250,7 +2566,7 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasForeignKey("AgentConnectionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_credential_agent_scopes_registered_connections_agent_connec");
+                        .HasConstraintName("fk_credential_agent_scopes_registered_connections_agent_connection_id");
 
                     b.HasOne("Werkr.Data.Entities.Configuration.Credential", "Credential")
                         .WithMany("AgentScopes")
@@ -2264,6 +2580,38 @@ namespace Werkr.Data.Migrations.Postgres
                     b.Navigation("Credential");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationDelivery", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Notifications.NotificationChannel", "Channel")
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_deliveries_notification_channels_channel_id");
+
+                    b.Navigation("Channel");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Entities.Notifications.NotificationSubscription", b =>
+                {
+                    b.HasOne("Werkr.Data.Entities.Notifications.NotificationChannel", "Channel")
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_subscriptions_notification_channels_channel_id");
+
+                    b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_notification_subscriptions_workflows_workflow_id");
+
+                    b.Navigation("Channel");
+
+                    b.Navigation("Workflow");
+                });
+
             modelBuilder.Entity("Werkr.Data.Entities.Registration.PendingAgentNotification", b =>
                 {
                     b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "Connection")
@@ -2271,7 +2619,7 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasForeignKey("ConnectionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_pending_agent_notifications_registered_connections_connecti");
+                        .HasConstraintName("fk_pending_agent_notifications_registered_connections_connection_id");
 
                     b.Navigation("Connection");
                 });
@@ -2351,7 +2699,7 @@ namespace Werkr.Data.Migrations.Postgres
                         .HasForeignKey("HolidayCalendarId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_schedule_holiday_calendars_holiday_calendars_holiday_calend");
+                        .HasConstraintName("fk_schedule_holiday_calendars_holiday_calendars_holiday_calendar_id");
 
                     b.HasOne("Werkr.Data.Entities.Schedule.DbSchedule", "Schedule")
                         .WithOne("HolidayCalendarLink")
@@ -2505,7 +2853,7 @@ namespace Werkr.Data.Migrations.Postgres
                         .WithMany()
                         .HasForeignKey("PinnedWorkflowVersionId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_file_monitor_triggers_workflow_versions_pinned_workflow_ver");
+                        .HasConstraintName("fk_file_monitor_triggers_workflow_versions_pinned_workflow_version_id");
 
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "Workflow")
                         .WithMany()
@@ -2624,7 +2972,7 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasOne("Werkr.Data.Entities.Registration.RegisteredConnection", "AgentConnectionOverride")
                         .WithMany()
                         .HasForeignKey("AgentConnectionIdOverride")
-                        .HasConstraintName("fk_workflow_steps_registered_connections_agent_connection_id_o");
+                        .HasConstraintName("fk_workflow_steps_registered_connections_agent_connection_id_override");
 
                     b.HasOne("Werkr.Data.Entities.Workflows.Workflow", "ChildWorkflow")
                         .WithMany()

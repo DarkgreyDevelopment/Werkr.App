@@ -1002,6 +1002,7 @@
         "type": "Project",
         "dependencies": {
           "Grpc.Net.Client": "[2.76.0, )",
+          "MailKit": "[4.15.1, )",
           "System.Security.Cryptography.ProtectedData": "[10.0.5, )",
           "Werkr.Common": "[1.0.0, )",
           "Werkr.Data": "[1.0.0, )"

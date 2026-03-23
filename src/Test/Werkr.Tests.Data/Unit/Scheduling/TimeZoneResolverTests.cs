@@ -61,7 +61,7 @@ public class TimeZoneResolverTests {
     /// </summary>
     [TestMethod]
     public void FindOrCreate_GarbageId_ThrowsTimeZoneNotFoundException( ) {
-        Assert.ThrowsExactly<TimeZoneNotFoundException>(
+        _ = Assert.ThrowsExactly<TimeZoneNotFoundException>(
             ( ) => TimeZoneResolver.FindOrCreate( "garbage" ) );
     }
 
@@ -70,7 +70,7 @@ public class TimeZoneResolverTests {
     /// </summary>
     [TestMethod]
     public void FindOrCreate_InvalidFormat_ThrowsTimeZoneNotFoundException( ) {
-        Assert.ThrowsExactly<TimeZoneNotFoundException>(
+        _ = Assert.ThrowsExactly<TimeZoneNotFoundException>(
             ( ) => TimeZoneResolver.FindOrCreate( "UTC+abc" ) );
     }
 }

@@ -64,15 +64,14 @@ public static class TimeZoneDisplayService {
     /// </summary>
     public static IReadOnlyList<TimeZoneListItem> GetTimeZoneListItems( string languageCode = "en" ) {
         DateTime now = DateTime.UtcNow;
-        return TimeZoneInfo.GetSystemTimeZones( )
+        return [.. TimeZoneInfo.GetSystemTimeZones( )
             .OrderBy( tz => tz.BaseUtcOffset )
             .Select( tz => {
                 string offsetLabel = FormatUtcOffset( tz.BaseUtcOffset );
                 string displayName = GetDisplayName( tz, languageCode );
                 string abbreviation = GetAbbreviation( tz, now, languageCode );
                 return new TimeZoneListItem( tz.Id, $"({offsetLabel}) {displayName}", abbreviation, tz.BaseUtcOffset );
-            } )
-            .ToList( );
+            } )];
     }
 
     /// <summary>

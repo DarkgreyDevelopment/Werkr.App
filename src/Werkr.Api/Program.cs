@@ -18,6 +18,7 @@ using Werkr.Core.Configuration;
 using Werkr.Core.Credentials;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Health;
+using Werkr.Core.Notifications;
 using Werkr.Core.Registration;
 using Werkr.Core.Retention;
 using Werkr.Core.Scheduling;
@@ -136,6 +137,9 @@ public class Program {
                 client.BaseAddress = new Uri( "https://server" );
             } );
 
+            // Named HttpClient for webhook notification delivery
+            _ = builder.Services.AddHttpClient( "WerkrNotifications" );
+
             // Registration service
             // ServerUrl may be set explicitly in config; if not, resolve from the running server's addresses at runtime.
             _ = builder.Services.AddScoped<RegistrationService>( sp => {
@@ -238,6 +242,35 @@ public class Program {
             _ = builder.Services.AddSingleton<IAuditEventTypeRegistry>( auditRegistry );
             _ = builder.Services.AddScoped<IAuditService, AuditService>( );
 
+            // Notification event category registry
+            NotificationEventCategoryRegistry notificationEventRegistry = new( );
+            _ = notificationEventRegistry.RegisterCoreNotificationEvents( );
+            _ = builder.Services.AddSingleton<INotificationEventCategoryRegistry>( notificationEventRegistry );
+
+            // Notification channel implementations (multi-registration for channel resolver)
+            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.EmailNotificationChannel>( );
+            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.WebhookNotificationChannel>( sp => {
+                WerkrDbContext db = sp.GetRequiredService<WerkrDbContext>( );
+                ILogger<Werkr.Core.Notifications.Channels.WebhookNotificationChannel> log = sp.GetRequiredService<ILogger<Werkr.Core.Notifications.Channels.WebhookNotificationChannel>>( );
+                IHttpClientFactory httpFactory = sp.GetRequiredService<IHttpClientFactory>( );
+                HttpClient httpClient = httpFactory.CreateClient( "WerkrNotifications" );
+                return new Werkr.Core.Notifications.Channels.WebhookNotificationChannel( httpClient, db, log );
+            } );
+            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.InAppNotificationChannel>( );
+            _ = builder.Services.AddSingleton<INotificationHubService, NullNotificationHubService>( );
+
+            // Notification delivery pipeline
+            _ = builder.Services.AddScoped<NotificationChannelResolver>( );
+            _ = builder.Services.AddScoped<INotificationDeliveryService, NotificationDeliveryService>( );
+
+            // Notification retry background service
+            _ = builder.Services.AddSingleton<Werkr.Api.Services.NotificationRetryService>( sp => {
+                IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
+                ILogger<Werkr.Api.Services.NotificationRetryService> retryLogger = sp.GetRequiredService<ILogger<Werkr.Api.Services.NotificationRetryService>>( );
+                return new Werkr.Api.Services.NotificationRetryService( scopeFactory, retryLogger );
+            } );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<Werkr.Api.Services.NotificationRetryService>( ) );
+
             // Retention framework — policy-driven data lifecycle management
             RetentionPolicyRegistry retentionRegistry = new( );
             _ = builder.Services.AddSingleton( retentionRegistry );
@@ -245,6 +278,8 @@ public class Program {
             _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.AuditLogRetentionProvider>( );
             _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.JobOutputRetentionProvider>( );
             _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.WorkflowRunVariableRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.NotificationDeliveryRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.UserNotificationRetentionProvider>( );
             _ = builder.Services.AddSingleton<RetentionService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
                 ILogger<RetentionService> retentionLogger = sp.GetRequiredService<ILogger<RetentionService>>( );
@@ -301,6 +336,9 @@ public class Program {
             // Seed retention policies
             await Werkr.Data.Seeding.RetentionPolicySeeder.SeedAsync( app.Services );
 
+            // Seed notification templates
+            await Werkr.Data.Seeding.NotificationTemplateSeeder.SeedAsync( app.Services );
+
             // Migrate per-agent path allowlists to ConfigurationEntry
             await Werkr.Data.Seeding.PathAllowlistMigrationSeeder.SeedAsync( app.Services );
 
@@ -348,6 +386,7 @@ public class Program {
             _ = app.MapTriggerVersionEndpoints( );
             _ = app.MapCredentialEndpoints( );
             _ = app.MapRetentionEndpoints( );
+            _ = app.MapNotificationEndpoints( );
             _ = app.MapUserPreferenceEndpoints( );
 
             _ = app.MapDefaultEndpoints( );

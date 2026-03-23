@@ -54,6 +54,17 @@ public static class AuditEventTypeExtensions {
             [AuditEventType.CredentialAccessed] = "credential.accessed",
             [AuditEventType.AuditRetentionCleanup] = "audit.retention.cleanup",
             [AuditEventType.RetentionSweepCompleted] = "retention.sweep.completed",
+            [AuditEventType.NotificationChannelCreated] = "notification.channel.created",
+            [AuditEventType.NotificationChannelUpdated] = "notification.channel.updated",
+            [AuditEventType.NotificationChannelDeleted] = "notification.channel.deleted",
+            [AuditEventType.NotificationChannelTested] = "notification.channel.tested",
+            [AuditEventType.NotificationSubscriptionCreated] = "notification.subscription.created",
+            [AuditEventType.NotificationSubscriptionUpdated] = "notification.subscription.updated",
+            [AuditEventType.NotificationSubscriptionDeleted] = "notification.subscription.deleted",
+            [AuditEventType.NotificationPreferenceUpdated] = "notification.preference.updated",
+            [AuditEventType.NotificationDeliverySent] = "notification.delivery.sent",
+            [AuditEventType.NotificationDeliveryFailed] = "notification.delivery.failed",
+            [AuditEventType.NotificationDeliveryDeadLettered] = "notification.delivery.deadlettered",
         }.ToFrozenDictionary( );
 
     private static readonly FrozenDictionary<string, AuditEventType> s_fromId =

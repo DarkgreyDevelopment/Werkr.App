@@ -76,6 +76,19 @@ public static class AuditEventRegistrationExtensions {
         registry.Register( AuditEventType.AuditRetentionCleanup.ToEventId( ), "Retention Cleanup", "System", "core" );
         registry.Register( AuditEventType.RetentionSweepCompleted.ToEventId( ), "Retention Sweep Completed", "System", "core" );
 
+        // Notification
+        registry.Register( AuditEventType.NotificationChannelCreated.ToEventId( ), "Channel Created", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationChannelUpdated.ToEventId( ), "Channel Updated", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationChannelDeleted.ToEventId( ), "Channel Deleted", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationChannelTested.ToEventId( ), "Channel Tested", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationSubscriptionCreated.ToEventId( ), "Subscription Created", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationSubscriptionUpdated.ToEventId( ), "Subscription Updated", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationSubscriptionDeleted.ToEventId( ), "Subscription Deleted", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationPreferenceUpdated.ToEventId( ), "Preference Updated", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationDeliverySent.ToEventId( ), "Delivery Sent", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationDeliveryFailed.ToEventId( ), "Delivery Failed", "Notification", "core" );
+        registry.Register( AuditEventType.NotificationDeliveryDeadLettered.ToEventId( ), "Delivery Dead-Lettered", "Notification", "core" );
+
         return registry;
     }
 }

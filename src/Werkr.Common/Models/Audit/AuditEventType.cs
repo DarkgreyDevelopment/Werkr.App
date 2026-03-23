@@ -115,4 +115,28 @@ public enum AuditEventType {
     AuditRetentionCleanup,
     /// <summary>Retention sweep completed (manual or scheduled).</summary>
     RetentionSweepCompleted,
+
+    // ── Notification ──
+    /// <summary>Notification channel created.</summary>
+    NotificationChannelCreated,
+    /// <summary>Notification channel updated.</summary>
+    NotificationChannelUpdated,
+    /// <summary>Notification channel deleted.</summary>
+    NotificationChannelDeleted,
+    /// <summary>Notification channel test delivery sent.</summary>
+    NotificationChannelTested,
+    /// <summary>Notification subscription created.</summary>
+    NotificationSubscriptionCreated,
+    /// <summary>Notification subscription updated.</summary>
+    NotificationSubscriptionUpdated,
+    /// <summary>Notification subscription deleted.</summary>
+    NotificationSubscriptionDeleted,
+    /// <summary>User notification preference updated.</summary>
+    NotificationPreferenceUpdated,
+    /// <summary>Notification delivered successfully.</summary>
+    NotificationDeliverySent,
+    /// <summary>Notification delivery failed.</summary>
+    NotificationDeliveryFailed,
+    /// <summary>Notification delivery dead-lettered after exhausting retries.</summary>
+    NotificationDeliveryDeadLettered,
 }

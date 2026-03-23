@@ -10,6 +10,7 @@ using Werkr.Data.Encryption;
 using Werkr.Data.Entities;
 using Werkr.Data.Entities.Audit;
 using Werkr.Data.Entities.Configuration;
+using Werkr.Data.Entities.Notifications;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Settings;
@@ -148,6 +149,24 @@ public class WerkrDbContext : DbContext {
 
     /// <summary>Durable notification queue for agent heartbeat responses.</summary>
     public DbSet<PendingAgentNotification> PendingAgentNotifications => Set<PendingAgentNotification>( );
+
+    /// <summary>Platform notification channels (email, webhook, in-app).</summary>
+    public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>( );
+
+    /// <summary>Persisted in-app notifications per user.</summary>
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>( );
+
+    /// <summary>Notification message templates per event type and channel.</summary>
+    public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>( );
+
+    /// <summary>Notification subscriptions routing events to channels.</summary>
+    public DbSet<NotificationSubscription> NotificationSubscriptions => Set<NotificationSubscription>( );
+
+    /// <summary>Per-user notification preferences.</summary>
+    public DbSet<UserNotificationPreference> UserNotificationPreferences => Set<UserNotificationPreference>( );
+
+    /// <summary>Notification delivery tracking records (persistent retry queue).</summary>
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>( );
 
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder modelBuilder ) {
@@ -697,6 +716,56 @@ public class WerkrDbContext : DbContext {
                 .OnDelete( DeleteBehavior.Cascade );
         } );
 
+        // NotificationChannel — unique index on Name
+        _ = modelBuilder.Entity<NotificationChannel>( entity => {
+            _ = entity.HasIndex( e => e.Name ).IsUnique( );
+        } );
+
+        // UserNotification — composite index for efficient unread queries
+        _ = modelBuilder.Entity<UserNotification>( entity => {
+            _ = entity.HasIndex( e => new { e.UserId, e.IsRead, e.CreatedUtc } )
+                .IsDescending( false, false, true );
+        } );
+
+        // NotificationTemplate — unique composite index (one template per event type per channel)
+        _ = modelBuilder.Entity<NotificationTemplate>( entity => {
+            _ = entity.HasIndex( e => new { e.EventTypeId, e.ChannelType } )
+                .IsUnique( );
+        } );
+
+        // NotificationSubscription — FK to channel and optional FK to workflow
+        _ = modelBuilder.Entity<NotificationSubscription>( entity => {
+            _ = entity.HasIndex( e => e.WorkflowId );
+            _ = entity.HasIndex( e => e.Tag );
+            _ = entity.HasIndex( e => e.EventCategoryId );
+
+            _ = entity.HasOne( e => e.Channel )
+                .WithMany( )
+                .HasForeignKey( e => e.ChannelId )
+                .OnDelete( DeleteBehavior.Cascade );
+
+            _ = entity.HasOne( e => e.Workflow )
+                .WithMany( )
+                .HasForeignKey( e => e.WorkflowId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
+        // UserNotificationPreference — unique composite (one preference per user per category)
+        _ = modelBuilder.Entity<UserNotificationPreference>( entity => {
+            _ = entity.HasIndex( e => new { e.UserId, e.EventCategoryId } )
+                .IsUnique( );
+        } );
+
+        // NotificationDelivery — index for retry queue processing
+        _ = modelBuilder.Entity<NotificationDelivery>( entity => {
+            _ = entity.HasIndex( e => new { e.Status, e.NextRetryUtc } );
+
+            _ = entity.HasOne( e => e.Channel )
+                .WithMany( )
+                .HasForeignKey( e => e.ChannelId )
+                .OnDelete( DeleteBehavior.Cascade );
+        } );
+
         // Field-level encryption for sensitive columns (§9 Data Protection)
         if (FieldEncryption is not null) {
             EncryptedStringConverter encString = new( FieldEncryption );
@@ -732,6 +801,11 @@ public class WerkrDbContext : DbContext {
             _ = modelBuilder.Entity<ConfigurationEntry>( entity => {
                 _ = entity.Property( e => e.Value ).HasConversion( encString );
                 _ = entity.Property( e => e.DefaultValue ).HasConversion( encString );
+            } );
+
+            // NotificationChannel.Configuration — channel config JSON encrypted at rest
+            _ = modelBuilder.Entity<NotificationChannel>( entity => {
+                _ = entity.Property( e => e.Configuration ).HasConversion( encString );
             } );
         }
     }
