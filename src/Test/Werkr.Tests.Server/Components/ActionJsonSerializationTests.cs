@@ -363,20 +363,6 @@ public class ActionJsonSerializationTests {
         Assert.IsTrue( result.UsePolling );
     }
 
-    // ── Iteration ───────────────────────────────────────────────────
-
-    /// <summary>
-    /// ForEach: simple text field round-trip.
-    /// </summary>
-    [TestMethod]
-    public void ForEach_RoundTrips( ) {
-        ForEachParameters result = RoundTrip<ForEachParameters>( new {
-            arrayPropertyName = "items",
-        } );
-
-        Assert.AreEqual( "items", result.ArrayPropertyName );
-    }
-
     // ── Network operations (new complex types) ──────────────────────
 
     /// <summary>

@@ -1,0 +1,33 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
+
+// Generic audit event submission from agents.
+// Request envelope contains SubmitAuditEventsRequest; response contains SubmitAuditEventsResponse.
+service AuditEventService {
+  rpc SubmitAuditEvents (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message SubmitAuditEventsRequest {
+  repeated GenericAuditEntry entries = 1;
+}
+
+message GenericAuditEntry {
+  string event_type_id = 1;
+  string actor_id = 2;
+  string actor_type = 3;
+  string entity_type = 4;
+  string entity_id = 5;
+  string action = 6;
+  string details_json = 7;
+  string correlation_id = 8;
+}
+
+message SubmitAuditEventsResponse {
+  int32 accepted_count = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
+}

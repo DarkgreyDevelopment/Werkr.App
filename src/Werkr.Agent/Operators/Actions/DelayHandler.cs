@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -11,6 +12,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Uses <see cref="TimeProvider"/> for testable time-dependent logic.
 /// </summary>
 /// <remarks>Creates a new <see cref="DelayHandler"/>.</remarks>
+[ActionCategory( "ControlFlow" )]
 public sealed partial class DelayHandler( ILogger<DelayHandler> logger, TimeProvider timeProvider ) : IActionHandler {
 
     /// <summary>

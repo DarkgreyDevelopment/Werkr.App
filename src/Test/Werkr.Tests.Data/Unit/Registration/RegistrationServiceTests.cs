@@ -141,6 +141,7 @@ public class RegistrationServiceTests {
             encryptedAgentKey,
             "https://agent:5001",
             "TestAgent",
+            null,
             TestContext.CancellationToken
         );
 
@@ -166,6 +167,7 @@ public class RegistrationServiceTests {
             encryptedAgentKey,
             "https://agent:5001",
             "TestAgent",
+            null,
             TestContext.CancellationToken
         );
 
@@ -189,6 +191,7 @@ public class RegistrationServiceTests {
             encryptedAgentKey,
             "https://agent:5001",
             "TestAgent",
+            null,
             TestContext.CancellationToken
         );
 
@@ -209,6 +212,7 @@ public class RegistrationServiceTests {
             encryptedAgentKey,
             "https://agent:5001",
             "TestAgent",
+            null,
             TestContext.CancellationToken
         );
 
@@ -232,6 +236,7 @@ public class RegistrationServiceTests {
             encryptedAgentKey,
             "https://agent:5001",
             "TestAgent",
+            null,
             TestContext.CancellationToken
         );
 
@@ -268,6 +273,7 @@ public class RegistrationServiceTests {
             encryptedAgentKey,
             "https://agent:5001",
             "TestAgent",
+            null,
             TestContext.CancellationToken
         );
 
@@ -309,6 +315,7 @@ public class RegistrationServiceTests {
             encryptedAgentKey,
             "https://agent:5001",
             "TestAgent",
+            null,
             TestContext.CancellationToken
         );
 

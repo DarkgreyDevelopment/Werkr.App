@@ -3,6 +3,7 @@ option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
 import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
 
 // Agent reports completed job results to the Server (API hosts this service).
 // All RPCs use EncryptedEnvelope. Inner payload types defined below.
@@ -57,6 +58,8 @@ message JobResultResponse {
   bool accepted = 1;
   // The assigned job ID on the server.
   string job_id = 2;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message StepStartedRequest {
@@ -78,4 +81,6 @@ message StepSkippedRequest {
 
 message StepEventResponse {
   bool accepted = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }

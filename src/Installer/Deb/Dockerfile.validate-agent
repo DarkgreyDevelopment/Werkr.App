@@ -1,0 +1,156 @@
+# syntax=docker/dockerfile:1
+# -------------------------------------------------------------------
+#  Validates the Agent .deb build pipeline end-to-end:
+#    1. Build Werkr.Agent from source (.NET SDK)
+#    2. Package into .deb using static templates + dpkg-deb
+#    3. Install .deb into a clean Debian container
+#    4. Validate file layout, permissions, and binary startup
+#
+#  Usage:
+#    docker build -f src/Installer/Deb/Dockerfile.validate-agent \
+#      -t werkr-agent-deb-validate .
+#
+#    docker run --rm -it werkr-agent-deb-validate     # runs validation checks
+#
+#  This mirrors the CI/CD flow (build → package → install) without code
+#  signing. The resulting image can be used for runtime testing.
+#
+#  Build context: repository root
+# -------------------------------------------------------------------
+
+# ==========================
+#  Stage 1: Build from source
+# ==========================
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+ARG TARGETARCH
+WORKDIR /src
+
+# Grpc.Tools 2.78.0's bundled protoc segfaults under BuildKit's seccomp
+# profile on ARM64. The system protoc (same binary, apt-installed) works
+# because it avoids the NuGet shim invocation path.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY Directory.Build.props Directory.Packages.props global.json Werkr.slnx ./
+COPY src/ src/
+
+RUN dotnet publish src/Werkr.Agent/Werkr.Agent.csproj \
+      -c Release -r linux-${TARGETARCH} -o /app/publish \
+      --sc true \
+      -p:Protobuf_ProtocFullPath=/usr/bin/protoc
+
+# ==========================
+#  Stage 2: Build the .deb
+# ==========================
+FROM ubuntu:24.04 AS package
+ARG TARGETARCH
+ARG VERSION=0.0.1
+
+WORKDIR /build
+
+# Copy published binaries from build stage
+COPY --from=build /app/publish /build/binaries/
+
+# Copy deb template files
+COPY src/Installer/Deb/agent/ /build/templates/agent/
+COPY src/Installer/Deb/rules  /build/templates/rules
+
+RUN set -e \
+    && DEB_ARCH=$([ "${TARGETARCH}" = "arm64" ] && echo "arm64" || echo "amd64") \
+    && STAGING="/build/staging" \
+    && mkdir -p "${STAGING}/DEBIAN" \
+    && mkdir -p "${STAGING}/opt/werkr/agent/modules" \
+    && mkdir -p "${STAGING}/etc/werkr" \
+    && echo '{}' > "${STAGING}/etc/werkr/appsettings.json" \
+    && chmod 640 "${STAGING}/etc/werkr/appsettings.json" \
+    && mkdir -p "${STAGING}/usr/lib/systemd/system" \
+    # Control file with version/arch substitution
+    && sed -e "s/{{VERSION}}/${VERSION}/g" \
+           -e "s/{{ARCHITECTURE}}/${DEB_ARCH}/g" \
+           /build/templates/agent/DEBIAN/control.template \
+           > "${STAGING}/DEBIAN/control" \
+    # Static DEBIAN files
+    && cp /build/templates/agent/DEBIAN/conffiles  "${STAGING}/DEBIAN/" \
+    && cp /build/templates/agent/DEBIAN/templates  "${STAGING}/DEBIAN/" \
+    && cp /build/templates/agent/DEBIAN/config     "${STAGING}/DEBIAN/" \
+    && cp /build/templates/agent/DEBIAN/postinst   "${STAGING}/DEBIAN/" \
+    && cp /build/templates/agent/DEBIAN/prerm      "${STAGING}/DEBIAN/" \
+    && cp /build/templates/agent/DEBIAN/postrm     "${STAGING}/DEBIAN/" \
+    && cp /build/templates/rules                   "${STAGING}/DEBIAN/rules" \
+    # systemd unit
+    && cp /build/templates/agent/systemd/werkr-agent.service \
+          "${STAGING}/usr/lib/systemd/system/" \
+    # Permissions on maintainer scripts
+    && chmod 755 "${STAGING}/DEBIAN/postinst" \
+                 "${STAGING}/DEBIAN/prerm" \
+                 "${STAGING}/DEBIAN/postrm" \
+                 "${STAGING}/DEBIAN/config" \
+                 "${STAGING}/DEBIAN/rules" \
+    # Copy binaries
+    && cp -a /build/binaries/* "${STAGING}/opt/werkr/agent/" \
+    # Build the .deb
+    && dpkg-deb --build --root-owner-group \
+         "${STAGING}" "/build/werkr-agent_${VERSION}_${DEB_ARCH}.deb" \
+    # Print package info for build log
+    && echo "======== Package Info ========" \
+    && dpkg-deb --info "/build/werkr-agent_${VERSION}_${DEB_ARCH}.deb" \
+    && echo "======== Package Contents (first 30 entries) ========" \
+    && dpkg-deb --contents "/build/werkr-agent_${VERSION}_${DEB_ARCH}.deb" | head -30
+
+# ==========================
+#  Stage 3: Validate .deb installation
+# ==========================
+FROM debian:bookworm-slim AS validate
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl libicu72 libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=package /build/werkr-agent_*.deb /tmp/
+
+# Extract .deb (dpkg -x for container — no systemd/debconf needed)
+RUN dpkg -x /tmp/*.deb /
+
+# Create werkr user/group and directories (normally done by postinst)
+RUN groupadd --system werkr \
+    && useradd --system --no-create-home -g werkr werkr \
+    && mkdir -p /var/lib/werkr /var/log/werkr /etc/werkr \
+              /opt/werkr/agent/certs /home/werkr/.config/werkr/secrets \
+    && echo '{}' > /etc/werkr/appsettings.json \
+    && chmod 640 /etc/werkr/appsettings.json \
+    && chown -R werkr:werkr /var/lib/werkr /var/log/werkr /etc/werkr \
+                            /opt/werkr/agent /home/werkr
+
+# Validate file layout
+RUN echo "=== Validation ===" \
+    && test -x /opt/werkr/agent/Werkr.Agent \
+        && echo "PASS: Binary is executable" \
+        || { echo "FAIL: Binary not executable"; exit 1; } \
+    && test -d /opt/werkr/agent/modules \
+        && echo "PASS: modules/ directory exists" \
+        || { echo "FAIL: modules/ directory missing"; exit 1; } \
+    && test -f /usr/lib/systemd/system/werkr-agent.service \
+        && echo "PASS: systemd unit installed" \
+        || { echo "FAIL: systemd unit missing"; exit 1; } \
+    && test -f /etc/werkr/appsettings.json \
+        && echo "PASS: config file exists" \
+        || { echo "FAIL: config file missing"; exit 1; } \
+    && grep -q 'WERKR_LOG_DIR' /usr/lib/systemd/system/werkr-agent.service \
+        && echo "PASS: WERKR_LOG_DIR in systemd unit" \
+        || { echo "FAIL: WERKR_LOG_DIR missing from systemd unit"; exit 1; } \
+    && echo "=== All validation checks passed ==="
+
+USER werkr
+WORKDIR /opt/werkr/agent
+
+EXPOSE 8443
+
+ENV ASPNETCORE_URLS=https://+:8443 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_ENVIRONMENT=Production \
+    WERKR_DATA_DIR=/var/lib/werkr \
+    WERKR_LOG_DIR=/var/log/werkr \
+    HOME=/home/werkr
+
+ENTRYPOINT ["./Werkr.Agent"]

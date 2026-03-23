@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -13,6 +14,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Optionally creates parent directories.
 /// </summary>
 /// <remarks>Creates a new <see cref="CreateFileHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class CreateFileHandler(
     IFilePathResolver resolver,
     ILogger<CreateFileHandler> logger

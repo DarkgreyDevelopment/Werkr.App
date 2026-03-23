@@ -12,6 +12,11 @@ export interface StepChange {
   inputVariableName?: string | null;
   outputVariableName?: string | null;
   position?: { x: number; y: number };
+  isComposite?: boolean;
+  compositeType?: string;
+  childWorkflowId?: number;
+  iterationVariableName?: string | null;
+  collectionVariableName?: string | null;
 }
 
 /** A dependency mutation tracked since last save. */
@@ -39,6 +44,11 @@ export interface BatchOperationDto {
   inputVariableName?: string | null;
   outputVariableName?: string | null;
   dependencyChanges?: DependencyBatchItemDto[] | null;
+  isComposite?: boolean;
+  compositeType?: string;
+  childWorkflowId?: number | null;
+  iterationVariableName?: string | null;
+  collectionVariableName?: string | null;
 }
 
 export interface DependencyBatchItemDto {
@@ -61,16 +71,23 @@ export class Changeset {
   }
 
   /** Record a new step added to the graph. */
-  addStep( stepId: number, taskId: number, order: number, position?: { x: number; y: number } ): void {
+  addStep(
+    stepId: number,
+    taskId: number,
+    order: number,
+    position?: { x: number; y: number },
+    extra?: Partial<Pick<StepChange, "isComposite" | "compositeType" | "childWorkflowId" | "iterationVariableName" | "collectionVariableName">>
+  ): void {
     this._stepChanges.set( stepId, {
       type: "add",
       stepId,
       taskId,
       order,
       controlStatement: "Default",
-      dependencyMode: "All",
+      dependencyMode: "AllSuccess",
       maxIterations: 100,
       position,
+      ...( extra ?? {} ),
     } );
   }
 
@@ -204,6 +221,11 @@ export class Changeset {
         if ( change.agentConnectionIdOverride !== undefined ) op.agentConnectionIdOverride = change.agentConnectionIdOverride;
         if ( change.inputVariableName !== undefined ) op.inputVariableName = change.inputVariableName;
         if ( change.outputVariableName !== undefined ) op.outputVariableName = change.outputVariableName;
+        if ( change.isComposite != null ) op.isComposite = change.isComposite;
+        if ( change.compositeType != null ) op.compositeType = change.compositeType;
+        if ( change.childWorkflowId !== undefined ) op.childWorkflowId = change.childWorkflowId;
+        if ( change.iterationVariableName !== undefined ) op.iterationVariableName = change.iterationVariableName;
+        if ( change.collectionVariableName !== undefined ) op.collectionVariableName = change.collectionVariableName;
       }
 
       if ( stepDeps?.length ) {

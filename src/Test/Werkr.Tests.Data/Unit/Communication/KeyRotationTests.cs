@@ -28,7 +28,7 @@ public class KeyRotationTests {
         rsaEncrypt.ImportParameters( agentKeys.PublicKey );
         byte[] rsaEncryptedNewKey = rsaEncrypt.Encrypt(
             newKey,
-            RSAEncryptionPadding.OaepSHA256
+            RSAEncryptionPadding.OaepSHA512
         );
 
         // Simulate: Agent decrypts with its private key
@@ -36,7 +36,7 @@ public class KeyRotationTests {
         rsaDecrypt.ImportParameters( agentKeys.PrivateKey );
         byte[] decryptedKey = rsaDecrypt.Decrypt(
             rsaEncryptedNewKey,
-            RSAEncryptionPadding.OaepSHA256
+            RSAEncryptionPadding.OaepSHA512
         );
 
         CollectionAssert.AreEqual(
@@ -59,7 +59,7 @@ public class KeyRotationTests {
         rsaEncrypt.ImportParameters( agentKeys.PublicKey );
         byte[] rsaEncryptedNewKey = rsaEncrypt.Encrypt(
             newKey,
-            RSAEncryptionPadding.OaepSHA256
+            RSAEncryptionPadding.OaepSHA512
         );
 
         // Attempt to decrypt with wrong private key
@@ -72,7 +72,7 @@ public class KeyRotationTests {
         try {
             _ = rsaDecrypt.Decrypt(
                 rsaEncryptedNewKey,
-                RSAEncryptionPadding.OaepSHA256
+                RSAEncryptionPadding.OaepSHA512
             );
         } catch (CryptographicException) {
             threw = true;
@@ -95,7 +95,7 @@ public class KeyRotationTests {
         string newKeyId = "key-2";
 
         // Message encrypted with old key (in-flight during rotation)
-        HeartbeatRequest original = new( ) { StatusMessage = "in-flight message" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "in-flight message" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             oldKey,
@@ -103,7 +103,7 @@ public class KeyRotationTests {
         );
 
         // Receiver has rotated to new key but still holds old key as previous
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             newKey,
             newKeyId,
@@ -129,7 +129,7 @@ public class KeyRotationTests {
         string newKeyId = "key-2";
 
         // Message encrypted with new key (post-rotation)
-        HeartbeatRequest original = new( ) { StatusMessage = "post-rotation message" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "post-rotation message" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             newKey,
@@ -137,7 +137,7 @@ public class KeyRotationTests {
         );
 
         // Receiver has rotated and holds old key as previous
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             newKey,
             newKeyId,
@@ -160,14 +160,14 @@ public class KeyRotationTests {
         byte[] currentKey = EncryptionProvider.GenerateRandomBytes( 32 );
         string currentKeyId = "key-1";
 
-        HeartbeatRequest original = new( ) { StatusMessage = "no previous key" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "no previous key" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             currentKey,
             currentKeyId
         );
 
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             currentKey,
             currentKeyId,
@@ -192,7 +192,7 @@ public class KeyRotationTests {
         string unknownKeyId = "key-unknown";
 
         // Encrypt with current key but use an unknown key ID
-        HeartbeatRequest original = new( ) { StatusMessage = "unknown key id" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "unknown key id" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             currentKey,
@@ -200,7 +200,7 @@ public class KeyRotationTests {
         );
 
         // Should fall back to current key as last resort
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             currentKey,
             currentKeyId,
@@ -225,7 +225,7 @@ public class KeyRotationTests {
         string newKeyId = "key-2";
 
         // Message encrypted with old key — but the previous key slot has been cleared
-        HeartbeatRequest original = new( ) { StatusMessage = "expired" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "expired" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             oldKey,
@@ -233,7 +233,7 @@ public class KeyRotationTests {
         );
 
         // Receiver no longer has the old key (grace period expired)
-        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        _ = Assert.ThrowsExactly<WerkrCryptoException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             newKey,
             newKeyId,
@@ -243,12 +243,12 @@ public class KeyRotationTests {
     }
 
     /// <summary>
-    /// Verifies the full rotation protocol: RSA-encrypts a new shared key into a <see cref="RotateSharedKeyRequest"/>
+    /// Verifies the full rotation protocol: RSA-encrypts a new shared key into a <see cref="FetchPendingKeyResponse"/>
     /// envelope, decrypts it, and recovers the key.
     /// </summary>
     [TestMethod]
     public void RotationProtocol_EnvelopeContainsRotationRequest( ) {
-        // Verify the full envelope round-trip for a RotateSharedKeyRequest
+        // Verify the full envelope round-trip for a FetchPendingKeyResponse
         byte[] currentKey = EncryptionProvider.GenerateRandomBytes( 32 );
         string currentKeyId = "key-1";
 
@@ -259,23 +259,24 @@ public class KeyRotationTests {
         rsa.ImportParameters( agentKeys.PublicKey );
         byte[] rsaEncryptedNewKey = rsa.Encrypt(
             newKey,
-            RSAEncryptionPadding.OaepSHA256
+            RSAEncryptionPadding.OaepSHA512
         );
 
-        RotateSharedKeyRequest rotationRequest = new( ) {
+        FetchPendingKeyResponse rotationResponse = new( ) {
+            HasPendingKey = true,
             RsaEncryptedNewKey = ByteString.CopyFrom( rsaEncryptedNewKey ),
             NewKeyId = "key-2",
         };
 
         // Encrypt with current SharedKey
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
-            rotationRequest,
+            rotationResponse,
             currentKey,
             currentKeyId
         );
 
         // Decrypt with current SharedKey
-        RotateSharedKeyRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<RotateSharedKeyRequest>(
+        FetchPendingKeyResponse decrypted = PayloadEncryptor.DecryptFromEnvelope<FetchPendingKeyResponse>(
             envelope,
             currentKey
         );
@@ -290,7 +291,7 @@ public class KeyRotationTests {
         agentRsa.ImportParameters( agentKeys.PrivateKey );
         byte[] recoveredKey = agentRsa.Decrypt(
             decrypted.RsaEncryptedNewKey.ToByteArray( ),
-            RSAEncryptionPadding.OaepSHA256
+            RSAEncryptionPadding.OaepSHA512
         );
 
         CollectionAssert.AreEqual(
@@ -300,18 +301,18 @@ public class KeyRotationTests {
     }
 
     /// <summary>
-    /// Verifies that a <see cref="RotateSharedKeyResponse"/> encrypted with the new key can be decrypted and contains
-    /// the expected success status and active key ID.
+    /// Verifies that a <see cref="FetchPendingKeyResponse"/> encrypted with the new key can be decrypted and contains
+    /// the expected pending key state and new key ID.
     /// </summary>
     [TestMethod]
     public void RotationResponse_EncryptedWithNewKey_Decrypts( ) {
         byte[] newKey = EncryptionProvider.GenerateRandomBytes( 32 );
         string newKeyId = "key-2";
 
-        // Agent encrypts response with the newly activated key
-        RotateSharedKeyResponse response = new( ) {
-            Success = true,
-            ActiveKeyId = newKeyId,
+        // Encrypt response with the newly activated key
+        FetchPendingKeyResponse response = new( ) {
+            HasPendingKey = false,
+            NewKeyId = newKeyId,
         };
 
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
@@ -320,16 +321,16 @@ public class KeyRotationTests {
             newKeyId
         );
 
-        // API decrypts with the new key it generated
-        RotateSharedKeyResponse decrypted = PayloadEncryptor.DecryptFromEnvelope<RotateSharedKeyResponse>(
+        // Decrypt with the new key
+        FetchPendingKeyResponse decrypted = PayloadEncryptor.DecryptFromEnvelope<FetchPendingKeyResponse>(
             envelope,
             newKey
         );
 
-        Assert.IsTrue( decrypted.Success );
+        Assert.IsFalse( decrypted.HasPendingKey );
         Assert.AreEqual(
             newKeyId,
-            decrypted.ActiveKeyId
+            decrypted.NewKeyId
         );
     }
 
@@ -345,7 +346,7 @@ public class KeyRotationTests {
         string previousKeyId = "key-1";
 
         // Encrypt with previous key, verify key ID is preserved in envelope
-        HeartbeatRequest original = new( ) { StatusMessage = "check key id" };
+        AgentHeartbeatRequest original = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "check key id" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             original,
             previousKey,
@@ -358,7 +359,7 @@ public class KeyRotationTests {
         );
 
         // Rotation overload selects the right key based on key ID
-        HeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        AgentHeartbeatRequest decrypted = PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             currentKey,
             currentKeyId,

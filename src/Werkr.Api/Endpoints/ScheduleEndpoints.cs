@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 using Werkr.Api.Models;
 using Werkr.Api.Services;
 using Werkr.Common.Auth;
@@ -9,11 +11,11 @@ using Werkr.Data.Calendar.Models;
 namespace Werkr.Api.Endpoints;
 
 /// <summary>Maps all schedule-related REST endpoints.</summary>
-internal static class ScheduleEndpoints {
+internal static partial class ScheduleEndpoints {
     /// <summary>Maps schedule CRUD + occurrence-preview endpoints.</summary>
     public static WebApplication MapScheduleEndpoints( this WebApplication app ) {
         _ = app.MapGet(
-            "/api/schedules",
+            "/api/v1/schedules",
             async (
                 ScheduleService scheduleService,
                 CancellationToken ct
@@ -26,7 +28,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapGet(
-            "/api/schedules/{id}",
+            "/api/v1/schedules/{id}",
             async (
                 Guid id,
                 ScheduleService scheduleService,
@@ -41,17 +43,21 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapPost(
-            "/api/schedules",
+            "/api/v1/schedules",
             async (
                 ScheduleCreateRequest request,
                 ScheduleService scheduleService,
                 CancellationToken ct
             ) => {
                 try {
+                    string? tzError = ValidateTimezoneConsistency( request.StartDateTime, request.Expiration );
+                    if (tzError is not null) {
+                        return Results.BadRequest( new { message = tzError } );
+                    }
                     Schedule schedule = ScheduleMapper.ToSchedule( request );
                     Schedule created = await scheduleService.CreateAsync( schedule, ct );
                     ScheduleDto dto = ScheduleMapper.ToDto( created );
-                    return Results.Created( $"/api/schedules/{dto.Id}", dto );
+                    return Results.Created( $"/api/v1/schedules/{dto.Id}", dto );
                 } catch (System.ComponentModel.DataAnnotations.ValidationException ex) {
                     return Results.BadRequest( new { message = ex.Message } );
                 } catch (TimeZoneNotFoundException ex) {
@@ -62,7 +68,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanCreate );
 
         _ = app.MapPut(
-            "/api/schedules/{id}",
+            "/api/v1/schedules/{id}",
             async (
                 Guid id,
                 ScheduleUpdateRequest request,
@@ -71,6 +77,10 @@ internal static class ScheduleEndpoints {
                 CancellationToken ct
             ) => {
                 try {
+                    string? tzError = ValidateTimezoneConsistency( request.StartDateTime, request.Expiration );
+                    if (tzError is not null) {
+                        return Results.BadRequest( new { message = tzError } );
+                    }
                     Schedule schedule = ScheduleMapper.ToSchedule( id, request );
                     Schedule updated = await scheduleService.UpdateAsync( schedule, ct );
 
@@ -96,7 +106,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanUpdate );
 
         _ = app.MapDelete(
-            "/api/schedules/{id}",
+            "/api/v1/schedules/{id}",
             async (
                 Guid id,
                 ScheduleService scheduleService,
@@ -117,7 +127,7 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanDelete );
 
         _ = app.MapGet(
-            "/api/schedules/{id}/occurrences",
+            "/api/v1/schedules/{id}/occurrences",
             async (
                 Guid id,
                 DateTime windowEnd,
@@ -146,5 +156,33 @@ internal static class ScheduleEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         return app;
+    }
+
+    [GeneratedRegex( @"^UTC([+-]\d{1,2})(:\d{2})?$" )]
+    private static partial Regex FixedOffsetPattern( );
+
+    /// <summary>
+    /// Validates consistency between <c>IsFixedOffset</c> and <c>TimeZoneId</c>.
+    /// Returns an error message if inconsistent, or <c>null</c> if valid.
+    /// </summary>
+    private static string? ValidateTimezoneConsistency(
+        StartDateTimeDto start, ExpirationDateTimeDto? expiration ) {
+        string? error = ValidateSingle( start.TimeZoneId, start.IsFixedOffset, "start" );
+        if (error is not null) {
+            return error;
+        }
+        if (expiration is not null) {
+            error = ValidateSingle( expiration.TimeZoneId, expiration.IsFixedOffset, "expiration" );
+        }
+        return error;
+    }
+
+    private static string? ValidateSingle( string timeZoneId, bool isFixedOffset, string label ) {
+        bool looksFixed = FixedOffsetPattern( ).IsMatch( timeZoneId );
+        return isFixedOffset && !looksFixed
+            ? $"Schedule {label}: IsFixedOffset is true but TimeZoneId '{timeZoneId}' is not a fixed-offset identifier (expected format: UTC±HH or UTC±HH:MM)."
+            : !isFixedOffset && looksFixed
+            ? $"Schedule {label}: IsFixedOffset is false but TimeZoneId '{timeZoneId}' is a fixed-offset identifier. Set IsFixedOffset to true for fixed offsets."
+            : null;
     }
 }

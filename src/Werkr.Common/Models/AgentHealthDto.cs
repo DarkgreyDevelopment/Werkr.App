@@ -8,5 +8,6 @@ public sealed record AgentHealthDto(
     bool? PowerShellAvailable,
     bool? SystemShellAvailable,
     DateTime? LastSeen,
-    DateTime? HealthCheckedAt
+    DateTime? HealthCheckedAt,
+    string? AgentVersion = null
 );

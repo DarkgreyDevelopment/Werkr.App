@@ -26,6 +26,9 @@ public class WerkrIdentityDbContext : IdentityDbContext<WerkrUser> {
     /// <summary>Global server configuration (single row).</summary>
     public DbSet<ConfigurationSettings> ConfigurationSettings => Set<ConfigurationSettings>( );
 
+    /// <summary>Password history entries for reuse prevention.</summary>
+    public DbSet<PasswordHistory> PasswordHistory => Set<PasswordHistory>( );
+
     /// <inheritdoc/>
     protected override void OnModelCreating( ModelBuilder builder ) {
         base.OnModelCreating( builder );
@@ -85,6 +88,17 @@ public class WerkrIdentityDbContext : IdentityDbContext<WerkrUser> {
         _ = builder.Entity<ConfigurationSettings>( b => {
             _ = b.ToTable( "config_settings" );
             _ = b.HasKey( c => c.Id );
+        } );
+
+        // PasswordHistory — password reuse prevention
+        _ = builder.Entity<PasswordHistory>( b => {
+            _ = b.ToTable( "password_history" );
+            _ = b.HasKey( h => h.Id );
+            _ = b.HasIndex( h => h.UserId );
+            _ = b.HasOne( h => h.User )
+                .WithMany( )
+                .HasForeignKey( h => h.UserId )
+                .OnDelete( DeleteBehavior.Cascade );
         } );
     }
 }

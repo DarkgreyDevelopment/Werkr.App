@@ -5,6 +5,7 @@ using Serilog;
 using Serilog.Settings.Configuration;
 using Werkr.Common;
 using Werkr.Common.Auth;
+using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Authorization;
@@ -67,6 +68,10 @@ public class Program {
                 ? parsed : DatabaseProvider.Postgres;
             _ = builder.Services.AddWerkrIdentity( dbProvider, connectionString );
 
+            // Password history — NIST-aligned password reuse prevention
+            _ = builder.Services.Configure<PasswordHistoryOptions>(
+                builder.Configuration.GetSection( PasswordHistoryOptions.SectionName ) );
+
             // Permission system (role-permission mapping, authorization policies)
             _ = builder.Services.AddScoped<IPermissionService, PermissionService>( );
             _ = builder.Services.AddAuthorization( options => options.AddWerkrPermissionPolicies( ) );
@@ -127,8 +132,15 @@ public class Program {
             // Saved filter service — localStorage CRUD for personal filter views
             _ = builder.Services.AddScoped<SavedFilterService>( );
 
-            // Auth forwarding handler — self-mints JWT for outgoing API requests
+            // Auth forwarding handlers — user-aware (AsyncLocal) and system-only
             _ = builder.Services.AddTransient<AuthForwardingHandler>( );
+            _ = builder.Services.AddTransient<ServiceAuthForwardingHandler>( );
+
+            // User token provider — resolves Blazor circuit user to a JWT
+            _ = builder.Services.AddScoped<IUserTokenProvider, BlazorUserTokenProvider>( );
+
+            // Scoped HTTP accessor — auto-sets user JWT before API calls
+            _ = builder.Services.AddScoped<ApiServiceAccessor>( );
 
             // General-purpose HttpClient for the API service via service discovery.
             // The default standard resilience handler (10s attempt / 30s total) from
@@ -137,6 +149,13 @@ public class Program {
                 client.BaseAddress = new Uri( "https://api" );
             } )
             .AddHttpMessageHandler<AuthForwardingHandler>( );
+
+            // System-only client for background services (health monitor, etc.)
+            // Always uses service identity — never reads UserTokenContext.
+            _ = builder.Services.AddHttpClient( "ApiServiceSystem", client => {
+                client.BaseAddress = new Uri( "https://api" );
+            } )
+            .AddHttpMessageHandler<ServiceAuthForwardingHandler>( );
 
             // Dedicated SSE client for the long-lived event stream consumed by
             // JobEventRelayService. The global ConfigureHttpClientDefaults in
@@ -150,7 +169,7 @@ public class Program {
                 client.BaseAddress = new Uri( "https://api" );
                 client.Timeout = Timeout.InfiniteTimeSpan;
             } )
-            .AddHttpMessageHandler<AuthForwardingHandler>( )
+            .AddHttpMessageHandler<ServiceAuthForwardingHandler>( )
             .ConfigureAdditionalHttpMessageHandlers( ( handlers, _ ) => {
                 // Remove the global default resilience pipeline (10s attempt timeout)
                 // added by ConfigureHttpClientDefaults — it kills long-lived SSE
@@ -161,6 +180,9 @@ public class Program {
                     }
                 }
             } );
+
+            // Audit client — sends audit events to the API
+            _ = builder.Services.AddScoped<AuditClient>( );
 
             // Background health monitor — keeps agent DB status in sync with actual reachability
             _ = builder.Services.AddHostedService<AgentHealthMonitorService>( );

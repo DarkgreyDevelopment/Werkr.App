@@ -30,6 +30,7 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="clientFactory">Factory for creating outbound gRPC clients to the Server.</param>
 /// <param name="variableClient">Client for workflow variable get/set/create operations.</param>
 /// <param name="outputStreamingService">Manages real-time output streaming to the server.</param>
+/// <param name="compositeNodeExecutor">Executor for composite workflow nodes (ForEach, etc.).</param>
 /// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
 /// <param name="logger">Logger.</param>
 public sealed partial class WorkflowExecutionService(
@@ -42,14 +43,69 @@ public sealed partial class WorkflowExecutionService(
     AgentGrpcClientFactory clientFactory,
     VariableClient variableClient,
     Werkr.Agent.Services.OutputStreamingService outputStreamingService,
+    CompositeNodeExecutor compositeNodeExecutor,
     IServiceScopeFactory serviceScopeFactory,
     ILogger<WorkflowExecutionService> logger
 ) {
 
+    /// <summary>Tracks active CancellationTokenSources keyed by workflow ID for in-flight runs.</summary>
+    private readonly ConcurrentDictionary<long, CancellationTokenSource> _activeWorkflows = new();
+
+    private int _activeJobCount;
+    private readonly TaskCompletionSource _drainComplete = new();
+    private volatile bool _shuttingDown;
+
+    /// <summary>Indicates whether a graceful shutdown is in progress.</summary>
+    public bool IsShuttingDown => _shuttingDown;
+
+    /// <summary>
+    /// Cancels any in-flight workflow runs for the specified workflow.
+    /// Called when the API signals that a workflow was disabled.
+    /// </summary>
+    public void CancelWorkflow( long workflowId ) {
+        if (_activeWorkflows.TryRemove( workflowId, out CancellationTokenSource? cts )) {
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation( "Cancelling in-flight workflow run for WorkflowId={WorkflowId}.", workflowId );
+            }
+            cts.Cancel( );
+        }
+    }
+
+    /// <summary>
+    /// Initiates a graceful drain: stops accepting new work, waits for active jobs to complete,
+    /// and force-cancels after the specified timeout.
+    /// </summary>
+    /// <param name="timeout">Maximum time to wait for active jobs to finish.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task DrainAsync( TimeSpan timeout, CancellationToken ct ) {
+        _shuttingDown = true;
+
+        if (Interlocked.CompareExchange( ref _activeJobCount, 0, 0 ) == 0) {
+            return;
+        }
+
+        if (logger.IsEnabled( LogLevel.Information )) {
+            logger.LogInformation( "Draining {Count} active job(s)...", _activeJobCount );
+        }
+
+        try {
+            await _drainComplete.Task.WaitAsync( timeout, ct );
+        } catch (TimeoutException) {
+            logger.LogWarning( "Drain timeout reached after {Timeout}. Force-cancelling active workflows.", timeout );
+            foreach (CancellationTokenSource cts in _activeWorkflows.Values) {
+                cts.Cancel( );
+            }
+            // Brief grace period for cancellation to propagate
+            await Task.Delay( TimeSpan.FromSeconds( 2 ), CancellationToken.None );
+        } catch (OperationCanceledException) {
+            // Host forced shutdown
+        }
+    }
+
     // ── Result Types ─────────────────────────────────────────────────────────────
 
     /// <summary>Result of executing a single workflow step.</summary>
-    private sealed record StepExecutionResult(
+    internal sealed record StepExecutionResult(
         long StepId,
         StepJobResult? Job,
         bool Failed,
@@ -91,6 +147,31 @@ public sealed partial class WorkflowExecutionService(
         ScheduledWorkflowDefinition workflow,
         CancellationToken ct
     ) {
+        if (_shuttingDown) {
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation( "Shutdown in progress — skipping workflow {WorkflowId}.", workflow.WorkflowId );
+            }
+            return;
+        }
+
+        _ = Interlocked.Increment( ref _activeJobCount );
+        using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _ = _activeWorkflows.TryAdd( workflow.WorkflowId, linkedCts );
+        try {
+            await ExecuteWorkflowCoreAsync( workflow, linkedCts.Token );
+        } finally {
+            _ = _activeWorkflows.TryRemove( workflow.WorkflowId, out _ );
+            if (Interlocked.Decrement( ref _activeJobCount ) == 0 && _shuttingDown) {
+                _ = _drainComplete.TrySetResult( );
+            }
+        }
+    }
+
+    /// <summary>Core workflow execution logic.</summary>
+    private async Task ExecuteWorkflowCoreAsync(
+        ScheduledWorkflowDefinition workflow,
+        CancellationToken ct
+    ) {
         Guid workflowRunId;
         if (!string.IsNullOrWhiteSpace( workflow.WorkflowRunId )
             && Guid.TryParse( workflow.WorkflowRunId, out Guid parsedRunId )) {
@@ -123,12 +204,36 @@ public sealed partial class WorkflowExecutionService(
             variableCache[trigger.Key] = trigger.Value;
         }
 
+        // Seed from prior run variable values (retry-from-failed: includes outputs from succeeded steps)
+        foreach (KeyValuePair<string, string> rv in workflow.RunVariableValues) {
+            variableCache[rv.Key] = rv.Value;
+        }
+
         // Build topological levels from the step definitions
         IReadOnlyList<IReadOnlyList<ScheduledWorkflowStepDef>> levels =
             BuildTopologicalLevels( workflow.Steps );
 
+        // Build child workflow lookup for composite steps (keyed by child workflow ID)
+        Dictionary<long, ChildWorkflowDefinition> childWorkflowMap = [];
+        foreach (ChildWorkflowDefinition child in workflow.ChildWorkflows) {
+            childWorkflowMap[child.ChildWorkflowId] = child;
+        }
+
         // Step result map: stepId → completed job result (concurrent for parallel steps)
         ConcurrentDictionary<long, StepJobResult> stepResults = new();
+
+        // Pre-populate stepResults with prior succeeded steps (retry-from-failed scenario).
+        // This allows dependency checks to pass for upstream steps that don't need re-execution.
+        foreach (long succeededStepId in workflow.PriorSucceededStepIds) {
+            stepResults[succeededStepId] = new StepJobResult(
+                JobId: Guid.Empty,
+                Success: true,
+                ExitCode: 0,
+                StartTime: DateTime.MinValue,
+                EndTime: DateTime.MinValue,
+                ErrorCategory: ErrorCategory.None,
+                OutputPreview: null );
+        }
 
         // If/Else/ElseIf chain tracking: stepId → whether that branch was taken
         Dictionary<long, bool> branchTaken = [];
@@ -157,7 +262,7 @@ public sealed partial class WorkflowExecutionService(
                 if (parallelizable.Count > 0) {
                     StepExecutionResult[] parallelResults = await Task.WhenAll(
                         parallelizable.Select( step => ExecuteStepAsync(
-                            step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, ct ) ) );
+                            step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, childWorkflowMap, ct ) ) );
 
                     foreach (StepExecutionResult result in parallelResults) {
                         if (result.Job is not null) {
@@ -183,7 +288,7 @@ public sealed partial class WorkflowExecutionService(
                     ct.ThrowIfCancellationRequested( );
 
                     StepExecutionResult result = await ExecuteStepAsync(
-                        step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, ct);
+                        step, workflowRunId, stepResults, branchTaken, variableCache, scheduleId, childWorkflowMap, ct);
 
                     if (result.Job is not null) {
                         stepResults[result.StepId] = result.Job;
@@ -210,32 +315,48 @@ public sealed partial class WorkflowExecutionService(
                     workflowRunId, stepResults.Count );
             }
         } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
-            throw; // Propagate shutdown
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation( "Workflow run {RunId} was cancelled.", workflowRunId );
+            }
+            workflowFailed = true;
         } catch (Exception ex) {
             logger.LogError( ex, "Workflow run {RunId} failed with unexpected error.", workflowRunId );
             workflowFailed = true;
         }
 
-        // Report workflow run completion/failure to the server
-        await CompleteWorkflowRunAsync( workflowRunId, !workflowFailed, failedStepId, ct );
+        // Report workflow run completion/failure to the server.
+        // Use a non-cancellable token — we must report even if the run was cancelled (disabled).
+        await CompleteWorkflowRunAsync( workflowRunId, !workflowFailed, failedStepId, CancellationToken.None );
     }
 
     // ── Step Execution ───────────────────────────────────────────────────────────
 
-    /// <summary>Executes a single workflow step, handling control flow and variable I/O.</summary>
-    private async Task<StepExecutionResult> ExecuteStepAsync(
+    /// <summary>Executes a single workflow step, handling control flow, composite nodes, and variable I/O.</summary>
+    internal async Task<StepExecutionResult> ExecuteStepAsync(
         ScheduledWorkflowStepDef step,
         Guid workflowRunId,
         ConcurrentDictionary<long, StepJobResult> stepResults,
         Dictionary<long, bool> branchTaken,
         ConcurrentDictionary<string, string> variableCache,
         Guid? scheduleId,
+        Dictionary<long, ChildWorkflowDefinition> childWorkflowMap,
         CancellationToken ct
     ) {
+        // Handle composite steps (ForEach, etc.) before task validation
+        if (step.IsComposite && (CompositeType)step.CompositeType == CompositeType.ForEach) {
+            return await ExecuteCompositeStepAsync(
+                step, workflowRunId, stepResults, variableCache, scheduleId, childWorkflowMap, ct );
+        }
+
         ScheduledTaskDefinition? taskDef = step.Task;
         if (taskDef is null) {
             string msg = $"Step {step.StepId} has no embedded task definition.";
             return StepExecutionResult.Fail( step.StepId, msg );
+        }
+
+        // Skip steps that already succeeded in a prior attempt (retry-from-failed)
+        if (stepResults.ContainsKey( step.StepId )) {
+            return StepExecutionResult.Skipped( step.StepId );
         }
 
         string stepLabel = $"Step {step.Order}: {taskDef.Name}";
@@ -289,10 +410,11 @@ public sealed partial class WorkflowExecutionService(
             taskDef, workflowRunId, step.StepId, scheduleId, inputVariableValue, outputVariableName, ct);
 
         // Push output variable to server and local cache
-        if (outputVariableName is not null && job.OutputVariableValue is not null) {
-            variableCache[outputVariableName] = job.OutputVariableValue;
+        if (outputVariableName is not null && job.Success) {
+            string value = job.OutputVariableValue ?? string.Empty;
+            variableCache[outputVariableName] = value;
             await variableClient.PushVariableAsync( workflowRunId, outputVariableName,
-                job.OutputVariableValue, step.StepId, job.JobId, ct );
+                value, step.StepId, job.JobId, ct );
         }
 
         // Record branch taken for If/ElseIf chains
@@ -306,6 +428,92 @@ public sealed partial class WorkflowExecutionService(
         }
 
         return StepExecutionResult.Ok( step.StepId, job );
+    }
+
+    /// <summary>
+    /// Executes a composite step by delegating to <see cref="CompositeNodeExecutor"/>.
+    /// Reports step started/completed lifecycle events to the server.
+    /// </summary>
+    private async Task<StepExecutionResult> ExecuteCompositeStepAsync(
+        ScheduledWorkflowStepDef step,
+        Guid workflowRunId,
+        ConcurrentDictionary<long, StepJobResult> stepResults,
+        ConcurrentDictionary<string, string> variableCache,
+        Guid? scheduleId,
+        Dictionary<long, ChildWorkflowDefinition> childWorkflowMap,
+        CancellationToken ct
+    ) {
+        // Skip steps that already succeeded in a prior attempt (retry-from-failed)
+        if (stepResults.ContainsKey( step.StepId )) {
+            return StepExecutionResult.Skipped( step.StepId );
+        }
+
+        // Check dependency satisfaction
+        if (!CheckDependencies( step, stepResults )) {
+            string depError = $"Dependencies not satisfied for composite step {step.StepId}.";
+            return StepExecutionResult.Fail( step.StepId, depError );
+        }
+
+        // Resolve child workflow steps
+        if (step.ChildWorkflowId == 0
+            || !childWorkflowMap.TryGetValue( step.ChildWorkflowId, out ChildWorkflowDefinition? childDef )) {
+            return StepExecutionResult.Fail( step.StepId,
+                $"Child workflow definition not found for composite step {step.StepId} (ChildWorkflowId={step.ChildWorkflowId})." );
+        }
+
+        // Report step started
+        string stepName = $"ForEach (Step {step.Order})";
+        await ReportStepStartedAsync( workflowRunId, step.StepId, stepName, 0, ct );
+
+        DateTime startTime = DateTime.UtcNow;
+
+        // Empty child workflow map for child steps (no nested composite in POC)
+        Dictionary<long, ChildWorkflowDefinition> emptyChildMap = [];
+
+        CompositeExecutionResult compositeResult = await compositeNodeExecutor.ExecuteForEachAsync(
+            step,
+            [.. childDef.Steps],
+            workflowRunId,
+            variableCache,
+            scheduleId,
+            ( s, runId, results, branch, cache, sId, token ) =>
+                ExecuteStepAsync( s, runId, results, branch, cache, sId, emptyChildMap, token ),
+            BuildTopologicalLevels,
+            ct );
+
+        DateTime endTime = DateTime.UtcNow;
+
+        // Create a synthetic job result for the composite step
+        StepJobResult syntheticJob = new(
+            JobId: Guid.NewGuid( ),
+            Success: compositeResult.Success,
+            ExitCode: compositeResult.Success ? 0 : 1,
+            StartTime: startTime,
+            EndTime: endTime,
+            ErrorCategory: compositeResult.Success ? ErrorCategory.None : ErrorCategory.ScriptError,
+            OutputPreview: compositeResult.Success
+                ? $"ForEach: {compositeResult.IterationCount} iteration(s) completed."
+                : compositeResult.ErrorMessage );
+
+        // Report the composite step result to the server
+        await ReportJobResultAsync(
+            syntheticJob.JobId,
+            new ScheduledTaskDefinition { TaskId = 0, Name = stepName },
+            startTime, endTime,
+            compositeResult.Success,
+            syntheticJob.ExitCode,
+            syntheticJob.ErrorCategory,
+            workflowRunId.ToString( ),
+            syntheticJob.OutputPreview,
+            scheduleId,
+            step.StepId,
+            outputVariableName: null,
+            outputVariableValue: null,
+            ct );
+
+        return compositeResult.Success
+            ? StepExecutionResult.Ok( step.StepId, syntheticJob )
+            : StepExecutionResult.Fail( step.StepId, compositeResult.ErrorMessage ?? "ForEach execution failed." );
     }
 
     /// <summary>Executes a While or Do loop step with variable support.</summary>
@@ -359,10 +567,11 @@ public sealed partial class WorkflowExecutionService(
             iterations++;
 
             // Push output variable after each iteration
-            if (outputVariableName is not null && lastJob.OutputVariableValue is not null) {
-                variableCache[outputVariableName] = lastJob.OutputVariableValue;
+            if (outputVariableName is not null && lastJob.Success) {
+                string value = lastJob.OutputVariableValue ?? string.Empty;
+                variableCache[outputVariableName] = value;
                 await variableClient.PushVariableAsync( workflowRunId, outputVariableName,
-                    lastJob.OutputVariableValue, step.StepId, lastJob.JobId, ct );
+                    value, step.StepId, lastJob.JobId, ct );
             }
 
             if (!lastJob.Success) {
@@ -597,7 +806,7 @@ public sealed partial class WorkflowExecutionService(
     /// Builds topological levels from proto step definitions using Kahn's algorithm.
     /// Steps at the same level have all dependencies satisfied by prior levels.
     /// </summary>
-    private static List<IReadOnlyList<ScheduledWorkflowStepDef>> BuildTopologicalLevels(
+    internal static List<IReadOnlyList<ScheduledWorkflowStepDef>> BuildTopologicalLevels(
         IReadOnlyCollection<ScheduledWorkflowStepDef> steps
     ) {
         // Build adjacency: stepId → set of dependents
@@ -667,9 +876,9 @@ public sealed partial class WorkflowExecutionService(
         DependencyMode mode = (DependencyMode) step.DependencyMode;
 
         return mode switch {
-            DependencyMode.All =>
+            DependencyMode.AllSuccess =>
                 step.DependsOnStepIds.All( stepResults.ContainsKey ),
-            DependencyMode.Any =>
+            DependencyMode.AnySuccess =>
                 step.DependsOnStepIds.Any( stepResults.ContainsKey ),
             _ => step.DependsOnStepIds.All( stepResults.ContainsKey ),
         };

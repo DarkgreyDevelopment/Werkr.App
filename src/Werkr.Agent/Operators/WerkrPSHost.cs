@@ -23,10 +23,6 @@ public sealed class WerkrPSHost( ChannelWriter<OperatorOutput> writer, int buffe
     /// Unique identifier for this host instance, generated at construction time.
     /// </summary>
     private readonly Guid _instanceId = Guid.NewGuid( );
-    /// <summary>
-    /// The user interface implementation that routes PowerShell output to the operator output channel.
-    /// </summary>
-    private readonly WerkrPSHostUserInterface _ui = new( writer, bufferWidth );
 
     /// <inheritdoc/>
     public override string Name => "WerkrPSHost";
@@ -44,7 +40,13 @@ public sealed class WerkrPSHost( ChannelWriter<OperatorOutput> writer, int buffe
     public override CultureInfo CurrentUICulture => CultureInfo.CurrentUICulture;
 
     /// <inheritdoc/>
-    public override PSHostUserInterface UI => _ui;
+    public override PSHostUserInterface UI => WerkrUI;
+
+    /// <summary>
+    /// Provides access to the <see cref="WerkrPSHostUserInterface"/> for post-invocation
+    /// Information stream deduplication.
+    /// </summary>
+    internal WerkrPSHostUserInterface WerkrUI { get; } = new( writer, bufferWidth );
 
     /// <inheritdoc/>
     public override void SetShouldExit( int exitCode ) { /* no-op */ }

@@ -1,7 +1,7 @@
 ﻿@page "/holiday-calendars/{Id:guid}/detail"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 @using Werkr.Common.Models.Holidays
 
@@ -145,9 +145,8 @@
     protected override async Task OnInitializedAsync( ) {
         _isLoading = true;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _calendar = await client.GetFromJsonAsync<HolidayCalendarDto>( $"/api/holiday-calendars/{Id}" );
-            _rules = await client.GetFromJsonAsync<List<HolidayRuleDto>>( $"/api/holiday-calendars/{Id}/rules" );
+            _calendar = await Api.GetAsync<HolidayCalendarDto>( $"/api/v1/holiday-calendars/{Id}" );
+            _rules = await Api.GetAsync<List<HolidayRuleDto>>( $"/api/v1/holiday-calendars/{Id}/rules" );
 
             if ( _calendar is not null ) {
                 _breadcrumbs = [
@@ -166,9 +165,8 @@
     private async Task PreviewAsync( ) {
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HolidayPreviewResponse? preview = await client.GetFromJsonAsync<HolidayPreviewResponse>(
-                $"/api/holiday-calendars/{Id}/preview?startYear={_previewStartYear}&endYear={_previewEndYear}" );
+            HolidayPreviewResponse? preview = await Api.GetAsync<HolidayPreviewResponse>(
+                $"/api/v1/holiday-calendars/{Id}/preview?startYear={_previewStartYear}&endYear={_previewEndYear}" );
             _previewDates = preview?.Dates?.ToList( );
         } catch ( Exception ex ) {
             _errorMessage = $"Preview failed: {ex.Message}";
@@ -177,9 +175,8 @@
 
     private async Task CloneAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             CloneHolidayCalendarRequest req = new( $"{_calendar!.Name} (Copy)" );
-            HttpResponseMessage res = await client.PostAsJsonAsync( $"/api/holiday-calendars/{Id}/clone", req );
+            HttpResponseMessage res = await Api.PostAsJsonAsync( $"/api/v1/holiday-calendars/{Id}/clone", req );
             if ( res.IsSuccessStatusCode ) {
                 HolidayCalendarDto? cloned = await res.Content.ReadFromJsonAsync<HolidayCalendarDto>( );
                 if ( cloned is not null ) {

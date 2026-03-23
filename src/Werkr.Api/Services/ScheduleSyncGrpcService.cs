@@ -1,14 +1,17 @@
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
+using Werkr.Common.Models;
+using Werkr.Common.Models.Audit;
 using Werkr.Common.Protos;
+using Werkr.Core.Audit;
 using Werkr.Core.Communication;
 using Werkr.Core.Scheduling;
 using Werkr.Data;
-using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Models;
 using Werkr.Data.Entities.Registration;
 using Werkr.Data.Entities.Schedule;
 using Werkr.Data.Entities.Tasks;
+using Werkr.Data.Entities.Triggers;
 using Werkr.Data.Entities.Workflows;
 
 namespace Werkr.Api.Services;
@@ -23,12 +26,18 @@ namespace Werkr.Api.Services;
 /// <param name="scheduleService">Schedule service for loading composite schedules.</param>
 /// <param name="holidayDateService">Holiday date materialization service.</param>
 /// <param name="holidayCalendarService">Holiday calendar CRUD service.</param>
+/// <param name="auditService">Audit service for recording schedule audit events.</param>
+/// <param name="credentialService">Credential service for resolving credentials at dispatch time.</param>
+/// <param name="builder">Secure response builder for envelope encryption.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ScheduleSyncGrpcService(
     WerkrDbContext dbContext,
     ScheduleService scheduleService,
     HolidayDateService holidayDateService,
     HolidayCalendarService holidayCalendarService,
+    IAuditService auditService,
+    Werkr.Core.Credentials.ICredentialService credentialService,
+    SecureResponseBuilder builder,
     ILogger<ScheduleSyncGrpcService> logger
 ) : ScheduleSync.ScheduleSyncBase {
 
@@ -41,11 +50,7 @@ public sealed partial class ScheduleSyncGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        AgentScheduleRequest inner = PayloadEncryptor.DecryptFromEnvelope<AgentScheduleRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, AgentScheduleRequest inner) = SecureResponseBuilder.DecryptRequest<AgentScheduleRequest>( request, context );
 
         if (string.IsNullOrWhiteSpace( inner.ConnectionId )) {
             throw new RpcException( new Status( StatusCode.InvalidArgument, "Connection ID is required." ) );
@@ -84,6 +89,7 @@ public sealed partial class ScheduleSyncGrpcService(
             }
 
             ScheduledTaskDefinition taskDef = MapTaskDefinition( task, schedule );
+            await ResolveCredentialsForTaskDefAsync( taskDef, connection.Id, context.CancellationToken );
             response.Tasks.Add( taskDef );
         }
 
@@ -120,6 +126,89 @@ public sealed partial class ScheduleSyncGrpcService(
 
             ScheduledWorkflowDefinition workflowDef = MapWorkflowDefinition( workflow, schedule );
 
+            // Load child workflows for composite steps
+            List<long> compositeStepIds = [.. workflow.Steps
+                .Where( s => s.IsComposite )
+                .Select( s => s.Id )];
+
+            if (compositeStepIds.Count > 0) {
+                List<Workflow> childWorkflows = await dbContext.Workflows
+                    .AsNoTracking( )
+                    .Include( w => w.Steps )
+                        .ThenInclude( s => s.Task )
+                    .Include( w => w.Steps )
+                        .ThenInclude( s => s.Dependencies )
+                    .Include( w => w.Variables )
+                    .Where( w => w.IsChildWorkflow && w.ParentStepId != null
+                        && compositeStepIds.Contains( w.ParentStepId.Value ) )
+                    .ToListAsync( context.CancellationToken );
+
+                foreach (Workflow childWf in childWorkflows) {
+                    ChildWorkflowDefinition childDef = new( ) {
+                        ChildWorkflowId = childWf.Id,
+                    };
+
+                    foreach (WorkflowStep childStep in childWf.Steps.OrderBy( s => s.Order )) {
+                        ScheduledWorkflowStepDef childStepDef = new( ) {
+                            StepId = childStep.Id,
+                            TaskId = childStep.TaskId ?? 0,
+                            Order = childStep.Order,
+                            ControlStatement = (int) childStep.ControlStatement,
+                            ConditionExpression = childStep.ConditionExpression ?? string.Empty,
+                            MaxIterations = childStep.MaxIterations,
+                            AgentConnectionIdOverride = childStep.AgentConnectionIdOverride?.ToString( ) ?? string.Empty,
+                            DependencyMode = (int) childStep.DependencyMode,
+                            InputVariableName = childStep.InputVariableName ?? string.Empty,
+                            OutputVariableName = childStep.OutputVariableName ?? string.Empty,
+                            IsComposite = childStep.IsComposite,
+                            CompositeType = (int) childStep.CompositeType,
+                            ChildWorkflowId = childStep.ChildWorkflowId ?? 0,
+                            IterationVariableName = childStep.IterationVariableName ?? string.Empty,
+                            CollectionVariableName = childStep.CollectionVariableName ?? string.Empty,
+                        };
+
+                        foreach (WorkflowStepDependency dep in childStep.Dependencies) {
+                            childStepDef.DependsOnStepIds.Add( dep.DependsOnStepId );
+                        }
+
+                        if (childStep.Task is not null) {
+                            WerkrTask childTask = childStep.Task;
+                            ScheduledTaskDefinition childTaskDef = new( ) {
+                                TaskId = childTask.Id,
+                                Name = childTask.Name,
+                                ActionType = (int) childTask.ActionType,
+                                Content = childTask.Content,
+                                TimeoutMinutes = childTask.TimeoutMinutes ?? 60,
+                                SyncIntervalMinutes = childTask.SyncIntervalMinutes,
+                                SuccessCriteria = childTask.SuccessCriteria ?? string.Empty,
+                                ActionSubType = childTask.ActionSubType ?? string.Empty,
+                                ActionParametersJson = childTask.ActionParameters ?? string.Empty,
+                            };
+
+                            if (childTask.Arguments is { Length: > 0 }) {
+                                childTaskDef.Arguments.AddRange( childTask.Arguments );
+                            }
+
+                            childStepDef.Task = childTaskDef;
+                        }
+
+                        childDef.Steps.Add( childStepDef );
+                    }
+
+                    foreach (WorkflowVariable variable in childWf.Variables) {
+                        childDef.Variables.Add( new WorkflowVariableDef {
+                            Name = variable.Name,
+                            DefaultValue = variable.DefaultValue ?? string.Empty,
+                            DataType = variable.DataType ?? string.Empty,
+                            IsRequired = variable.IsRequired,
+                            LogRedaction = variable.LogRedaction,
+                        } );
+                    }
+
+                    workflowDef.ChildWorkflows.Add( childDef );
+                }
+            }
+
             // For run-now schedules, include the API-generated workflow run ID
             if (ws.WorkflowRunId.HasValue) {
                 workflowDef.WorkflowRunId = ws.WorkflowRunId.Value.ToString( );
@@ -134,18 +223,92 @@ public sealed partial class ScheduleSyncGrpcService(
                 foreach (WorkflowRunVariable tv in triggerVars) {
                     workflowDef.TriggerVariables[tv.VariableName] = tv.Value;
                 }
+
+                // Include step IDs that already succeeded (for retry-from-failed pre-population)
+                List<long> succeededStepIds = await dbContext.WorkflowStepExecutions
+                    .AsNoTracking()
+                    .Where(e => e.WorkflowRunId == ws.WorkflowRunId.Value
+                        && e.Status == StepExecutionStatus.Succeeded)
+                    .Select(e => e.StepId)
+                    .Distinct()
+                    .ToListAsync(context.CancellationToken);
+
+                workflowDef.PriorSucceededStepIds.AddRange( succeededStepIds );
+
+                // Include latest variable values for retry cache seeding
+                if (succeededStepIds.Count > 0) {
+                    List<WorkflowRunVariable> latestVars = await dbContext.Set<WorkflowRunVariable>()
+                        .AsNoTracking()
+                        .Where(v => v.WorkflowRunId == ws.WorkflowRunId.Value)
+                        .GroupBy(v => v.VariableName)
+                        .Select(g => g.OrderByDescending(v => v.Version).First())
+                        .ToListAsync(context.CancellationToken);
+
+                    foreach (WorkflowRunVariable rv in latestVars) {
+                        workflowDef.RunVariableValues[rv.VariableName] = rv.Value;
+                    }
+                }
             }
+
+            // Resolve credentials for all task definitions in the workflow
+            await ResolveCredentialsForWorkflowDefAsync( workflowDef, connection.Id, context.CancellationToken );
 
             response.Workflows.Add( workflowDef );
         }
 
-        if (logger.IsEnabled( LogLevel.Information )) {
-            logger.LogInformation(
-                "Returning {TaskCount} tasks and {WorkflowCount} workflows for agent {AgentId}.",
-                response.Tasks.Count.ToString( ), response.Workflows.Count.ToString( ), inner.ConnectionId );
+        // ── File monitor triggers ──
+        List<FileMonitorTrigger> fileMonitorTriggers = await dbContext.FileMonitorTriggers
+            .AsNoTracking( )
+            .Where( t => t.Enabled )
+            .ToListAsync( context.CancellationToken );
+
+        foreach (FileMonitorTrigger fmt in fileMonitorTriggers) {
+            // Tag matching: if TargetTags is null/empty, the trigger matches all agents
+            if (!string.IsNullOrWhiteSpace( fmt.TargetTags )) {
+                try {
+                    string[]? triggerTags = System.Text.Json.JsonSerializer
+                        .Deserialize<string[]>( fmt.TargetTags );
+                    if (triggerTags is { Length: > 0 }
+                        && !triggerTags.Any( tag => agentTags.Contains( tag.Trim( ) ) )) {
+                        continue;
+                    }
+                } catch {
+                    // Malformed JSON — skip tag filter
+                }
+            }
+
+            // Parse event types from JSON string
+            List<string> eventTypes = [];
+            try {
+                string[]? parsed = System.Text.Json.JsonSerializer
+                    .Deserialize<string[]>( fmt.EventTypes );
+                if (parsed is not null) {
+                    eventTypes.AddRange( parsed );
+                }
+            } catch {
+                eventTypes.Add( "created" );
+            }
+
+            FileMonitorTriggerDef triggerDef = new( ) {
+                TriggerId = fmt.Id,
+                WorkflowId = fmt.WorkflowId,
+                WatchDirectory = fmt.WatchDirectory,
+                FilePattern = fmt.FilePattern,
+                DebounceMs = fmt.DebounceMs,
+            };
+            triggerDef.EventTypes.AddRange( eventTypes );
+
+            response.FileMonitorTriggers.Add( triggerDef );
         }
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        if (logger.IsEnabled( LogLevel.Information )) {
+            logger.LogInformation(
+                "Returning {TaskCount} tasks, {WorkflowCount} workflows, and {TriggerCount} file monitor triggers for agent {AgentId}.",
+                response.Tasks.Count.ToString( ), response.Workflows.Count.ToString( ),
+                response.FileMonitorTriggers.Count.ToString( ), inner.ConnectionId );
+        }
+
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>Maps a <see cref="WerkrTask"/> and <see cref="Schedule"/> to a proto definition.</summary>
@@ -155,7 +318,7 @@ public sealed partial class ScheduleSyncGrpcService(
             Name = task.Name,
             ActionType = (int) task.ActionType,
             Content = task.Content,
-            TimeoutMinutes = task.TimeoutMinutes ?? 30,
+            TimeoutMinutes = task.TimeoutMinutes ?? 60,
             SyncIntervalMinutes = task.SyncIntervalMinutes,
             Schedule = MapScheduleDefinition( schedule ),
             SuccessCriteria = task.SuccessCriteria ?? string.Empty,
@@ -170,6 +333,67 @@ public sealed partial class ScheduleSyncGrpcService(
         return def;
     }
 
+    /// <summary>
+    /// Resolves credentials for all task definitions within a workflow definition,
+    /// including child workflow steps.
+    /// </summary>
+    private async Task ResolveCredentialsForWorkflowDefAsync(
+        ScheduledWorkflowDefinition workflowDef, Guid agentConnectionId, CancellationToken ct
+    ) {
+        foreach (ScheduledWorkflowStepDef step in workflowDef.Steps) {
+            if (step.Task is not null) {
+                await ResolveCredentialsForTaskDefAsync( step.Task, agentConnectionId, ct );
+            }
+        }
+
+        foreach (ChildWorkflowDefinition child in workflowDef.ChildWorkflows) {
+            foreach (ScheduledWorkflowStepDef childStep in child.Steps) {
+                if (childStep.Task is not null) {
+                    await ResolveCredentialsForTaskDefAsync( childStep.Task, agentConnectionId, ct );
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Resolves credentials referenced in a task definition's ActionParameters
+    /// and populates the proto's resolved_credentials map.
+    /// </summary>
+    private async Task ResolveCredentialsForTaskDefAsync(
+        ScheduledTaskDefinition taskDef, Guid agentConnectionId, CancellationToken ct
+    ) {
+        IReadOnlyList<string> credentialNames = Werkr.Core.Credentials.CredentialResolver
+            .FindCredentialReferences( taskDef.ActionParametersJson );
+
+        foreach (string name in credentialNames) {
+            try {
+                Common.Models.CredentialResolveResult result = await credentialService.ResolveForAgentAsync(
+                    name, agentConnectionId, "system", ct );
+
+                if (result is { Found: true, InScope: true, DecryptedValue: not null }) {
+                    taskDef.ResolvedCredentials[name] = result.DecryptedValue;
+                } else if (result is { Found: true, InScope: false }) {
+                    logger.LogError(
+                        "Credential '{CredentialName}' exists but agent {AgentId} is out of scope (task {TaskId}). Dispatch rejected.",
+                        name, agentConnectionId, taskDef.TaskId );
+                    throw new Grpc.Core.RpcException( new Grpc.Core.Status(
+                        Grpc.Core.StatusCode.PermissionDenied,
+                        $"Credential '{name}' is not scoped to this agent." ) );
+                } else if (!result.Found) {
+                    logger.LogWarning(
+                        "Credential '{CredentialName}' not found for task {TaskId}.",
+                        name, taskDef.TaskId );
+                }
+            } catch (Grpc.Core.RpcException) {
+                throw; // Re-throw scope rejections
+            } catch (Exception ex) {
+                logger.LogWarning( ex,
+                    "Failed to resolve credential '{CredentialName}' for task {TaskId}.",
+                    name, taskDef.TaskId );
+            }
+        }
+    }
+
     /// <summary>Maps a <see cref="Schedule"/> composite to a proto definition.</summary>
     private static ScheduleDefinition MapScheduleDefinition( Schedule schedule ) {
         ScheduleDefinition def = new( ) {
@@ -181,12 +405,14 @@ public sealed partial class ScheduleSyncGrpcService(
             def.StartDate = schedule.StartDateTime.Date.ToString( "O" );
             def.StartTime = schedule.StartDateTime.Time.ToString( "O" );
             def.TimeZoneId = schedule.StartDateTime.TimeZone.Id;
+            def.IsFixedOffset = schedule.StartDateTime.IsFixedOffset;
         }
 
         if (schedule.Expiration is not null) {
             def.ExpirationDate = schedule.Expiration.Date.ToString( "O" );
             def.ExpirationTime = schedule.Expiration.Time.ToString( "O" );
             def.ExpirationTimeZoneId = schedule.Expiration.TimeZone.Id;
+            def.ExpirationIsFixedOffset = schedule.Expiration.IsFixedOffset;
         }
 
         if (schedule.DailyRecurrence is not null) {
@@ -230,6 +456,37 @@ public sealed partial class ScheduleSyncGrpcService(
         // Catch-up flag
         def.CatchUpEnabled = schedule.DbSchedule.CatchUpEnabled;
 
+        // ShiftMode (Epic 1.4.4)
+        def.ShiftMode = (int)schedule.DbSchedule.ShiftMode;
+
+        // Calendar definition with rules (Epic 1.4.3)
+        if (schedule.HolidayCalendar is not null) {
+            CalendarDefinition calDef = new( ) {
+                CalendarId = schedule.HolidayCalendar.Id.ToString( ),
+                Name = schedule.HolidayCalendar.Name,
+                WorkingDays = (int) schedule.HolidayCalendar.WorkingDays,
+            };
+
+            foreach (HolidayRule rule in schedule.HolidayCalendar.Rules) {
+                calDef.HolidayRules.Add( new HolidayRuleDefinition {
+                    Name = rule.Name,
+                    RuleType = (int)rule.RuleType,
+                    Month = rule.Month ?? 0,
+                    Day = rule.Day ?? 0,
+                    DayOfWeek = rule.DayOfWeek.HasValue ? (int)rule.DayOfWeek.Value : 0,
+                    WeekNumber = rule.WeekNumber ?? 0,
+                    ObservanceRule = (int)rule.ObservanceRule,
+                    YearStart = rule.YearStart ?? 0,
+                    YearEnd = rule.YearEnd ?? 0,
+                    WindowStart = rule.WindowStart?.ToString( "O" ) ?? string.Empty,
+                    WindowEnd = rule.WindowEnd?.ToString( "O" ) ?? string.Empty,
+                    WindowTimeZoneId = rule.WindowTimeZoneId ?? string.Empty,
+                } );
+            }
+
+            def.Calendar = calDef;
+        }
+
         return def;
     }
 
@@ -244,7 +501,7 @@ public sealed partial class ScheduleSyncGrpcService(
         foreach (WorkflowStep step in workflow.Steps.OrderBy( s => s.Order )) {
             ScheduledWorkflowStepDef stepDef = new( ) {
                 StepId = step.Id,
-                TaskId = step.TaskId,
+                TaskId = step.TaskId ?? 0,
                 Order = step.Order,
                 ControlStatement = (int) step.ControlStatement,
                 ConditionExpression = step.ConditionExpression ?? string.Empty,
@@ -253,6 +510,11 @@ public sealed partial class ScheduleSyncGrpcService(
                 DependencyMode = (int) step.DependencyMode,
                 InputVariableName = step.InputVariableName ?? string.Empty,
                 OutputVariableName = step.OutputVariableName ?? string.Empty,
+                IsComposite = step.IsComposite,
+                CompositeType = (int) step.CompositeType,
+                ChildWorkflowId = step.ChildWorkflowId ?? 0,
+                IterationVariableName = step.IterationVariableName ?? string.Empty,
+                CollectionVariableName = step.CollectionVariableName ?? string.Empty,
             };
 
             // Add dependency step IDs
@@ -268,7 +530,7 @@ public sealed partial class ScheduleSyncGrpcService(
                     Name = stepTask.Name,
                     ActionType = (int) stepTask.ActionType,
                     Content = stepTask.Content,
-                    TimeoutMinutes = stepTask.TimeoutMinutes ?? 30,
+                    TimeoutMinutes = stepTask.TimeoutMinutes ?? 60,
                     SyncIntervalMinutes = stepTask.SyncIntervalMinutes,
                     SuccessCriteria = stepTask.SuccessCriteria ?? string.Empty,
                     ActionSubType = stepTask.ActionSubType ?? string.Empty,
@@ -290,6 +552,9 @@ public sealed partial class ScheduleSyncGrpcService(
             def.Variables.Add( new WorkflowVariableDef {
                 Name = variable.Name,
                 DefaultValue = variable.DefaultValue ?? string.Empty,
+                DataType = variable.DataType ?? string.Empty,
+                IsRequired = variable.IsRequired,
+                LogRedaction = variable.LogRedaction,
             } );
         }
 
@@ -305,11 +570,7 @@ public sealed partial class ScheduleSyncGrpcService(
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        GetBulkScheduleHolidayDatesRequest inner = PayloadEncryptor.DecryptFromEnvelope<GetBulkScheduleHolidayDatesRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, GetBulkScheduleHolidayDatesRequest inner) = SecureResponseBuilder.DecryptRequest<GetBulkScheduleHolidayDatesRequest>( request, context );
 
         DateOnly startDate = DateOnly.Parse( inner.StartDate );
         DateOnly endDate = DateOnly.Parse( inner.EndDate );
@@ -349,22 +610,19 @@ public sealed partial class ScheduleSyncGrpcService(
             response.Results.Add( result );
         }
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 
     /// <summary>
-    /// Persists audit log entries submitted by an agent for suppressed/required holiday occurrences.
+    /// Persists audit log entries submitted by an agent for suppressed/shifted holiday occurrences.
+    /// Writes to the unified <see cref="Werkr.Data.Entities.Audit.AuditEvent"/> table.
     /// </summary>
     public override async Task<EncryptedEnvelope> SubmitAuditLog(
         EncryptedEnvelope request,
         ServerCallContext context
     ) {
 
-        RegisteredConnection connection = GetConnection( context );
-        string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-
-        SubmitAuditLogRequest inner = PayloadEncryptor.DecryptFromEnvelope<SubmitAuditLogRequest>(
-            request, connection.SharedKey );
+        (RegisteredConnection connection, SubmitAuditLogRequest inner) = SecureResponseBuilder.DecryptRequest<SubmitAuditLogRequest>( request, context );
 
         Guid scheduleId = Guid.Parse( inner.ScheduleId );
 
@@ -373,33 +631,38 @@ public sealed partial class ScheduleSyncGrpcService(
             scheduleId, context.CancellationToken );
 
         string calendarName = link?.Calendar?.Name ?? "Unknown";
-        HolidayCalendarMode mode = link?.Mode ?? HolidayCalendarMode.Blocklist;
 
-        List<ScheduleAuditLog> logs = [.. inner.Entries.Select( e => new ScheduleAuditLog {
-            ScheduleId = scheduleId,
-            OccurrenceUtcTime = DateTime.Parse( e.OccurrenceUtc ).ToUniversalTime( ),
-            CalendarName = calendarName,
-            HolidayName = e.HolidayName,
-            Mode = mode,
-            CreatedUtc = DateTime.UtcNow,
-        } )];
+        int accepted = 0;
+        foreach (AuditLogEntry e in inner.Entries) {
+            string action = !string.IsNullOrEmpty( e.Action ) ? e.Action : "Suppressed";
+            string eventTypeId = string.Equals( action, "Shifted", StringComparison.OrdinalIgnoreCase )
+                ? AuditEventType.ScheduleOccurrenceShifted.ToEventId( )
+                : AuditEventType.ScheduleOccurrenceSuppressed.ToEventId( );
 
-        dbContext.ScheduleAuditLogs.AddRange( logs );
-        _ = await dbContext.SaveChangesAsync( context.CancellationToken );
+            object details = new {
+                ScheduleId = scheduleId.ToString( ),
+                OccurrenceUtcTime = e.OccurrenceUtc,
+                CalendarName = calendarName,
+                HolidayName = e.HolidayName,
+                ShiftedToUtcTime = !string.IsNullOrEmpty( e.ShiftedToUtc ) ? e.ShiftedToUtc : null
+            };
+
+            await auditService.LogAsync( new AuditEntry(
+                EventTypeId: eventTypeId,
+                ActorId: connection.Id.ToString( ),
+                ActorType: "Agent",
+                EntityType: "Schedule",
+                EntityId: scheduleId.ToString( ),
+                ActionPerformed: action,
+                Details: details
+            ), context.CancellationToken );
+            accepted++;
+        }
 
         SubmitAuditLogResponse response = new( ) {
-            AcceptedCount = logs.Count,
+            AcceptedCount = accepted,
         };
 
-        return PayloadEncryptor.EncryptToEnvelope( response, connection.SharedKey, keyId );
-    }
-
-    /// <summary>
-    /// Extracts the <see cref="RegisteredConnection"/> from the gRPC call context's <c>UserState</c> dictionary, where it was placed by the <see cref="Interceptors.AgentBearerTokenInterceptor"/> during authentication.
-    /// </summary>
-    private static RegisteredConnection GetConnection( ServerCallContext context ) {
-        return context.UserState.TryGetValue( "Connection", out object? connObj ) && connObj is RegisteredConnection connection
-            ? connection
-            : throw new RpcException( new Status( StatusCode.Internal, "Connection not resolved by interceptor." ) );
+        return await builder.EncryptResponseAsync( response, connection, context.CancellationToken );
     }
 }

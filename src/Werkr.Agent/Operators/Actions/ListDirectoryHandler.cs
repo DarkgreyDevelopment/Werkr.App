@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
@@ -13,6 +14,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// matching a pattern and writes results as a JSON array to the output channel.
 /// </summary>
 /// <remarks>Creates a new <see cref="ListDirectoryHandler"/>.</remarks>
+[ActionCategory( "Directory" )]
 public sealed partial class ListDirectoryHandler( IFilePathResolver resolver, ILogger<ListDirectoryHandler> logger ) : IActionHandler {
 
     /// <summary>

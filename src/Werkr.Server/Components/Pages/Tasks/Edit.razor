@@ -1,7 +1,7 @@
 @page "/tasks/{Id:long}"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 
 <PageTitle>Werkr - Edit Task</PageTitle>
@@ -122,6 +122,17 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Version Notes</h5>
+                <div class="mb-3">
+                    <label class="form-label" for="changeDesc">Change Description (optional)</label>
+                    <InputText id="changeDesc" class="form-control" @bind-Value="_changeDescription"
+                               placeholder="What changed in this version?" />
+                </div>
+            </div>
+        </div>
+
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary" disabled="@_isSaving">
                 @if ( _isSaving ) {
@@ -132,6 +143,60 @@
             <a href="/tasks" class="btn btn-outline-secondary">Cancel</a>
         </div>
     </EditForm>
+
+    @if ( _currentVersionNumber.HasValue ) {
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">
+                        Version History
+                        <span class="badge bg-primary ms-2">Current: v@(_currentVersionNumber)</span>
+                    </h5>
+                </div>
+                @if ( _versions is { Items.Count: > 0 } ) {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Version</th>
+                                    <th>Created</th>
+                                    <th>Author</th>
+                                    <th>Description</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( TaskVersionDto v in _versions.Items ) {
+                                    <tr>
+                                        <td>
+                                            <span class="badge @( v.VersionNumber == _currentVersionNumber ? "bg-primary" : "bg-secondary" )">
+                                                v@(v.VersionNumber)
+                                            </span>
+                                        </td>
+                                        <td>@v.CreatedUtc.ToString( "g" )</td>
+                                        <td>@( v.CreatedByUserId ?? "System" )</td>
+                                        <td>@( v.ChangeDescription ?? "—" )</td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <a href="/tasks/@Id/versions/@v.Id"
+                                                   class="btn btn-outline-secondary btn-sm">View</a>
+                                                @if ( v.VersionNumber > 1 && GetPreviousVersionId( v.VersionNumber ) is long prevId ) {
+                                                    <a href="/tasks/@Id/versions/diff?from=@prevId&to=@v.Id"
+                                                       class="btn btn-outline-info btn-sm">Diff</a>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } else {
+                    <p class="text-muted mb-0">No version history available.</p>
+                }
+            </div>
+        </div>
+    }
 
     <hr class="my-4" />
 
@@ -161,7 +226,7 @@
                             <td>@j.StartTime.ToString( "g" )</td>
                             <td>@j.RuntimeSeconds.ToString( "F1" )s</td>
                             <td>
-                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( j.Success ? "Completed" : "Failed" )">
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( j.Success ? "Succeeded" : "Failed" )">
                                     @( j.Success ? "Success" : "Failed" )
                                 </span>
                             </td>
@@ -184,7 +249,10 @@
     private ActionParameterEditor? _actionEditor;
     private List<JobListDto>? _jobs;
     private List<WorkflowDto> _workflows = [];
+    private PagedResult<TaskVersionDto>? _versions;
     private int? _syncIntervalMinutes;
+    private int? _currentVersionNumber;
+    private string? _changeDescription;
     private string? _errorMessage;
     private bool _isLoading;
     private bool _isSaving;
@@ -199,12 +267,10 @@
     protected override async Task OnInitializedAsync( ) {
         _isLoading = true;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             // Load workflows for dropdown
-            _workflows = await client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" ) ?? [];
+            _workflows = await Api.GetAsync<List<WorkflowDto>>( "/api/v1/workflows" ) ?? [];
 
-            TaskDto? dto = await client.GetFromJsonAsync<TaskDto>( $"/api/tasks/{Id}" );
+            TaskDto? dto = await Api.GetAsync<TaskDto>( $"/api/v1/tasks/{Id}" );
             if ( dto is null ) {
                 _errorMessage = "Task not found.";
                 return;
@@ -213,8 +279,10 @@
             _model = TaskFormModel.FromDto( dto );
             _targetTags = dto.TargetTags;
             _syncIntervalMinutes = dto.SyncIntervalMinutes;
+            _currentVersionNumber = dto.CurrentVersionNumber;
 
-            _jobs = await client.GetFromJsonAsync<List<JobListDto>>( $"/api/tasks/{Id}/jobs?limit=25" );
+            _versions = await Api.GetAsync<PagedResult<TaskVersionDto>>( $"/api/v1/tasks/{Id}/versions?limit=25" );
+            _jobs = await Api.GetAsync<List<JobListDto>>( $"/api/v1/tasks/{Id}/jobs?limit=25" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load task: {ex.Message}";
         } finally {
@@ -231,9 +299,8 @@
         _errorMessage = null;
         _model.TargetTags = string.Join( ",", _targetTags );
         try {
-            TaskUpdateRequest request = _model.ToUpdateRequest( );
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/tasks/{Id}", request );
+            TaskUpdateRequest request = _model.ToUpdateRequest( _changeDescription );
+            HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/tasks/{Id}", request );
             if ( response.IsSuccessStatusCode ) {
                 Navigation.NavigateTo( "/tasks" );
             } else {
@@ -249,6 +316,9 @@
 
     private static bool IsScriptType( string actionType ) =>
         actionType is "PowerShellScript" or "ShellScript";
+
+    private long? GetPreviousVersionId( int versionNumber ) =>
+        _versions?.Items.FirstOrDefault( v => v.VersionNumber == versionNumber - 1 )?.Id;
 
     private void OnTargetTagsChanged( string[] tags ) {
         _targetTags = tags;
@@ -288,7 +358,7 @@
             };
         }
 
-        public TaskUpdateRequest ToUpdateRequest( ) {
+        public TaskUpdateRequest ToUpdateRequest( string? changeDescription = null ) {
             string[]? args = string.IsNullOrWhiteSpace( Arguments )
                 ? null
                 : Arguments.Split( '\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries );
@@ -311,7 +381,8 @@
                 SuccessCriteria: SuccessCriteria,
                 WorkflowId: workflowId,
                 ActionSubType: string.IsNullOrWhiteSpace( ActionSubType ) ? null : ActionSubType,
-                ActionParameters: string.IsNullOrWhiteSpace( ActionParameters ) ? null : ActionParameters );
+                ActionParameters: string.IsNullOrWhiteSpace( ActionParameters ) ? null : ActionParameters,
+                ChangeDescription: string.IsNullOrWhiteSpace( changeDescription ) ? null : changeDescription );
         }
     }
 }

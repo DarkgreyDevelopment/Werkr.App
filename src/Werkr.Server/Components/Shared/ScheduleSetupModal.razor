@@ -1,7 +1,8 @@
 @using System.ComponentModel.DataAnnotations
 @using Werkr.Common.Models.Holidays
+@using Werkr.Common.Scheduling
 @rendermode InteractiveServer
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 @if ( _isVisible ) {
     <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
@@ -46,11 +47,25 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Time Zone</label>
-                                <InputSelect class="form-select" @bind-Value="_model.TimeZoneId">
-                                    @foreach ( TimeZoneInfo zone in s_timeZones ) {
-                                        <option value="@zone.Id">@zone.DisplayName</option>
-                                    }
-                                </InputSelect>
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="sched-fixedStartTz"
+                                           checked="@_model.UseFixedStartOffset"
+                                           @onchange="e => _model.UseFixedStartOffset = (bool)(e.Value ?? false)" />
+                                    <label class="form-check-label" for="sched-fixedStartTz">Use fixed GMT offset</label>
+                                </div>
+                                @if ( _model.UseFixedStartOffset ) {
+                                    <InputSelect class="form-select" @bind-Value="_model.TimeZoneId">
+                                        @foreach ( FixedOffsetListItem item in s_fixedOffsets ) {
+                                            <option value="@item.Id">@item.Label</option>
+                                        }
+                                    </InputSelect>
+                                } else {
+                                    <InputSelect class="form-select" @bind-Value="_model.TimeZoneId">
+                                        @foreach ( TimeZoneListItem item in s_timeZoneItems ) {
+                                            <option value="@item.Id">@item.DisplayName — @item.Abbreviation</option>
+                                        }
+                                    </InputSelect>
+                                }
                             </div>
                         </div>
 
@@ -187,11 +202,25 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Time Zone</label>
-                                    <InputSelect class="form-select" @bind-Value="_model.ExpirationTimeZoneId">
-                                        @foreach ( TimeZoneInfo zone in s_timeZones ) {
-                                            <option value="@zone.Id">@zone.DisplayName</option>
-                                        }
-                                    </InputSelect>
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" id="sched-fixedExpTz"
+                                               checked="@_model.UseFixedExpirationOffset"
+                                               @onchange="e => _model.UseFixedExpirationOffset = (bool)(e.Value ?? false)" />
+                                        <label class="form-check-label" for="sched-fixedExpTz">Use fixed GMT offset</label>
+                                    </div>
+                                    @if ( _model.UseFixedExpirationOffset ) {
+                                        <InputSelect class="form-select" @bind-Value="_model.ExpirationTimeZoneId">
+                                            @foreach ( FixedOffsetListItem item in s_fixedOffsets ) {
+                                                <option value="@item.Id">@item.Label</option>
+                                            }
+                                        </InputSelect>
+                                    } else {
+                                        <InputSelect class="form-select" @bind-Value="_model.ExpirationTimeZoneId">
+                                            @foreach ( TimeZoneListItem item in s_timeZoneItems ) {
+                                                <option value="@item.Id">@item.DisplayName — @item.Abbreviation</option>
+                                            }
+                                        </InputSelect>
+                                    }
                                 </div>
                             </div>
                         }
@@ -254,12 +283,12 @@
                                         <table class="table table-sm table-striped">
                                             <thead><tr><th>Date/Time (UTC)</th><th>Holiday</th><th>Calendar</th><th>Mode</th></tr></thead>
                                             <tbody>
-                                                @foreach ( ScheduleAuditLogDto log in _auditLogs ) {
+                                                @foreach ( Werkr.Common.Models.Audit.AuditEventDto log in _auditLogs ) {
                                                     <tr>
-                                                        <td>@log.OccurrenceUtcTime.ToString( "G" )</td>
-                                                        <td>@log.HolidayName</td>
-                                                        <td>@log.CalendarName</td>
-                                                        <td><span class="badge bg-secondary">@log.Mode</span></td>
+                                                        <td>@log.TimestampUtc.ToString( "G" )</td>
+                                                        <td>@log.ActionPerformed</td>
+                                                        <td>@log.EventTypeId</td>
+                                                        <td><span class="badge bg-secondary">@log.EventCategory</span></td>
                                                     </tr>
                                                 }
                                             </tbody>
@@ -325,7 +354,7 @@
     private List<HolidayCalendarSummaryDto>? _availableCalendars;
     private string _selectedCalendarId = "";
     private string _selectedCalendarMode = "Blocklist";
-    private List<ScheduleAuditLogDto>? _auditLogs;
+    private List<Werkr.Common.Models.Audit.AuditEventDto>? _auditLogs;
 
     private bool IsEditing => _editScheduleId is not null;
 
@@ -343,8 +372,11 @@
         ("1st", 1), ("2nd", 2), ("3rd", 4), ("4th", 8), ("5th", 16), ("6th", 32)
     ];
 
-    private static readonly IReadOnlyList<TimeZoneInfo> s_timeZones =
-        TimeZoneInfo.GetSystemTimeZones( ).OrderBy( tz => tz.BaseUtcOffset ).ToList( );
+    private static readonly IReadOnlyList<TimeZoneListItem> s_timeZoneItems =
+        TimeZoneDisplayService.GetTimeZoneListItems( );
+
+    private static readonly IReadOnlyList<FixedOffsetListItem> s_fixedOffsets =
+        TimeZoneDisplayService.GetFixedOffsetListItems( );
 
     public async Task Show( ) {
         _model = new ScheduleFormModel( );
@@ -384,8 +416,7 @@
 
     private async Task LoadCalendarsAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _availableCalendars = await client.GetFromJsonAsync<List<HolidayCalendarSummaryDto>>( "/api/holiday-calendars" );
+            _availableCalendars = await Api.GetAsync<List<HolidayCalendarSummaryDto>>( "/api/v1/holiday-calendars" );
         } catch {
             // Non-critical: calendar list not loaded
         }
@@ -394,9 +425,8 @@
     private async Task LoadHolidayCalendarLinkAsync( ) {
         if ( _editScheduleId is null ) return;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            ScheduleHolidayCalendarDto? link = await client.GetFromJsonAsync<ScheduleHolidayCalendarDto>(
-                $"/api/schedules/{_editScheduleId}/holiday-calendar" );
+            ScheduleHolidayCalendarDto? link = await Api.GetAsync<ScheduleHolidayCalendarDto>(
+                $"/api/v1/schedules/{_editScheduleId}/holiday-calendar" );
             if ( link is not null ) {
                 _selectedCalendarId = link.CalendarId.ToString( );
                 _selectedCalendarMode = link.Mode;
@@ -410,11 +440,12 @@
     private async Task LoadAuditLogAsync( ) {
         if ( _editScheduleId is null ) return;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             DateTime from = DateTime.UtcNow.AddDays( -30 );
             DateTime to = DateTime.UtcNow;
-            string url = $"/api/schedules/{_editScheduleId}/audit-log?from={from:O}&to={to:O}";
-            _auditLogs = await client.GetFromJsonAsync<List<ScheduleAuditLogDto>>( url ) ?? [];
+            string url = $"/api/v1/audit?entityType=Schedule&entityId={_editScheduleId}&fromUtc={from:O}&toUtc={to:O}&limit=50";
+            Werkr.Common.Models.PagedResult<Werkr.Common.Models.Audit.AuditEventDto>? result =
+                await Api.GetAsync<Werkr.Common.Models.PagedResult<Werkr.Common.Models.Audit.AuditEventDto>>( url );
+            _auditLogs = result?.Items?.ToList( ) ?? [];
         } catch {
             _auditLogs = [];
         }
@@ -424,14 +455,12 @@
         _isSaving = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
             if ( IsEditing ) {
                 ScheduleUpdateRequest request = _model.ToUpdateRequest( );
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/schedules/{_editScheduleId}", request );
+                HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/schedules/{_editScheduleId}", request );
                 if ( response.IsSuccessStatusCode ) {
-                    await SaveHolidayCalendarAsync( client, _editScheduleId!.Value );
-                    ScheduleDto? updated = await client.GetFromJsonAsync<ScheduleDto>( $"/api/schedules/{_editScheduleId}" );
+                    await SaveHolidayCalendarAsync( _editScheduleId!.Value );
+                    ScheduleDto? updated = await Api.GetAsync<ScheduleDto>( $"/api/v1/schedules/{_editScheduleId}" );
                     _isVisible = false;
                     if ( updated is not null ) {
                         await OnScheduleUpdated.InvokeAsync( updated );
@@ -442,11 +471,11 @@
                 }
             } else {
                 ScheduleCreateRequest request = _model.ToCreateRequest( );
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/schedules", request );
+                HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/schedules", request );
                 if ( response.IsSuccessStatusCode ) {
                     ScheduleDto? created = await response.Content.ReadFromJsonAsync<ScheduleDto>( );
                     if ( created is not null ) {
-                        await SaveHolidayCalendarAsync( client, created.Id );
+                        await SaveHolidayCalendarAsync( created.Id );
                     }
                     _isVisible = false;
                     if ( created is not null ) {
@@ -466,12 +495,12 @@
         }
     }
 
-    private async Task SaveHolidayCalendarAsync( HttpClient client, Guid scheduleId ) {
+    private async Task SaveHolidayCalendarAsync( Guid scheduleId ) {
         if ( !string.IsNullOrEmpty( _selectedCalendarId ) && Guid.TryParse( _selectedCalendarId, out Guid calId ) ) {
             AttachHolidayCalendarRequest attachReq = new( calId, _selectedCalendarMode );
-            _ = await client.PutAsJsonAsync( $"/api/schedules/{scheduleId}/holiday-calendar", attachReq );
+            _ = await Api.PutAsJsonAsync( $"/api/v1/schedules/{scheduleId}/holiday-calendar", attachReq );
         } else if ( IsEditing ) {
-            _ = await client.DeleteAsync( $"/api/schedules/{scheduleId}/holiday-calendar" );
+            _ = await Api.DeleteAsync( $"/api/v1/schedules/{scheduleId}/holiday-calendar" );
         }
     }
 
@@ -522,6 +551,8 @@
         public DateOnly ExpirationDate { get; set; } = DateOnly.FromDateTime( DateTime.Today.AddYears( 1 ) );
         public TimeOnly ExpirationTime { get; set; } = new( 23, 59 );
         public string ExpirationTimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
+        public bool UseFixedStartOffset { get; set; }
+        public bool UseFixedExpirationOffset { get; set; }
         public bool HasRepeat { get; set; }
 
         [Range( 1, 1440, ErrorMessage = "Repeat interval must be between 1 and 1440 minutes." )]
@@ -542,6 +573,7 @@
                 StartDate = dto.StartDateTime?.Date ?? DateOnly.FromDateTime( DateTime.Today ),
                 StartTime = dto.StartDateTime?.Time ?? new TimeOnly( 8, 0 ),
                 TimeZoneId = dto.StartDateTime?.TimeZoneId ?? TimeZoneInfo.Local.Id,
+                UseFixedStartOffset = dto.StartDateTime?.IsFixedOffset ?? false,
                 RecurrenceType = recType,
                 DayInterval = dto.DailyRecurrence?.DayInterval ?? 1,
                 WeekInterval = dto.WeeklyRecurrence?.WeekInterval ?? 1,
@@ -557,6 +589,7 @@
                 ExpirationDate = dto.Expiration?.Date ?? DateOnly.FromDateTime( DateTime.Today.AddYears( 1 ) ),
                 ExpirationTime = dto.Expiration?.Time ?? new TimeOnly( 23, 59 ),
                 ExpirationTimeZoneId = dto.Expiration?.TimeZoneId ?? TimeZoneInfo.Local.Id,
+                UseFixedExpirationOffset = dto.Expiration?.IsFixedOffset ?? false,
                 HasRepeat = dto.RepeatOptions is not null,
                 RepeatIntervalMinutes = dto.RepeatOptions?.RepeatIntervalMinutes ?? 15,
                 RepeatDurationMinutes = dto.RepeatOptions?.RepeatDurationMinutes ?? 60,
@@ -567,9 +600,9 @@
             return new ScheduleCreateRequest(
                 Name: Name,
                 StopTaskAfterMinutes: StopTaskAfterMinutes,
-                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId ),
+                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId, IsFixedOffset: UseFixedStartOffset ),
                 Expiration: HasExpiration
-                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId )
+                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId, IsFixedOffset: UseFixedExpirationOffset )
                     : null,
                 DailyRecurrence: RecurrenceType == "Daily" ? new DailyRecurrenceDto( DayInterval ) : null,
                 WeeklyRecurrence: RecurrenceType == "Weekly" ? new WeeklyRecurrenceDto( WeekInterval, DaysOfWeek ) : null,
@@ -589,9 +622,9 @@
             return new ScheduleUpdateRequest(
                 Name: Name,
                 StopTaskAfterMinutes: StopTaskAfterMinutes,
-                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId ),
+                StartDateTime: new StartDateTimeDto( StartDate, StartTime, TimeZoneId, IsFixedOffset: UseFixedStartOffset ),
                 Expiration: HasExpiration
-                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId )
+                    ? new ExpirationDateTimeDto( ExpirationDate, ExpirationTime, ExpirationTimeZoneId, IsFixedOffset: UseFixedExpirationOffset )
                     : null,
                 DailyRecurrence: RecurrenceType == "Daily" ? new DailyRecurrenceDto( DayInterval ) : null,
                 WeeklyRecurrence: RecurrenceType == "Weekly" ? new WeeklyRecurrenceDto( WeekInterval, DaysOfWeek ) : null,

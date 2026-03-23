@@ -10,5 +10,6 @@
 .node-config-panel.open {
     width: 360px;
     min-width: 360px;
+    flex-shrink: 0;
     border-left-width: 1px;
 }

@@ -1,5 +1,5 @@
 @rendermode InteractiveServer
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 <div class="d-flex flex-wrap gap-1 mb-2">
     @foreach (string tag in Value) {
@@ -9,7 +9,7 @@
                     aria-label="Remove" @onclick="( ) => RemoveTag( tag )"></button>
         </span>
     }
-    @if (Value.Length == 0) {
+    @if (Value.Length == 0 && !HideEmptyWarning) {
         <div class="alert alert-warning py-1 px-2 small mb-0">
             &#9888; No target tags assigned. This task won't be dispatched to any agent.
         </div>
@@ -44,6 +44,10 @@
     [Parameter]
     public EventCallback<string[]> ValueChanged { get; set; }
 
+    /// <summary>When true, suppresses the "no target tags" warning (e.g. when a parent workflow provides tags).</summary>
+    [Parameter]
+    public bool HideEmptyWarning { get; set; }
+
     private string _inputText = string.Empty;
     private List<string> _allTags = [];
 
@@ -55,8 +59,7 @@
 
     protected override async Task OnInitializedAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _allTags = await client.GetFromJsonAsync<List<string>>( "/api/tags" ) ?? [];
+            _allTags = await Api.GetAsync<List<string>>( "/api/v1/tags" ) ?? [];
         } catch {
             _allTags = [];
         }

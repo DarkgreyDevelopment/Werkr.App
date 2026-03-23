@@ -1,0 +1,12 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+// Cross-cutting metadata included in every encrypted API response.
+// Enables the API to signal state to agents piggybacked on any RPC response
+// without requiring a dedicated push channel.
+message ResponseMetadata {
+  // True when the agent has pending notifications in the outbox.
+  // Agent should send an immediate heartbeat to drain them.
+  bool urgent_commands_pending = 1;
+}

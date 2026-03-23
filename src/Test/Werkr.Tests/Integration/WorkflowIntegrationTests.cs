@@ -54,7 +54,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage createResponse = await Api.PostAsJsonAsync(
-            "/api/workflows", createRequest, JsonOptions, ct );
+            "/api/v1/workflows", createRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, createResponse.StatusCode,
             $"Workflow creation failed: {await createResponse.Content.ReadAsStringAsync( ct )}" );
 
@@ -64,7 +64,7 @@ public class WorkflowIntegrationTests {
         Assert.AreEqual( "IntTest_Workflow", created.GetProperty( "name" ).GetString( ) );
 
         // Read
-        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/workflows/{workflowId}", ct );
+        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/v1/workflows/{workflowId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResponse.StatusCode );
 
         JsonElement retrieved = await getResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -80,14 +80,14 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage putResponse = await Api.PutAsJsonAsync(
-            $"/api/workflows/{workflowId}", updateRequest, JsonOptions, ct );
+            $"/api/v1/workflows/{workflowId}", updateRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, putResponse.StatusCode );
 
         JsonElement updated = await putResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
         Assert.AreEqual( "IntTest_Workflow_Updated", updated.GetProperty( "name" ).GetString( ) );
 
         // List
-        HttpResponseMessage listResponse = await Api.GetAsync( "/api/workflows", ct );
+        HttpResponseMessage listResponse = await Api.GetAsync( "/api/v1/workflows", ct );
         Assert.AreEqual( HttpStatusCode.OK, listResponse.StatusCode );
 
         JsonElement list = await listResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -95,10 +95,10 @@ public class WorkflowIntegrationTests {
             "Workflow list should contain at least one workflow." );
 
         // Delete
-        HttpResponseMessage deleteResponse = await Api.DeleteAsync( $"/api/workflows/{workflowId}", ct );
+        HttpResponseMessage deleteResponse = await Api.DeleteAsync( $"/api/v1/workflows/{workflowId}", ct );
         Assert.AreEqual( HttpStatusCode.NoContent, deleteResponse.StatusCode );
 
-        HttpResponseMessage notFoundResponse = await Api.GetAsync( $"/api/workflows/{workflowId}", ct );
+        HttpResponseMessage notFoundResponse = await Api.GetAsync( $"/api/v1/workflows/{workflowId}", ct );
         Assert.AreEqual( HttpStatusCode.NotFound, notFoundResponse.StatusCode );
     }
 
@@ -125,7 +125,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage wfResponse = await Api.PostAsJsonAsync(
-            "/api/workflows", wfRequest, JsonOptions, ct );
+            "/api/v1/workflows", wfRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, wfResponse.StatusCode,
             $"Workflow creation failed: {await wfResponse.Content.ReadAsStringAsync( ct )}" );
 
@@ -144,7 +144,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage task1Response = await Api.PostAsJsonAsync(
-            "/api/tasks", task1Request, JsonOptions, ct );
+            "/api/v1/tasks", task1Request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, task1Response.StatusCode );
 
         JsonElement task1 = await task1Response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -162,7 +162,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage task2Response = await Api.PostAsJsonAsync(
-            "/api/tasks", task2Request, JsonOptions, ct );
+            "/api/v1/tasks", task2Request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, task2Response.StatusCode );
 
         JsonElement task2 = await task2Response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -173,11 +173,11 @@ public class WorkflowIntegrationTests {
             taskId = task1Id,
             order = 1,
             controlStatement = "Default",
-            dependencyMode = "All"
+            dependencyMode = "AllSuccess"
         };
 
         HttpResponseMessage step1Response = await Api.PostAsJsonAsync(
-            $"/api/workflows/{workflowId}/steps", step1Request, JsonOptions, ct );
+            $"/api/v1/workflows/{workflowId}/steps", step1Request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, step1Response.StatusCode,
             $"Step 1 creation failed: {await step1Response.Content.ReadAsStringAsync( ct )}" );
 
@@ -189,11 +189,11 @@ public class WorkflowIntegrationTests {
             taskId = task2Id,
             order = 2,
             controlStatement = "Default",
-            dependencyMode = "All"
+            dependencyMode = "AllSuccess"
         };
 
         HttpResponseMessage step2Response = await Api.PostAsJsonAsync(
-            $"/api/workflows/{workflowId}/steps", step2Request, JsonOptions, ct );
+            $"/api/v1/workflows/{workflowId}/steps", step2Request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, step2Response.StatusCode,
             $"Step 2 creation failed: {await step2Response.Content.ReadAsStringAsync( ct )}" );
 
@@ -204,12 +204,12 @@ public class WorkflowIntegrationTests {
         var depRequest = new { dependsOnStepId = step1Id };
 
         HttpResponseMessage depResponse = await Api.PostAsJsonAsync(
-            $"/api/workflows/{workflowId}/steps/{step2Id}/dependencies", depRequest, JsonOptions, ct );
+            $"/api/v1/workflows/{workflowId}/steps/{step2Id}/dependencies", depRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, depResponse.StatusCode,
             $"Dependency creation failed: {await depResponse.Content.ReadAsStringAsync( ct )}" );
 
         // Verify the workflow now has 2 steps with the dependency
-        HttpResponseMessage getWfResponse = await Api.GetAsync( $"/api/workflows/{workflowId}", ct );
+        HttpResponseMessage getWfResponse = await Api.GetAsync( $"/api/v1/workflows/{workflowId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getWfResponse.StatusCode );
 
         JsonElement fullWorkflow = await getWfResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -217,7 +217,7 @@ public class WorkflowIntegrationTests {
         Assert.AreEqual( 2, steps.GetArrayLength( ), "Workflow should have exactly 2 steps." );
 
         // Cleanup
-        _ = await Api.DeleteAsync( $"/api/workflows/{workflowId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/workflows/{workflowId}", ct );
     }
 
     #endregion Workflow Steps & Dependencies
@@ -246,7 +246,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage createResponse = await Api.PostAsJsonAsync(
-            "/api/tasks", createRequest, JsonOptions, ct );
+            "/api/v1/tasks", createRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, createResponse.StatusCode,
             $"Task creation failed: {await createResponse.Content.ReadAsStringAsync( ct )}" );
 
@@ -270,7 +270,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage putResponse = await Api.PutAsJsonAsync(
-            $"/api/tasks/{taskId}", updateRequest, JsonOptions, ct );
+            $"/api/v1/tasks/{taskId}", updateRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, putResponse.StatusCode );
 
         JsonElement updated = await putResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -281,10 +281,10 @@ public class WorkflowIntegrationTests {
         Assert.AreEqual( 1, updatedTags.GetArrayLength( ), "Updated task should have 1 target tag." );
 
         // Delete
-        HttpResponseMessage deleteResponse = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+        HttpResponseMessage deleteResponse = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         Assert.AreEqual( HttpStatusCode.NoContent, deleteResponse.StatusCode );
 
-        HttpResponseMessage notFoundResponse = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+        HttpResponseMessage notFoundResponse = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
         Assert.AreEqual( HttpStatusCode.NotFound, notFoundResponse.StatusCode );
     }
 
@@ -310,7 +310,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage createResponse = await Api.PostAsJsonAsync(
-            "/api/workflows", createRequest, JsonOptions, ct );
+            "/api/v1/workflows", createRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, createResponse.StatusCode,
             $"Workflow creation failed: {await createResponse.Content.ReadAsStringAsync( ct )}" );
 
@@ -322,7 +322,7 @@ public class WorkflowIntegrationTests {
         Assert.AreEqual( 2, createdTags.GetArrayLength( ), "Should return 2 target tags." );
 
         // Read and verify tags persisted
-        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/workflows/{workflowId}", ct );
+        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/v1/workflows/{workflowId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResponse.StatusCode );
 
         JsonElement retrieved = await getResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -342,7 +342,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage putResponse = await Api.PutAsJsonAsync(
-            $"/api/workflows/{workflowId}", updateRequest, JsonOptions, ct );
+            $"/api/v1/workflows/{workflowId}", updateRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, putResponse.StatusCode );
 
         JsonElement updated = await putResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -359,7 +359,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage clearResponse = await Api.PutAsJsonAsync(
-            $"/api/workflows/{workflowId}", clearRequest, JsonOptions, ct );
+            $"/api/v1/workflows/{workflowId}", clearRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, clearResponse.StatusCode );
 
         JsonElement cleared = await clearResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -367,7 +367,7 @@ public class WorkflowIntegrationTests {
         Assert.AreEqual( 0, clearedTags.GetArrayLength( ), "Cleared workflow should have 0 tags." );
 
         // Cleanup
-        _ = await Api.DeleteAsync( $"/api/workflows/{workflowId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/workflows/{workflowId}", ct );
     }
 
     /// <summary>
@@ -386,7 +386,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage wfResponse = await Api.PostAsJsonAsync(
-            "/api/workflows", wfRequest, JsonOptions, ct );
+            "/api/v1/workflows", wfRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, wfResponse.StatusCode );
         JsonElement wf = await wfResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
         long workflowId = wf.GetProperty( "id" ).GetInt64( );
@@ -399,7 +399,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage schedResponse = await Api.PostAsJsonAsync(
-            "/api/schedules", schedRequest, JsonOptions, ct );
+            "/api/v1/schedules", schedRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, schedResponse.StatusCode );
         JsonElement sched = await schedResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
         string scheduleId = sched.GetProperty( "id" ).GetString( )!;
@@ -407,12 +407,12 @@ public class WorkflowIntegrationTests {
         // Associate schedule with workflow
         var assocRequest = new { scheduleId };
         HttpResponseMessage assocResponse = await Api.PostAsJsonAsync(
-            $"/api/workflows/{workflowId}/schedules", assocRequest, JsonOptions, ct );
+            $"/api/v1/workflows/{workflowId}/schedules", assocRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, assocResponse.StatusCode,
             $"Association failed: {await assocResponse.Content.ReadAsStringAsync( ct )}" );
 
         // Verify schedule is listed
-        HttpResponseMessage listResponse = await Api.GetAsync( $"/api/workflows/{workflowId}/schedules", ct );
+        HttpResponseMessage listResponse = await Api.GetAsync( $"/api/v1/workflows/{workflowId}/schedules", ct );
         Assert.AreEqual( HttpStatusCode.OK, listResponse.StatusCode );
         JsonElement schedules = await listResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
         Assert.IsGreaterThanOrEqualTo( 1, schedules.GetArrayLength( ),
@@ -420,18 +420,18 @@ public class WorkflowIntegrationTests {
 
         // Disassociate
         HttpResponseMessage disassocResponse = await Api.DeleteAsync(
-            $"/api/workflows/{workflowId}/schedules/{scheduleId}", ct );
+            $"/api/v1/workflows/{workflowId}/schedules/{scheduleId}", ct );
         Assert.AreEqual( HttpStatusCode.NoContent, disassocResponse.StatusCode );
 
         // Verify empty
-        HttpResponseMessage emptyResponse = await Api.GetAsync( $"/api/workflows/{workflowId}/schedules", ct );
+        HttpResponseMessage emptyResponse = await Api.GetAsync( $"/api/v1/workflows/{workflowId}/schedules", ct );
         Assert.AreEqual( HttpStatusCode.OK, emptyResponse.StatusCode );
         JsonElement emptyList = await emptyResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
         Assert.AreEqual( 0, emptyList.GetArrayLength( ), "Should have 0 associated schedules." );
 
         // Cleanup
-        _ = await Api.DeleteAsync( $"/api/workflows/{workflowId}", ct );
-        _ = await Api.DeleteAsync( $"/api/schedules/{scheduleId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/workflows/{workflowId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/schedules/{scheduleId}", ct );
     }
 
     #endregion Workflow TargetTags
@@ -447,7 +447,7 @@ public class WorkflowIntegrationTests {
     public async Task JobListEndpoint_ReturnsFilterableResults( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
-        HttpResponseMessage response = await Api.GetAsync( "/api/jobs", ct );
+        HttpResponseMessage response = await Api.GetAsync( "/api/v1/jobs", ct );
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
 
         JsonElement jobs = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -456,7 +456,7 @@ public class WorkflowIntegrationTests {
 
         // Test with date filter (should still return OK even if no jobs match)
         HttpResponseMessage filteredResponse = await Api.GetAsync(
-            "/api/jobs?since=2020-01-01T00:00:00Z&until=2020-01-02T00:00:00Z", ct );
+            "/api/v1/jobs?since=2020-01-01T00:00:00Z&until=2020-01-02T00:00:00Z", ct );
         Assert.AreEqual( HttpStatusCode.OK, filteredResponse.StatusCode );
 
         JsonElement filtered = await filteredResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -473,7 +473,7 @@ public class WorkflowIntegrationTests {
         CancellationToken ct = TestContext.CancellationToken;
 
         Guid fakeJobId = Guid.NewGuid( );
-        HttpResponseMessage response = await Api.GetAsync( $"/api/jobs/{fakeJobId}", ct );
+        HttpResponseMessage response = await Api.GetAsync( $"/api/v1/jobs/{fakeJobId}", ct );
         Assert.AreEqual( HttpStatusCode.NotFound, response.StatusCode );
     }
 
@@ -503,7 +503,7 @@ public class WorkflowIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/schedules", request, JsonOptions, ct );
+            "/api/v1/schedules", request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, response.StatusCode,
             $"Weekly schedule creation failed: {await response.Content.ReadAsStringAsync( ct )}" );
 
@@ -512,7 +512,7 @@ public class WorkflowIntegrationTests {
         Assert.IsFalse( string.IsNullOrEmpty( scheduleId ) );
 
         // Verify weekly recurrence persisted
-        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/schedules/{scheduleId}", ct );
+        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/v1/schedules/{scheduleId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResponse.StatusCode );
 
         JsonElement retrieved = await getResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -523,7 +523,7 @@ public class WorkflowIntegrationTests {
         Assert.AreEqual( 1 | 4 | 16, days, "DaysOfWeek flags should be Monday|Wednesday|Friday (21)." );
 
         // Cleanup
-        _ = await Api.DeleteAsync( $"/api/schedules/{scheduleId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/schedules/{scheduleId}", ct );
     }
 
     #endregion Schedule Recurrence Types
@@ -538,7 +538,7 @@ public class WorkflowIntegrationTests {
     public async Task AgentHealthEndpoint_ReturnsSuccessfully( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
-        HttpResponseMessage response = await Api.GetAsync( "/api/agents/health", ct );
+        HttpResponseMessage response = await Api.GetAsync( "/api/v1/agents/health", ct );
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
 
         JsonElement health = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -555,7 +555,7 @@ public class WorkflowIntegrationTests {
     public async Task DiagnosticsHealthEndpoint_ReturnsDatabaseStatus( ) {
         CancellationToken ct = TestContext.CancellationToken;
 
-        HttpResponseMessage response = await Api.GetAsync( "/api/diagnostics/health", ct );
+        HttpResponseMessage response = await Api.GetAsync( "/api/v1/diagnostics/health", ct );
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
 
         JsonElement diagnostics = await response.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );

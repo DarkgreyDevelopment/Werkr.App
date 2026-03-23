@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -11,9 +13,10 @@ namespace Werkr.Agent.Operators.Actions;
 
 /// <summary>
 /// Handles the <c>TestConnection</c> action — tests connectivity to a host/port using
-/// TCP, HTTP, or HTTPS. Returns reachability data rather than throwing on unreachable targets.
+/// TCP, HTTP, HTTPS, or ICMP. Returns reachability data rather than throwing on unreachable targets.
 /// </summary>
 /// <remarks>Creates a new <see cref="TestConnectionHandler"/>.</remarks>
+[ActionCategory( "Network" )]
 public sealed partial class TestConnectionHandler(
     IUrlValidator urlValidator,
     IHttpClientFactory httpClientFactory,
@@ -46,7 +49,14 @@ public sealed partial class TestConnectionHandler(
             using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource( cancellationToken );
             timeoutCts.CancelAfter( TimeSpan.FromSeconds( p.TimeoutSeconds ) );
 
-            if (p.Protocol is ConnectionProtocol.Http or ConnectionProtocol.Https) {
+            if (p.Protocol == ConnectionProtocol.Icmp) {
+                (reachable, error, elapsedMs) = await PingIcmpAsync(
+                    p.Host, p.TimeoutSeconds, timeoutCts.Token );
+            } else if (p.Protocol is ConnectionProtocol.Http or ConnectionProtocol.Https) {
+                if (p.Port is null) {
+                    throw new ArgumentException( "Port is required for HTTP/HTTPS protocols." );
+                }
+
                 string scheme = p.Protocol == ConnectionProtocol.Https ? "https" : "http";
                 string url = $"{scheme}://{p.Host}:{p.Port}/";
 
@@ -56,21 +66,26 @@ public sealed partial class TestConnectionHandler(
                 (reachable, statusCode, error, elapsedMs) = await TestHttpAsync(
                     uri, p.ExpectedStatusCode, timeoutCts.Token );
             } else {
+                if (p.Port is null) {
+                    throw new ArgumentException( "Port is required for TCP protocol." );
+                }
+
                 // TCP mode — validate host via URL validator if it's not a raw IP
                 // Build a synthetic URL for validation
                 string syntheticUrl = $"http://{p.Host}:{p.Port}/";
                 _ = _urlValidator.ValidateUrl( syntheticUrl );
 
                 (reachable, error, elapsedMs) = await TestTcpAsync(
-                    p.Host, p.Port, timeoutCts.Token );
+                    p.Host, p.Port.Value, timeoutCts.Token );
             }
 
             string protocol = p.Protocol.ToString( ).ToUpperInvariant( );
+            string portDisplay = p.Port.HasValue ? $":{p.Port}" : "";
             string status = reachable ? "reachable" : "unreachable";
             await output.WriteAsync(
                 OperatorOutput.Create(
                     LogLevel.Information,
-                    $"TestConnection: {protocol} {p.Host}:{p.Port} is {status} ({elapsedMs}ms)" ),
+                    $"TestConnection: {protocol} {p.Host}{portDisplay} is {status} ({elapsedMs}ms)" ),
                 cancellationToken );
 
             string outputJson = JsonSerializer.Serialize( new {
@@ -126,6 +141,35 @@ public sealed partial class TestConnectionHandler(
             await tcp.ConnectAsync( host, port, cancellationToken );
             sw.Stop( );
             return (true, null, sw.ElapsedMilliseconds);
+        } catch (Exception ex) when (ex is not OperationCanceledException) {
+            sw.Stop( );
+            return (false, ex.Message, sw.ElapsedMilliseconds);
+        }
+    }
+
+    private static async Task<(bool Reachable, string? Error, long ElapsedMs)> PingIcmpAsync(
+        string host, int timeoutSeconds, CancellationToken cancellationToken
+    ) {
+        Stopwatch sw = Stopwatch.StartNew( );
+        try {
+            using Ping ping = new( );
+            int timeoutMs = timeoutSeconds * 1000;
+            PingReply reply = await ping.SendPingAsync( host, timeoutMs ).WaitAsync( cancellationToken );
+
+            sw.Stop( );
+            if (reply.Status == IPStatus.Success) {
+                return (true, null, reply.RoundtripTime);
+            }
+
+            return (false, $"ICMP reply status: {reply.Status}", sw.ElapsedMilliseconds);
+        } catch (PingException ex) {
+            sw.Stop( );
+            string message = ex.InnerException?.Message ?? ex.Message;
+            if (message.Contains( "permitted", StringComparison.OrdinalIgnoreCase )
+                || message.Contains( "raw socket", StringComparison.OrdinalIgnoreCase )) {
+                message = $"{message} — ICMP ping may require elevated privileges (CAP_NET_RAW on Linux).";
+            }
+            return (false, message, sw.ElapsedMilliseconds);
         } catch (Exception ex) when (ex is not OperationCanceledException) {
             sw.Stop( );
             return (false, ex.Message, sw.ElapsedMilliseconds);

@@ -12,13 +12,20 @@ using Werkr.Common;
 using Werkr.Common.Auth;
 using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
+using Werkr.Core.Audit;
 using Werkr.Core.Communication;
+using Werkr.Core.Configuration;
+using Werkr.Core.Credentials;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Health;
+using Werkr.Core.Notifications;
 using Werkr.Core.Registration;
+using Werkr.Core.Retention;
 using Werkr.Core.Scheduling;
+using Werkr.Core.Security;
 using Werkr.Core.Tasks;
 using Werkr.Data;
+using Werkr.Data.Encryption;
 using Werkr.Data.Seeding;
 using Werkr.ServiceDefaults;
 
@@ -90,6 +97,20 @@ public class Program {
                 ? parsed : DatabaseProvider.Postgres;
             _ = builder.Services.AddWerkrDbContext( dbProvider, connectionString );
 
+            // Field-level encryption — transparently encrypts sensitive DB columns
+            ISecretStore apiSecretStore = SecretStoreFactory.Create( );
+            _ = builder.Services.AddSingleton( apiSecretStore );
+            string? fieldEncryptionKey = await apiSecretStore.GetSecretAsync(
+                FieldEncryptionProvider.SecretStoreKey );
+            if (fieldEncryptionKey is null) {
+                fieldEncryptionKey = FieldEncryptionProvider.GenerateKey( );
+                await apiSecretStore.SetSecretAsync(
+                    FieldEncryptionProvider.SecretStoreKey, fieldEncryptionKey );
+                Log.Information( "Generated new field encryption key for API database." );
+            }
+            FieldEncryptionProvider fieldEncryption = new( fieldEncryptionKey );
+            _ = builder.Services.AddSingleton( fieldEncryption );
+
             // Configuration
             WerkrConfiguration werkrConfig = new( );
             builder.Configuration.GetSection( WerkrConfiguration.SectionName ).Bind( werkrConfig );
@@ -115,6 +136,9 @@ public class Program {
             _ = builder.Services.AddHttpClient( "ServerService", client => {
                 client.BaseAddress = new Uri( "https://server" );
             } );
+
+            // Named HttpClient for webhook notification delivery
+            _ = builder.Services.AddHttpClient( "WerkrNotifications" );
 
             // Registration service
             // ServerUrl may be set explicitly in config; if not, resolve from the running server's addresses at runtime.
@@ -154,13 +178,12 @@ public class Program {
             // Output streaming gRPC service (Singleton — receives agent output streams)
             _ = builder.Services.AddSingleton<OutputStreamingGrpcService>( );
 
-            // Agent health check background service — keeps DB status current
-            _ = builder.Services.AddHostedService<AgentHealthCheckService>( sp => {
+            // Agent staleness detection background service — marks stale agents offline and cleans expired notifications
+            _ = builder.Services.AddHostedService<AgentStalenessService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
-                AgentConnectionManager connectionManager = sp.GetRequiredService<AgentConnectionManager>( );
-                ILogger<AgentHealthCheckService> logger =
-                    sp.GetRequiredService<ILogger<AgentHealthCheckService>>( );
-                return new AgentHealthCheckService( scopeFactory, connectionManager, logger );
+                ILogger<AgentStalenessService> logger =
+                    sp.GetRequiredService<ILogger<AgentStalenessService>>( );
+                return new AgentStalenessService( scopeFactory, logger );
             } );
 
             // Schedule service (Scoped — one per request)
@@ -173,6 +196,8 @@ public class Program {
                 builder.Configuration.GetSection( JobOutputOptions.SectionName ) );
             _ = builder.Services.Configure<WorkflowVariableOptions>(
                 builder.Configuration.GetSection( WorkflowVariableOptions.SectionName ) );
+            _ = builder.Services.AddScoped<TaskVersionService>( );
+            _ = builder.Services.AddScoped<TaskVersionDiffService>( );
             _ = builder.Services.AddScoped<TaskService>( );
             _ = builder.Services.AddScoped<AgentResolver>( );
             _ = builder.Services.AddScoped<JobOutputWriter>( );
@@ -181,28 +206,108 @@ public class Program {
 
             // Workflow services (Scoped — one per request)
             _ = builder.Services.AddScoped<Werkr.Core.Workflows.ConditionEvaluator>( );
+            _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowVersionService>( );
+            _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowVersionDiffService>( );
             _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowService>( );
+
+            // Trigger versioning service (Scoped)
+            _ = builder.Services.AddScoped<Werkr.Core.Triggers.TriggerVersionService>( );
+
+            // Agent notification outbox (Scoped — participates in caller's transaction)
+            _ = builder.Services.AddScoped<AgentNotificationService>( );
+
+            // Secure gRPC response builder (Singleton — creates scoped DbContext for outbox checks)
+            _ = builder.Services.AddSingleton<SecureResponseBuilder>( );
+
+            // Configuration resolution service (Scoped)
+            _ = builder.Services.AddScoped<IConfigurationResolutionService, ConfigurationResolutionService>( );
+            _ = builder.Services.AddScoped<ConfigurationChangeNotifier>( );
+
+            // Credential service (Scoped)
+            _ = builder.Services.AddScoped<ICredentialService, CredentialService>( );
 
             // Schedule invalidation dispatcher (Scoped — sends push notifications to agents)
             _ = builder.Services.AddScoped<ScheduleInvalidationDispatcher>( );
+
+            // Workflow disabled dispatcher (Scoped — notifies agents when a workflow is disabled)
+            _ = builder.Services.AddScoped<WorkflowDisabledDispatcher>( );
 
             // Holiday calendar services (Scoped — one per request)
             _ = builder.Services.AddScoped<HolidayDateService>( );
             _ = builder.Services.AddScoped<HolidayCalendarService>( );
 
-            // Audit log cleanup
-            _ = builder.Services.Configure<AuditLogOptions>( builder.Configuration.GetSection( "AuditLog" ) );
-            _ = builder.Services.AddHostedService<AuditLogCleanupService>( );
+            // Audit event system
+            AuditEventTypeRegistry auditRegistry = new( );
+            _ = auditRegistry.RegisterCoreAuditEvents( );
+            _ = builder.Services.AddSingleton<IAuditEventTypeRegistry>( auditRegistry );
+            _ = builder.Services.AddScoped<IAuditService, AuditService>( );
 
-            // Key rotation background service — rotates SharedKey for all connected agents
+            // Notification event category registry
+            NotificationEventCategoryRegistry notificationEventRegistry = new( );
+            _ = notificationEventRegistry.RegisterCoreNotificationEvents( );
+            _ = builder.Services.AddSingleton<INotificationEventCategoryRegistry>( notificationEventRegistry );
+
+            // Notification channel implementations (multi-registration for channel resolver)
+            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.EmailNotificationChannel>( );
+            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.WebhookNotificationChannel>( sp => {
+                WerkrDbContext db = sp.GetRequiredService<WerkrDbContext>( );
+                ILogger<Werkr.Core.Notifications.Channels.WebhookNotificationChannel> log = sp.GetRequiredService<ILogger<Werkr.Core.Notifications.Channels.WebhookNotificationChannel>>( );
+                IHttpClientFactory httpFactory = sp.GetRequiredService<IHttpClientFactory>( );
+                HttpClient httpClient = httpFactory.CreateClient( "WerkrNotifications" );
+                return new Werkr.Core.Notifications.Channels.WebhookNotificationChannel( httpClient, db, log );
+            } );
+            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.InAppNotificationChannel>( );
+            _ = builder.Services.AddSingleton<INotificationHubService, NullNotificationHubService>( );
+
+            // Notification delivery pipeline
+            _ = builder.Services.AddScoped<NotificationChannelResolver>( );
+            _ = builder.Services.AddScoped<INotificationDeliveryService, NotificationDeliveryService>( );
+
+            // Notification retry background service
+            _ = builder.Services.AddSingleton<Werkr.Api.Services.NotificationRetryService>( sp => {
+                IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
+                ILogger<Werkr.Api.Services.NotificationRetryService> retryLogger = sp.GetRequiredService<ILogger<Werkr.Api.Services.NotificationRetryService>>( );
+                return new Werkr.Api.Services.NotificationRetryService( scopeFactory, retryLogger );
+            } );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<Werkr.Api.Services.NotificationRetryService>( ) );
+
+            // Retention framework — policy-driven data lifecycle management
+            RetentionPolicyRegistry retentionRegistry = new( );
+            _ = builder.Services.AddSingleton( retentionRegistry );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.WorkflowRunRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.AuditLogRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.JobOutputRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.WorkflowRunVariableRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.NotificationDeliveryRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.UserNotificationRetentionProvider>( );
+            _ = builder.Services.AddSingleton<RetentionService>( sp => {
+                IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
+                ILogger<RetentionService> retentionLogger = sp.GetRequiredService<ILogger<RetentionService>>( );
+
+                // Register providers into the registry at startup
+                using IServiceScope providerScope = scopeFactory.CreateScope( );
+                foreach (IRetentionPolicyProvider provider in providerScope.ServiceProvider.GetServices<IRetentionPolicyProvider>( )) {
+                    retentionRegistry.Register( provider );
+                }
+
+                return new RetentionService( scopeFactory, retentionRegistry, retentionLogger );
+            } );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<RetentionService>( ) );
+
+            // Key rotation background service — two-phase rotation via notification outbox
             _ = builder.Services.AddSingleton<KeyRotationService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
-                AgentConnectionManager connectionManager = sp.GetRequiredService<AgentConnectionManager>( );
                 ILogger<KeyRotationService> logger =
                     sp.GetRequiredService<ILogger<KeyRotationService>>( );
-                return new KeyRotationService( scopeFactory, connectionManager, logger );
+                TimeSpan gracePeriod = TimeSpan.FromMinutes( werkrConfig.KeyRotationGracePeriodMinutes );
+                return new KeyRotationService( scopeFactory, logger,
+                    gracePeriod: gracePeriod );
             } );
             _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<KeyRotationService>( ) );
+
+            // Field-level encryption key rotation service (§9 key rotation with zero-downtime re-encryption)
+            _ = builder.Services.AddSingleton<Core.Encryption.IFieldEncryptionKeyRotationService,
+                Core.Encryption.FieldEncryptionKeyRotationService>( );
 
             WebApplication app = builder.Build( );
 
@@ -216,12 +321,31 @@ public class Program {
             // Seed system holiday calendars
             await HolidayCalendarSeeder.SeedAsync( app.Services );
 
+            // Seed task versions for pre-versioning tasks
+            await TaskVersionSeeder.SeedAsync( app.Services );
+
+            // Seed workflow versions for pre-versioning workflows
+            await Werkr.Data.Seeding.WorkflowVersionSeeder.SeedAsync( app.Services );
+
+            // Seed trigger versions for pre-versioning triggers
+            await Werkr.Data.Seeding.TriggerVersionSeeder.SeedAsync( app.Services );
+
+            // Seed configuration entries (migrates legacy ConfigurationSettings)
+            await Werkr.Data.Seeding.ConfigurationSeeder.SeedAsync( app.Services );
+
+            // Seed retention policies
+            await Werkr.Data.Seeding.RetentionPolicySeeder.SeedAsync( app.Services );
+
+            // Seed notification templates
+            await Werkr.Data.Seeding.NotificationTemplateSeeder.SeedAsync( app.Services );
+
+            // Migrate per-agent path allowlists to ConfigurationEntry
+            await Werkr.Data.Seeding.PathAllowlistMigrationSeeder.SeedAsync( app.Services );
+
             // Configure the HTTP request pipeline.
             _ = app.UseExceptionHandler( );
 
-            if (app.Environment.IsDevelopment( )) {
-                _ = app.MapOpenApi( );
-            }
+            _ = app.MapOpenApi( );
 
             // Authentication & Authorization middleware
             _ = app.UseAuthentication( );
@@ -233,6 +357,11 @@ public class Program {
             _ = app.MapGrpcService<JobReportingGrpcService>( );
             _ = app.MapGrpcService<OutputStreamingGrpcService>( );
             _ = app.MapGrpcService<VariableGrpcService>( );
+            _ = app.MapGrpcService<TriggerEventGrpcService>( );
+            _ = app.MapGrpcService<AuditEventGrpcService>( );
+            _ = app.MapGrpcService<ConfigurationSyncGrpcService>( );
+            _ = app.MapGrpcService<KeyExchangeGrpcService>( );
+            _ = app.MapGrpcService<AgentHeartbeatGrpcService>( );
 
             // REST endpoints
             _ = app.MapStatusEndpoints( );
@@ -242,14 +371,23 @@ public class Program {
             _ = app.MapDiagnosticsEndpoints( );
             _ = app.MapScheduleEndpoints( );
             _ = app.MapTaskEndpoints( );
+            _ = app.MapTaskVersionEndpoints( );
+            _ = app.MapWorkflowVersionEndpoints( );
             _ = app.MapJobEndpoints( );
             _ = app.MapSettingsEndpoints( );
             _ = app.MapWorkflowEndpoints( );
             _ = app.MapVariableEndpoints( );
             _ = app.MapHolidayCalendarEndpoints( );
+            _ = app.MapAuditEndpoints( );
             _ = app.MapEventEndpoints( );
             _ = app.MapShellEndpoints( );
             _ = app.MapFilterEndpoints( );
+            _ = app.MapTriggerEndpoints( );
+            _ = app.MapTriggerVersionEndpoints( );
+            _ = app.MapCredentialEndpoints( );
+            _ = app.MapRetentionEndpoints( );
+            _ = app.MapNotificationEndpoints( );
+            _ = app.MapUserPreferenceEndpoints( );
 
             _ = app.MapDefaultEndpoints( );
 

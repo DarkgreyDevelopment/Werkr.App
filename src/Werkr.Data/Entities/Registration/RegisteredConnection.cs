@@ -84,6 +84,13 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     [MaxLength( 128 )]
     public string? PreviousKeyId { get; set; }
 
+    /// <summary>
+    /// UTC timestamp of the most recent key rotation. Used by the grace period
+    /// timer to determine when to clear <see cref="PreviousSharedKey"/>.
+    /// Null when no rotation has occurred or grace period has expired.
+    /// </summary>
+    public DateTime? KeyRotatedAtUtc { get; set; }
+
     /// <summary>True if this side is the Server in the relationship; false if Agent.</summary>
     public bool IsServer { get; set; }
 
@@ -105,6 +112,7 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     /// handler paths are validated against these prefixes on the Agent before execution.
     /// Stored as a JSON column, following the same pattern as <see cref="Tags"/>.
     /// </summary>
+    [Obsolete( "Use ConfigurationEntry with key 'agent.pathAllowlist' (ScopeLevel=1). Retained for migration." )]
     public string[] AllowedPaths { get; set; } = [];
 
     /// <summary>
@@ -112,4 +120,22 @@ public class RegisteredConnection : ConcurrencyBase, IKey<Guid> {
     /// on all built-in action handlers. Default <see langword="false"/> preserves backward compatibility.
     /// </summary>
     public bool EnforceAllowlist { get; set; }
+
+    /// <summary>Last-known agent version, updated at registration and on each heartbeat.</summary>
+    [MaxLength( 128 )]
+    public string AgentVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// New AES-256 key awaiting agent acknowledgment during two-phase rotation.
+    /// Stored as the raw 32-byte key; RSA-encrypted on the fly for FetchPendingKey responses.
+    /// Null when no rotation is pending.
+    /// </summary>
+    public byte[]? PendingSharedKey { get; set; }
+
+    /// <summary>
+    /// Key ID for the pending key.
+    /// Null when no rotation is pending.
+    /// </summary>
+    [MaxLength( 128 )]
+    public string? PendingKeyId { get; set; }
 }

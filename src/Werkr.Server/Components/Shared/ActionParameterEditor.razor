@@ -1,23 +1,35 @@
 @using System.Text.Json
 @rendermode InteractiveServer
 
-<div class="mb-3">
-    <label class="form-label" for="actionSubType">Action</label>
-    <select id="actionSubType" class="form-select" value="@ActionSubType"
-            @onchange="OnActionSelected">
-        <option value="">— select action —</option>
-        @foreach ( (string Category, IReadOnlyList<ActionFormDescriptor> Actions) group in ActionRegistry.Grouped ) {
-            <optgroup label="@group.Category">
-                @foreach ( ActionFormDescriptor desc in group.Actions ) {
-                    <option value="@desc.Key">@desc.DisplayName</option>
-                }
-            </optgroup>
+@if ( LockedAction is not null ) {
+    <div class="mb-3">
+        <label class="form-label">Action</label>
+        <div class="form-control-plaintext">
+            <span class="badge bg-primary"><i class="bi bi-lock me-1"></i>@( _descriptor?.DisplayName ?? LockedAction )</span>
+        </div>
+        @if ( _descriptor is not null ) {
+            <div class="form-text">@_descriptor.Description</div>
         }
-    </select>
-    @if ( _descriptor is not null ) {
-        <div class="form-text">@_descriptor.Description</div>
-    }
-</div>
+    </div>
+} else {
+    <div class="mb-3">
+        <label class="form-label" for="actionSubType">Action</label>
+        <select id="actionSubType" class="form-select" value="@ActionSubType"
+                @onchange="OnActionSelected">
+            <option value="">— select action —</option>
+            @foreach ( (string Category, IReadOnlyList<ActionFormDescriptor> Actions) group in ActionRegistry.Grouped ) {
+                <optgroup label="@group.Category">
+                    @foreach ( ActionFormDescriptor desc in group.Actions ) {
+                        <option value="@desc.Key">@desc.DisplayName</option>
+                    }
+                </optgroup>
+            }
+        </select>
+        @if ( _descriptor is not null ) {
+            <div class="form-text">@_descriptor.Description</div>
+        }
+    </div>
+}
 
 @if ( _descriptor is not null ) {
     <div class="mb-3 d-flex justify-content-end gap-2">
@@ -142,6 +154,9 @@
     /// <summary>Callback invoked when <see cref="ActionParameters"/> changes.</summary>
     [Parameter] public EventCallback<string?> ActionParametersChanged { get; set; }
 
+    /// <summary>When set, locks the action selector to this key and hides the dropdown.</summary>
+    [Parameter] public string? LockedAction { get; set; }
+
     private ActionFormDescriptor? _descriptor;
     private Dictionary<string, object?> _values = new( StringComparer.OrdinalIgnoreCase );
     private bool _jsonMode;
@@ -152,7 +167,30 @@
     private string? _lastParsedParameters;
 
     protected override void OnParametersSet( ) {
+        // When locked and ActionSubType doesn't match yet, apply it
+        if ( LockedAction is not null
+            && !string.Equals( ActionSubType, LockedAction, StringComparison.OrdinalIgnoreCase ) ) {
+            ActionSubType = LockedAction;
+            ActionSubTypeChanged.InvokeAsync( LockedAction );
+            _values.Clear( );
+        }
+
         ResolveDescriptor( );
+
+        // Populate defaults when locked action resolved a new descriptor with empty values
+        if ( LockedAction is not null && _descriptor is not null && _values.Count == 0 ) {
+            foreach ( FieldDescriptor f in _descriptor.Fields ) {
+                if ( f.DefaultValue is not null ) {
+                    _values[f.Name] = f.Type switch {
+                        FieldType.Bool => f.DefaultValue.Equals( "true", StringComparison.OrdinalIgnoreCase ),
+                        FieldType.Number => long.TryParse( f.DefaultValue, out long n ) ? n : f.DefaultValue,
+                        FieldType.IntArray => ParseDefaultIntArray( f.DefaultValue ),
+                        _ => f.DefaultValue,
+                    };
+                }
+            }
+        }
+
         if ( _descriptor is not null && !_jsonMode && ActionParameters != _lastParsedParameters ) {
             ParseParametersIntoValues( );
         }

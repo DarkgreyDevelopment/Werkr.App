@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -11,6 +12,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>ClearContent</c> action - clears the content of a file (truncates to zero bytes).
 /// </summary>
 /// <remarks>Creates a new <see cref="ClearContentHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class ClearContentHandler( IFilePathResolver resolver, ILogger<ClearContentHandler> logger ) : IActionHandler {
 
     /// <summary>

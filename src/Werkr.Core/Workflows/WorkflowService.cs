@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Werkr.Common.Models;
+using Werkr.Common.Models.Audit;
+using Werkr.Core.Audit;
 using Werkr.Data;
 using Werkr.Data.Entities.Workflows;
 
@@ -12,19 +14,25 @@ namespace Werkr.Core.Workflows;
 /// step and dependency management, and DAG validation via Kahn's algorithm.
 /// </summary>
 /// <param name="dbContext">Database context.</param>
+/// <param name="versionService">Workflow versioning service.</param>
+/// <param name="auditService">Audit event service.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class WorkflowService(
     WerkrDbContext dbContext,
+    WorkflowVersionService versionService,
+    IAuditService auditService,
     ILogger<WorkflowService> logger
 ) {
 
     /// <summary>Creates a new workflow.</summary>
     /// <param name="workflow">The workflow to create.</param>
+    /// <param name="userId">The user who created the workflow, or null for system operations.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The created workflow with generated Id.</returns>
     /// <exception cref="InvalidOperationException">Workflow name is not unique.</exception>
     public async Task<Workflow> CreateAsync(
         Workflow workflow,
+        string? userId = null,
         CancellationToken ct = default
     ) {
         ValidateWorkflow( workflow );
@@ -47,26 +55,54 @@ public sealed partial class WorkflowService(
             );
         }
 
+        // Load steps + deps + vars for versioning snapshot (empty for new workflow)
+        await dbContext.Entry( workflow ).Collection( w => w.Steps ).LoadAsync( ct );
+        foreach (WorkflowStep step in workflow.Steps) {
+            await dbContext.Entry( step ).Collection( s => s.Dependencies ).LoadAsync( ct );
+        }
+        await dbContext.Entry( workflow ).Collection( w => w.Variables ).LoadAsync( ct );
+
+        _ = await versionService.CreateVersionAsync( workflow, userId, "Initial version", ct );
+
         return workflow;
     }
 
     /// <summary>Updates an existing workflow.</summary>
     /// <param name="workflow">The workflow with updated values.</param>
+    /// <param name="userId">The user who updated the workflow, or null for system operations.</param>
+    /// <param name="changeDescription">Optional human-readable description of the change.</param>
+    /// <param name="expectedVersionNumber">Optimistic concurrency check — if set, the current version number must match.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The updated workflow.</returns>
     /// <exception cref="KeyNotFoundException">Workflow not found.</exception>
-    /// <exception cref="InvalidOperationException">Workflow name is not unique.</exception>
+    /// <exception cref="InvalidOperationException">Workflow name is not unique or version mismatch.</exception>
     public async Task<Workflow> UpdateAsync(
         Workflow workflow,
+        string? userId = null,
+        string? changeDescription = null,
+        int? expectedVersionNumber = null,
         CancellationToken ct = default
     ) {
         ValidateWorkflow( workflow );
 
-        Workflow existing = await dbContext.Workflows.FirstOrDefaultAsync(
-            w => w.Id == workflow.Id,
-            ct
-        )
+        Workflow existing = await dbContext.Workflows
+            .Include( w => w.CurrentVersion )
+            .Include( w => w.Steps )
+                .ThenInclude( s => s.Dependencies )
+            .Include( w => w.Variables )
+            .FirstOrDefaultAsync(
+                w => w.Id == workflow.Id,
+                ct
+            )
             ?? throw new KeyNotFoundException( $"Workflow with Id={workflow.Id} was not found." );
+
+        // Optimistic concurrency check
+        if (expectedVersionNumber.HasValue && existing.CurrentVersion is not null
+            && existing.CurrentVersion.VersionNumber != expectedVersionNumber.Value) {
+            throw new InvalidOperationException(
+                $"Version conflict: expected version {expectedVersionNumber.Value} " +
+                $"but current is {existing.CurrentVersion.VersionNumber}." );
+        }
 
         bool nameConflict = await dbContext.Workflows.AnyAsync(
             w => w.Name == workflow.Name && w.Id != workflow.Id, ct );
@@ -79,6 +115,10 @@ public sealed partial class WorkflowService(
         existing.Enabled = workflow.Enabled;
         existing.TargetTags = workflow.TargetTags;
 
+        if (workflow.Annotations is not null) {
+            existing.Annotations = workflow.Annotations;
+        }
+
         _ = await dbContext.SaveChangesAsync( ct );
 
         if (logger.IsEnabled( LogLevel.Information )) {
@@ -88,15 +128,20 @@ public sealed partial class WorkflowService(
             );
         }
 
+        _ = await versionService.CreateVersionAsync( existing, userId, changeDescription, ct );
+
         return existing;
     }
 
     /// <summary>Deletes a workflow by ID.</summary>
     /// <param name="workflowId">The workflow identifier.</param>
+    /// <param name="userId">The user who deleted the workflow, or null for system operations.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Workflow not found.</exception>
+    /// <exception cref="InvalidOperationException">Workflow must be disabled and have no active runs.</exception>
     public async Task DeleteAsync(
         long workflowId,
+        string? userId = null,
         CancellationToken ct = default
     ) {
         Workflow existing = await dbContext.Workflows.FirstOrDefaultAsync(
@@ -105,13 +150,83 @@ public sealed partial class WorkflowService(
         )
             ?? throw new KeyNotFoundException( $"Workflow with Id={workflowId} was not found." );
 
+        if (existing.Enabled) {
+            throw new InvalidOperationException( "Workflow must be disabled before deletion." );
+        }
+
+        WorkflowRunStatus[] nonTerminalStatuses = [WorkflowRunStatus.Running, WorkflowRunStatus.Pending, WorkflowRunStatus.Queued, WorkflowRunStatus.Paused];
+        bool hasActiveRuns = await dbContext.WorkflowRuns.AnyAsync(
+            r => r.WorkflowId == workflowId && nonTerminalStatuses.Contains( r.Status ), ct );
+        if (hasActiveRuns) {
+            throw new InvalidOperationException( "Cannot delete a workflow with active runs." );
+        }
+
+        // Clear circular FK before deletion to avoid cascade issues
+        if (existing.CurrentVersionId.HasValue) {
+            existing.CurrentVersionId = null;
+            _ = await dbContext.SaveChangesAsync( ct );
+        }
+
         _ = dbContext.Workflows.Remove( existing );
         _ = await dbContext.SaveChangesAsync( ct );
+
+        await auditService.LogAsync( new AuditEntry(
+            EventTypeId: AuditEventType.WorkflowDeleted.ToEventId( ),
+            ActorId: userId,
+            ActorType: userId is not null ? "User" : "system",
+            EntityType: "Workflow",
+            EntityId: workflowId.ToString( ),
+            ActionPerformed: "Deleted",
+            Details: new { WorkflowName = existing.Name }
+        ), ct );
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation( "Deleted workflow {WorkflowId} '{WorkflowName}'.",
                 workflowId.ToString( ),
                 existing.Name
+            );
+        }
+    }
+
+    /// <summary>Toggles the enabled state of a workflow.</summary>
+    /// <param name="workflowId">The workflow identifier.</param>
+    /// <param name="enabled">The new enabled state.</param>
+    /// <param name="userId">The user who toggled the state, or null for system operations.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <exception cref="KeyNotFoundException">Workflow not found.</exception>
+    public async Task SetEnabledAsync(
+        long workflowId,
+        bool enabled,
+        string? userId = null,
+        CancellationToken ct = default
+    ) {
+        Workflow existing = await dbContext.Workflows
+            .Include( w => w.Steps )
+                .ThenInclude( s => s.Dependencies )
+            .Include( w => w.Variables )
+            .FirstOrDefaultAsync( w => w.Id == workflowId, ct )
+            ?? throw new KeyNotFoundException( $"Workflow with Id={workflowId} was not found." );
+
+        existing.Enabled = enabled;
+        _ = await dbContext.SaveChangesAsync( ct );
+
+        _ = await versionService.CreateVersionAsync(
+            existing, userId, enabled ? "Enabled workflow" : "Disabled workflow", ct );
+
+        await auditService.LogAsync( new AuditEntry(
+            EventTypeId: (enabled ? AuditEventType.WorkflowEnabled : AuditEventType.WorkflowDisabled).ToEventId( ),
+            ActorId: userId,
+            ActorType: userId is not null ? "User" : "system",
+            EntityType: "Workflow",
+            EntityId: workflowId.ToString( ),
+            ActionPerformed: enabled ? "Enabled" : "Disabled",
+            Details: new { WorkflowName = existing.Name }
+        ), ct );
+
+        if (logger.IsEnabled( LogLevel.Information )) {
+            logger.LogInformation( "Workflow {WorkflowId} enabled={Enabled}.",
+                workflowId.ToString( ),
+                enabled.ToString( )
             );
         }
     }
@@ -129,6 +244,9 @@ public sealed partial class WorkflowService(
                 .ThenInclude( s => s.Dependencies )
             .Include( w => w.Steps )
                 .ThenInclude( s => s.Task )
+                    .ThenInclude( t => t!.CurrentVersion )
+            .Include( w => w.Steps )
+                .ThenInclude( s => s.TaskVersion )
             .Include( w => w.WorkflowSchedules )
                 .ThenInclude( ws => ws.Schedule )
             .AsNoTracking( )
@@ -146,6 +264,9 @@ public sealed partial class WorkflowService(
                 .ThenInclude( s => s.Dependencies )
             .Include( w => w.Steps )
                 .ThenInclude( s => s.Task )
+                    .ThenInclude( t => t!.CurrentVersion )
+            .Include( w => w.Steps )
+                .ThenInclude( s => s.TaskVersion )
             .Include( w => w.WorkflowSchedules )
                 .ThenInclude( ws => ws.Schedule )
             .AsNoTracking( )
@@ -477,11 +598,15 @@ public sealed partial class WorkflowService(
     /// </summary>
     /// <param name="workflowId">The workflow to apply changes to.</param>
     /// <param name="request">The batch request containing all operations.</param>
+    /// <param name="userId">The user who triggered the batch, or null for system operations.</param>
+    /// <param name="changeDescription">Optional human-readable description of the change.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Batch response with temp-to-real ID mappings and validation results.</returns>
     public async Task<WorkflowStepBatchResponse> BatchUpdateStepsAsync(
         long workflowId,
         WorkflowStepBatchRequest request,
+        string? userId = null,
+        string? changeDescription = null,
         CancellationToken ct = default
     ) {
         if (request.Operations.Count == 0) {
@@ -525,27 +650,47 @@ public sealed partial class WorkflowService(
             List<StepBatchOperation> adds = [.. request.Operations.Where( o => string.Equals( o.OperationType, "Add", StringComparison.OrdinalIgnoreCase ) )];
 
             foreach (StepBatchOperation add in adds) {
-                if (add.TaskId is null) {
+                if (!add.IsComposite && (add.TaskId is null || add.TaskId == 0)) {
                     await tx.RollbackAsync( ct );
                     return new WorkflowStepBatchResponse( false, [],
-                        [$"Add operation for temp step {add.StepId} is missing TaskId."] );
+                        [$"Step {add.StepId} requires a task assignment before saving."] );
                 }
 
                 WorkflowStep step = new( ) {
                     WorkflowId = workflowId,
-                    TaskId = add.TaskId.Value,
+                    TaskId = add.IsComposite ? null : add.TaskId,
                     Order = add.Order,
                     ControlStatement = Enum.Parse<ControlStatement>( add.ControlStatement, ignoreCase: true ),
                     ConditionExpression = add.ConditionExpression,
                     MaxIterations = add.MaxIterations,
                     AgentConnectionIdOverride = add.AgentConnectionIdOverride,
-                    DependencyMode = Enum.Parse<DependencyMode>( add.DependencyMode, ignoreCase: true ),
+                    DependencyMode = ParseDependencyMode( add.DependencyMode ),
                     InputVariableName = add.InputVariableName,
                     OutputVariableName = add.OutputVariableName,
+                    IsComposite = add.IsComposite,
+                    CompositeType = Enum.Parse<CompositeType>( add.CompositeType, ignoreCase: true ),
+                    ChildWorkflowId = add.ChildWorkflowId,
+                    IterationVariableName = add.IterationVariableName,
+                    CollectionVariableName = add.CollectionVariableName,
                 };
 
                 _ = dbContext.WorkflowSteps.Add( step );
                 _ = await dbContext.SaveChangesAsync( ct );
+
+                // Auto-create child workflow for composite steps
+                if (step.IsComposite && !step.ChildWorkflowId.HasValue) {
+                    Workflow childWorkflow = new( ) {
+                        IsChildWorkflow = true,
+                        Name = "ForEach Inner",
+                        ParentStepId = step.Id,
+                        Enabled = true,
+                    };
+                    _ = dbContext.Workflows.Add( childWorkflow );
+                    _ = await dbContext.SaveChangesAsync( ct );
+
+                    step.ChildWorkflowId = childWorkflow.Id;
+                    _ = await dbContext.SaveChangesAsync( ct );
+                }
 
                 tempToReal[add.StepId] = step.Id;
                 mappings.Add( new StepIdMapping( add.StepId, step.Id ) );
@@ -580,9 +725,21 @@ public sealed partial class WorkflowService(
                 existing.ConditionExpression = update.ConditionExpression;
                 existing.MaxIterations = update.MaxIterations;
                 existing.AgentConnectionIdOverride = update.AgentConnectionIdOverride;
-                existing.DependencyMode = Enum.Parse<DependencyMode>( update.DependencyMode, ignoreCase: true );
+                existing.DependencyMode = ParseDependencyMode( update.DependencyMode );
                 existing.InputVariableName = update.InputVariableName;
                 existing.OutputVariableName = update.OutputVariableName;
+                existing.IsComposite = update.IsComposite;
+                existing.CompositeType = Enum.Parse<CompositeType>( update.CompositeType, ignoreCase: true );
+                existing.ChildWorkflowId = update.ChildWorkflowId;
+                existing.IterationVariableName = update.IterationVariableName;
+                existing.CollectionVariableName = update.CollectionVariableName;
+
+                if (existing.IsComposite && existing.ChildWorkflowId is null) {
+                    await tx.RollbackAsync( ct );
+                    return new WorkflowStepBatchResponse( false, [],
+                        [$"Step {realId}: composite steps require a non-null ChildWorkflowId. " +
+                         "Provide ChildWorkflowId or set IsComposite to false."] );
+                }
             }
 
             // ── Phase 3: Process dependency changes ──
@@ -629,6 +786,17 @@ public sealed partial class WorkflowService(
                 WorkflowStep? step = await dbContext.WorkflowSteps
                     .FirstOrDefaultAsync( s => s.Id == realId, ct );
                 if (step is not null) {
+                    // Cascade-delete child workflow for composite steps
+                    if (step.ChildWorkflowId.HasValue) {
+                        Workflow? childWf = await dbContext.Workflows
+                            .Include( w => w.Steps )
+                            .FirstOrDefaultAsync( w => w.Id == step.ChildWorkflowId.Value, ct );
+                        if (childWf is not null) {
+                            dbContext.WorkflowSteps.RemoveRange( childWf.Steps );
+                            _ = dbContext.Workflows.Remove( childWf );
+                        }
+                    }
+
                     // Remove dependencies first
                     List<WorkflowStepDependency> deps = await dbContext.WorkflowStepDependencies
                         .Where( d => d.StepId == realId || d.DependsOnStepId == realId )
@@ -649,6 +817,18 @@ public sealed partial class WorkflowService(
             }
 
             await tx.CommitAsync( ct );
+
+            // Create a version snapshot after the batch completes
+            Workflow? wfForVersion = await dbContext.Workflows
+                .Include( w => w.Steps )
+                    .ThenInclude( s => s.Dependencies )
+                .Include( w => w.Variables )
+                .FirstOrDefaultAsync( w => w.Id == workflowId, ct );
+
+            if (wfForVersion is not null) {
+                _ = await versionService.CreateVersionAsync(
+                    wfForVersion, userId, changeDescription ?? "Batch step update", ct );
+            }
 
             if (logger.IsEnabled( LogLevel.Information )) {
                 logger.LogInformation(
@@ -719,5 +899,16 @@ public sealed partial class WorkflowService(
         if (string.IsNullOrWhiteSpace( workflow.Name )) {
             throw new System.ComponentModel.DataAnnotations.ValidationException( "Workflow name is required." );
         }
+    }
+
+    /// <summary>Parse dependency mode with legacy alias support ("All" → AllSuccess, "Any" → AnySuccess).</summary>
+    private static DependencyMode ParseDependencyMode( string value ) {
+        return string.IsNullOrWhiteSpace( value )
+            ? default
+            : string.Equals( value, "All", StringComparison.OrdinalIgnoreCase )
+            ? DependencyMode.AllSuccess
+            : string.Equals( value, "Any", StringComparison.OrdinalIgnoreCase )
+            ? DependencyMode.AnySuccess
+            : Enum.Parse<DependencyMode>( value, ignoreCase: true );
     }
 }

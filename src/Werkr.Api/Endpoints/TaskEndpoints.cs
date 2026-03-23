@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Werkr.Api.Models;
 using Werkr.Api.Services;
 using Werkr.Common.Auth;
@@ -12,7 +13,7 @@ namespace Werkr.Api.Endpoints;
 internal static class TaskEndpoints {
     /// <summary>Maps task CRUD, enabled-toggle, and run endpoints.</summary>
     public static WebApplication MapTaskEndpoints( this WebApplication app ) {
-        _ = app.MapGet( "/api/tasks", async (
+        _ = app.MapGet( "/api/v1/tasks", async (
             long? workflowId,
             TaskService taskService,
             CancellationToken ct
@@ -24,7 +25,7 @@ internal static class TaskEndpoints {
         .WithName( "GetTasks" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/tasks/{id}", async (
+        _ = app.MapGet( "/api/v1/tasks/{id}", async (
             long id,
             TaskService taskService,
             CancellationToken ct
@@ -35,16 +36,18 @@ internal static class TaskEndpoints {
         .WithName( "GetTask" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapPost( "/api/tasks", async (
+        _ = app.MapPost( "/api/v1/tasks", async (
             TaskCreateRequest request,
+            HttpContext httpContext,
             TaskService taskService,
             CancellationToken ct
         ) => {
             try {
+                string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
                 WerkrTask entity = TaskMapper.ToEntity( request );
-                WerkrTask created = await taskService.CreateAsync( entity, ct );
+                WerkrTask created = await taskService.CreateAsync( entity, userId, ct );
                 TaskDto dto = TaskMapper.ToDto( created );
-                return Results.Created( $"/api/tasks/{dto.Id}", dto );
+                return Results.Created( $"/api/v1/tasks/{dto.Id}", dto );
             } catch (System.ComponentModel.DataAnnotations.ValidationException ex) {
                 return Results.BadRequest( new { message = ex.Message } );
             } catch (Exception ex) when (ex is FormatException or ArgumentException) {
@@ -54,15 +57,17 @@ internal static class TaskEndpoints {
         .WithName( "CreateTask" )
         .RequireAuthorization( Policies.CanCreate );
 
-        _ = app.MapPut( "/api/tasks/{id}", async (
+        _ = app.MapPut( "/api/v1/tasks/{id}", async (
             long id,
             TaskUpdateRequest request,
+            HttpContext httpContext,
             TaskService taskService,
             CancellationToken ct
         ) => {
             try {
+                string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
                 WerkrTask entity = TaskMapper.ToEntity( id, request );
-                WerkrTask updated = await taskService.UpdateAsync( entity, ct );
+                WerkrTask updated = await taskService.UpdateAsync( entity, userId, request.ChangeDescription, ct );
                 return Results.Ok( TaskMapper.ToDto( updated ) );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
@@ -75,13 +80,15 @@ internal static class TaskEndpoints {
         .WithName( "UpdateTask" )
         .RequireAuthorization( Policies.CanUpdate );
 
-        _ = app.MapDelete( "/api/tasks/{id}", async (
+        _ = app.MapDelete( "/api/v1/tasks/{id}", async (
             long id,
+            HttpContext httpContext,
             TaskService taskService,
             CancellationToken ct
         ) => {
             try {
-                await taskService.DeleteAsync( id, ct );
+                string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+                await taskService.DeleteAsync( id, userId, ct );
                 return Results.NoContent( );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
@@ -90,14 +97,16 @@ internal static class TaskEndpoints {
         .WithName( "DeleteTask" )
         .RequireAuthorization( Policies.CanDelete );
 
-        _ = app.MapPut( "/api/tasks/{id}/enabled", async (
+        _ = app.MapPut( "/api/v1/tasks/{id}/enabled", async (
             long id,
             TaskSetEnabledRequest request,
+            HttpContext httpContext,
             TaskService taskService,
             CancellationToken ct
         ) => {
             try {
-                await taskService.SetEnabledAsync( id, request.Enabled, ct );
+                string? userId = httpContext.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+                await taskService.SetEnabledAsync( id, request.Enabled, userId, ct );
                 return Results.NoContent( );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
@@ -107,7 +116,7 @@ internal static class TaskEndpoints {
         .RequireAuthorization( Policies.CanUpdate );
 
         // ── Run Now: creates a one-time schedule and invalidates agents ──
-        _ = app.MapPost( "/api/tasks/{id}/run", async (
+        _ = app.MapPost( "/api/v1/tasks/{id}/run", async (
             long id,
             TaskRunRequest? request,
             RunNowService runNowService,
@@ -117,7 +126,7 @@ internal static class TaskEndpoints {
             try {
                 Guid scheduleId = await runNowService.CreateTaskRunNowAsync( id, ct );
                 await invalidationDispatcher.InvalidateAsync( scheduleId, ct );
-                return Results.Accepted( $"/api/tasks/{id}/latest-job",
+                return Results.Accepted( $"/api/v1/tasks/{id}/latest-job",
                     new { scheduleId, message = "One-time schedule created. Execution will begin on the next agent sync." } );
             } catch (KeyNotFoundException) {
                 return Results.NotFound( );
@@ -127,7 +136,7 @@ internal static class TaskEndpoints {
         .RequireAuthorization( Policies.CanExecute );
 
         // ── Latest Job: convenience endpoint for polling after Run Now ──
-        _ = app.MapGet( "/api/tasks/{id}/latest-job", async (
+        _ = app.MapGet( "/api/v1/tasks/{id}/latest-job", async (
             long id,
             JobExecutionService jobService,
             CancellationToken ct

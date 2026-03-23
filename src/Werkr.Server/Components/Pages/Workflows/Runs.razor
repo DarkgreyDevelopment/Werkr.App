@@ -4,12 +4,15 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @implements IAsyncDisposable
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject ServerConfigCache ConfigCache
 
 <PageTitle>Werkr - Workflow Runs</PageTitle>
 
-<h1>Workflow Runs</h1>
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Workflow Runs</h1>
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
+</div>
 <Breadcrumb Items="_breadcrumbs" />
 
 <div class="mb-3">
@@ -53,8 +56,8 @@
                 @foreach ( WorkflowRunDto run in filteredRuns ) {
                     <tr>
                         <td><a href="/workflows/runs/@run.Id">@run.Id.ToString()[..8]…</a></td>
-                        <td>@run.StartTime.ToString( "g" )</td>
-                        <td>@( run.EndTime?.ToString( "g" ) ?? "—" )</td>
+                        <td>@ConvertIfNeeded( run.StartTime ).ToString( "g" )</td>
+                        <td>@( run.EndTime is not null ? ConvertIfNeeded( run.EndTime.Value ).ToString( "g" ) : "—" )</td>
                         <td>
                             <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( run.Status )">@run.Status</span>
                         </td>
@@ -78,13 +81,14 @@
     private string? _errorMessage;
     private bool _isLoading;
     private bool _disposed;
+    private TimeZoneInfo? _displayTz;
     private PeriodicTimer? _refreshTimer;
     private CancellationTokenSource? _cts;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
 
     private static readonly FilterDefinition _filterDefinition = new( [
-        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Running", "Completed", "Failed", "Skipped"] ),
+        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Running", "Succeeded", "Failed", "Skipped"] ),
         new FilterField( "since", "Since", FilterFieldType.Date ),
         new FilterField( "until", "Until", FilterFieldType.Date ),
     ] );
@@ -122,9 +126,8 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _runs = await client.GetFromJsonAsync<List<WorkflowRunDto>>(
-                $"/api/workflows/{WorkflowId}/runs" );
+            _runs = await Api.GetAsync<List<WorkflowRunDto>>(
+                $"/api/v1/workflows/{WorkflowId}/runs" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load runs: {ex.Message}";
         } finally {
@@ -147,4 +150,9 @@
     private void OnFilterCleared( ) {
         _activeCriteria = null;
     }
+
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
 }

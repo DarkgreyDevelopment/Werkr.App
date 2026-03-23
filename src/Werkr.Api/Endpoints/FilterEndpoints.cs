@@ -19,7 +19,7 @@ internal static class FilterEndpoints {
     public static WebApplication MapFilterEndpoints( this WebApplication app ) {
 
         // GET /api/filters/{pageKey} — list own + shared filters
-        _ = app.MapGet( "/api/filters/{pageKey}", async (
+        _ = app.MapGet( "/api/v1/filters/{pageKey}", async (
             string pageKey,
             HttpContext httpContext,
             WerkrDbContext dbContext,
@@ -54,7 +54,7 @@ internal static class FilterEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         // POST /api/filters/{pageKey} — create a filter
-        _ = app.MapPost( "/api/filters/{pageKey}", async (
+        _ = app.MapPost( "/api/v1/filters/{pageKey}", async (
             string pageKey,
             CreateFilterRequest request,
             HttpContext httpContext,
@@ -97,7 +97,7 @@ internal static class FilterEndpoints {
             _ = dbContext.SavedFilters.Add( entity );
             _ = await dbContext.SaveChangesAsync( ct );
 
-            return Results.Created( $"/api/filters/{pageKey}/{entity.Id}", new {
+            return Results.Created( $"/api/v1/filters/{pageKey}/{entity.Id}", new {
                 entity.Id,
                 entity.Name,
                 entity.PageKey,
@@ -109,7 +109,7 @@ internal static class FilterEndpoints {
         .RequireAuthorization( Policies.CanCreate );
 
         // PUT /api/filters/{pageKey}/{id} — update own filter
-        _ = app.MapPut( "/api/filters/{pageKey}/{id}", async (
+        _ = app.MapPut( "/api/v1/filters/{pageKey}/{id}", async (
             string pageKey,
             long id,
             UpdateFilterRequest request,
@@ -167,7 +167,7 @@ internal static class FilterEndpoints {
         .RequireAuthorization( Policies.CanUpdate );
 
         // DELETE /api/filters/{pageKey}/{id} — delete own filter
-        _ = app.MapDelete( "/api/filters/{pageKey}/{id}", async (
+        _ = app.MapDelete( "/api/v1/filters/{pageKey}/{id}", async (
             string pageKey,
             long id,
             HttpContext httpContext,
@@ -202,7 +202,7 @@ internal static class FilterEndpoints {
         .RequireAuthorization( Policies.CanDelete );
 
         // PUT /api/filters/{pageKey}/{id}/share — toggle shared visibility (admin only)
-        _ = app.MapPut( "/api/filters/{pageKey}/{id}/share", async (
+        _ = app.MapPut( "/api/v1/filters/{pageKey}/{id}/share", async (
             string pageKey,
             long id,
             HttpContext httpContext,

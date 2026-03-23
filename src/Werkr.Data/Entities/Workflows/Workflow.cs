@@ -34,6 +34,22 @@ public class Workflow : ConcurrencyBase, IKey<long> {
     /// <summary>JSON-serialized annotation cards for the DAG canvas (sticky notes).</summary>
     public string? Annotations { get; set; }
 
+    /// <summary>Back-reference to the parent composite step that owns this child workflow.</summary>
+    public long? ParentStepId { get; set; }
+
+    /// <summary>True if this workflow is a child workflow owned by a composite step. Excluded from list queries.</summary>
+    public bool IsChildWorkflow { get; set; }
+
+    /// <summary>Foreign key to the current (latest) workflow version. Nullable for migration — existing workflows will be backfilled by seeder.</summary>
+    public long? CurrentVersionId { get; set; }
+
+    /// <summary>Navigation to the current (latest) version snapshot.</summary>
+    [ForeignKey( nameof( CurrentVersionId ) )]
+    public WorkflowVersion? CurrentVersion { get; set; }
+
+    /// <summary>All version snapshots for this workflow.</summary>
+    public ICollection<WorkflowVersion> Versions { get; set; } = [];
+
     /// <summary>Navigation property for workflow steps.</summary>
     public ICollection<WorkflowStep> Steps { get; set; } = [];
 

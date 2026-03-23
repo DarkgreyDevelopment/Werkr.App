@@ -15,21 +15,23 @@ const controlFillMap: Record<string, string> = {
 // ── Execution status → CSS fill mapping ──
 
 const statusFillMap: Record<string, string> = {
-  "Running": "var(--werkr-running)",
-  "Completed": "var(--werkr-success)",
-  "Failed": "var(--werkr-failed)",
-  "Skipped": "var(--werkr-skipped)",
-  "Pending": "var(--werkr-pending)",
+  "Running":   "var(--werkr-status-running)",
+  "Succeeded": "var(--werkr-status-succeeded)",
+  "Failed":    "var(--werkr-status-failed)",
+  "Skipped":   "var(--werkr-status-skipped)",
+  "Pending":   "var(--werkr-status-pending)",
+  "Cancelled": "var(--werkr-status-cancelled)",
 };
 
 // ── Execution status → icon mapping ──
 
 const statusIconMap: Record<string, string> = {
-  "Running": "●",
-  "Completed": "✓",
-  "Failed": "✕",
-  "Skipped": "⊘",
-  "Pending": "◷",
+  "Running":   "●",
+  "Succeeded": "✓",
+  "Failed":    "✕",
+  "Skipped":   "⊘",
+  "Pending":   "◷",
+  "Cancelled": "⊘",
 };
 
 /**

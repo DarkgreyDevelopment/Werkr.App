@@ -21,4 +21,10 @@ public sealed class AgentSettings {
 
     /// <summary>PowerShell-specific settings.</summary>
     public PowerShellSettings PowerShell { get; set; } = new( );
+
+    /// <summary>
+    /// Maximum seconds to wait for active jobs to complete during graceful shutdown.
+    /// Must be less than the host's shutdown timeout (e.g. systemd TimeoutStopSec).
+    /// </summary>
+    public int ShutdownTimeoutSeconds { get; set; } = 30;
 }

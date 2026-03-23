@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Werkr.Common.Models;
 using Werkr.Server.Components.Shared;
+using Werkr.Server.Identity;
+using Werkr.Server.Services;
 
 namespace Werkr.Tests.Server.Components;
 
@@ -23,6 +25,10 @@ public class TaskSetupModalTests : BunitContext {
         HttpClient client = new( handler ) { BaseAddress = new Uri( "http://localhost" ) };
         IHttpClientFactory factory = new FakeHttpClientFactory( client );
         _ = Services.AddSingleton( factory );
+        _ = Services.AddSingleton<IUserTokenProvider>( new FakeUserTokenProvider( ) );
+        _ = Services.AddScoped( sp => new ApiServiceAccessor(
+            sp.GetRequiredService<IHttpClientFactory>( ),
+            sp.GetRequiredService<IUserTokenProvider>( ) ) );
     }
 
     /// <summary>
@@ -129,7 +135,7 @@ public class TaskSetupModalTests : BunitContext {
             Arguments: ["--verbose"],
             TargetTags: ["linux"],
             Enabled: true,
-            TimeoutMinutes: 30,
+            TimeoutMinutes: 60,
             SyncIntervalMinutes: 5,
             SuccessCriteria: null,
             EffectiveSuccessCriteria: "ExitCodeZero",
@@ -165,7 +171,7 @@ public class TaskSetupModalTests : BunitContext {
                 Id: 7, Name: "Updated", Description: "Updated desc",
                 ActionType: "ShellCommand", Content: "echo updated",
                 Arguments: null, TargetTags: ["linux"], Enabled: true,
-                TimeoutMinutes: 30, SyncIntervalMinutes: 5,
+                TimeoutMinutes: 60, SyncIntervalMinutes: 5,
                 SuccessCriteria: null, EffectiveSuccessCriteria: "ExitCodeZero",
                 WorkflowId: 42 ) ),
             ( method, uri ) => { capturedMethod = method; capturedUri = uri; } );
@@ -176,7 +182,7 @@ public class TaskSetupModalTests : BunitContext {
             Id: 7, Name: "My Task", Description: "Test desc",
             ActionType: "ShellCommand", Content: "echo hello",
             Arguments: null, TargetTags: ["linux"], Enabled: true,
-            TimeoutMinutes: 30, SyncIntervalMinutes: 5,
+            TimeoutMinutes: 60, SyncIntervalMinutes: 5,
             SuccessCriteria: null, EffectiveSuccessCriteria: "ExitCodeZero",
             WorkflowId: 42 );
 
@@ -191,7 +197,7 @@ public class TaskSetupModalTests : BunitContext {
         cut.Find( "form" ).Submit( );
 
         Assert.AreEqual( HttpMethod.Put, capturedMethod, "Should send PUT request in edit mode." );
-        Assert.AreEqual( "/api/tasks/7", capturedUri, "Should target the correct task endpoint." );
+        Assert.AreEqual( "/api/v1/tasks/7", capturedUri, "Should target the correct task endpoint." );
     }
 
     /// <summary>
@@ -205,7 +211,7 @@ public class TaskSetupModalTests : BunitContext {
             Id: 7, Name: "Updated Task", Description: "Updated desc",
             ActionType: "ShellCommand", Content: "echo updated",
             Arguments: null, TargetTags: ["linux"], Enabled: true,
-            TimeoutMinutes: 30, SyncIntervalMinutes: 5,
+            TimeoutMinutes: 60, SyncIntervalMinutes: 5,
             SuccessCriteria: null, EffectiveSuccessCriteria: "ExitCodeZero",
             WorkflowId: 42 );
 
@@ -215,7 +221,7 @@ public class TaskSetupModalTests : BunitContext {
             Id: 7, Name: "My Task", Description: "Test desc",
             ActionType: "ShellCommand", Content: "echo hello",
             Arguments: null, TargetTags: ["linux"], Enabled: true,
-            TimeoutMinutes: 30, SyncIntervalMinutes: 5,
+            TimeoutMinutes: 60, SyncIntervalMinutes: 5,
             SuccessCriteria: null, EffectiveSuccessCriteria: "ExitCodeZero",
             WorkflowId: 42 );
 
@@ -261,5 +267,10 @@ public class TaskSetupModalTests : BunitContext {
     /// <summary>Fake <see cref="IHttpClientFactory"/> that always returns the same client.</summary>
     private sealed class FakeHttpClientFactory( HttpClient client ) : IHttpClientFactory {
         public HttpClient CreateClient( string name ) => client;
+    }
+
+    /// <summary>Fake <see cref="IUserTokenProvider"/> that returns a static test token.</summary>
+    private sealed class FakeUserTokenProvider : IUserTokenProvider {
+        public Task<string?> GetTokenAsync( ) => Task.FromResult<string?>( "fake-test-token" );
     }
 }

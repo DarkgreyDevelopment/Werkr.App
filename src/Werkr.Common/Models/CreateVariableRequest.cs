@@ -4,5 +4,8 @@ namespace Werkr.Common.Models;
 public sealed record CreateVariableRequest(
     string Name,
     string? Description = null,
-    string? DefaultValue = null
+    string? DefaultValue = null,
+    string? DataType = null,
+    bool IsRequired = false,
+    bool LogRedaction = false
 );

@@ -7,7 +7,7 @@ namespace Werkr.Server.Identity;
 
 /// <summary>
 /// Service for creating, validating, and managing API keys.
-/// API keys are stored as SHA-256 hashes; the raw key is only returned at creation time.
+/// API keys are stored as SHA-512 hashes; the raw key is only returned at creation time.
 /// </summary>
 public sealed partial class ApiKeyService( WerkrIdentityDbContext dbContext, ILogger<ApiKeyService> logger ) {
 
@@ -148,10 +148,10 @@ public sealed partial class ApiKeyService( WerkrIdentityDbContext dbContext, ILo
     }
 
     /// <summary>
-    /// Computes a SHA-256 hash of the raw API key.
+    /// Computes a SHA-512 hash of the raw API key.
     /// </summary>
     private static string ComputeHash( string rawKey ) {
-        byte[] hash = SHA256.HashData( System.Text.Encoding.UTF8.GetBytes( rawKey ) );
+        byte[] hash = SHA512.HashData( System.Text.Encoding.UTF8.GetBytes( rawKey ) );
         return Convert.ToHexString( hash );
     }
 }

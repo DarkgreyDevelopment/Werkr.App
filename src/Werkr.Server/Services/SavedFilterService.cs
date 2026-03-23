@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.JSInterop;
 using Werkr.Common.Models;
+using Werkr.Server.Identity;
 
 namespace Werkr.Server.Services;
 
@@ -9,9 +10,10 @@ namespace Werkr.Server.Services;
 /// shared filters via the API (<c>/api/filters/{pageKey}</c>).
 /// Must only be called after the first interactive render (<c>OnAfterRenderAsync</c>).
 /// </summary>
-public sealed class SavedFilterService( IJSRuntime js, IHttpClientFactory httpClientFactory, ILogger<SavedFilterService> logger ) {
+public sealed class SavedFilterService( IJSRuntime js, IHttpClientFactory httpClientFactory, IUserTokenProvider userTokenProvider, ILogger<SavedFilterService> logger ) {
     private readonly IJSRuntime _js = js;
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly IUserTokenProvider _userTokenProvider = userTokenProvider;
     private readonly ILogger<SavedFilterService> _logger = logger;
 
     private static readonly JsonSerializerOptions s_jsonOptions = new( ) {
@@ -92,9 +94,10 @@ public sealed class SavedFilterService( IJSRuntime js, IHttpClientFactory httpCl
     /// <summary>Fetches shared filters from the API.</summary>
     public async Task<IReadOnlyList<SavedFilterView>> GetSharedFiltersAsync( string pageKey ) {
         try {
+            await SetUserTokenAsync( );
             HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
             List<ServerFilterDto>? dtos = await client.GetFromJsonAsync<List<ServerFilterDto>>(
-                $"/api/filters/{pageKey}", s_jsonOptions );
+                $"/api/v1/filters/{pageKey}", s_jsonOptions );
 
             if (dtos is null || dtos.Count == 0) {
                 return [];
@@ -124,10 +127,11 @@ public sealed class SavedFilterService( IJSRuntime js, IHttpClientFactory httpCl
     /// <summary>Creates a shared filter via the API.</summary>
     public async Task<bool> CreateSharedFilterAsync( string pageKey, string name, FilterCriteria criteria ) {
         try {
+            await SetUserTokenAsync( );
             HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
             string criteriaJson = JsonSerializer.Serialize( criteria, s_jsonOptions );
             HttpResponseMessage response = await client.PostAsJsonAsync(
-                $"/api/filters/{pageKey}",
+                $"/api/v1/filters/{pageKey}",
                 new { Name = name, CriteriaJson = criteriaJson },
                 s_jsonOptions );
             return response.IsSuccessStatusCode;
@@ -140,13 +144,19 @@ public sealed class SavedFilterService( IJSRuntime js, IHttpClientFactory httpCl
     /// <summary>Deletes a shared filter via the API.</summary>
     public async Task<bool> DeleteSharedFilterAsync( string pageKey, long serverId ) {
         try {
+            await SetUserTokenAsync( );
             HttpClient client = _httpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/filters/{pageKey}/{serverId}" );
+            HttpResponseMessage response = await client.DeleteAsync( $"/api/v1/filters/{pageKey}/{serverId}" );
             return response.IsSuccessStatusCode;
         } catch (Exception ex) {
             _logger.LogWarning( ex, "Failed to delete shared filter {Id} for page {PageKey}.", serverId, pageKey );
             return false;
         }
+    }
+
+    private async Task SetUserTokenAsync( ) {
+        string? token = await _userTokenProvider.GetTokenAsync( );
+        UserTokenContext.CurrentToken = token;
     }
 
     /// <summary>Internal wrapper matching the localStorage JSON shape.</summary>

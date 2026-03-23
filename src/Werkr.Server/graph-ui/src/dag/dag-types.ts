@@ -21,6 +21,9 @@ export interface WerkrNodeData {
   controlStatement: string;
   order: number;
   executionStatus?: string;
+  isComposite?: boolean;
+  compositeType?: string;
+  childWorkflowId?: number;
 }
 
 /** Configuration for Dagre hierarchical layout. */
@@ -41,6 +44,9 @@ export interface EditorDagNodeDto extends DagNodeDto {
   dependencyMode?: string;
   conditionExpression?: string | null;
   maxIterations?: number;
+  isComposite?: boolean;
+  compositeType?: string;
+  childWorkflowId?: number;
 }
 
 /** Extended node data for editor mode — adds mutable step configuration fields. */
@@ -53,4 +59,7 @@ export interface EditorNodeData extends WerkrNodeData {
   conditionExpression?: string | null;
   maxIterations?: number;
   actionType?: string;
+  isComposite?: boolean;
+  compositeType?: string;
+  childWorkflowId?: number;
 }

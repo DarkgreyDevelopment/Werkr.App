@@ -293,7 +293,7 @@ public class ConditionEvaluatorTests {
         bool result = _evaluator.EvaluateMultiple(
             null,
             jobs,
-            DependencyMode.All
+            DependencyMode.AllSuccess
         );
         Assert.IsTrue( result );
     }
@@ -307,13 +307,13 @@ public class ConditionEvaluatorTests {
         bool result = _evaluator.EvaluateMultiple(
             "$? -eq $true",
             [],
-            DependencyMode.All
+            DependencyMode.AllSuccess
         );
         Assert.IsTrue( result );
     }
 
     /// <summary>
-    /// Verifies that <see cref="DependencyMode.All"/> requires all predecessors to match the expression.
+    /// Verifies that <see cref="DependencyMode.AllSuccess"/> requires all predecessors to match the expression.
     /// </summary>
     [TestMethod]
     public void EvaluateMultiple_AllMode_AllMustMatch( ) {
@@ -321,13 +321,13 @@ public class ConditionEvaluatorTests {
         bool result = _evaluator.EvaluateMultiple(
             "$? -eq $true",
             jobs,
-            DependencyMode.All
+            DependencyMode.AllSuccess
         );
         Assert.IsTrue( result );
     }
 
     /// <summary>
-    /// Verifies that <see cref="DependencyMode.All"/> returns <see langword="false"/> when one predecessor fails.
+    /// Verifies that <see cref="DependencyMode.AllSuccess"/> returns <see langword="false"/> when one predecessor fails.
     /// </summary>
     [TestMethod]
     public void EvaluateMultiple_AllMode_OneFails_ReturnsFalse( ) {
@@ -335,13 +335,13 @@ public class ConditionEvaluatorTests {
         bool result = _evaluator.EvaluateMultiple(
             "$? -eq $true",
             jobs,
-            DependencyMode.All
+            DependencyMode.AllSuccess
         );
         Assert.IsFalse( result );
     }
 
     /// <summary>
-    /// Verifies that <see cref="DependencyMode.Any"/> returns <see langword="true"/> when at least one predecessor
+    /// Verifies that <see cref="DependencyMode.AnySuccess"/> returns <see langword="true"/> when at least one predecessor
     /// passes.
     /// </summary>
     [TestMethod]
@@ -350,13 +350,13 @@ public class ConditionEvaluatorTests {
         bool result = _evaluator.EvaluateMultiple(
             "$? -eq $true",
             jobs,
-            DependencyMode.Any
+            DependencyMode.AnySuccess
         );
         Assert.IsTrue( result );
     }
 
     /// <summary>
-    /// Verifies that <see cref="DependencyMode.Any"/> returns <see langword="false"/> when no predecessors pass.
+    /// Verifies that <see cref="DependencyMode.AnySuccess"/> returns <see langword="false"/> when no predecessors pass.
     /// </summary>
     [TestMethod]
     public void EvaluateMultiple_AnyMode_NonePass_ReturnsFalse( ) {
@@ -364,7 +364,7 @@ public class ConditionEvaluatorTests {
         bool result = _evaluator.EvaluateMultiple(
             "$? -eq $true",
             jobs,
-            DependencyMode.Any
+            DependencyMode.AnySuccess
         );
         Assert.IsFalse( result );
     }

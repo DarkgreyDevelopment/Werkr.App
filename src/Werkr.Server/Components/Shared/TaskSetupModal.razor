@@ -1,12 +1,12 @@
 @rendermode InteractiveServer
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 @if ( _isVisible ) {
     <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@( IsEditing ? "Edit Task" : "Create New Task" )</h5>
+                    <h5 class="modal-title">@( IsEditing ? "Edit Task" : LockedTitle )</h5>
                     <button type="button" class="btn-close" aria-label="Close" @onclick="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -28,13 +28,17 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Action Type</label>
-                                <InputSelect class="form-select" @bind-Value="_model.ActionType">
-                                    <option value="Action">Action</option>
-                                    <option value="PowerShellCommand">PowerShell Command</option>
-                                    <option value="PowerShellScript">PowerShell Script</option>
-                                    <option value="ShellCommand">Shell Command</option>
-                                    <option value="ShellScript">Shell Script</option>
-                                </InputSelect>
+                                @if ( _lockedActionKey is not null ) {
+                                    <span class="form-control-plaintext">Action</span>
+                                } else {
+                                    <InputSelect class="form-select" @bind-Value="_model.ActionType">
+                                        <option value="Action">Action</option>
+                                        <option value="PowerShellCommand">PowerShell Command</option>
+                                        <option value="PowerShellScript">PowerShell Script</option>
+                                        <option value="ShellCommand">Shell Command</option>
+                                        <option value="ShellScript">Shell Script</option>
+                                    </InputSelect>
+                                }
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Timeout (minutes)</label>
@@ -64,13 +68,19 @@
                                 <label class="form-label">Action Parameters</label>
                                 <ActionParameterEditor @ref="_actionEditor"
                                                        @bind-ActionSubType="_model.ActionSubType"
-                                                       @bind-ActionParameters="_model.ActionParameters" />
+                                                       @bind-ActionParameters="_model.ActionParameters"
+                                                       LockedAction="@_lockedActionKey" />
                             </div>
                         }
 
                         <div class="mb-3">
                             <label class="form-label">Target Tags</label>
-                            <TagInput Value="@_targetTags" ValueChanged="OnTargetTagsChanged" />
+                            <TagInput Value="@_targetTags" ValueChanged="OnTargetTagsChanged"
+                                      HideEmptyWarning="true" />
+                            <div class="form-text">
+                                Task-level tags override the parent workflow's targeting.
+                                Leave empty to inherit tags from the workflow.
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -115,11 +125,29 @@
     private string[] _targetTags = [];
     private TaskFormModel _model = new( );
     private long? _editTaskId;
+    private string? _lockedActionKey;
 
     private bool IsEditing => _editTaskId is not null;
 
+    private string LockedTitle => _lockedActionKey is not null
+        && ActionRegistry.Actions.TryGetValue( _lockedActionKey, out ActionFormDescriptor? desc )
+            ? $"New {desc.DisplayName} Task"
+            : "Create New Task";
+
     public void Show( ) {
         _model = new TaskFormModel( );
+        _targetTags = [];
+        _editTaskId = null;
+        _lockedActionKey = null;
+        _isVisible = true;
+        _isSaving = false;
+        _errorMessage = null;
+        StateHasChanged( );
+    }
+
+    public void Show( string actionKey ) {
+        _model = new TaskFormModel { ActionType = "Action", ActionSubType = actionKey };
+        _lockedActionKey = actionKey;
         _targetTags = [];
         _editTaskId = null;
         _isVisible = true;
@@ -132,6 +160,7 @@
         _model = TaskFormModel.FromDto( existingTask );
         _targetTags = existingTask.TargetTags ?? [];
         _editTaskId = existingTask.Id;
+        _lockedActionKey = null;
         _isVisible = true;
         _isSaving = false;
         _errorMessage = null;
@@ -140,6 +169,7 @@
 
     private void Close( ) {
         _isVisible = false;
+        _lockedActionKey = null;
         StateHasChanged( );
     }
 
@@ -150,10 +180,9 @@
         _isSaving = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             if ( IsEditing ) {
                 TaskUpdateRequest request = _model.ToUpdateRequest( _targetTags );
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/tasks/{_editTaskId}", request );
+                HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/tasks/{_editTaskId}", request );
                 if ( response.IsSuccessStatusCode ) {
                     TaskDto? updated = await response.Content.ReadFromJsonAsync<TaskDto>( );
                     _isVisible = false;
@@ -166,7 +195,7 @@
                 }
             } else {
                 TaskCreateRequest request = _model.ToCreateRequest( WorkflowId, _targetTags );
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/tasks", request );
+                HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/tasks", request );
                 if ( response.IsSuccessStatusCode ) {
                     TaskDto? created = await response.Content.ReadFromJsonAsync<TaskDto>( );
                     _isVisible = false;

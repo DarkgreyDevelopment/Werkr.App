@@ -3,7 +3,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @implements IAsyncDisposable
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject ServerConfigCache ConfigCache
 
 <PageTitle>Werkr - Task List</PageTitle>
@@ -116,7 +116,7 @@
                         <td>
                             @if ( item.LastJob is not null ) {
                                 <a href="/jobs/@item.LastJob.Id">
-                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.LastJob.Success ? "Completed" : "Failed" )">@( item.LastJob.Success ? "Success" : "Failed" )</span>
+                                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.LastJob.Success ? "Succeeded" : "Failed" )">@( item.LastJob.Success ? "Success" : "Failed" )</span>
                                 </a>
                                 <br />
                                 <small class="text-muted">@item.LastJob.StartTime.ToString( "g" )</small>
@@ -241,8 +241,7 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            List<TaskDto>? tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            List<TaskDto>? tasks = await Api.GetAsync<List<TaskDto>>( "/api/v1/tasks" );
             if ( tasks is null ) {
                 _items = [];
                 return;
@@ -252,8 +251,8 @@
             foreach ( TaskDto task in tasks ) {
                 JobListDto? lastJob = null;
                 try {
-                    List<JobListDto>? jobs = await client.GetFromJsonAsync<List<JobListDto>>(
-                        $"/api/tasks/{task.Id}/jobs?limit=1" );
+                    List<JobListDto>? jobs = await Api.GetAsync<List<JobListDto>>(
+                        $"/api/v1/tasks/{task.Id}/jobs?limit=1" );
                     lastJob = jobs?.FirstOrDefault( );
                 } catch {
                     // Skip job lookup errors
@@ -270,8 +269,7 @@
 
     private async Task RunTaskAsync( long taskId ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            await client.PostAsJsonAsync( $"/api/tasks/{taskId}/run", new TaskRunRequest( null ) );
+            await Api.PostAsJsonAsync( $"/api/v1/tasks/{taskId}/run", new TaskRunRequest( null ) );
         } catch {
             _errorMessage = "Failed to run task.";
         }
@@ -279,7 +277,6 @@
 
     private async Task ToggleEnabledAsync( TaskDto task ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             TaskUpdateRequest request = new(
                 Name: task.Name,
                 Description: task.Description,
@@ -291,7 +288,7 @@
                 TimeoutMinutes: task.TimeoutMinutes,
                 SuccessCriteria: task.SuccessCriteria,
                 WorkflowId: task.WorkflowId );
-            HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/tasks/{task.Id}", request );
+            HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/tasks/{task.Id}", request );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {

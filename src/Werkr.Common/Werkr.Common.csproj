@@ -10,11 +10,13 @@
     <PackageReference Include="Microsoft.AspNetCore.Authorization" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+    <PackageReference Include="TimeZoneNames" />
   </ItemGroup>
 
   <ItemGroup>
     <Protobuf Include="Protos\EncryptedEnvelope.proto" GrpcServices="None" />
     <Protobuf Include="Protos\GrpcLogMsg.proto" GrpcServices="None" />
+    <Protobuf Include="Protos\ResponseMetadata.proto" GrpcServices="None" />
   </ItemGroup>
 
   <ItemGroup>

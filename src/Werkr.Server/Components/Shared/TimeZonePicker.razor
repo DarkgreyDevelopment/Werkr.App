@@ -1,0 +1,61 @@
+@using Werkr.Common.Scheduling
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+
+<div class="d-inline-flex align-items-center gap-2">
+    <label class="form-label mb-0 text-nowrap small">Display TZ:</label>
+    <select class="form-select form-select-sm" style="width: auto; min-width: 200px;"
+            value="@_selectedId" @onchange="OnSelectionChangedAsync">
+        <option value="">Server local</option>
+        @foreach ( TimeZoneListItem item in s_tzItems ) {
+            <option value="@item.Id">@item.DisplayName — @item.Abbreviation</option>
+        }
+    </select>
+</div>
+
+@code {
+    [Parameter] public EventCallback<TimeZoneInfo?> OnTimeZoneChanged { get; set; }
+
+    private static readonly IReadOnlyList<TimeZoneListItem> s_tzItems =
+        TimeZoneDisplayService.GetTimeZoneListItems( );
+
+    private string _selectedId = "";
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync( ) {
+        try {
+            List<PreferenceItem>? prefs = await Api.GetAsync<List<PreferenceItem>>( "/api/v1/user/preferences" );
+            string? stored = prefs?.FirstOrDefault( p => p.Key == "DisplayTimeZoneId" )?.Value;
+            if (!string.IsNullOrEmpty( stored )) {
+                _selectedId = stored;
+                await OnTimeZoneChanged.InvokeAsync( Data.TimeZoneResolver.FindOrCreate( stored ) );
+            }
+        } catch {
+            // Non-critical: preference load failed
+        }
+    }
+
+    private async Task OnSelectionChangedAsync( ChangeEventArgs e ) {
+        _selectedId = e.Value?.ToString( ) ?? "";
+        TimeZoneInfo? tz = null;
+
+        if (!string.IsNullOrEmpty( _selectedId )) {
+            try {
+                tz = Data.TimeZoneResolver.FindOrCreate( _selectedId );
+                _ = await Api.PutAsJsonAsync( $"/api/v1/user/preferences/DisplayTimeZoneId",
+                    new { value = _selectedId } );
+            } catch {
+                // fallback
+            }
+        } else {
+            try {
+                _ = await Api.DeleteAsync( "/api/v1/user/preferences/DisplayTimeZoneId" );
+            } catch {
+                // Non-critical
+            }
+        }
+
+        await OnTimeZoneChanged.InvokeAsync( tz );
+    }
+
+    private sealed record PreferenceItem( string Key, string Value );
+}

@@ -3,6 +3,7 @@ option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
 import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
 
 // Agent pulls assigned schedules from the Server (API hosts this service).
 // All RPCs use EncryptedEnvelope. Inner payload types defined below.
@@ -25,6 +26,9 @@ message AgentScheduleRequest {
 message AgentScheduleResponse {
   repeated ScheduledTaskDefinition tasks = 1;
   repeated ScheduledWorkflowDefinition workflows = 2;
+  repeated FileMonitorTriggerDef file_monitor_triggers = 3;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message ScheduledTaskDefinition {
@@ -39,6 +43,7 @@ message ScheduledTaskDefinition {
   repeated string arguments = 9;
   string action_sub_type = 10;
   string action_parameters_json = 11;
+  map<string, string> resolved_credentials = 12;
 }
 
 message ScheduleDefinition {
@@ -57,6 +62,10 @@ message ScheduleDefinition {
   bool has_holiday_calendar = 13;
   string holiday_calendar_mode = 14;
   bool catch_up_enabled = 15;
+  int32 shift_mode = 16;             // 0=None, 1=NextBusinessDay, 2=PreviousBusinessDay, 3=NearestBusinessDay
+  CalendarDefinition calendar = 17;  // Full calendar with rules for client-side evaluation
+  bool is_fixed_offset = 18;             // Start timezone is a fixed UTC offset (no DST)
+  bool expiration_is_fixed_offset = 19;  // Expiration timezone is a fixed UTC offset (no DST)
 }
 
 message DailyRecurrenceDef {
@@ -88,11 +97,17 @@ message ScheduledWorkflowDefinition {
   repeated WorkflowVariableDef variables = 5;       // Design-time variable definitions
   string workflow_run_id = 6;                        // API-generated run ID
   map<string, string> trigger_variables = 7;         // Per-execution trigger param overrides
+  repeated int64 prior_succeeded_step_ids = 8;       // Step IDs that already succeeded (retry-from-failed)
+  map<string, string> run_variable_values = 9;        // Latest variable values from the run (retry-from-failed)
+  repeated ChildWorkflowDefinition child_workflows = 10;  // Child workflows for composite steps
 }
 
 message WorkflowVariableDef {
   string name = 1;
   string default_value = 2;         // JSON blob or empty
+  string data_type = 3;             // Optional data-type hint (e.g. "string", "int", "json")
+  bool is_required = 4;             // Whether the variable must be supplied before run start
+  bool log_redaction = 5;           // When true, value is redacted from logs and UI
 }
 
 message ScheduledWorkflowStepDef {
@@ -108,6 +123,17 @@ message ScheduledWorkflowStepDef {
   int32 dependency_mode = 10;
   string input_variable_name = 11;   // Step's declared input variable
   string output_variable_name = 12;  // Step's declared output variable
+  bool is_composite = 13;
+  int32 composite_type = 14;         // Maps to CompositeType enum
+  int64 child_workflow_id = 15;
+  string iteration_variable_name = 16;
+  string collection_variable_name = 17;
+}
+
+message ChildWorkflowDefinition {
+  int64 child_workflow_id = 1;
+  repeated ScheduledWorkflowStepDef steps = 2;
+  repeated WorkflowVariableDef variables = 3;
 }
 
 // ── Bulk Holiday Date Fetch ──
@@ -124,6 +150,8 @@ message ScheduleHolidayDateQuery {
 
 message GetBulkScheduleHolidayDatesResponse {
   repeated ScheduleHolidayDateResult results = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }
 
 message ScheduleHolidayDateResult {
@@ -142,6 +170,28 @@ message HolidayDateMessage {
   string window_time_zone_id = 6;
 }
 
+message HolidayRuleDefinition {
+  string name = 1;
+  int32 rule_type = 2;             // 0=FixedDate, 1=NthWeekdayOfMonth, 2=LastWeekdayOfMonth
+  int32 month = 3;                 // 1-12
+  int32 day = 4;                   // 1-31 for FixedDate
+  int32 day_of_week = 5;           // 0=Sunday through 6=Saturday
+  int32 week_number = 6;           // 1-5 for NthWeekdayOfMonth
+  int32 observance_rule = 7;       // maps to ObservanceRule enum
+  int32 year_start = 8;            // 0 = no lower bound
+  int32 year_end = 9;              // 0 = no upper bound
+  string window_start = 10;        // TimeOnly ISO format or empty
+  string window_end = 11;          // TimeOnly ISO format or empty
+  string window_time_zone_id = 12;
+}
+
+message CalendarDefinition {
+  string calendar_id = 1;
+  string name = 2;
+  repeated HolidayRuleDefinition holiday_rules = 3;
+  int32 working_days = 4;          // DaysOfWeek flags bitmask
+}
+
 // ── Audit Log Submission ──
 
 message SubmitAuditLogRequest {
@@ -153,8 +203,23 @@ message AuditLogEntry {
   string occurrence_utc = 1;
   string holiday_name = 2;
   string reason = 3;
+  string action = 4;              // "Suppressed" or "Shifted"
+  string shifted_to_utc = 5;      // ISO 8601 datetime or empty
 }
 
 message SubmitAuditLogResponse {
   int32 accepted_count = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
+}
+
+// ── File Monitor Trigger Definitions ──
+
+message FileMonitorTriggerDef {
+  int64 trigger_id = 1;
+  int64 workflow_id = 2;
+  string watch_directory = 3;
+  string file_pattern = 4;
+  repeated string event_types = 5;
+  int32 debounce_ms = 6;
 }

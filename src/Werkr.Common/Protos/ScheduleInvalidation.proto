@@ -9,6 +9,9 @@ import "EncryptedEnvelope.proto";
 service ScheduleInvalidation {
   // Request envelope contains InvalidateScheduleRequest; response contains InvalidateScheduleResponse.
   rpc InvalidateSchedule (EncryptedEnvelope) returns (EncryptedEnvelope);
+
+  // Request envelope contains NotifyWorkflowDisabledRequest; response contains NotifyWorkflowDisabledResponse.
+  rpc NotifyWorkflowDisabled (EncryptedEnvelope) returns (EncryptedEnvelope);
 }
 
 // Inner payload messages — serialized, encrypted, then placed inside EncryptedEnvelope.
@@ -19,5 +22,15 @@ message InvalidateScheduleRequest {
 
 message InvalidateScheduleResponse {
   // Whether the agent acknowledged the invalidation.
+  bool acknowledged = 1;
+}
+
+// Notifies the agent that a workflow has been disabled.
+// The agent should cancel any in-flight runs for the specified workflow.
+message NotifyWorkflowDisabledRequest {
+  int64 workflow_id = 1;
+}
+
+message NotifyWorkflowDisabledResponse {
   bool acknowledged = 1;
 }

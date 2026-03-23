@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Werkr.Data.Calendar.Enums;
 
 namespace Werkr.Data.Entities.Schedule;
 
@@ -32,6 +33,10 @@ public class HolidayCalendar {
 
     /// <summary>UTC timestamp when the calendar was last updated.</summary>
     public DateTime UpdatedUtc { get; set; }
+
+    /// <summary>Bitmask of days considered working days. Default: Monday-Friday.</summary>
+    public DaysOfWeek WorkingDays { get; set; } = DaysOfWeek.Monday | DaysOfWeek.Tuesday
+        | DaysOfWeek.Wednesday | DaysOfWeek.Thursday | DaysOfWeek.Friday;
 
     // -- Navigation properties --
 

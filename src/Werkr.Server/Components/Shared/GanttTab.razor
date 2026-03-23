@@ -4,7 +4,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject ILogger<GanttTab> Logger
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 <HeadContent>
     <link rel="stylesheet" href="js/dist/timeline-view.css" />
@@ -24,6 +24,7 @@
 
     /// <summary>Optional RunId for self-fetching run detail data. When provided and StepExecutions is empty, fetches data from the API.</summary>
     [Parameter] public Guid? RunId { get; set; }
+    [Parameter] public TimeZoneInfo? DisplayTimeZone { get; set; }
 
     private readonly string _containerId = $"gantt-{Guid.NewGuid( ):N}";
     private TimelineJsInterop? _interop;
@@ -45,16 +46,15 @@
         if ( RunId == _lastFetchedRunId ) return;
 
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            WorkflowRunDetailDto? detail = await client.GetFromJsonAsync<WorkflowRunDetailDto>(
-                $"/api/workflows/runs/{RunId}" );
+            WorkflowRunDetailDto? detail = await Api.GetAsync<WorkflowRunDetailDto>(
+                $"/api/v1/workflows/runs/{RunId}" );
             if ( detail is not null ) {
                 _lastFetchedRunId = RunId;
                 _effectiveExecutions = detail.StepExecutions;
                 // Fetch workflow steps if not provided
                 if ( Steps.Count == 0 ) {
-                    WorkflowDto? wf = await client.GetFromJsonAsync<WorkflowDto>(
-                        $"/api/workflows/{detail.WorkflowId}" );
+                    WorkflowDto? wf = await Api.GetAsync<WorkflowDto>(
+                        $"/api/v1/workflows/{detail.WorkflowId}" );
                     _effectiveSteps = wf?.Steps ?? [];
                 } else {
                     _effectiveSteps = Steps;
@@ -102,9 +102,9 @@
         string className = StatusToClassName( dto.Status );
         string tooltip = BuildTooltip( stepName, dto.Status, dto.RuntimeSeconds );
 
-        string startIso = ( dto.StartTime ?? dto.Timestamp ).ToString( "o" );
-        string? endIso = dto.Status is "Completed" or "Failed" or "Skipped"
-            ? ( dto.EndTime ?? dto.Timestamp ).ToString( "o" )
+        string startIso = ConvertIfNeeded( dto.StartTime ?? dto.Timestamp ).ToString( "o" );
+        string? endIso = dto.Status is "Succeeded" or "Failed" or "Skipped"
+            ? ConvertIfNeeded( dto.EndTime ?? dto.Timestamp ).ToString( "o" )
             : null;
 
         GanttItemDto item = new(
@@ -138,14 +138,17 @@
             items.Add( new GanttItemDto(
                 Id: $"{se.StepId}-{se.Attempt}",
                 Content: stepName,
-                Start: se.StartTime!.Value.ToString( "o" ),
-                End: se.EndTime?.ToString( "o" ),
+                Start: ConvertIfNeeded( se.StartTime!.Value ).ToString( "o" ),
+                End: se.EndTime is not null ? ConvertIfNeeded( se.EndTime.Value ).ToString( "o" ) : null,
                 ClassName: className,
                 Title: tooltip
             ) );
         }
         return [.. items];
     }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        DisplayTimeZone is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), DisplayTimeZone ) : dt;
 
     private string GetStepName( long stepId ) {
         WorkflowStepDto? step = _effectiveSteps.FirstOrDefault( s => s.Id == stepId );
@@ -154,9 +157,10 @@
 
     private static string StatusToClassName( string status ) => status switch {
         "Running" => "gantt-running",
-        "Completed" => "gantt-completed",
+        "Succeeded" => "gantt-succeeded",
         "Failed" => "gantt-failed",
         "Skipped" => "gantt-skipped",
+        "Cancelled" => "gantt-cancelled",
         _ => "gantt-pending",
     };
 

@@ -6,5 +6,8 @@ public sealed record WorkflowVariableDto(
     long WorkflowId,
     string Name,
     string? Description,
-    string? DefaultValue
+    string? DefaultValue,
+    string? DataType,
+    bool IsRequired,
+    bool LogRedaction
 );

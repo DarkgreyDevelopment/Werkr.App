@@ -15,7 +15,7 @@ internal static class EventEndpoints {
 
     /// <summary>Maps all SSE endpoints.</summary>
     public static WebApplication MapEventEndpoints( this WebApplication app ) {
-        _ = app.MapGet( "/api/events/jobs", async (
+        _ = app.MapGet( "/api/v1/events/jobs", async (
             JobEventBroadcaster broadcaster,
             HttpContext httpContext,
             CancellationToken ct
@@ -45,7 +45,7 @@ internal static class EventEndpoints {
         .RequireAuthorization( Policies.CanRead )
         .ExcludeFromDescription( );
 
-        _ = app.MapGet( "/api/events/workflow-runs", async (
+        _ = app.MapGet( "/api/v1/events/workflow-runs", async (
             WorkflowEventBroadcaster broadcaster,
             HttpContext httpContext,
             CancellationToken ct
@@ -73,7 +73,7 @@ internal static class EventEndpoints {
         .RequireAuthorization( Policies.CanRead )
         .ExcludeFromDescription( );
 
-        _ = app.MapGet( "/api/workflows/runs/{runId:guid}/events", async (
+        _ = app.MapGet( "/api/v1/workflows/runs/{runId:guid}/events", async (
             Guid runId,
             WorkflowEventBroadcaster broadcaster,
             HttpContext httpContext,

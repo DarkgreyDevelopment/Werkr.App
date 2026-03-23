@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -15,6 +16,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// or the input variable value (parameter takes precedence).
 /// </summary>
 /// <remarks>Creates a new <see cref="SendWebhookHandler"/>.</remarks>
+[ActionCategory( "Network" )]
 public sealed partial class SendWebhookHandler(
     IUrlValidator urlValidator,
     IHttpClientFactory httpClientFactory,

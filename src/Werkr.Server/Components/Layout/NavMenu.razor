@@ -108,6 +108,22 @@
                     </details>
                 </AuthorizeView>
 
+                @* ── Reporting group (Admin) ── *@
+                <AuthorizeView Roles="Admin" Context="reportingAuth">
+                    <details class="nav-group px-3">
+                        <summary class="nav-group-toggle" onclick="event.stopPropagation()">
+                            <span class="nav-group-label">Reporting</span>
+                        </summary>
+                        <div class="nav-group-items">
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="reporting/audit-log">
+                                    <span class="nav-label">Audit Log</span>
+                                </NavLink>
+                            </div>
+                        </div>
+                    </details>
+                </AuthorizeView>
+
                 @* ── Account group ── *@
                 <details class="nav-group px-3">
                     <summary class="nav-group-toggle" onclick="event.stopPropagation()">

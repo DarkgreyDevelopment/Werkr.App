@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 
 namespace Werkr.ServiceDefaults;
 
@@ -62,15 +64,24 @@ public static class Extensions {
         _ = builder.Services.AddOpenTelemetry( )
             .WithLogging( )
             .WithMetrics( metrics => {
-                _ = metrics.AddMeter( "Microsoft.AspNetCore.Hosting" )
-                    .AddMeter( "Microsoft.AspNetCore.Server.Kestrel" )
-                    .AddMeter( "System.Net.Http" )
-                    .AddMeter( "System.Runtime" );
+                _ = metrics.AddAspNetCoreInstrumentation( )
+                    .AddHttpClientInstrumentation( )
+                    .AddRuntimeInstrumentation( );
             } )
             .WithTracing( tracing => {
                 _ = tracing.AddSource( builder.Environment.ApplicationName )
-                    .AddSource( "Microsoft.AspNetCore" )
-                    .AddSource( "System.Net.Http" );
+                    .AddAspNetCoreInstrumentation( options => {
+                        // Filter out health-check endpoint noise
+                        options.Filter = httpContext =>
+                            !httpContext.Request.Path.StartsWithSegments( "/health" )
+                            && !httpContext.Request.Path.StartsWithSegments( "/alive" );
+                        options.RecordException = true;
+                    } )
+                    .AddHttpClientInstrumentation( options => {
+                        options.RecordException = true;
+                    } )
+                    .AddGrpcClientInstrumentation( )
+                    .AddEntityFrameworkCoreInstrumentation( );
             } );
 
         _ = builder.AddOpenTelemetryExporters( );
@@ -114,27 +125,21 @@ public static class Extensions {
     }
 
     /// <summary>
-    /// Maps default health endpoints when running in development.
+    /// Maps default health endpoints for load balancer and orchestrator integration.
     /// </summary>
     /// <param name="app">The web application instance.</param>
     /// <returns>The application for further endpoint mapping.</returns>
     public static WebApplication MapDefaultEndpoints( this WebApplication app ) {
-        // Adding health checks endpoints to applications in non-development
-        // environments has security implications.
-        // See https://aka.ms/dotnet/aspire/healthchecks for details
-        // before enabling these endpoints in non-development environments.
-        if (app.Environment.IsDevelopment( )) {
-            // All health checks must pass for app to be considered ready to accept traffic after starting
-            _ = app.MapHealthChecks( HealthEndpointPath );
+        // All health checks must pass for app to be considered ready to accept traffic after starting
+        _ = app.MapHealthChecks( HealthEndpointPath );
 
-            // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            _ = app.MapHealthChecks(
-                AlivenessEndpointPath,
-                new HealthCheckOptions {
-                    Predicate = r => r.Tags.Contains( "live" )
-                }
-            );
-        }
+        // Only health checks tagged with the "live" tag must pass for app to be considered alive
+        _ = app.MapHealthChecks(
+            AlivenessEndpointPath,
+            new HealthCheckOptions {
+                Predicate = r => r.Tags.Contains( "live" )
+            }
+        );
 
         return app;
     }

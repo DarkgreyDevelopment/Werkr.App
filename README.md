@@ -30,10 +30,10 @@ For Windows, download the latest MSI installer for your CPU architecture (most l
 
 # Documentation and Support
 
+- [Design Specification](docs/1.0-Target-Featureset.md)
 - [Architecture Overview](docs/Architecture.md)
 - [Developer Guide](docs/Development.md)
 - [How-To Articles](https://docs.werkr.app/articles/HowTo/index.html)
-- [Project Features](docs/articles/FeatureList.md)
 - [API Documentation](https://docs.werkr.app/api/index.html)
 - [Testing](docs/articles/Testing.md)
 - [Contributors Guide](#contributing)
@@ -67,7 +67,7 @@ See `src/Werkr.Core/Scheduling/` for schedule calculation and holiday date handl
 Werkr supports five task types (defined in the `TaskActionType` enum):
 
 ### Action
-Built-in handlers for common operations — no scripting required. The current set of 11 actions covers file operations (copy, move, rename, create, delete, write content, clear content, test existence), directory creation, and process control (start, stop). Each action has consistent parameter handling and error reporting.
+Built-in handlers for common operations — no scripting required. The current set of 26 action handlers covers file operations (copy, move, rename, create, delete, read, write, clear, find and replace, test existence, get info), directory operations (create, list), process control (start, stop), network and integration (HTTP request, test connectivity, send email, send webhook, file download, file upload), archive operations (compress, extract), JSON manipulation, a delay timer, and file event watching. Each action has consistent parameter handling and error reporting.
 
 See `src/Werkr.Agent/Operators/Actions/` for the full set of action handlers.
 
@@ -96,6 +96,30 @@ For complex multi-step automation, combine tasks into a **Workflow** (DAG) with 
 
 <br/><br/>
 
+# 1.0 Roadmap
+
+The [Design Specification](docs/1.0-Target-Featureset.md) defines every capability required for the 1.0 release. Key features beyond what is currently implemented:
+
+- **Composite nodes** — ForEach, While, Do, and Switch nodes for iteration, looping, and conditional branching within workflows.
+- **Task & workflow versioning** — Immutable versions on every save, snapshot binding between workflow steps and task versions, and on-demand version diffs.
+- **Additional trigger types** — Cron expressions, persistent file monitoring, authenticated API triggers, workflow-completion triggers, and manual triggers from a unified trigger registry.
+- **Expanded action handlers** — OS service management (Windows Services, systemd, launchd).
+- **Workflow variables & expressions** — Typed variable system with step output capture, namespaced scoping, collection types, and a condition expression language for branching and loop constructs.
+- **Manual approval gates** — Pause workflow execution at designated steps until a human approves continuation.
+- **JSON import/export** — Portable, schema-versioned workflow definitions for backup, migration, and version control.
+- **Error handling & retry** — Configurable per-step strategies (fail workflow, skip, continue, run error handler, remediate before retry) with fixed, linear, or exponential backoff.
+- **Sensitive data redaction** — Regex-based automatic masking of passwords, tokens, and secrets in execution logs.
+- **Centralized configuration & credential management** — Database-backed settings with hot reload, encrypted credential storage with injection into task execution contexts.
+- **Notifications** — Email, webhook, and in-app notification channels with configurable subscriptions and templates.
+- **Enhanced security** — WebAuthn passkeys, database encryption at rest, scoped API keys with rate limiting, outbound request allowlisting, and Content Security Policy headers.
+- **Versioned REST API** — OpenAPI-documented endpoints with pagination, filtering, and CORS policy.
+- **Real-time UI** — SignalR-powered live updates for workflow run monitoring and log streaming.
+- **Re-execution & replay** — Resume from a failed step (preserving completed outputs) or replay an entire workflow from the beginning.
+
+See the full [Design Specification](docs/1.0-Target-Featureset.md) for complete details on every 1.0 capability.
+
+<br/><br/>
+
 # Security
 
 Security is a core design concern — there are mandatory steps for initial setup, and multiple layers protect the system at runtime.
@@ -108,7 +132,9 @@ Security is a core design concern — there are mandatory steps for initial setu
 - **Path allowlisting** — Agents validate file paths against a configurable allowlist before execution.
 - **Platform-native secret storage** — Secrets are stored using OS-native mechanisms (DPAPI on Windows, Keychain on macOS, file-based on Linux).
 
-See [Architecture.md](docs/Architecture.md) for the full security model breakdown.
+The 1.0 release adds WebAuthn passkey authentication, database encryption at rest, scoped API keys, centralized credential management, outbound request controls, and Content Security Policy headers. See the [Design Specification](docs/1.0-Target-Featureset.md) §9 for the full security model.
+
+See [Architecture.md](docs/Architecture.md) for the current security model breakdown.
 
 <br/><br/>
 

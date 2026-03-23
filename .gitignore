@@ -141,3 +141,6 @@ logs/
 *.dll
 *.exe
 *.pdb
+
+# Test admin password file
+admin-password.txt

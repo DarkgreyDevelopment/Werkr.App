@@ -1,0 +1,15 @@
+Template: werkr-server/config-path
+Type: string
+Default: /etc/werkr
+Description: Configuration directory for werkr-server
+ The directory where werkr-server stores its configuration files.
+ The default is /etc/werkr.
+
+Template: werkr-server/install-components
+Type: select
+Choices: all, server-only, api-only
+Default: all
+Description: Which components to enable
+ Select which Werkr components to enable via systemd services.
+ Both Server and Api binaries are always installed. This controls
+ which systemd services are enabled on install.

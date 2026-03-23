@@ -1,4 +1,5 @@
 using Werkr.Common.Models;
+using Werkr.Data;
 using Werkr.Data.Calendar.Enums;
 using Werkr.Data.Calendar.Models;
 using Werkr.Data.Entities.Schedule;
@@ -57,10 +58,10 @@ internal static class ScheduleMapper {
     // -- Entity → DTO --
 
     private static StartDateTimeDto ToDto( StartDateTimeInfo info ) =>
-        new( info.Date, info.Time, info.TimeZone.Id );
+        new( info.Date, info.Time, info.TimeZone.Id, info.IsFixedOffset );
 
     private static ExpirationDateTimeDto ToDto( ExpirationDateTimeInfo info ) =>
-        new( info.Date, info.Time, info.TimeZone.Id );
+        new( info.Date, info.Time, info.TimeZone.Id, info.IsFixedOffset );
 
     private static DailyRecurrenceDto ToDto( DailyRecurrence recurrence ) =>
         new( recurrence.DayInterval );
@@ -80,14 +81,16 @@ internal static class ScheduleMapper {
         new( ) {
             Date = dto.Date,
             Time = dto.Time,
-            TimeZone = TimeZoneInfo.FindSystemTimeZoneById( dto.TimeZoneId ),
+            TimeZone = TimeZoneResolver.FindOrCreate( dto.TimeZoneId ),
+            IsFixedOffset = dto.IsFixedOffset,
         };
 
     private static ExpirationDateTimeInfo ToExpirationDateTimeInfo( ExpirationDateTimeDto dto ) =>
         new( ) {
             Date = dto.Date,
             Time = dto.Time,
-            TimeZone = TimeZoneInfo.FindSystemTimeZoneById( dto.TimeZoneId ),
+            TimeZone = TimeZoneResolver.FindOrCreate( dto.TimeZoneId ),
+            IsFixedOffset = dto.IsFixedOffset,
         };
 
     private static DailyRecurrence ToDailyRecurrence( DailyRecurrenceDto dto ) =>

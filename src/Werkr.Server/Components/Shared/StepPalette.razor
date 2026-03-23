@@ -12,6 +12,23 @@
     </div>
 
     <div class="flex-grow-1 overflow-auto px-2 py-2">
+        @* ── Control Flow (composite node types) ── *@
+        @if ( string.IsNullOrWhiteSpace( _searchTerm )
+            || "foreach".Contains( _searchTerm.Trim( ), StringComparison.OrdinalIgnoreCase )
+            || "control flow".Contains( _searchTerm.Trim( ), StringComparison.OrdinalIgnoreCase ) ) {
+            <div class="mb-2">
+                <small class="text-uppercase text-muted fw-semibold d-block mb-1 px-1">Control Flow</small>
+                <div class="palette-item d-flex align-items-center gap-2 px-2 py-1 rounded"
+                     draggable="true"
+                     @onmousedown="@( ( MouseEventArgs e ) => HandleCompositeDragStart( ForEachType, e ) )"
+                     title="Iterate over a collection, executing an inner workflow for each item.">
+                    <i class="bi bi-arrow-repeat text-muted"></i>
+                    <span class="small text-truncate">ForEach</span>
+                </div>
+            </div>
+        }
+
+        @* ── Action Handler groups ── *@
         @foreach ( (string category, IReadOnlyList<ActionFormDescriptor> actions) in FilteredGroups ) {
             <div class="mb-2">
                 <small class="text-uppercase text-muted fw-semibold d-block mb-1 px-1">@category</small>
@@ -30,7 +47,10 @@
 </div>
 
 @code {
+    private const string ForEachType = "ForEach";
+
     [Parameter] public EventCallback<(string ActionType, double ClientX, double ClientY)> OnPaletteDragStart { get; set; }
+    [Parameter] public EventCallback<(string CompositeType, double ClientX, double ClientY)> OnCompositeDragStart { get; set; }
 
     private string _searchTerm = "";
 
@@ -54,15 +74,20 @@
         await OnPaletteDragStart.InvokeAsync( (actionType, e.ClientX, e.ClientY) );
     }
 
+    private async Task HandleCompositeDragStart( string compositeType, MouseEventArgs e ) {
+        await OnCompositeDragStart.InvokeAsync( (compositeType, e.ClientX, e.ClientY) );
+    }
+
     private static string GetCategoryIcon( string category ) => category switch {
         "File" => "bi-file-earmark",
+        "Directory" => "bi-folder",
         "Network" => "bi-globe",
         "Process" => "bi-terminal",
         "Archive" => "bi-file-zip",
         "Data" => "bi-database",
-        "Security" => "bi-shield-lock",
-        "System" => "bi-gear",
-        "Text" => "bi-file-text",
+        "ControlFlow" => "bi-arrow-repeat",
+        "File monitoring" => "bi-eye",
+        "Iteration" => "bi-arrow-repeat",
         "Shell" => "bi-terminal-fill",
         "PowerShell" => "bi-code-slash",
         _ => "bi-puzzle"

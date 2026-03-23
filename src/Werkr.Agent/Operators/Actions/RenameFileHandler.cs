@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -11,6 +12,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Handles the <c>RenameFile</c> action - renames a file or directory in place.
 /// </summary>
 /// <remarks>Creates a new <see cref="RenameFileHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class RenameFileHandler( IFilePathResolver resolver, ILogger<RenameFileHandler> logger ) : IActionHandler {
 
     /// <summary>

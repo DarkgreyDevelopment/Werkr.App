@@ -18,7 +18,7 @@ namespace Werkr.Data.Identity.Migrations.Postgres
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("werkr_identity")
-                .HasAnnotation("ProductVersion", "10.0.4")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -307,6 +307,39 @@ namespace Werkr.Data.Identity.Migrations.Postgres
                     b.ToTable("config_settings", "werkr_identity");
                 });
 
+            modelBuilder.Entity("Werkr.Data.Identity.Entities.PasswordHistory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_utc");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_history");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_password_history_user_id");
+
+                    b.ToTable("password_history", "werkr_identity");
+                });
+
             modelBuilder.Entity("Werkr.Data.Identity.Entities.RolePermission", b =>
                 {
                     b.Property<long>("Id")
@@ -506,6 +539,18 @@ namespace Werkr.Data.Identity.Migrations.Postgres
                         .HasConstraintName("fk_api_keys_users_created_by_user_id");
 
                     b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("Werkr.Data.Identity.Entities.PasswordHistory", b =>
+                {
+                    b.HasOne("Werkr.Data.Identity.Entities.WerkrUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_history_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Werkr.Data.Identity.Entities.RolePermission", b =>

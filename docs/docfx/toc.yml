@@ -3,14 +3,12 @@
 - name: How-To Articles
   href: articles/HowTo/
   homepage: articles/HowTo/index.md
-- name: Project Features
-  href: articles/FeatureList.md
+- name: Design Specification
+  href: 1.0-Target-Featureset.md
 - name: Architecture
   href: Architecture.md
 - name: Development
   href: Development.md
-- name: High Level Design Flow
-  href: articles/Pre-Edit-High-Level-Design-Flow.md
 - name: Testing
   href: articles/Testing.md
 - name: Security

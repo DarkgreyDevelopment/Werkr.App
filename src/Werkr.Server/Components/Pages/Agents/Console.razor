@@ -6,6 +6,7 @@
 @using Werkr.Server.Components.Shared
 @attribute [Authorize( Roles = "Admin,Operator" )]
 @rendermode InteractiveServer
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject IHttpClientFactory HttpClientFactory
 @inject ILogger<Console> Logger
 @implements IDisposable
@@ -129,9 +130,8 @@
 
     protected override async Task OnParametersSetAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            AgentDetailDto? agent = await client.GetFromJsonAsync<AgentDetailDto>(
-                $"/api/agents/{AgentId}" );
+            AgentDetailDto? agent = await Api.GetAsync<AgentDetailDto>(
+                $"/api/v1/agents/{AgentId}" );
             _agentStatus = agent?.Status;
         } catch (Exception ex) {
             Logger.LogWarning( ex, "Failed to load agent status for {AgentId}.", AgentId );
@@ -184,7 +184,7 @@
             ExecuteCommandRequest request = new( commandText, actionType );
 
             using HttpRequestMessage httpRequest = new( HttpMethod.Post,
-                $"/api/agents/{AgentId}/shell/stream" ) {
+                $"/api/v1/agents/{AgentId}/shell/stream" ) {
                 Content = JsonContent.Create( request )
             };
 

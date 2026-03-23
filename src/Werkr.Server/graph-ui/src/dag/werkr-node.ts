@@ -15,10 +15,11 @@ function buildNodeDom( data: WerkrNodeData ): HTMLElement {
   const controlFill = getControlFillVar( data.controlStatement );
   const statusIcon = getStatusIcon( data.executionStatus );
 
+  const isComposite = !!data.isComposite;
+
   // Wrapper
   const wrapper = document.createElement( "div" );
   wrapper.className = "werkr-node";
-  wrapper.style.borderLeft = `4px solid ${fillVar}`;
   wrapper.style.width = "100%";
   wrapper.style.height = "100%";
   wrapper.style.display = "flex";
@@ -28,11 +29,16 @@ function buildNodeDom( data: WerkrNodeData ): HTMLElement {
   wrapper.style.boxSizing = "border-box";
   wrapper.style.borderRadius = "6px";
   wrapper.style.backgroundColor = "var(--bs-body-bg)";
-  wrapper.style.border = `1px solid var(--werkr-node-stroke)`;
-  wrapper.style.borderLeftWidth = "4px";
-  wrapper.style.borderLeftColor = fillVar;
   wrapper.style.fontFamily = "inherit";
   wrapper.style.overflow = "hidden";
+
+  if ( isComposite ) {
+    wrapper.style.border = `4px double var(--werkr-node-loop, #6f42c1)`;
+  } else {
+    wrapper.style.border = `1px solid var(--werkr-node-stroke)`;
+    wrapper.style.borderLeftWidth = "4px";
+    wrapper.style.borderLeftColor = fillVar;
+  }
 
   if ( data.executionStatus === "Running" ) {
     wrapper.classList.add( "werkr-pulse" );
@@ -94,6 +100,20 @@ function buildNodeDom( data: WerkrNodeData ): HTMLElement {
 
   bottomRow.appendChild( badge );
   bottomRow.appendChild( taskName );
+
+  if ( isComposite ) {
+    const compositeBadge = document.createElement( "span" );
+    compositeBadge.style.fontSize = "10px";
+    compositeBadge.style.padding = "1px 5px";
+    compositeBadge.style.borderRadius = "3px";
+    compositeBadge.style.backgroundColor = "var(--werkr-node-loop, #6f42c1)";
+    compositeBadge.style.color = "#fff";
+    compositeBadge.style.flexShrink = "0";
+    compositeBadge.style.lineHeight = "1.4";
+    compositeBadge.textContent = `\u21BB ${data.compositeType ?? "ForEach"}`;
+    bottomRow.appendChild( compositeBadge );
+  }
+
   wrapper.appendChild( bottomRow );
 
   return wrapper;

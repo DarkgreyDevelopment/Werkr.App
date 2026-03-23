@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    purge)
+        # Remove config, data, logs, and system user
+        rm -rf /etc/werkr
+        rm -rf /var/lib/werkr
+        rm -rf /var/log/werkr
+        rm -rf /opt/werkr/agent
+        rm -rf /etc/systemd/system/werkr-agent.service.d
+        userdel werkr 2>/dev/null || true
+        groupdel werkr 2>/dev/null || true
+        systemctl daemon-reload
+        ;;
+    remove)
+        systemctl daemon-reload
+        ;;
+esac
+
+#DEBHELPER#

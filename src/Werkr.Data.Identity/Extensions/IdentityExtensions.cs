@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Werkr.Common;
 using Werkr.Data.Identity.Entities;
+using Werkr.Data.Identity.Services;
+using Werkr.Data.Identity.Validators;
 
 namespace Werkr.Data.Identity.Extensions;
 
@@ -50,9 +52,16 @@ public static class IdentityExtensions {
         }
 
         // Configure Identity with NIST-aligned defaults
-        return services.AddIdentity<WerkrUser, IdentityRole>( options => ConfigureIdentityOptions( options ) )
+        IdentityBuilder identityBuilder = services
+            .AddIdentity<WerkrUser, IdentityRole>( options => ConfigureIdentityOptions( options ) )
             .AddEntityFrameworkStores<WerkrIdentityDbContext>( )
-            .AddDefaultTokenProviders( );
+            .AddDefaultTokenProviders( )
+            .AddPasswordValidator<PasswordHistoryValidator>( );
+
+        // Password history recording service
+        _ = services.AddScoped<PasswordHistoryService>( );
+
+        return identityBuilder;
     }
 
     /// <summary>

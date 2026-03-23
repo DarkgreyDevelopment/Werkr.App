@@ -1,13 +1,17 @@
 .dag-editor-canvas-container {
     position: relative;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .dag-editor-canvas {
     width: 100%;
-    min-height: 500px;
+    height: 100%;
+    min-height: 400px;
     border: 1px solid var(--bs-border-color);
     border-radius: 0.375rem;
     background-color: var(--bs-body-bg);
+    overflow: hidden;
 }
 
 .dag-editor-minimap {

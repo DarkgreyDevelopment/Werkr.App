@@ -9,8 +9,8 @@ describe( "mapDtoToDataItem", () => {
       content: "Step #1: Build",
       start: "2026-03-12T10:00:00.000Z",
       end: "2026-03-12T10:00:12.400Z",
-      className: "gantt-completed",
-      title: "Step #1: Build (12.4s) — Completed",
+      className: "gantt-succeeded",
+      title: "Step #1: Build (12.4s) — Succeeded",
     };
 
     const item = mapDtoToDataItem( dto );
@@ -21,8 +21,8 @@ describe( "mapDtoToDataItem", () => {
     expect( ( item.start as Date ).toISOString() ).toBe( "2026-03-12T10:00:00.000Z" );
     expect( item.end ).toBeInstanceOf( Date );
     expect( ( item.end as Date ).toISOString() ).toBe( "2026-03-12T10:00:12.400Z" );
-    expect( item.className ).toBe( "gantt-completed" );
-    expect( item.title ).toBe( "Step #1: Build (12.4s) — Completed" );
+    expect(item.className).toBe("gantt-succeeded");
+    expect(item.title).toBe("Step #1: Build (12.4s) — Succeeded");
     expect( item.type ).toBe( "range" );
   } );
 

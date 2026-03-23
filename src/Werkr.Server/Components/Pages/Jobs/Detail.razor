@@ -2,11 +2,14 @@
 @rendermode InteractiveServer
 @using Werkr.Common.Rendering
 @attribute [Authorize]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 
 <PageTitle>Werkr - Job Detail</PageTitle>
 
-<h1>Job Detail</h1>
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Job Detail</h1>
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
+</div>
 <Breadcrumb Items="_breadcrumbs" />
 
 @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
@@ -28,7 +31,7 @@
 
                 <dt class="col-sm-3">Result</dt>
                 <dd class="col-sm-9">
-                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( _job.Success ? "Completed" : "Failed" )">
+                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( _job.Success ? "Succeeded" : "Failed" )">
                         @( _job.Success ? "Success" : "Failed" )
                     </span>
                 </dd>
@@ -43,10 +46,10 @@
                 <dd class="col-sm-9">@_job.RuntimeSeconds.ToString( "F2" ) seconds</dd>
 
                 <dt class="col-sm-3">Started</dt>
-                <dd class="col-sm-9">@_job.StartTime.ToString( "G" )</dd>
+                <dd class="col-sm-9">@ConvertIfNeeded( _job.StartTime ).ToString( "G" )</dd>
 
                 <dt class="col-sm-3">Ended</dt>
-                <dd class="col-sm-9">@( _job.EndTime?.ToString( "G" ) ?? "Still running" )</dd>
+                <dd class="col-sm-9">@( _job.EndTime is not null ? ConvertIfNeeded( _job.EndTime.Value ).ToString( "G" ) : "Still running" )</dd>
 
                 <dt class="col-sm-3">Agent</dt>
                 <dd class="col-sm-9">
@@ -93,6 +96,7 @@
     private string? _errorMessage;
     private bool _isLoading;
     private bool _isLoadingOutput;
+    private TimeZoneInfo? _displayTz;
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
         new( "Task List", "/" ),
@@ -103,14 +107,13 @@
     protected override async Task OnInitializedAsync( ) {
         _isLoading = true;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _job = await client.GetFromJsonAsync<JobDto>( $"/api/jobs/{Id}" );
+            _job = await Api.GetAsync<JobDto>( $"/api/v1/jobs/{Id}" );
             if ( _job is null ) {
                 _errorMessage = "Job not found.";
             } else if ( _job.AgentConnectionId is not null ) {
                 try {
-                    AgentDetailDto? agent = await client.GetFromJsonAsync<AgentDetailDto>(
-                        $"/api/agents/{_job.AgentConnectionId}" );
+                    AgentDetailDto? agent = await Api.GetAsync<AgentDetailDto>(
+                        $"/api/v1/agents/{_job.AgentConnectionId}" );
                     _agentName = agent?.ConnectionName;
                 } catch {
                     // fall back to truncated GUID display
@@ -123,11 +126,15 @@
         }
     }
 
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
+
     private async Task LoadOutputAsync( ) {
         _isLoadingOutput = true;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.GetAsync( $"/api/jobs/{Id}/output" );
+            HttpResponseMessage response = await Api.GetRawAsync( $"/api/v1/jobs/{Id}/output" );
             if ( response.IsSuccessStatusCode ) {
                 _output = await response.Content.ReadAsStringAsync( );
             } else {

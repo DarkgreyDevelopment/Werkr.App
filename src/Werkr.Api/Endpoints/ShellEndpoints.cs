@@ -26,7 +26,7 @@ internal static class ShellEndpoints {
 
     /// <summary>Maps the shell streaming endpoint.</summary>
     public static WebApplication MapShellEndpoints( this WebApplication app ) {
-        _ = app.MapPost( "/api/agents/{agentId}/shell/stream", async (
+        _ = app.MapPost( "/api/v1/agents/{agentId}/shell/stream", async (
             Guid agentId,
             ExecuteCommandRequest request,
             RunNowService runNowService,

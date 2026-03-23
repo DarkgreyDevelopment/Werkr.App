@@ -442,6 +442,47 @@
 			"label": "verify:test-server",
 			"type": "shell",
 			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Server/Werkr.Tests.Server.csproj'"
+		},
+		{
+			"label": "verify:test-api",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--project",
+				"src/Test/Werkr.Tests/Werkr.Tests.csproj"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "verify:test-graphui",
+			"type": "process",
+			"command": "npm",
+			"args": [
+				"test",
+				"--prefix",
+				"src/Werkr.Server/graph-ui"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
 		}
 	]
 }
