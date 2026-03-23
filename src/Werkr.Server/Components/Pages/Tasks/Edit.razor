@@ -1,0 +1,388 @@
+@page "/tasks/{Id:long}"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Edit Task</PageTitle>
+
+<h1>Edit Task</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading task…" />
+} else if ( _model is not null ) {
+    <EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="EditTask">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Basic Information</h5>
+
+                <div class="mb-3">
+                    <label class="form-label" for="name">Name</label>
+                    <InputText id="name" class="form-control" @bind-Value="_model.Name" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="desc">Description</label>
+                    <InputTextArea id="desc" class="form-control" rows="3" @bind-Value="_model.Description" />
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="actionType">Action Type</label>
+                        <InputSelect id="actionType" class="form-select" @bind-Value="_model.ActionType">
+                            <option value="Action">Action</option>
+                            <option value="PowerShellCommand">PowerShell Command</option>
+                            <option value="PowerShellScript">PowerShell Script</option>
+                            <option value="ShellCommand">Shell Command</option>
+                            <option value="ShellScript">Shell Script</option>
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="timeout">Timeout (minutes)</label>
+                        <InputNumber id="timeout" class="form-control" @bind-Value="_model.TimeoutMinutes" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    @if (IsScriptType( _model.ActionType )) {
+                        <label class="form-label" for="content">Script Path</label>
+                        <InputText id="content" class="form-control font-monospace" @bind-Value="_model.Content" />
+                    } else if (_model.ActionType != "Action") {
+                        <label class="form-label" for="content">Command</label>
+                        <InputTextArea id="content" class="form-control font-monospace" rows="5" @bind-Value="_model.Content" />
+                    }
+                </div>
+
+                @if (_model.ActionType != "Action") {
+                    <div class="mb-3">
+                        <label class="form-label">Arguments</label>
+                        <ArgumentListEditor @bind-Value="_model.Arguments" />
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if ( _model.ActionType == "Action" ) {
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Action Parameters</h5>
+                    <ActionParameterEditor @ref="_actionEditor"
+                                           @bind-ActionSubType="_model.ActionSubType"
+                                           @bind-ActionParameters="_model.ActionParameters" />
+                </div>
+            </div>
+        }
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Targeting &amp; Scheduling</h5>
+
+                <div class="mb-3">
+                    <label class="form-label" for="tags">Target Tags</label>
+                    <TagInput Value="@_targetTags" ValueChanged="OnTargetTagsChanged" />
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Success Criteria</label>
+                        <SuccessCriteriaEditor @bind-Value="_model.SuccessCriteria" ActionType="@_model.ActionType" />
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="workflowId">Workflow (optional)</label>
+                        <InputSelect id="workflowId" class="form-select" @bind-Value="_model.WorkflowId">
+                            <option value="">None</option>
+                            @foreach ( WorkflowDto w in _workflows ) {
+                                <option value="@w.Id">@w.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                @if ( _syncIntervalMinutes.HasValue ) {
+                    <div class="mb-3">
+                        <label class="form-label">Sync Interval</label>
+                        <p class="form-control-plaintext">@_syncIntervalMinutes min</p>
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <ToggleSwitch @bind-Value="_model.Enabled" Label="Enabled" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Version Notes</h5>
+                <div class="mb-3">
+                    <label class="form-label" for="changeDesc">Change Description (optional)</label>
+                    <InputText id="changeDesc" class="form-control" @bind-Value="_changeDescription"
+                               placeholder="What changed in this version?" />
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                @if ( _isSaving ) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                Save Changes
+            </button>
+            <a href="/tasks" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </EditForm>
+
+    @if ( _currentVersionNumber.HasValue ) {
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">
+                        Version History
+                        <span class="badge bg-primary ms-2">Current: v@(_currentVersionNumber)</span>
+                    </h5>
+                </div>
+                @if ( _versions is { Items.Count: > 0 } ) {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Version</th>
+                                    <th>Created</th>
+                                    <th>Author</th>
+                                    <th>Description</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( TaskVersionDto v in _versions.Items ) {
+                                    <tr>
+                                        <td>
+                                            <span class="badge @( v.VersionNumber == _currentVersionNumber ? "bg-primary" : "bg-secondary" )">
+                                                v@(v.VersionNumber)
+                                            </span>
+                                        </td>
+                                        <td>@v.CreatedUtc.ToString( "g" )</td>
+                                        <td>@( v.CreatedByUserId ?? "System" )</td>
+                                        <td>@( v.ChangeDescription ?? "—" )</td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <a href="/tasks/@Id/versions/@v.Id"
+                                                   class="btn btn-outline-secondary btn-sm">View</a>
+                                                @if ( v.VersionNumber > 1 && GetPreviousVersionId( v.VersionNumber ) is long prevId ) {
+                                                    <a href="/tasks/@Id/versions/diff?from=@prevId&to=@v.Id"
+                                                       class="btn btn-outline-info btn-sm">Diff</a>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } else {
+                    <p class="text-muted mb-0">No version history available.</p>
+                }
+            </div>
+        </div>
+    }
+
+    <hr class="my-4" />
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Job History</h3>
+        <a href="/jobs?taskId=@Id" class="btn btn-outline-primary btn-sm">
+            View All Logs
+        </a>
+    </div>
+    @if ( _jobs is not null && _jobs.Count > 0 ) {
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Started</th>
+                        <th>Runtime</th>
+                        <th>Result</th>
+                        <th>Error Category</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ( JobListDto j in _jobs ) {
+                        <tr>
+                            <td><a href="/jobs/@j.Id">@j.Id.ToString()[..8]…</a></td>
+                            <td>@j.StartTime.ToString( "g" )</td>
+                            <td>@j.RuntimeSeconds.ToString( "F1" )s</td>
+                            <td>
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( j.Success ? "Succeeded" : "Failed" )">
+                                    @( j.Success ? "Success" : "Failed" )
+                                </span>
+                            </td>
+                            <td>@j.ErrorCategory</td>
+                            <td><a href="/jobs/@j.Id" class="btn btn-outline-secondary btn-sm">View Log</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    } else {
+        <p class="text-muted">No jobs recorded for this task.</p>
+    }
+}
+
+@code {
+    [Parameter] public long Id { get; set; }
+
+    private TaskFormModel? _model;
+    private ActionParameterEditor? _actionEditor;
+    private List<JobListDto>? _jobs;
+    private List<WorkflowDto> _workflows = [];
+    private PagedResult<TaskVersionDto>? _versions;
+    private int? _syncIntervalMinutes;
+    private int? _currentVersionNumber;
+    private string? _changeDescription;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _isSaving;
+    private string[] _targetTags = [];
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Tasks", "/tasks" ),
+        new( "Edit" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        _isLoading = true;
+        try {
+            // Load workflows for dropdown
+            _workflows = await Api.GetAsync<List<WorkflowDto>>( "/api/v1/workflows" ) ?? [];
+
+            TaskDto? dto = await Api.GetAsync<TaskDto>( $"/api/v1/tasks/{Id}" );
+            if ( dto is null ) {
+                _errorMessage = "Task not found.";
+                return;
+            }
+            _breadcrumbs = [new( "Task List", "/" ), new( "Tasks", "/tasks" ), new( dto.Name )];
+            _model = TaskFormModel.FromDto( dto );
+            _targetTags = dto.TargetTags;
+            _syncIntervalMinutes = dto.SyncIntervalMinutes;
+            _currentVersionNumber = dto.CurrentVersionNumber;
+
+            _versions = await Api.GetAsync<PagedResult<TaskVersionDto>>( $"/api/v1/tasks/{Id}/versions?limit=25" );
+            _jobs = await Api.GetAsync<List<JobListDto>>( $"/api/v1/tasks/{Id}/jobs?limit=25" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load task: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SubmitAsync( ) {
+        if ( _model is null ) return;
+        if ( _model.ActionType == "Action" && _actionEditor is not null && !_actionEditor.Validate( ) ) {
+            return;
+        }
+        _isSaving = true;
+        _errorMessage = null;
+        _model.TargetTags = string.Join( ",", _targetTags );
+        try {
+            TaskUpdateRequest request = _model.ToUpdateRequest( _changeDescription );
+            HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/tasks/{Id}", request );
+            if ( response.IsSuccessStatusCode ) {
+                Navigation.NavigateTo( "/tasks" );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to update task: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to update task: {ex.Message}";
+        } finally {
+            _isSaving = false;
+        }
+    }
+
+    private static bool IsScriptType( string actionType ) =>
+        actionType is "PowerShellScript" or "ShellScript";
+
+    private long? GetPreviousVersionId( int versionNumber ) =>
+        _versions?.Items.FirstOrDefault( v => v.VersionNumber == versionNumber - 1 )?.Id;
+
+    private void OnTargetTagsChanged( string[] tags ) {
+        _targetTags = tags;
+        if (_model is not null) {
+            _model.TargetTags = string.Join( ",", tags );
+        }
+    }
+
+    private sealed class TaskFormModel {
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public string ActionType { get; set; } = "Action";
+        public string Content { get; set; } = "";
+        public string? Arguments { get; set; }
+        public string TargetTags { get; set; } = "";
+        public bool Enabled { get; set; } = true;
+        public long? TimeoutMinutes { get; set; }
+        public string? SuccessCriteria { get; set; }
+        public string? WorkflowId { get; set; }
+        public string ActionSubType { get; set; } = "";
+        public string? ActionParameters { get; set; }
+
+        public static TaskFormModel FromDto( TaskDto dto ) {
+            return new TaskFormModel {
+                Name = dto.Name,
+                Description = dto.Description,
+                ActionType = dto.ActionType,
+                Content = dto.Content,
+                Arguments = dto.Arguments is not null ? string.Join( "\n", dto.Arguments ) : null,
+                TargetTags = string.Join( ", ", dto.TargetTags ),
+                Enabled = dto.Enabled,
+                TimeoutMinutes = dto.TimeoutMinutes,
+                SuccessCriteria = dto.SuccessCriteria,
+                WorkflowId = dto.WorkflowId?.ToString( ),
+                ActionSubType = dto.ActionSubType ?? "",
+                ActionParameters = dto.ActionParameters,
+            };
+        }
+
+        public TaskUpdateRequest ToUpdateRequest( string? changeDescription = null ) {
+            string[]? args = string.IsNullOrWhiteSpace( Arguments )
+                ? null
+                : Arguments.Split( '\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries );
+
+            string[] tags = string.IsNullOrWhiteSpace( TargetTags )
+                ? []
+                : TargetTags.Split( ',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries );
+
+            long? workflowId = long.TryParse( WorkflowId, out long wid ) ? wid : null;
+
+            return new TaskUpdateRequest(
+                Name: Name,
+                Description: Description,
+                ActionType: ActionType,
+                Content: Content,
+                Arguments: args,
+                TargetTags: tags,
+                Enabled: Enabled,
+                TimeoutMinutes: TimeoutMinutes,
+                SuccessCriteria: SuccessCriteria,
+                WorkflowId: workflowId,
+                ActionSubType: string.IsNullOrWhiteSpace( ActionSubType ) ? null : ActionSubType,
+                ActionParameters: string.IsNullOrWhiteSpace( ActionParameters ) ? null : ActionParameters,
+                ChangeDescription: string.IsNullOrWhiteSpace( changeDescription ) ? null : changeDescription );
+        }
+    }
+}

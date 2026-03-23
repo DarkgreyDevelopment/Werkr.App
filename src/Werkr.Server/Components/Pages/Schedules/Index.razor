@@ -1,0 +1,239 @@
+﻿@page "/schedules"
+@rendermode InteractiveServer
+@using Werkr.Common.Models
+@using Werkr.Common.Scheduling
+@using Werkr.Data
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Schedules</PageTitle>
+
+<h1>Schedules</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Manage recurring execution schedules for tasks and workflows.</p>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="OpenCreateScheduleAsync">
+        <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Schedule
+    </button>
+    <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+<FilterBar PageKey="schedules" Definition="_filterDefinition"
+           OnFilterApplied="OnFilterAppliedAsync" OnFilterCleared="OnFilterClearedAsync" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _schedules is null ) {
+    <LoadingSpinner Message="Loading schedules…" />
+} else if ( _schedules is not null && FilteredSchedules.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Recurrence</th>
+                    <th>Start</th>
+                    <th>Expires</th>
+                    <th>Status</th>
+                    <th>Next Occurrence</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( ScheduleDto s in FilteredSchedules ) {
+                    <tr>
+                        <td><button class="btn btn-link p-0" @onclick="() => EditScheduleAsync( s )">@s.Name</button></td>
+                        <td>@DescribeRecurrence( s )</td>
+                        <td>@FormatStart( s.StartDateTime )</td>
+                        <td>@FormatExpiration( s.Expiration )</td>
+                        <td>
+                            <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( GetStatus( s ) )">@GetStatus( s )</span>
+                        </td>
+                        <td>@GetNextOccurrence( s.Id )</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => EditScheduleAsync( s )">Edit</button>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( s )">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( !_isLoading ) {
+    <EmptyState Message="No schedules configured yet. Click 'New Schedule' to create one." />
+}
+
+<ConfirmDialog @ref="_confirmDialog"
+               Title="Delete Schedule"
+               Message="@_deleteMessage"
+               ConfirmButtonText="Delete"
+               OnConfirmed="DeleteConfirmedAsync" />
+
+<ScheduleSetupModal @ref="_scheduleSetupModal" OnScheduleCreated="OnScheduleCreatedAsync" OnScheduleUpdated="OnScheduleUpdatedAsync" />
+
+@code {
+    private List<ScheduleDto>? _schedules;
+    private Dictionary<Guid, DateTime?> _nextOccurrences = new( );
+    private FilterCriteria? _activeCriteria;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private ConfirmDialog _confirmDialog = default!;
+    private ScheduleSetupModal? _scheduleSetupModal;
+    private Guid _pendingDeleteId;
+    private string _deleteMessage = "";
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "search", "Name", FilterFieldType.Text ),
+        new FilterField( "enabled", "Status", FilterFieldType.Dropdown, ["Active", "Expired"] ),
+    ] );
+
+    private List<ScheduleDto> FilteredSchedules => ( _schedules ?? [] )
+        .Where( s =>
+            ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "search" ) )
+              || s.Name.Contains( _activeCriteria.Get( "search" )!, StringComparison.OrdinalIgnoreCase ) )
+            && ( string.IsNullOrWhiteSpace( _activeCriteria?.Get( "enabled" ) )
+              || GetStatus( s ).Equals( _activeCriteria.Get( "enabled" )!, StringComparison.OrdinalIgnoreCase ) ) )
+        .ToList( );
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Schedules" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            _schedules = await Api.GetAsync<List<ScheduleDto>>( "/api/v1/schedules" );
+
+            // Fetch next occurrence for each schedule concurrently
+            if ( _schedules is not null ) {
+                DateTime windowEnd = DateTime.UtcNow.AddDays( 60 );
+                string windowEndParam = Uri.EscapeDataString( windowEnd.ToString( "o" ) );
+                Task[] fetchTasks = _schedules.Select( s =>
+                    FetchNextOccurrenceAsync( s.Id, windowEndParam ) ).ToArray( );
+                await Task.WhenAll( fetchTasks );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load schedules: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task FetchNextOccurrenceAsync( Guid scheduleId, string windowEndParam ) {
+        try {
+            OccurrencePreview? preview = await Api.GetAsync<OccurrencePreview>(
+                $"/api/v1/schedules/{scheduleId}/occurrences?windowEnd={windowEndParam}" );
+            DateTime? next = preview?.Occurrences?.Where( o => o > DateTime.UtcNow ).OrderBy( o => o ).FirstOrDefault( );
+            _nextOccurrences[scheduleId] = next == default ? null : next;
+        } catch {
+            _nextOccurrences[scheduleId] = null;
+        }
+    }
+
+    private void PromptDelete( ScheduleDto schedule ) {
+        _pendingDeleteId = schedule.Id;
+        _deleteMessage = $"Are you sure you want to delete schedule '{schedule.Name}'? This cannot be undone.";
+        _confirmDialog.Show( );
+    }
+
+    private async Task DeleteConfirmedAsync( ) {
+        try {
+            HttpResponseMessage response = await Api.DeleteAsync( $"/api/v1/schedules/{_pendingDeleteId}" );
+            if ( response.IsSuccessStatusCode ) {
+                await LoadAsync( );
+            } else {
+                _errorMessage = $"Failed to delete schedule: HTTP {(int) response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to delete schedule: {ex.Message}";
+        }
+    }
+
+    private static string DescribeRecurrence( ScheduleDto s ) {
+        if ( s.DailyRecurrence is not null ) return $"Daily (every {s.DailyRecurrence.DayInterval} day(s))";
+        if ( s.WeeklyRecurrence is not null ) return $"Weekly (every {s.WeeklyRecurrence.WeekInterval} week(s))";
+        if ( s.MonthlyRecurrence is not null ) return "Monthly";
+        return "One-time";
+    }
+
+    private static string FormatStart( StartDateTimeDto? start ) {
+        if (start is null) return "—";
+        string tzLabel = FormatTimeZoneLabel( start.TimeZoneId, start.IsFixedOffset,
+            start.Date.ToDateTime( start.Time ) );
+        return $"{start.Date:yyyy-MM-dd} {start.Time:HH:mm} ({tzLabel})";
+    }
+
+    private static string FormatTimeZoneLabel( string tzId, bool isFixedOffset, DateTime instant ) {
+        try {
+            TimeZoneInfo tz = TimeZoneResolver.FindOrCreate( tzId );
+            return isFixedOffset
+                ? TimeZoneDisplayService.GetFixedOffsetLabel( tz.BaseUtcOffset )
+                : TimeZoneDisplayService.GetAbbreviation( tz, instant );
+        } catch {
+            return tzId;
+        }
+    }
+
+    private static string FormatExpiration( ExpirationDateTimeDto? exp ) {
+        return exp is null ? "None" : $"{exp.Date:yyyy-MM-dd} {exp.Time:HH:mm}";
+    }
+
+    private static string GetStatus( ScheduleDto s ) {
+        if ( s.Expiration is not null ) {
+            DateTime expDt = s.Expiration.Date.ToDateTime( s.Expiration.Time );
+            if ( expDt < DateTime.Now ) return "Expired";
+        }
+        return "Active";
+    }
+
+    private string GetNextOccurrence( Guid scheduleId ) {
+        if ( _nextOccurrences.TryGetValue( scheduleId, out DateTime? next ) && next.HasValue ) {
+            return next.Value.ToLocalTime( ).ToString( "g" );
+        }
+        return "—";
+    }
+
+    private sealed record OccurrencePreview( Guid ScheduleId, DateTime WindowEnd, List<DateTime>? Occurrences );
+
+    private async Task OnFilterAppliedAsync( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterClearedAsync( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
+    }
+
+    private async Task EditScheduleAsync( ScheduleDto schedule ) {
+        if ( _scheduleSetupModal is not null ) await _scheduleSetupModal.Show( schedule );
+    }
+
+    private async Task OpenCreateScheduleAsync( ) {
+        if ( _scheduleSetupModal is not null ) await _scheduleSetupModal.Show( );
+    }
+
+    private async Task OnScheduleCreatedAsync( ScheduleDto schedule ) {
+        await LoadAsync( );
+    }
+
+    private async Task OnScheduleUpdatedAsync( ScheduleDto schedule ) {
+        await LoadAsync( );
+    }
+}

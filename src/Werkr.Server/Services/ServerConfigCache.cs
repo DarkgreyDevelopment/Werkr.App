@@ -1,0 +1,77 @@
+using Microsoft.EntityFrameworkCore;
+using Werkr.Data.Identity;
+using Werkr.Data.Identity.Entities;
+
+namespace Werkr.Server.Services;
+
+/// <summary>
+/// Singleton cache of the <see cref="ConfigurationSettings"/> row stored in the database.
+/// Provides fast, synchronous property access for UI polling intervals and server identity.
+/// <para>
+/// The cache is loaded once during startup via <see cref="InitializeAsync"/> (called from
+/// <c>Program.cs</c> before the identity seeder runs) and can be refreshed on demand.
+/// </para>
+/// </summary>
+/// <remarks>Creates a new instance backed by the application service provider.</remarks>
+public sealed partial class ServerConfigCache( IServiceProvider services, ILogger<ServerConfigCache> logger ) {
+    /// <summary>
+    /// Root service provider used to create scoped services for database access.
+    /// </summary>
+    private readonly IServiceProvider _services = services;
+    /// <summary>
+    /// Logger for recording cache initialisation and refresh events.
+    /// </summary>
+    private readonly ILogger<ServerConfigCache> _logger = logger;
+    /// <summary>
+    /// The currently cached configuration entity. Marked <see langword="volatile"/> because it may be replaced by a background refresh while other threads read it.
+    /// </summary>
+    private volatile ConfigurationSettings _config = new( );
+
+    // ── Synchronous property accessors (hot path) ────────────────────
+
+    /// <summary>Dashboard / list auto-refresh interval in seconds (minimum 10).</summary>
+    public int PollingIntervalSeconds => Math.Max( _config.PollingIntervalSeconds, 10 );
+
+    /// <summary>Run-detail auto-refresh interval in seconds (minimum 5).</summary>
+    public int RunDetailPollingIntervalSeconds => Math.Max( _config.RunDetailPollingIntervalSeconds, 5 );
+
+    /// <summary>Display name for the Blazor UI header.</summary>
+    public string ServerName => _config.ServerName;
+
+    /// <summary>Whether new agent registrations are accepted.</summary>
+    public bool AllowRegistration => _config.AllowRegistration;
+
+    // ── Lifecycle ────────────────────────────────────────────────────
+    /// <summary>
+    /// Load config from the database, creating a default row if none exists.
+    /// Called once from <c>Program.cs</c> after DB migration and before the identity seeder.
+    /// </summary>
+    public async Task InitializeAsync( CancellationToken ct = default ) {
+        using IServiceScope scope = _services.CreateScope( );
+        WerkrIdentityDbContext db = scope.ServiceProvider.GetRequiredService<WerkrIdentityDbContext>( );
+
+        ConfigurationSettings? config = await db.ConfigurationSettings.FirstOrDefaultAsync( ct );
+        if (config is null) {
+            config = new ConfigurationSettings {
+                Created = DateTime.UtcNow,
+                LastUpdated = DateTime.UtcNow,
+            };
+            _ = db.ConfigurationSettings.Add( config );
+            _ = await db.SaveChangesAsync( ct );
+            LogDefaultConfigSeeded( _logger );
+        }
+
+        _config = config;
+    }
+
+    /// <summary>Reload the cached configuration from the database.</summary>
+    public async Task RefreshAsync( CancellationToken ct = default ) {
+        using IServiceScope scope = _services.CreateScope( );
+        WerkrIdentityDbContext db = scope.ServiceProvider.GetRequiredService<WerkrIdentityDbContext>( );
+        _config = await db.ConfigurationSettings.FirstOrDefaultAsync( ct ) ?? new( );
+    }
+
+    [LoggerMessage( Level = LogLevel.Information,
+        Message = "Seeded default server configuration." )]
+    private static partial void LogDefaultConfigSeeded( ILogger logger );
+}

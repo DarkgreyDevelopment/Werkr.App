@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Determine version
+        id: version
+        run: |
+          VERSION_JSON=$(dotnet gitversion /output json)
+          echo "semVer=$(echo $VERSION_JSON | jq -r '.SemVer')" >> $GITHUB_OUTPUT
+          echo "assemblySemVer=$(echo $VERSION_JSON | jq -r '.AssemblySemVer')" >> $GITHUB_OUTPUT
+          echo "assemblySemFileVer=$(echo $VERSION_JSON | jq -r '.AssemblySemFileVer')" >> $GITHUB_OUTPUT
+          echo "informationalVersion=$(echo $VERSION_JSON | jq -r '.InformationalVersion')" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/Werkr.Server/graph-ui/package-lock.json
+
+      - name: Install graph-ui dependencies
+        run: npm ci --prefix src/Werkr.Server/graph-ui
+
+      - name: Run JS tests
+        run: npm test --prefix src/Werkr.Server/graph-ui
+
+      - name: Build JS bundles (production)
+        run: npm run build:prod --prefix src/Werkr.Server/graph-ui
+
+      - name: Check bundle sizes
+        run: node src/Werkr.Server/graph-ui/scripts/check-bundle-size.mjs
+
+      - name: Restore dependencies
+        run: |
+          # Backup lock files before restore
+          find . -name "packages.lock.json" -exec cp {} {}.backup \;
+
+          # Restore with force-evaluate for linux-x64
+          dotnet restore Werkr.slnx --force-evaluate
+
+          # Validate lock file changes (skip Windows-only Installer projects)
+          for lockfile in $(find . -name "packages.lock.json" ! -name "*.backup" ! -path "*/Installer/*"); do
+            backup="${lockfile}.backup"
+            if [ -f "$backup" ]; then
+              pwsh scripts/Test-LockFileChanges.ps1 -BackupPath "$backup" -CurrentPath "$lockfile" -ToPlatform "linux-x64"
+              rm -f "$backup"
+            fi
+          done
+
+      - name: Build
+        run: >
+          dotnet build Werkr.slnx -c Release --no-restore
+          /p:Version=${{ steps.version.outputs.semVer }}
+          /p:AssemblyVersion=${{ steps.version.outputs.assemblySemVer }}
+          /p:FileVersion=${{ steps.version.outputs.assemblySemFileVer }}
+          /p:InformationalVersion="${{ steps.version.outputs.informationalVersion }}"
+
+      - name: Test
+        run: >
+          dotnet test --solution Werkr.slnx -c Release --no-build
+          --logger "trx;LogFileName=results.trx"
+          --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/**/*.trx

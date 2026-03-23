@@ -1,0 +1,65 @@
+@rendermode InteractiveServer
+
+<div>
+    @for (int i = 0; i < _rows.Count; i++) {
+        int index = i;
+        <div class="input-group input-group-sm mb-1" style="max-width: 500px;">
+            <input type="text" class="form-control font-monospace" placeholder="Argument"
+                   value="@_rows[index]"
+                   @onchange="( e ) => UpdateRow( index, e.Value?.ToString( ) ?? string.Empty )" />
+            <button class="btn btn-outline-danger" type="button" @onclick="( ) => RemoveRow( index )"
+                    title="Remove argument">&times;</button>
+        </div>
+    }
+    <button class="btn btn-outline-primary btn-sm mt-1" type="button" @onclick="AddRow">+ Add Argument</button>
+</div>
+
+@code {
+    /// <summary>Newline-delimited arguments string — two-way bound.</summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>Callback when value changes.</summary>
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    private List<string> _rows = [];
+
+    protected override void OnParametersSet( ) {
+        // Only rebuild rows if Value actually changed (avoid clobbering during edits)
+        List<string> incoming = string.IsNullOrWhiteSpace( Value )
+            ? []
+            : [.. Value.Split( '\n', StringSplitOptions.TrimEntries )
+                       .Where( s => s.Length > 0 )];
+
+        if (!_rows.SequenceEqual( incoming )) {
+            _rows = incoming;
+        }
+    }
+
+    private async Task UpdateRow( int index, string value ) {
+        if (index >= 0 && index < _rows.Count) {
+            _rows[index] = value;
+            await NotifyChanged( );
+        }
+    }
+
+    private async Task RemoveRow( int index ) {
+        if (index >= 0 && index < _rows.Count) {
+            _rows.RemoveAt( index );
+            await NotifyChanged( );
+        }
+    }
+
+    private async Task AddRow( ) {
+        _rows.Add( string.Empty );
+        await NotifyChanged( );
+    }
+
+    private async Task NotifyChanged( ) {
+        List<string> nonEmpty = [.. _rows.Where( r => !string.IsNullOrWhiteSpace( r ) )];
+        string? result = nonEmpty.Count > 0 ? string.Join( "\n", nonEmpty ) : null;
+        Value = result;
+        await ValueChanged.InvokeAsync( result );
+    }
+}

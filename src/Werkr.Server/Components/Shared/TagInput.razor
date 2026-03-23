@@ -1,0 +1,103 @@
+@rendermode InteractiveServer
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+
+<div class="d-flex flex-wrap gap-1 mb-2">
+    @foreach (string tag in Value) {
+        <span class="badge bg-primary d-flex align-items-center gap-1">
+            @tag
+            <button type="button" class="btn-close btn-close-white btn-sm"
+                    aria-label="Remove" @onclick="( ) => RemoveTag( tag )"></button>
+        </span>
+    }
+    @if (Value.Length == 0 && !HideEmptyWarning) {
+        <div class="alert alert-warning py-1 px-2 small mb-0">
+            &#9888; No target tags assigned. This task won't be dispatched to any agent.
+        </div>
+    }
+</div>
+
+@if (FilteredSuggestions.Count > 0) {
+    <label class="form-label small text-muted mb-1">Available Tags</label>
+    <select multiple class="form-select form-select-sm mb-2" size="6"
+            style="max-width: 320px; max-height: 150px;">
+        @foreach (string tag in FilteredSuggestions) {
+            <option @onclick="( ) => SelectSuggestion( tag )">@tag</option>
+        }
+    </select>
+}
+
+<div style="max-width: 320px;">
+    <div class="input-group input-group-sm">
+        <input type="text" class="form-control" placeholder="Add custom tag…"
+               @bind="_inputText" @bind:event="oninput"
+               @onkeydown="OnKeyDown" />
+        <button class="btn btn-outline-primary" type="button" @onclick="AddCurrentTag">Add</button>
+    </div>
+</div>
+
+@code {
+    /// <summary>Current tags array — two-way bound.</summary>
+    [Parameter]
+    public string[] Value { get; set; } = [];
+
+    /// <summary>Callback when tags change.</summary>
+    [Parameter]
+    public EventCallback<string[]> ValueChanged { get; set; }
+
+    /// <summary>When true, suppresses the "no target tags" warning (e.g. when a parent workflow provides tags).</summary>
+    [Parameter]
+    public bool HideEmptyWarning { get; set; }
+
+    private string _inputText = string.Empty;
+    private List<string> _allTags = [];
+
+    private List<string> FilteredSuggestions {
+        get {
+            return [.. _allTags.Where( t => !Value.Contains( t, StringComparer.OrdinalIgnoreCase ) )];
+        }
+    }
+
+    protected override async Task OnInitializedAsync( ) {
+        try {
+            _allTags = await Api.GetAsync<List<string>>( "/api/v1/tags" ) ?? [];
+        } catch {
+            _allTags = [];
+        }
+    }
+
+    private async Task OnKeyDown( KeyboardEventArgs e ) {
+        if (e.Key == "Enter") {
+            await AddCurrentTag( );
+        }
+    }
+
+    private async Task AddCurrentTag( ) {
+        string trimmed = _inputText.Trim( );
+        if (string.IsNullOrEmpty( trimmed ) || Value.Contains( trimmed, StringComparer.OrdinalIgnoreCase )) {
+            _inputText = string.Empty;
+            return;
+        }
+
+        _inputText = string.Empty;
+        string[] updated = [.. Value, trimmed];
+        Value = updated;
+        await ValueChanged.InvokeAsync( updated );
+    }
+
+    private async Task RemoveTag( string tag ) {
+        string[] updated = [.. Value.Where( t => !t.Equals( tag, StringComparison.OrdinalIgnoreCase ) )];
+        Value = updated;
+        await ValueChanged.InvokeAsync( updated );
+    }
+
+    private async Task SelectSuggestion( string tag ) {
+        if (Value.Contains( tag, StringComparer.OrdinalIgnoreCase )) {
+            return;
+        }
+
+        _inputText = string.Empty;
+        string[] updated = [.. Value, tag];
+        Value = updated;
+        await ValueChanged.InvokeAsync( updated );
+    }
+}

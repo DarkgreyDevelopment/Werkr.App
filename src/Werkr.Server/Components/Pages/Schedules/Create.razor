@@ -1,0 +1,10 @@
+@page "/schedules/create"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized( ) {
+        Navigation.NavigateTo( "/schedules", replace: true );
+    }
+}

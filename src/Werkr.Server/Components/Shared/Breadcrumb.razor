@@ -1,0 +1,19 @@
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        @for (int index = 0; index < Items.Count; index++) {
+            BreadcrumbItem crumb = Items[index];
+            if (index == Items.Count - 1) {
+                <li class="breadcrumb-item active" aria-current="page">@crumb.Label</li>
+            } else {
+                <li class="breadcrumb-item"><a href="@crumb.Href">@crumb.Label</a></li>
+            }
+        }
+    </ol>
+</nav>
+
+@code {
+    [Parameter]
+    public List<BreadcrumbItem> Items { get; set; } = [];
+
+    public sealed record BreadcrumbItem( string Label, string Href = "#" );
+}

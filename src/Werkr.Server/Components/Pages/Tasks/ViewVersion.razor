@@ -1,0 +1,190 @@
+@page "/tasks/{TaskId:long}/versions/{VersionId:long}"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Task Version</PageTitle>
+
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading version..." />
+} else if ( _version is not null && _snapshot is not null ) {
+    <h1>Task Version</h1>
+    <h5 class="text-muted mb-4">@_snapshot.Name - Version @_version.VersionNumber</h5>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Version Info</h5>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Version</div>
+                <div class="col-md-9"><span class="badge bg-primary">v@(_version.VersionNumber)</span></div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Created</div>
+                <div class="col-md-9">@_version.CreatedUtc.ToString( "g" )</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Author</div>
+                <div class="col-md-9">@( _version.CreatedByUserId ?? "System" )</div>
+            </div>
+            @if ( !string.IsNullOrWhiteSpace( _version.ChangeDescription ) ) {
+                <div class="row mb-2">
+                    <div class="col-md-3 fw-bold">Change Description</div>
+                    <div class="col-md-9">@_version.ChangeDescription</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Task Definition (read-only)</h5>
+
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Name</div>
+                <div class="col-md-9">@_snapshot.Name</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Description</div>
+                <div class="col-md-9">@( string.IsNullOrWhiteSpace( _snapshot.Description ) ? "—" : _snapshot.Description )</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Action Type</div>
+                <div class="col-md-9">@_snapshot.ActionType</div>
+            </div>
+            @if ( !string.IsNullOrWhiteSpace( _snapshot.ActionSubType ) ) {
+                <div class="row mb-2">
+                    <div class="col-md-3 fw-bold">Action Sub Type</div>
+                    <div class="col-md-9">@_snapshot.ActionSubType</div>
+                </div>
+            }
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Content</div>
+                <div class="col-md-9"><code class="d-block text-break">@_snapshot.Content</code></div>
+            </div>
+            @if ( _snapshot.Arguments is { Length: > 0 } ) {
+                <div class="row mb-2">
+                    <div class="col-md-3 fw-bold">Arguments</div>
+                    <div class="col-md-9">@string.Join( ", ", _snapshot.Arguments )</div>
+                </div>
+            }
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Target Tags</div>
+                <div class="col-md-9">
+                    @if ( _snapshot.TargetTags.Length > 0 ) {
+                        @foreach ( string tag in _snapshot.TargetTags ) {
+                            <span class="badge bg-secondary me-1">@tag</span>
+                        }
+                    } else {
+                        <span class="text-muted">None</span>
+                    }
+                </div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Enabled</div>
+                <div class="col-md-9">
+                    <span class="badge @( _snapshot.Enabled ? "bg-success" : "bg-danger" )">
+                        @( _snapshot.Enabled ? "Yes" : "No" )
+                    </span>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Timeout</div>
+                <div class="col-md-9">@( _snapshot.TimeoutMinutes?.ToString( ) ?? "Default (60)" ) min</div>
+            </div>
+            @if ( !string.IsNullOrWhiteSpace( _snapshot.SuccessCriteria ) ) {
+                <div class="row mb-2">
+                    <div class="col-md-3 fw-bold">Success Criteria</div>
+                    <div class="col-md-9"><code>@_snapshot.SuccessCriteria</code></div>
+                </div>
+            }
+            @if ( !string.IsNullOrWhiteSpace( _snapshot.ActionParameters ) ) {
+                <div class="row mb-2">
+                    <div class="col-md-3 fw-bold">Action Parameters</div>
+                    <div class="col-md-9"><pre class="mb-0 bg-light p-2 rounded" style="max-height: 300px; overflow: auto;">@_snapshot.ActionParameters</pre></div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a href="/tasks/@TaskId" class="btn btn-outline-secondary">Back to Task</a>
+        @if ( _version.VersionNumber > 1 && _previousVersionId.HasValue ) {
+            <a href="/tasks/@TaskId/versions/diff?from=@_previousVersionId&to=@VersionId"
+               class="btn btn-outline-info">Compare with Previous</a>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public long TaskId { get; set; }
+    [Parameter] public long VersionId { get; set; }
+
+    private TaskVersionDto? _version;
+    private TaskDefinitionSnapshotDto? _snapshot;
+    private long? _previousVersionId;
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Tasks", "/tasks" ),
+        new( "Version" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        _isLoading = true;
+        try {
+            _version = await Api.GetAsync<TaskVersionDto>( $"/api/v1/tasks/{TaskId}/versions/{VersionId}" );
+            if ( _version is null ) {
+                _errorMessage = "Version not found.";
+                return;
+            }
+
+            _snapshot = System.Text.Json.JsonSerializer.Deserialize<TaskDefinitionSnapshotDto>(
+                _version.Definition,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true } );
+
+            _breadcrumbs = [
+                new( "Task List", "/" ),
+                new( "Tasks", "/tasks" ),
+                new( _snapshot?.Name ?? "Task", $"/tasks/{TaskId}" ),
+                new( $"Version {_version.VersionNumber}" )
+            ];
+
+            // Find previous version for comparison link
+            if ( _version.VersionNumber > 1 ) {
+                PagedResult<TaskVersionDto>? versions = await Api.GetAsync<PagedResult<TaskVersionDto>>(
+                    $"/api/v1/tasks/{TaskId}/versions?limit=100" );
+                _previousVersionId = versions?.Items
+                    .FirstOrDefault( v => v.VersionNumber == _version.VersionNumber - 1 )?.Id;
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load version: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    /// <summary>Client-side DTO for deserializing the task definition snapshot JSON.</summary>
+    private sealed record TaskDefinitionSnapshotDto(
+        string Name,
+        string Description,
+        string ActionType,
+        string Content,
+        string[]? Arguments,
+        string[] TargetTags,
+        bool Enabled,
+        long? TimeoutMinutes,
+        string? SuccessCriteria,
+        string? ActionSubType,
+        string? ActionParameters,
+        long? WorkflowId
+    );
+}

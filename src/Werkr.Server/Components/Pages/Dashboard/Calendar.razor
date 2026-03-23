@@ -1,0 +1,362 @@
+﻿@page "/calendar"
+@using Werkr.Server.Services
+@rendermode InteractiveServer
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject ServerConfigCache ConfigCache
+
+<PageTitle>Werkr - Calendar</PageTitle>
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Calendar</h1>
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
+</div>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Visual overview of scheduled occurrences.</p>
+
+<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+    <div class="btn-group" role="group">
+        <button class="btn btn-sm @( _viewMode == "timeline" ? "btn-primary" : "btn-outline-primary" )"
+                @onclick='() => SetViewMode( "timeline" )'>Daily</button>
+        <button class="btn btn-sm @( _viewMode == "weekly" ? "btn-primary" : "btn-outline-primary" )"
+                @onclick='() => SetViewMode( "weekly" )'>Weekly</button>
+        <button class="btn btn-sm @( _viewMode == "monthly" ? "btn-primary" : "btn-outline-primary" )"
+                @onclick='() => SetViewMode( "monthly" )'>Monthly</button>
+    </div>
+
+    @if ( _viewMode == "timeline" ) {
+        <button class="btn btn-outline-secondary btn-sm" @onclick="PreviousDay">← Prev</button>
+        <h5 class="mb-0">@_viewDate.ToString( "dddd, MMMM d, yyyy" )</h5>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="NextDay">Next →</button>
+        <select class="form-select form-select-sm" style="max-width: 160px;" @bind="_intervalMinutes">
+            <option value="15">15 min intervals</option>
+            <option value="30">30 min intervals</option>
+            <option value="60">1 hour intervals</option>
+        </select>
+    } else if ( _viewMode == "weekly" ) {
+        <button class="btn btn-outline-secondary btn-sm" @onclick="PreviousWeek">← Prev</button>
+        <h5 class="mb-0">Week of @_weekStart.ToString( "MMM d" ) – @_weekStart.AddDays( 6 ).ToString( "MMM d, yyyy" )</h5>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="NextWeek">Next →</button>
+    } else {
+        <button class="btn btn-outline-secondary btn-sm" @onclick="PreviousMonth">← Prev</button>
+        <h5 class="mb-0">@_viewDate.ToString( "MMMM yyyy" )</h5>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="NextMonth">Next →</button>
+    }
+
+    <button class="btn btn-outline-secondary btn-sm ms-auto" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _viewMode == "timeline" ) {
+    @* ── Hourly timeline: time (Y) × tasks/schedules (X) ── *@
+    <div class="timeline-container">
+        <table class="table table-bordered table-sm timeline-table">
+            <thead>
+                <tr>
+                    <th class="timeline-time-col">Time</th>
+                    @foreach ( ScheduleDto s in _schedules ) {
+                        <th class="timeline-schedule-col text-truncate" title="@s.Name">@s.Name</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( TimeOnly slot in _timeSlots ) {
+                    <tr>
+                        <td class="timeline-time-cell">@slot.ToString( "HH:mm" )</td>
+                        @foreach ( ScheduleDto s in _schedules ) {
+                            TimeOnly slotEnd = slot.AddMinutes( _intervalMinutes );
+                            List<DateTime> hits = GetOccurrencesInSlot( s.Id, slot, slotEnd );
+                            <td class="@( hits.Count > 0 ? "timeline-cell-active" : "" )">
+                                @if ( hits.Count > 0 ) {
+                                    <div class="timeline-bubble" title="@s.Name — @hits.Count occurrence(s)">
+                                        @hits.Count
+                                    </div>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( _viewMode == "weekly" ) {
+    @* ── 7-column weekly timeline ── *@
+    <div class="weekly-container">
+        <table class="table table-bordered table-sm weekly-table">
+            <thead>
+                <tr>
+                    <th class="weekly-time-col">Time</th>
+                    @for (int d = 0; d < 7; d++) {
+                        DateTime day = _weekStart.AddDays( d );
+                        <th class="weekly-day-col @( day.Date == DateTime.Today ? "weekly-today" : "" )">
+                            @day.ToString( "ddd M/d" )
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( TimeOnly slot in _timeSlots ) {
+                    <tr>
+                        <td class="weekly-time-cell">@slot.ToString( "HH:mm" )</td>
+                        @for (int d = 0; d < 7; d++) {
+                            DateTime day = _weekStart.AddDays( d );
+                            TimeOnly slotEnd = slot.AddMinutes( _intervalMinutes );
+                            List<(string Name, DateTime Occ)> hits = GetWeeklySlotHits( day, slot, slotEnd );
+                            <td class="@( hits.Count > 0 ? "weekly-cell-active" : "" )">
+                                @foreach (var hit in hits) {
+                                    <div class="weekly-event" title="@hit.Name @ConvertIfNeeded( hit.Occ ).ToString( "HH:mm" )">
+                                        <small>@hit.Name</small>
+                                    </div>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else {
+    @* ── Monthly grid (original) ── *@
+    <div class="calendar-grid">
+        @foreach ( string day in s_dayHeaders ) {
+            <div class="calendar-header">@day</div>
+        }
+
+        @foreach ( CalendarCell cell in _cells ) {
+            <div class="calendar-cell @( cell.IsCurrentMonth ? "" : "calendar-cell-dim" ) @( cell.IsToday ? "calendar-cell-today" : "" )">
+                <div class="calendar-date">@cell.Date.Day</div>
+                @foreach ( CalendarEvent evt in cell.Events ) {
+                    <div class="calendar-event" title="@evt.ScheduleName">
+                        <small>@ConvertTimeOnly( evt.Time ).ToString( "HH:mm" ) @evt.ScheduleName</small>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private string _viewMode = "timeline";
+    private DateTime _viewDate = DateTime.Today;
+    private DateTime _weekStart = DateTime.Today.AddDays( -(int) DateTime.Today.DayOfWeek );
+    private int _intervalMinutes = 60;
+    private List<ScheduleDto> _schedules = [];
+    private List<CalendarCell> _cells = [];
+    private List<TimeOnly> _timeSlots = [];
+    private Dictionary<Guid, IReadOnlyList<DateTime>> _occurrencesBySchedule = [];
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _disposed;
+    private TimeZoneInfo? _displayTz;
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _cts;
+
+    private static readonly string[] s_dayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Calendar" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        BuildTimeSlots( );
+        await LoadAsync( );
+
+        _cts = new CancellationTokenSource( );
+        _refreshTimer = new PeriodicTimer( TimeSpan.FromSeconds( ConfigCache.PollingIntervalSeconds ) );
+        _ = AutoRefreshAsync( _cts.Token );
+    }
+
+    private async Task AutoRefreshAsync( CancellationToken ct ) {
+        if ( _refreshTimer is null ) return;
+        try {
+            while ( await _refreshTimer.WaitForNextTickAsync( ct ) ) {
+                if ( _disposed ) return;
+                await LoadAsync( );
+                await InvokeAsync( StateHasChanged );
+            }
+        } catch ( OperationCanceledException ) { }
+        catch ( ObjectDisposedException ) { }
+    }
+
+    private void SetViewMode( string mode ) {
+        _viewMode = mode;
+        _ = LoadAsync( );
+    }
+
+    private void BuildTimeSlots( ) {
+        _timeSlots = [];
+        for ( int m = 0; m < 24 * 60; m += _intervalMinutes ) {
+            _timeSlots.Add( new TimeOnly( m / 60, m % 60 ) );
+        }
+    }
+
+    private void PreviousDay( ) {
+        _viewDate = _viewDate.AddDays( -1 );
+        _ = LoadAsync( );
+    }
+
+    private void NextDay( ) {
+        _viewDate = _viewDate.AddDays( 1 );
+        _ = LoadAsync( );
+    }
+
+    private void PreviousMonth( ) {
+        _viewDate = _viewDate.AddMonths( -1 );
+        _ = LoadAsync( );
+    }
+
+    private void NextMonth( ) {
+        _viewDate = _viewDate.AddMonths( 1 );
+        _ = LoadAsync( );
+    }
+
+    private void PreviousWeek( ) {
+        _weekStart = _weekStart.AddDays( -7 );
+        _ = LoadAsync( );
+    }
+
+    private void NextWeek( ) {
+        _weekStart = _weekStart.AddDays( 7 );
+        _ = LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        BuildTimeSlots( );
+        try {
+            _schedules = await Api.GetAsync<List<ScheduleDto>>( "/api/v1/schedules" ) ?? [];
+
+            DateTime windowStart;
+            DateTime windowEnd;
+            if ( _viewMode == "timeline" ) {
+                windowStart = _viewDate.Date;
+                windowEnd = _viewDate.Date.AddDays( 1 ).AddSeconds( -1 );
+            } else if ( _viewMode == "weekly" ) {
+                windowStart = _weekStart.Date;
+                windowEnd = _weekStart.Date.AddDays( 7 ).AddSeconds( -1 );
+            } else {
+                windowStart = new DateTime( _viewDate.Year, _viewDate.Month, 1 );
+                windowEnd = new DateTime( _viewDate.Year, _viewDate.Month,
+                    DateTime.DaysInMonth( _viewDate.Year, _viewDate.Month ), 23, 59, 59 );
+            }
+
+            Dictionary<Guid, IReadOnlyList<DateTime>> newOccurrences = [];
+            Dictionary<DateOnly, List<CalendarEvent>> eventsByDate = [];
+
+            foreach ( ScheduleDto schedule in _schedules ) {
+                try {
+                    string url = $"/api/v1/schedules/{schedule.Id}/occurrences?windowEnd={windowEnd:O}";
+                    OccurrencePreviewResponse? preview =
+                        await Api.GetAsync<OccurrencePreviewResponse>( url );
+                    if ( preview?.Occurrences is not null ) {
+                        newOccurrences[schedule.Id] = preview.Occurrences;
+
+                        foreach ( DateTime occ in preview.Occurrences ) {
+                            DateOnly key = DateOnly.FromDateTime( occ );
+                            if ( !eventsByDate.TryGetValue( key, out List<CalendarEvent>? list ) ) {
+                                list = [];
+                                eventsByDate[key] = list;
+                            }
+                            list.Add( new CalendarEvent( schedule.Name, TimeOnly.FromDateTime( occ ) ) );
+                        }
+                    }
+                } catch {
+                    // Skip individual schedule errors
+                }
+            }
+
+            _occurrencesBySchedule = newOccurrences;
+            if ( _viewMode == "monthly" ) {
+                BuildCells( eventsByDate );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load calendar data: {ex.Message}";
+            BuildCells( [] );
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private List<DateTime> GetOccurrencesInSlot( Guid scheduleId, TimeOnly slotStart, TimeOnly slotEnd ) {
+        if ( !_occurrencesBySchedule.TryGetValue( scheduleId, out IReadOnlyList<DateTime>? occs ) ) return [];
+        DateOnly viewDay = DateOnly.FromDateTime( _viewDate );
+        return occs
+            .Where( o => DateOnly.FromDateTime( o ) == viewDay
+                         && TimeOnly.FromDateTime( o ) >= slotStart
+                         && TimeOnly.FromDateTime( o ) < slotEnd )
+            .ToList( );
+    }
+
+    private List<(string Name, DateTime Occ)> GetWeeklySlotHits( DateTime day, TimeOnly slotStart, TimeOnly slotEnd ) {
+        DateOnly dayKey = DateOnly.FromDateTime( day );
+        List<(string Name, DateTime Occ)> results = [];
+        foreach (ScheduleDto schedule in _schedules) {
+            if (!_occurrencesBySchedule.TryGetValue( schedule.Id, out IReadOnlyList<DateTime>? occs )) continue;
+            foreach (DateTime occ in occs) {
+                if (DateOnly.FromDateTime( occ ) == dayKey) {
+                    TimeOnly occTime = TimeOnly.FromDateTime( occ );
+                    if (occTime >= slotStart && occTime < slotEnd) {
+                        results.Add( (schedule.Name, occ) );
+                    }
+                }
+            }
+        }
+        return results;
+    }
+
+    private void BuildCells( Dictionary<DateOnly, List<CalendarEvent>> eventsByDate ) {
+        _cells = [];
+        DateOnly firstOfMonth = new( _viewDate.Year, _viewDate.Month, 1 );
+        int startOffset = (int) firstOfMonth.DayOfWeek;
+        DateOnly cellDate = firstOfMonth.AddDays( -startOffset );
+
+        int totalCells = 42; // 6 rows × 7 days
+        DateOnly today = DateOnly.FromDateTime( DateTime.Today );
+
+        for ( int i = 0; i < totalCells; i++ ) {
+            eventsByDate.TryGetValue( cellDate, out List<CalendarEvent>? events );
+            _cells.Add( new CalendarCell(
+                cellDate,
+                cellDate.Month == _viewDate.Month,
+                cellDate == today,
+                events ?? [] ) );
+            cellDate = cellDate.AddDays( 1 );
+        }
+    }
+
+    public async ValueTask DisposeAsync( ) {
+        if ( _disposed ) return;
+        _disposed = true;
+        if ( _cts is not null ) {
+            await _cts.CancelAsync( );
+            _cts.Dispose( );
+        }
+        _refreshTimer?.Dispose( );
+    }
+
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
+
+    private TimeOnly ConvertTimeOnly( TimeOnly t ) {
+        if ( _displayTz is null ) return t;
+        DateTime utc = DateTime.SpecifyKind( DateTime.Today.Add( t.ToTimeSpan( ) ), DateTimeKind.Utc );
+        return TimeOnly.FromDateTime( TimeZoneInfo.ConvertTimeFromUtc( utc, _displayTz ) );
+    }
+
+    private sealed record CalendarCell( DateOnly Date, bool IsCurrentMonth, bool IsToday, List<CalendarEvent> Events );
+    private sealed record CalendarEvent( string ScheduleName, TimeOnly Time );
+}

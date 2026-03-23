@@ -1,0 +1,556 @@
+﻿@page "/workflows/runs/{RunId:guid}"
+@using Microsoft.AspNetCore.SignalR.Client
+@using Werkr.Common.Models
+@using Werkr.Server.Hubs
+@using Werkr.Server.Services
+@rendermode InteractiveServer
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject ServerConfigCache ConfigCache
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Workflow Run Detail</PageTitle>
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Workflow Run Detail</h1>
+    <ConnectionStatus State="@_connectionState" />
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
+</div>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading run…" />
+} else if ( _detail is not null ) {
+    @* ── Run Summary Card ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Run Summary</h5>
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Run ID</dt>
+                <dd class="col-sm-9"><code>@_detail.Id</code></dd>
+
+                <dt class="col-sm-3">Workflow</dt>
+                <dd class="col-sm-9"><a href="/workflows/@_detail.WorkflowId">@_detail.WorkflowId</a></dd>
+
+                <dt class="col-sm-3">Status</dt>
+                <dd class="col-sm-9">
+                    <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( _detail.Status )">@_detail.Status</span>
+                </dd>
+
+                <dt class="col-sm-3">Started</dt>
+                <dd class="col-sm-9">@ConvertIfNeeded( _detail.StartTime ).ToString( "G" )</dd>
+
+                <dt class="col-sm-3">Ended</dt>
+                <dd class="col-sm-9">@( _detail.EndTime is not null ? ConvertIfNeeded( _detail.EndTime.Value ).ToString( "G" ) : "Still running" )</dd>
+            </dl>
+
+            @if ( _detail.Status == "Failed" ) {
+                StepExecutionDto? failedStep = _detail.StepExecutions
+                    .FirstOrDefault( e => e.Status == "Failed" );
+                if ( failedStep is not null ) {
+                    <button class="btn btn-warning btn-sm mt-2"
+                            @onclick="( ) => RetryFromFailedAsync( failedStep.StepId )"
+                            disabled="@_retrying">
+                        @( _retrying ? "Retrying…" : $"Retry from Step {failedStep.StepId}" )
+                    </button>
+                    @if ( !string.IsNullOrWhiteSpace( _retryMessage ) ) {
+                        <span class="ms-2 text-@( _retrySuccess ? "success" : "danger" )">@_retryMessage</span>
+                    }
+                }
+            }
+        </div>
+    </div>
+
+    @* ── DAG with Execution Overlay ── *@
+    @if ( _workflow is not null ) {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">DAG</h5>
+                <DagCanvas Steps="_workflow.Steps" StepStatuses="_stepStatuses" OnStepSelected="OnDagStepSelected" />
+            </div>
+        </div>
+    }
+
+    @* ── Tabbed Content Area ── *@
+    <div class="d-flex">
+        @* Left panel: tabs *@
+        <div class="@( _selectedStep is not null ? "flex-grow-1" : "w-100" )" style="min-width:0;">
+            <ul class="nav nav-tabs mb-3" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "compact" ? "active" : "" )"
+                            @onclick='( ) => _activeTab = "compact"'>Compact</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "timeline" ? "active" : "" )"
+                            @onclick='( ) => _activeTab = "timeline"'>Timeline</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "gantt" ? "active" : "" )"
+                            @onclick='( ) => _activeTab = "gantt"'>Gantt</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "log" ? "active" : "" )"
+                            @onclick='( ) => _activeTab = "log"'>Log</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @( _activeTab == "grid" ? "active" : "" )"
+                            @onclick="ActivateGridTab">Grid</button>
+                </li>
+            </ul>
+
+            @switch ( _activeTab ) {
+                case "compact":
+                    @* ── Compact: Step Execution Table ── *@
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Step</th>
+                                    <th>Status</th>
+                                    <th>Started</th>
+                                    <th>Duration</th>
+                                    <th>Job</th>
+                                    <th>Exit Code</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( StepExecutionDto se in _detail.StepExecutions.OrderBy( e => e.StartTime ?? DateTime.MaxValue ) ) {
+                                    string stepName = GetStepName( se.StepId );
+                                    bool isComposite = IsCompositeStep( se.StepId );
+                                    double? duration = se is { StartTime: not null, EndTime: not null }
+                                        ? ( se.EndTime.Value - se.StartTime.Value ).TotalSeconds
+                                        : null;
+                                    JobDto? job = se.JobId.HasValue
+                                        ? _detail.Jobs.FirstOrDefault( j => j.Id == se.JobId.Value )
+                                        : null;
+
+                                    <tr role="button" class="@( _selectedStep?.StepId == se.StepId ? "table-active" : "" )"
+                                        @onclick="( ) => SelectStep( se )">
+                                        <td>
+                                            @if ( isComposite ) {
+                                                <i class="bi bi-arrow-repeat text-primary me-1" title="ForEach composite step"></i>
+                                            }
+                                            @stepName
+                                        </td>
+                                        <td>
+                                            <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( se.Status )">@se.Status</span>
+                                        </td>
+                                        <td>@( se.StartTime is not null ? ConvertIfNeeded( se.StartTime.Value ).ToString( "T" ) : "—" )</td>
+                                        <td>@( duration?.ToString( "F1" ) ?? "—" )@( duration.HasValue ? "s" : "" )</td>
+                                        <td>
+                                            @if ( job is not null ) {
+                                                <a href="/jobs/@job.Id">@job.Id.ToString( )[..8]…</a>
+                                            } else {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td>@( job?.ExitCode?.ToString( ) ?? "—" )</td>
+                                    </tr>
+                                }
+                                @if ( _detail.StepExecutions.Count == 0 ) {
+                                    <tr><td colspan="6" class="text-muted text-center">No step executions recorded.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    break;
+
+                case "timeline":
+                    @* ── Timeline: Event Groups ── *@
+                    <TimelineView StepExecutions="_detail.StepExecutions"
+                                  DisplayTimeZone="_displayTz"
+                                  OnStepSelected="( step ) => SelectStep( step )" />
+                    break;
+
+                case "gantt":
+                    @* ── Gantt: vis-timeline Bars ── *@
+                    <GanttTab @ref="_ganttTab"
+                              StepExecutions="_detail.StepExecutions"
+                              Steps="_workflow?.Steps ?? []"
+                              IsRunActive="@( _detail.EndTime is null )"
+                              DisplayTimeZone="_displayTz"
+                              OnStepSelected="( step ) => SelectStep( step )" />
+                    break;
+
+                case "log":
+                    @* ── Log: Full Log Viewer ── *@
+                    <LogViewer Lines="GetFilteredLogLines( )" />
+                    break;
+
+                case "grid":
+                    @* ── Grid: Step x Run Matrix ── *@
+                    @if ( _gridLoading ) {
+                        <LoadingSpinner Message="Loading grid data..." />
+                    } else if ( _gridSteps is not null && _gridRuns is not null ) {
+                        <RunGridView Steps="_gridSteps"
+                                     Runs="_gridRuns"
+                                     OnCellSelected="OnGridCellSelected" />
+                    } else {
+                        <EmptyState Message="No grid data available." />
+                    }
+                    break;
+            }
+        </div>
+
+        @* Right panel: Step Detail *@
+        @if ( _selectedStep is not null ) {
+            <div class="ms-3" style="min-width:320px;max-width:400px;">
+                <StepDetailPanel Step="_selectedStep"
+                                 Job="GetJobForStep( _selectedStep )"
+                                 OnClose="ClearSelectedStep" />
+            </div>
+        }
+    </div>
+
+    <a href="/workflows/@_detail.WorkflowId/runs" class="btn btn-outline-secondary mt-3">← Back to Runs</a>
+}
+
+@code {
+    [Parameter] public Guid RunId { get; set; }
+
+    private WorkflowRunDetailDto? _detail;
+    private WorkflowDto? _workflow;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _disposed;
+    private string _activeTab = "compact";
+    private StepExecutionDto? _selectedStep;
+    private GanttTab? _ganttTab;
+
+    // Grid tab data
+    private IReadOnlyList<RunGridView.RunGridStep>? _gridSteps;
+    private IReadOnlyList<RunGridView.RunGridEntry>? _gridRuns;
+    private bool _gridLoading;
+    private bool _gridLoaded;
+
+    // Timezone
+    private TimeZoneInfo? _displayTz;
+
+    // Retry
+    private bool _retrying;
+    private string? _retryMessage;
+    private bool _retrySuccess;
+
+    // SignalR
+    private HubConnection? _hub;
+    private string _connectionState = "Polling";
+
+    // Polling fallback
+    private PeriodicTimer? _refreshTimer;
+    private CancellationTokenSource? _cts;
+
+    // Real-time data
+    private Dictionary<long, StepExecutionStatus> _stepStatuses = new( );
+    private List<string> _logLines = new( );
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Workflows", "/workflows" ),
+        new( "Run Detail" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+        BuildStepStatuses( );
+
+        _cts = new CancellationTokenSource( );
+        await StartSignalRAsync( );
+
+        // Start polling as fallback — disabled when hub connects
+        _refreshTimer = new PeriodicTimer( TimeSpan.FromSeconds( ConfigCache.RunDetailPollingIntervalSeconds ) );
+        _ = AutoRefreshAsync( _cts.Token );
+    }
+
+    // ── SignalR Lifecycle ──
+
+    private async Task StartSignalRAsync( ) {
+        try {
+            string hubUrl = Navigation.ToAbsoluteUri( "/hubs/workflow-run" ).AbsoluteUri;
+            _hub = new HubConnectionBuilder( )
+                .WithUrl( hubUrl )
+                .WithAutomaticReconnect( )
+                .Build( );
+
+            _hub.Reconnecting += _ => { _connectionState = "Reconnecting"; return InvokeAsync( StateHasChanged ); };
+            _hub.Reconnected += _ => { _connectionState = "Live"; return InvokeAsync( StateHasChanged ); };
+            _hub.Closed += _ => { _connectionState = "Polling"; return InvokeAsync( StateHasChanged ); };
+
+            _hub.On<StepStatusDto>( "StepStatusChanged", OnStepStatusChanged );
+            _hub.On<RunStatusDto>( "RunStatusChanged", OnRunStatusChanged );
+            _hub.On<LogLineDto>( "LogAppended", OnLogAppended );
+
+            await _hub.StartAsync( );
+            await _hub.InvokeAsync( "JoinRun", RunId );
+            _connectionState = "Live";
+        } catch {
+            _connectionState = "Polling";
+        }
+    }
+
+    private Task OnStepStatusChanged( StepStatusDto dto ) => InvokeAsync( async ( ) => {
+        if ( Enum.TryParse<StepExecutionStatus>( dto.Status, out StepExecutionStatus status ) ) {
+            _stepStatuses[dto.StepId] = status;
+        }
+
+        // Forward to Gantt tab for real-time bar updates
+        if ( _ganttTab is not null ) {
+            await _ganttTab.HandleStepStatusChangedAsync( dto );
+        }
+
+        // Update step execution in the detail DTO list
+        if ( _detail is not null ) {
+            List<StepExecutionDto> updated = _detail.StepExecutions.ToList( );
+            int idx = updated.FindIndex( e => e.StepId == dto.StepId );
+            StepExecutionDto newEntry = new(
+                idx >= 0 ? updated[idx].Id : 0,
+                dto.RunId, dto.StepId, idx >= 0 ? updated[idx].Attempt : 1,
+                dto.Status, dto.Timestamp,
+                dto.Status is "Succeeded" or "Failed" ? dto.Timestamp : null,
+                dto.JobId, dto.ErrorMessage, null );
+
+            if ( idx >= 0 ) updated[idx] = newEntry;
+            else updated.Add( newEntry );
+
+            _detail = _detail with { StepExecutions = updated };
+        }
+
+        // Update grid data if loaded
+        if ( _gridLoaded && _gridRuns is not null ) {
+            RunGridView.RunGridEntry? currentEntry = _gridRuns
+                .FirstOrDefault( r => r.RunId == RunId );
+            if ( currentEntry is not null ) {
+                Dictionary<long, string> updated = new( currentEntry.StepStatuses ) {
+                    [dto.StepId] = dto.Status
+                };
+                List<RunGridView.RunGridEntry> updatedRuns = _gridRuns.ToList( );
+                int idx = updatedRuns.IndexOf( currentEntry );
+                updatedRuns[idx] = currentEntry with { StepStatuses = updated };
+                _gridRuns = updatedRuns;
+            }
+        }
+
+        StateHasChanged( );
+    } );
+
+    private Task OnRunStatusChanged( RunStatusDto dto ) => InvokeAsync( ( ) => {
+        if ( _detail is not null ) {
+            _detail = _detail with { Status = dto.Status, EndTime = dto.Timestamp };
+        }
+        StateHasChanged( );
+    } );
+
+    private Task OnLogAppended( LogLineDto dto ) => InvokeAsync( ( ) => {
+        _logLines.Add( $"[{dto.Timestamp:HH:mm:ss}] Step {dto.StepId}: {dto.Line}" );
+        StateHasChanged( );
+    } );
+
+    // ── Polling Fallback ──
+
+    private async Task AutoRefreshAsync( CancellationToken ct ) {
+        if ( _refreshTimer is null ) return;
+        try {
+            while ( await _refreshTimer.WaitForNextTickAsync( ct ) ) {
+                if ( _disposed ) return;
+                if ( _connectionState == "Live" ) continue; // Skip polling when SignalR is active
+                await LoadAsync( );
+                BuildStepStatuses( );
+                await InvokeAsync( StateHasChanged );
+            }
+        } catch ( OperationCanceledException ) { }
+        catch ( ObjectDisposedException ) { }
+    }
+
+    // ── Data Loading ──
+
+    private async Task LoadAsync( ) {
+        _isLoading = _detail is null;
+        _errorMessage = null;
+        try {
+            _detail = await Api.GetAsync<WorkflowRunDetailDto>(
+                $"/api/v1/workflows/runs/{RunId}" );
+            if ( _detail is null ) {
+                _errorMessage = "Run not found.";
+                return;
+            }
+
+            // Load workflow definition for DAG rendering (only once)
+            if ( _workflow is null ) {
+                _workflow = await Api.GetAsync<WorkflowDto>(
+                    $"/api/v1/workflows/{_detail.WorkflowId}" );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load run: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void BuildStepStatuses( ) {
+        if ( _detail is null ) return;
+        _stepStatuses.Clear( );
+        foreach ( StepExecutionDto se in _detail.StepExecutions ) {
+            if ( Enum.TryParse<StepExecutionStatus>( se.Status, out StepExecutionStatus status ) ) {
+                _stepStatuses[se.StepId] = status;
+            }
+        }
+    }
+
+    // ── Timezone ──
+
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
+
+    // ── UI Helpers ──
+
+    private string GetStepName( long stepId ) {
+        WorkflowStepDto? step = _workflow?.Steps.FirstOrDefault( s => s.Id == stepId );
+        if ( step is null ) return $"Step {stepId}";
+        if ( step.IsComposite ) return $"Step #{step.Order} (ForEach)";
+        return $"Step #{step.Order} (Task {step.TaskId})";
+    }
+
+    private bool IsCompositeStep( long stepId ) {
+        WorkflowStepDto? step = _workflow?.Steps.FirstOrDefault( s => s.Id == stepId );
+        return step?.IsComposite == true;
+    }
+
+    private void SelectStep( StepExecutionDto step ) => _selectedStep = step;
+
+    private void SelectStepById( long stepId ) {
+        _selectedStep = _detail?.StepExecutions
+            .Where( e => e.StepId == stepId )
+            .OrderByDescending( e => e.Attempt )
+            .FirstOrDefault( );
+    }
+
+    private void OnDagStepSelected( WorkflowStepDto step ) => SelectStepById( step.Id );
+
+    private void ClearSelectedStep( ) => _selectedStep = null;
+
+    private JobDto? GetJobForStep( StepExecutionDto step ) =>
+        step.JobId.HasValue ? _detail?.Jobs.FirstOrDefault( j => j.Id == step.JobId.Value ) : null;
+
+    private IReadOnlyList<string> GetFilteredLogLines( ) {
+        if ( _selectedStep is null ) return _logLines;
+        string prefix = $"Step {_selectedStep.StepId}:";
+        return _logLines.Where( l => l.Contains( prefix ) ).ToList( );
+    }
+
+    // ── Grid Tab ──
+
+    private async Task ActivateGridTab( ) {
+        _activeTab = "grid";
+        await LoadGridDataAsync( );
+    }
+
+    private async Task LoadGridDataAsync( ) {
+        if ( _gridLoaded || _detail is null || _workflow is null ) return;
+        _gridLoading = true;
+        try {
+            // Fetch recent runs for this workflow (limited to prevent excessive API calls)
+            List<WorkflowRunDto>? recentRuns = await Api.GetAsync<List<WorkflowRunDto>>(
+                $"/api/v1/workflows/{_detail.WorkflowId}/runs?limit=20" );
+
+            if ( recentRuns is null || recentRuns.Count == 0 ) return;
+
+            // Build step rows from workflow definition (topological order)
+            _gridSteps = _workflow.Steps
+                .OrderBy( s => s.Order )
+                .Select( s => new RunGridView.RunGridStep( s.Id, s.TaskName ?? $"Step #{s.Order}", s.Order ) )
+                .ToList( );
+
+            // Fetch detail for each run to get step execution statuses
+            // The current run's detail is already loaded — reuse it
+            List<RunGridView.RunGridEntry> entries = new( );
+            foreach ( WorkflowRunDto run in recentRuns.OrderBy( r => r.StartTime ) ) {
+                IReadOnlyDictionary<long, string> stepStatuses;
+                if ( run.Id == _detail.Id ) {
+                    // Reuse already-loaded detail
+                    stepStatuses = _detail.StepExecutions
+                        .GroupBy( e => e.StepId )
+                        .ToDictionary( g => g.Key, g => g.OrderByDescending( e => e.Attempt ).First( ).Status );
+                } else {
+                    // Fetch detail for other runs
+                    try {
+                        WorkflowRunDetailDto? runDetail = await Api.GetAsync<WorkflowRunDetailDto>(
+                            $"/api/v1/workflows/runs/{run.Id}" );
+                        stepStatuses = runDetail?.StepExecutions
+                            .GroupBy( e => e.StepId )
+                            .ToDictionary( g => g.Key, g => g.OrderByDescending( e => e.Attempt ).First( ).Status )
+                            ?? new Dictionary<long, string>( );
+                    } catch {
+                        stepStatuses = new Dictionary<long, string>( );
+                    }
+                }
+                entries.Add( new RunGridView.RunGridEntry( run.Id, run.StartTime, run.Status, stepStatuses ) );
+            }
+            _gridRuns = entries;
+            _gridLoaded = true;
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load grid data: {ex.Message}";
+        } finally {
+            _gridLoading = false;
+        }
+    }
+
+    private void OnGridCellSelected( (Guid RunId, long StepId) selection ) {
+        if ( selection.RunId == _detail?.Id ) {
+            // Same run — select the step in the existing detail
+            SelectStepById( selection.StepId );
+        } else {
+            // Different run — navigate to that run's detail page
+            Navigation.NavigateTo( $"/workflows/runs/{selection.RunId}" );
+        }
+    }
+
+    // ── Retry ──
+
+    private async Task RetryFromFailedAsync( long stepId ) {
+        if ( _detail is null ) return;
+        _retrying = true;
+        _retryMessage = null;
+        try {
+            HttpResponseMessage response = await Api.PostAsJsonAsync(
+                $"/api/v1/workflows/{_detail.WorkflowId}/runs/{RunId}/retry-from/{stepId}",
+                new RetryFromFailedRequest( null ) );
+
+            if ( response.IsSuccessStatusCode ) {
+                _retrySuccess = true;
+                _retryMessage = "Retry scheduled. Run will resume shortly.";
+                await LoadAsync( );
+                BuildStepStatuses( );
+            } else {
+                _retrySuccess = false;
+                string body = await response.Content.ReadAsStringAsync( );
+                _retryMessage = $"Retry failed: {body}";
+            }
+        } catch ( Exception ex ) {
+            _retrySuccess = false;
+            _retryMessage = $"Retry error: {ex.Message}";
+        } finally {
+            _retrying = false;
+        }
+    }
+
+    // ── Disposal ──
+
+    public async ValueTask DisposeAsync( ) {
+        if ( _disposed ) return;
+        _disposed = true;
+        if ( _cts is not null ) {
+            await _cts.CancelAsync( );
+            _cts.Dispose( );
+        }
+        _refreshTimer?.Dispose( );
+        if ( _hub is not null ) {
+            try { await _hub.DisposeAsync( ); }
+            catch { /* best effort */ }
+        }
+    }
+}

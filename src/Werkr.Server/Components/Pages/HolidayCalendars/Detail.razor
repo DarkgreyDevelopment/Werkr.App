@@ -1,0 +1,212 @@
+﻿@page "/holiday-calendars/{Id:guid}/detail"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject NavigationManager Navigation
+@using Werkr.Common.Models.Holidays
+
+<PageTitle>Werkr - Holiday Calendar Detail</PageTitle>
+
+<h1>Holiday Calendar Detail</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading calendar…" />
+} else if ( _calendar is not null ) {
+
+    @* ── Calendar Info Card ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">
+                @_calendar.Name
+                @if ( _calendar.IsSystemCalendar ) {
+                    <span class="badge bg-info ms-2">System</span>
+                }
+            </h5>
+            <p class="text-muted mb-0">@( string.IsNullOrWhiteSpace( _calendar.Description ) ? "No description." : _calendar.Description )</p>
+        </div>
+    </div>
+
+    @* ── Rules Card ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Holiday Rules</h5>
+            @if ( _rules is not null && _rules.Count > 0 ) {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Config</th>
+                                <th>Observance</th>
+                                <th>Time Window</th>
+                                <th>Year Range</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( HolidayRuleDto rule in _rules ) {
+                                <tr>
+                                    <td>@rule.Name</td>
+                                    <td><span class="badge bg-primary">@rule.RuleType</span></td>
+                                    <td>@DescribeRuleConfig( rule )</td>
+                                    <td>@rule.ObservanceRule</td>
+                                    <td>@FormatWindow( rule )</td>
+                                    <td>@FormatYearRange( rule )</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            } else {
+                <p class="text-muted mb-0">No rules defined.</p>
+            }
+        </div>
+    </div>
+
+    @* ── Calendar Preview Card ── *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Date Preview</h5>
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-auto">
+                    <label class="form-label form-label-sm">Start Year</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_previewStartYear" style="width:100px" />
+                </div>
+                <div class="col-auto">
+                    <label class="form-label form-label-sm">End Year</label>
+                    <input type="number" class="form-control form-control-sm" @bind="_previewEndYear" style="width:100px" />
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="PreviewAsync">Preview</button>
+                </div>
+            </div>
+
+            @if ( _previewDates is not null ) {
+                @if ( _previewDates.Count > 0 ) {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead><tr><th>Date</th><th>Name</th><th>Source</th></tr></thead>
+                            <tbody>
+                                @foreach ( HolidayDateDto d in _previewDates ) {
+                                    <tr>
+                                        <td>@d.Date</td>
+                                        <td>@d.Name</td>
+                                        <td>@( d.IsManual ? "Manual" : "Rule" )</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } else {
+                    <p class="text-muted">No dates found for the selected range.</p>
+                }
+            }
+        </div>
+    </div>
+
+    @* ── Actions ── *@
+    <div class="d-flex gap-2">
+        @if ( _calendar.IsSystemCalendar ) {
+            <button class="btn btn-primary" @onclick="CloneAsync">
+                <span class="bi bi-copy me-1"></span>Clone to Custom Calendar
+            </button>
+        } else {
+            <a href="/holiday-calendars/@Id" class="btn btn-primary">Edit</a>
+        }
+        <a href="/holiday-calendars" class="btn btn-outline-secondary">Back to List</a>
+    </div>
+
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private HolidayCalendarDto? _calendar;
+    private List<HolidayRuleDto>? _rules;
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    // Preview
+    private int _previewStartYear = DateTime.Now.Year;
+    private int _previewEndYear = DateTime.Now.Year + 1;
+    private List<HolidayDateDto>? _previewDates;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Holiday Calendars", "/holiday-calendars" ),
+        new( "Detail" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        _isLoading = true;
+        try {
+            _calendar = await Api.GetAsync<HolidayCalendarDto>( $"/api/v1/holiday-calendars/{Id}" );
+            _rules = await Api.GetAsync<List<HolidayRuleDto>>( $"/api/v1/holiday-calendars/{Id}/rules" );
+
+            if ( _calendar is not null ) {
+                _breadcrumbs = [
+                    new( "Task List", "/" ),
+                    new( "Holiday Calendars", "/holiday-calendars" ),
+                    new( _calendar.Name )
+                ];
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load calendar: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task PreviewAsync( ) {
+        _errorMessage = null;
+        try {
+            HolidayPreviewResponse? preview = await Api.GetAsync<HolidayPreviewResponse>(
+                $"/api/v1/holiday-calendars/{Id}/preview?startYear={_previewStartYear}&endYear={_previewEndYear}" );
+            _previewDates = preview?.Dates?.ToList( );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Preview failed: {ex.Message}";
+        }
+    }
+
+    private async Task CloneAsync( ) {
+        try {
+            CloneHolidayCalendarRequest req = new( $"{_calendar!.Name} (Copy)" );
+            HttpResponseMessage res = await Api.PostAsJsonAsync( $"/api/v1/holiday-calendars/{Id}/clone", req );
+            if ( res.IsSuccessStatusCode ) {
+                HolidayCalendarDto? cloned = await res.Content.ReadFromJsonAsync<HolidayCalendarDto>( );
+                if ( cloned is not null ) {
+                    Navigation.NavigateTo( $"/holiday-calendars/{cloned.Id}" );
+                    return;
+                }
+            }
+            _errorMessage = $"Clone failed: HTTP {(int) res.StatusCode}";
+        } catch ( Exception ex ) {
+            _errorMessage = $"Clone failed: {ex.Message}";
+        }
+    }
+
+    private static string DescribeRuleConfig( HolidayRuleDto rule ) => rule.RuleType switch {
+        "FixedDate" => $"Month {rule.Month}, Day {rule.Day}",
+        "NthWeekdayOfMonth" => $"#{rule.WeekNumber} {rule.DayOfWeek} of month {rule.Month}",
+        "LastWeekdayOfMonth" => $"Last {rule.DayOfWeek} of month {rule.Month}",
+        _ => "—"
+    };
+
+    private static string FormatWindow( HolidayRuleDto r ) =>
+        r.WindowStart is not null && r.WindowEnd is not null
+            ? $"{r.WindowStart} – {r.WindowEnd} ({r.WindowTimeZoneId})"
+            : "Full day";
+
+    private static string FormatYearRange( HolidayRuleDto r ) =>
+        (r.YearStart, r.YearEnd) switch {
+            (not null, not null) => $"{r.YearStart}–{r.YearEnd}",
+            (not null, null) => $"{r.YearStart}+",
+            (null, not null) => $"–{r.YearEnd}",
+            _ => "All years"
+        };
+}

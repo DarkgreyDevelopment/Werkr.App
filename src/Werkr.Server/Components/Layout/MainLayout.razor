@@ -1,0 +1,39 @@
+﻿@inherits LayoutComponentBase
+@using System.Reflection
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <AuthorizeView>
+                <Authorized Context="context">
+                    <div class="d-flex align-items-center gap-2" style="color: var(--body-content-color);">
+                        <span>@context.User.Identity?.Name</span>
+                        <span class="badge bg-secondary">
+                            @(context.User.IsInRole( "Admin" ) ? "Admin"
+                                : context.User.IsInRole( "Operator" ) ? "Operator"
+                                : "Viewer")
+                        </span>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+
+        <footer class="px-4 py-2 text-muted small text-end">
+            Werkr @(Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "dev")
+        </footer>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

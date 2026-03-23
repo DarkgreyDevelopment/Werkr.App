@@ -1,0 +1,198 @@
+﻿@page "/admin/users/create"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Identity
+@using Werkr.Data.Identity.Entities
+@using Werkr.Data.Identity.Services
+@using Werkr.Server.Components.Shared
+@using Werkr.Common.Models.Audit
+@using Microsoft.AspNetCore.Components.Authorization
+@using Werkr.Server.Services
+@inject UserManager<WerkrUser> UserManager
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+@inject PasswordHistoryService PasswordHistoryService
+@inject AuditClient AuditClient
+
+<PageTitle>Create User</PageTitle>
+
+<div class="container mt-4">
+    <h1>Create User</h1>
+    <Breadcrumb Items="_breadcrumbs" />
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    <EditForm Model="_model" OnValidSubmit="HandleCreateAsync" FormName="create-user">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label">Display Name</label>
+            <InputText class="form-control" @bind-Value="_model!.Name" />
+            <ValidationMessage For="() => _model!.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <InputText class="form-control" @bind-Value="_model!.Email" />
+            <ValidationMessage For="() => _model!.Email" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Initial Password</label>
+            <InputText type="password" class="form-control" @bind-Value="_model!.Password" />
+            <ValidationMessage For="() => _model!.Password" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Confirm Password</label>
+            <InputText type="password" class="form-control" @bind-Value="_model!.ConfirmPassword" />
+            <ValidationMessage For="() => _model!.ConfirmPassword" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Roles</label>
+            <div class="form-check">
+                <InputCheckbox class="form-check-input" @bind-Value="_model!.IsAdmin" />
+                <label class="form-check-label">Admin</label>
+            </div>
+            <div class="form-check">
+                <InputCheckbox class="form-check-input" @bind-Value="_model!.IsOperator" />
+                <label class="form-check-label">Operator</label>
+            </div>
+            <div class="form-check">
+                <InputCheckbox class="form-check-input" @bind-Value="_model!.IsViewer" />
+                <label class="form-check-label">Viewer</label>
+            </div>
+        </div>
+
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="_model!.ForcePasswordChange" />
+            <label class="form-check-label">Force Password Change</label>
+        </div>
+
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="_model!.RequireMfa" />
+            <label class="form-check-label">Require MFA</label>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Create</button>
+        <a href="/admin/users" class="btn btn-link">Cancel</a>
+    </EditForm>
+</div>
+
+@code {
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Users", "/admin/users" ),
+        new( "Create" )
+    ];
+
+    [SupplyParameterFromForm]
+    private CreateUserModel? _model { get; set; }
+
+    private string? _errorMessage;
+
+    protected override void OnInitialized( ) {
+        _model ??= new( );
+    }
+
+    private async Task HandleCreateAsync( ) {
+        _errorMessage = null;
+
+        if (_model!.Password != _model.ConfirmPassword) {
+            _errorMessage = "Passwords do not match.";
+            return;
+        }
+
+        List<string> roles = [];
+        if (_model.IsAdmin) {
+            roles.Add( "Admin" );
+        }
+        if (_model.IsOperator) {
+            roles.Add( "Operator" );
+        }
+        if (_model.IsViewer) {
+            roles.Add( "Viewer" );
+        }
+
+        if (roles.Count == 0) {
+            _errorMessage = "At least one role is required.";
+            return;
+        }
+
+        bool requireMfa = _model.RequireMfa || _model.IsAdmin;
+
+        WerkrUser user = new( ) {
+            UserName = _model.Email.Trim( ),
+            Email = _model.Email.Trim( ),
+            Name = _model.Name.Trim( ),
+            Enabled = true,
+            ChangePassword = _model.ForcePasswordChange,
+            Requires2FA = requireMfa,
+            EmailConfirmed = true
+        };
+
+        IdentityResult createResult = await UserManager.CreateAsync( user, _model.Password );
+        if (!createResult.Succeeded) {
+            _errorMessage = string.Join( " ", createResult.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        // Record the initial password hash in history for reuse prevention
+        await PasswordHistoryService.RecordAsync( user.Id, user.PasswordHash! );
+
+        IdentityResult roleResult = await UserManager.AddToRolesAsync( user, roles );
+        if (!roleResult.Succeeded) {
+            _errorMessage = string.Join( " ", roleResult.Errors.Select( error => error.Description ) );
+            return;
+        }
+
+        // Audit: user created — must succeed or rollback
+        AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
+        string? currentUserId = UserManager.GetUserId( authState.User );
+        bool audited = await AuditClient.LogAsync(
+            AuditEventType.UserCreated, currentUserId, "User",
+            "User", user.Id, "Created",
+            new { Email = user.Email, Roles = roles } );
+        if (!audited) {
+            _ = await UserManager.DeleteAsync( user );
+            _errorMessage = "User was created but audit recording failed. The user has been removed. Please try again.";
+            return;
+        }
+
+        Navigation.NavigateTo( "/admin/users", forceLoad: true );
+    }
+
+    private sealed class CreateUserModel {
+        [Required]
+        [StringLength( 100 )]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength( 12 )]
+        public string Password { get; set; } = string.Empty;
+
+        [Required]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        public bool IsAdmin { get; set; }
+
+        public bool IsOperator { get; set; }
+
+        public bool IsViewer { get; set; } = true;
+
+        public bool ForcePasswordChange { get; set; } = true;
+
+        public bool RequireMfa { get; set; }
+    }
+}

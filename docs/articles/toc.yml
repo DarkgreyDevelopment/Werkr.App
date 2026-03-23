@@ -1,8 +1,8 @@
 - name: How-To Articles
   href: HowTo/index.md
-- name: Project Features
-  href: FeatureList.md
-- name: High Level Design Flow
-  href: Pre-Edit-High-Level-Design-Flow.md
-- name: Testing 
+- name: Design Specification
+  href: ../1.0-Target-Featureset.md
+- name: Testing
   href: Testing.md
+- name: Security Overview
+  href: SecurityOverview.md

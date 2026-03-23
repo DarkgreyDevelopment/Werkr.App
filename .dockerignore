@@ -1,0 +1,25 @@
+**/bin/
+**/bin\\Debug/
+**/obj/
+**/.vs/
+**/node_modules/
+**/.git/
+**/logs/
+**/TestResults/
+**/*.user
+**/*.suo
+**/wwwroot/lib/bootstrap/dist/js/*.map
+src/Test/
+src/Werkr.AppHost/
+docs/
+*.md
+.editorconfig
+.gitignore
+scripts/
+.github/
+.docker-cache/
+.gitversion-cache/
+
+# Allow Publish/ through for .deb build mode
+!Publish/
+.config/

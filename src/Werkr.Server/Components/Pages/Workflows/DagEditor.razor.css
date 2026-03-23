@@ -1,0 +1,14 @@
+.dag-editor-layout {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+details[open] .details-chevron {
+    transform: rotate(90deg);
+    transition: transform 0.15s ease;
+}
+
+.details-chevron {
+    transition: transform 0.15s ease;
+}

@@ -1,0 +1,121 @@
+﻿@page "/account/manage"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Werkr.Data.Identity.Entities
+@inject UserManager<WerkrUser> UserManager
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>My Account</PageTitle>
+
+<div class="container mt-4">
+    <h1>My Account</h1>
+    <Breadcrumb Items="_breadcrumbs" />
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    @if (_model is not null) {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Profile</h5>
+                <EditForm Model="_model" OnValidSubmit="SaveProfileAsync" FormName="account-manage-profile">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label">Display name</label>
+                        <InputText class="form-control" @bind-Value="_model.Name" />
+                        <ValidationMessage For="() => _model.Name" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <InputText class="form-control" @bind-Value="_model.Email" disabled />
+                    </div>
+
+                    <button class="btn btn-primary" type="submit">Save profile</button>
+                </EditForm>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Password</h5>
+                <a class="btn btn-outline-primary" href="/account/change-password">Change Password</a>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">MFA</h5>
+                <p class="card-text">Status: @(_mfaEnabled ? "Enabled" : "Not enabled")</p>
+                <p class="card-text">Recovery codes remaining: @_recoveryCodeCount</p>
+                <a class="btn btn-outline-primary" href="/account/manage/mfa">Manage MFA</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Session</h5>
+                <p class="text-muted mb-0">Current session management details will be expanded in a future phase.</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private AccountProfileModel? _model { get; set; }
+
+    private WerkrUser? _currentUser;
+    private bool _mfaEnabled;
+    private int _recoveryCodeCount;
+    private string? _errorMessage;
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "My Account" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
+        _currentUser = await UserManager.GetUserAsync( authState.User );
+
+        if (_currentUser is null) {
+            _errorMessage = "Unable to load account details.";
+            return;
+        }
+
+        _model ??= new AccountProfileModel {
+            Name = _currentUser.Name,
+            Email = _currentUser.Email ?? string.Empty
+        };
+
+        _mfaEnabled = _currentUser.TwoFactorEnabled;
+        _recoveryCodeCount = await UserManager.CountRecoveryCodesAsync( _currentUser );
+    }
+
+    private async Task SaveProfileAsync( ) {
+        if (_currentUser is null || _model is null) {
+            return;
+        }
+
+        _currentUser.Name = _model.Name.Trim( );
+        IdentityResult result = await UserManager.UpdateAsync( _currentUser );
+        _errorMessage = result.Succeeded
+            ? null
+            : string.Join( " ", result.Errors.Select( e => e.Description ) );
+    }
+
+    private sealed class AccountProfileModel {
+        [Required]
+        [StringLength( 100 )]
+        public string Name { get; set; } = string.Empty;
+
+        public string Email { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,167 @@
+﻿@page "/jobs"
+@rendermode InteractiveServer
+@using Werkr.Common.Models
+@attribute [Authorize]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+
+<PageTitle>Werkr - Jobs</PageTitle>
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Job History</h1>
+    <TimeZonePicker OnTimeZoneChanged="OnDisplayTzChanged" />
+</div>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Browse execution history across all tasks. Use the filters to narrow results.</p>
+
+<FilterBar PageKey="jobs" Definition="_filterDefinition"
+           OnFilterApplied="OnFilterApplied" OnFilterCleared="OnFilterCleared" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _jobs is null ) {
+    <LoadingSpinner Message="Loading jobs…" />
+} else if ( _jobs is not null && _jobs.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Task</th>
+                    <th>Agent</th>
+                    <th>Started</th>
+                    <th>Runtime</th>
+                    <th>Result</th>
+                    <th>Error Category</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( JobListDto j in _jobs ) {
+                    <tr>
+                        <td><a href="/jobs/@j.Id">@j.Id.ToString()[..8]…</a></td>
+                        <td><a href="/tasks/@j.TaskId">@( j.TaskName ?? $"#{j.TaskId}" )</a></td>
+                        <td>@( j.AgentName ?? "—" )</td>
+                        <td>@ConvertIfNeeded( j.StartTime ).ToString( "g" )</td>
+                        <td>@j.RuntimeSeconds.ToString( "F1" )s</td>
+                        <td>
+                            @{ bool isRunning = j.EndTime is null && !j.Success; }
+                            @if ( isRunning ) {
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( "Running" )">
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>Running
+                                </span>
+                            } else {
+                                <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( j.Success ? "Succeeded" : "Failed" )">
+                                    @( j.Success ? "Success" : "Failed" )
+                                </span>
+                            }
+                        </td>
+                        <td>@j.ErrorCategory</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm" href="/jobs/@j.Id">Details</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="text-muted small">
+        Showing @_jobs.Count job(s)
+    </div>
+} else if ( !_isLoading && _jobs is not null ) {
+    <EmptyState Message="No jobs match the current filters." />
+}
+
+@code {
+    private List<JobListDto>? _jobs;
+    private FilterCriteria? _activeCriteria;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private TimeZoneInfo? _displayTz;
+
+    private static readonly FilterDefinition _filterDefinition = new( [
+        new FilterField( "taskId", "Task ID", FilterFieldType.Number ),
+        new FilterField( "status", "Status", FilterFieldType.Dropdown, ["Success", "Failed", "Running"] ),
+        new FilterField( "since", "Since", FilterFieldType.Date ),
+        new FilterField( "until", "Until", FilterFieldType.Date ),
+        new FilterField( "limit", "Limit", FilterFieldType.Number ),
+    ] );
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Jobs" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            string? taskIdStr = _activeCriteria?.Get( "taskId" );
+            if ( long.TryParse( taskIdStr, out long taskId ) ) {
+                int limit = GetLimit( );
+                _jobs = await Api.GetAsync<List<JobListDto>>(
+                    $"/api/v1/tasks/{taskId}/jobs?limit={limit}" );
+            } else {
+                string url = BuildGlobalJobsUrl( );
+                _jobs = await Api.GetAsync<List<JobListDto>>( url );
+            }
+
+            // Client-side running filter — no server param for this
+            string? statusFilter = _activeCriteria?.Get( "status" );
+            if ( string.Equals( statusFilter, "Running", StringComparison.OrdinalIgnoreCase ) && _jobs is not null ) {
+                _jobs = _jobs.Where( j => j.EndTime is null && !j.Success ).ToList( );
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load jobs: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private string BuildGlobalJobsUrl( ) {
+        int limit = GetLimit( );
+        List<string> queryParams = [$"limit={limit}"];
+
+        string? statusFilter = _activeCriteria?.Get( "status" );
+        if ( string.Equals( statusFilter, "Success", StringComparison.OrdinalIgnoreCase ) )
+            queryParams.Add( "success=true" );
+        else if ( string.Equals( statusFilter, "Failed", StringComparison.OrdinalIgnoreCase ) )
+            queryParams.Add( "success=false" );
+
+        DateTime? since = FilterHelper.TryParseFilterDate( _activeCriteria?.Get( "since" ) );
+        if ( since.HasValue )
+            queryParams.Add( $"since={since.Value:O}" );
+
+        DateTime? until = FilterHelper.TryParseFilterDate( _activeCriteria?.Get( "until" ) );
+        if ( until.HasValue )
+            queryParams.Add( $"until={until.Value:O}" );
+
+        return $"/api/v1/jobs?{string.Join( "&", queryParams )}";
+    }
+
+    private int GetLimit( ) {
+        string? limitStr = _activeCriteria?.Get( "limit" );
+        return int.TryParse( limitStr, out int parsed ) && parsed > 0 ? parsed : 50;
+    }
+
+    private async Task OnFilterApplied( FilterCriteria criteria ) {
+        _activeCriteria = criteria;
+        await LoadAsync( );
+    }
+
+    private async Task OnFilterCleared( ) {
+        _activeCriteria = null;
+        await LoadAsync( );
+    }
+
+    private void OnDisplayTzChanged( TimeZoneInfo? tz ) { _displayTz = tz; StateHasChanged( ); }
+
+    private DateTime ConvertIfNeeded( DateTime dt ) =>
+        _displayTz is not null ? TimeZoneInfo.ConvertTimeFromUtc( DateTime.SpecifyKind( dt, DateTimeKind.Utc ), _displayTz ) : dt;
+}

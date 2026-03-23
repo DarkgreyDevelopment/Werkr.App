@@ -1,0 +1,167 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            <span class="navbar-brand-text">Werkr</span>
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <AuthorizeView>
+            <Authorized>
+                @* ── Workflows group (all authenticated) ── *@
+                <details class="nav-group px-3" open>
+                    <summary class="nav-group-toggle" onclick="event.stopPropagation()">
+                        <span class="nav-group-label">Workflows</span>
+                    </summary>
+                    <div class="nav-group-items">
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                                <span class="nav-label">Dashboard</span>
+                            </NavLink>
+                        </div>
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="calendar">
+                                <span class="nav-label">Calendar</span>
+                            </NavLink>
+                        </div>
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="workflows/runs">
+                                <span class="nav-label">Workflow Runs</span>
+                            </NavLink>
+                        </div>
+                    </div>
+                </details>
+
+                @* ── Tasks group (Admin/Operator) ── *@
+                <AuthorizeView Roles="Admin,Operator" Context="tasksAuth">
+                    <details class="nav-group px-3">
+                        <summary class="nav-group-toggle" onclick="event.stopPropagation()">
+                            <span class="nav-group-label">Tasks</span>
+                        </summary>
+                        <div class="nav-group-items">
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="tasks">
+                                    <span class="nav-label">All Tasks</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="schedules">
+                                    <span class="nav-label">Schedules</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="tasklist">
+                                    <span class="nav-label">Task List</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="jobs">
+                                    <span class="nav-label">Task Jobs</span>
+                                </NavLink>
+                            </div>
+                        </div>
+                    </details>
+                </AuthorizeView>
+
+                @* ── Administration group (Admin) ── *@
+                <AuthorizeView Roles="Admin" Context="adminAuth">
+                    <details class="nav-group px-3">
+                        <summary class="nav-group-toggle" onclick="event.stopPropagation()">
+                            <span class="nav-group-label">Administration</span>
+                        </summary>
+                        <div class="nav-group-items">
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="overview">
+                                    <span class="nav-label">Overview</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="settings">
+                                    <span class="nav-label">Settings</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="admin/users">
+                                    <span class="nav-label">Users</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="admin/apikeys">
+                                    <span class="nav-label">API Keys</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="agents">
+                                    <span class="nav-label">Agents</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="holiday-calendars">
+                                    <span class="nav-label">Holiday Calendars</span>
+                                </NavLink>
+                            </div>
+                        </div>
+                    </details>
+                </AuthorizeView>
+
+                @* ── Reporting group (Admin) ── *@
+                <AuthorizeView Roles="Admin" Context="reportingAuth">
+                    <details class="nav-group px-3">
+                        <summary class="nav-group-toggle" onclick="event.stopPropagation()">
+                            <span class="nav-group-label">Reporting</span>
+                        </summary>
+                        <div class="nav-group-items">
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="reporting/audit-log">
+                                    <span class="nav-label">Audit Log</span>
+                                </NavLink>
+                            </div>
+                        </div>
+                    </details>
+                </AuthorizeView>
+
+                @* ── Account group ── *@
+                <details class="nav-group px-3">
+                    <summary class="nav-group-toggle" onclick="event.stopPropagation()">
+                        <span class="nav-group-label">Account</span>
+                    </summary>
+                    <div class="nav-group-items">
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="account/manage">
+                                <span class="nav-label">My Account</span>
+                            </NavLink>
+                        </div>
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="account/logout">
+                                <span class="nav-label">Logout</span>
+                            </NavLink>
+                        </div>
+                    </div>
+                </details>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="account/login">
+                        <span class="nav-label">Login</span>
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@* ── Sidebar footer ── *@
+<div class="sidebar-footer">
+    <div class="theme-toggle d-flex align-items-center gap-2">
+        <span class="theme-icon" aria-hidden="true">&#9728;</span>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="theme-toggle" />
+        </div>
+        <span class="theme-icon" aria-hidden="true">&#9790;</span>
+        <span class="theme-label">Theme</span>
+    </div>
+</div>

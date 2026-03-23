@@ -1,0 +1,10 @@
+.run-grid-table .sticky-start {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+
+.run-grid-table button:hover {
+    background-color: var(--bs-tertiary-bg);
+    cursor: pointer;
+}

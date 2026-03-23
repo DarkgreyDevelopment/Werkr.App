@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <EnableMSTestRunner>true</EnableMSTestRunner>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="bunit" />
+    <PackageReference Include="MSTest" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Werkr.Server\Werkr.Server.csproj" />
+    <ProjectReference Include="..\..\Werkr.Data.Identity\Werkr.Data.Identity.csproj" />
+    <ProjectReference Include="..\..\Werkr.Core\Werkr.Core.csproj" />
+    <ProjectReference Include="..\..\Werkr.Common\Werkr.Common.csproj" />
+  </ItemGroup>
+
+</Project>

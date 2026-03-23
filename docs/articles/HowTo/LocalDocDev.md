@@ -1,57 +1,58 @@
 # Local Documentation Development
-[docs.werkr.app](https://docs.werkr.app) is hosted on github pages and is generated using [docfx](https://dotnet.github.io/docfx/) from markdown pages housed in the [github repository](https://Werkr.App/tree/main/docs).
-Docfx also generates the API documentation based on the XML documentation in the [code](https://main.cloud-sharesync.com/src) itself.
 
-You can test what documentation changes will look like locally prior to pushing any commits to github.
-To do so you must emulate the [github action](https://Werkr.App/blob/main/.github/workflows/DocFX_gh-pages.yml) sequence.  
+[docs.werkr.app](https://docs.werkr.app) is hosted on GitHub Pages and generated using [DocFX](https://dotnet.github.io/docfx/) from the markdown pages and XML documentation in this repository.
 
-This process can be done on windows using powershell 7+ by issuing the following commands:
+You can preview documentation changes locally before pushing commits.
+
+---
+
+## Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) (already required for the project — see `global.json`)
+- [DocFX](https://dotnet.github.io/docfx/) — install as a global tool:
+
 ```powershell
-# 1. Download a copy of DocFX and extract it.
-$IWRParams = @{
-	Uri     = 'https://github.com/dotnet/docfx/releases/download/v2.59.4/docfx.zip'
-	OutFile = './docfx.zip'
-	Method  = 'Get'
-}
-Invoke-WebRequest @IWRParams
-Expand-Archive -Path './docfx.zip' -DestinationPath './docfx'
-
-# 2. Clone the Werkr.App Repo locally into a Werkr.App directory.
-git clone https://git.werkr.app Werkr.App
-
-# 3. change directory to the cloned repository
-Set-Location './Werkr.App'
-
-# 4. Clone the common repo into the Werkr.App/src/Werkr.Common directory.
-git clone https://git.common.werkr.app src/Werkr.Common
-
-# 5. Clone the common configuration repo into the Werkr.App/src/Werkr.Common.Configuration directory.
-git clone https://git.commonconfiguration.werkr.app src/Werkr.Common.Configuration
-
-# 6. Clone the installers repo into the src/Werkr.Installers directory.
-git clone https://git.installers.werkr.app src/Werkr.Installers
-
-# 7. Clone the Server repo Werkr.App/src/Werkr.Server directory.
-git clone https://server.werkr.app src/Werkr.Server
-
-# 8. Clone the Agent repo into the Werkr.App/src/Werkr.Agent directory.
-git clone https://git.agent.werkr.app src/Werkr.Agent
-
-# 9. Manual File Copying.
-$CopyParams = @{
-	Verbose = $true
-	Force   = $true
-}
-Copy-Item -Path './LICENSE' -Destination './docs/LICENSE.md' @CopyParams
-Copy-Item -Path './README.md' -Destination './docs/index.md' @CopyParams
-copy-Item -Path './docs/docfx/*' -Destination 'docs/' -Verbose -Exclude README.md -Recurse
-
-# 10 Generate API metadata.
-& '../docfx/docfx.exe' 'metadata' './docs/docfx.json'
-
-# 11. Create the docfx site.
-& '../docfx/docfx.exe' './docs/docfx.json'
-
-# 12. Serve the website.
-& '../docfx/docfx.exe' 'docs\docfx.json' -t 'templates/Werkr' --serve
+dotnet tool install -g docfx
 ```
+
+---
+
+## Building and Previewing Docs
+
+From the repository root, run the following commands:
+
+```powershell
+# 1. Copy required files into the docs directory (emulates the GitHub Actions workflow).
+Copy-Item -Path './LICENSE' -Destination './docs/LICENSE.md' -Force
+Copy-Item -Path './README.md' -Destination './docs/index.md' -Force
+Copy-Item -Path './docs/docfx/*' -Destination './docs/' -Exclude 'README.md' -Recurse -Force
+
+# 2. Generate API metadata from the source projects.
+docfx metadata docs/docfx.json
+
+# 3. Build the DocFX site.
+docfx build docs/docfx.json
+
+# 4. Serve the site locally for preview.
+docfx serve docs/_site
+```
+
+The site will be available at `http://localhost:8080` by default.
+
+---
+
+## How It Works
+
+- **`docs/docfx/docfx.json`** defines which projects generate API metadata and which markdown files are included in the site build. The `metadata` section points to project files under `src/` and the `build` section pulls content from `docs/articles/`, `docs/api/`, and root markdown files.
+- **`docs/docfx/filterConfig.yml`** controls which types and members are included or excluded from the API documentation.
+- **`docs/docfx/templates/Werkr/`** contains the custom DocFX theme (based on DarkFX).
+- **`docs/articles/`** contains the user-facing documentation articles.
+- **`docs/images/`** contains screenshots and logos referenced by articles.
+
+---
+
+## Notes
+
+- The DocFX `src` path in `docfx.json` is relative to the `docfx.json` file location (`docs/docfx/`). The path `../../src` resolves to the repository's `src/` directory.
+- If you add a new project to the solution that should appear in API documentation, add its `.csproj` path to the `metadata[0].src.files` array in `docfx.json`.
+- The custom template in `templates/Werkr` overrides default DocFX styles. See the [DarkFX](https://github.com/steffen-wilke/darkfx) repository for the base theme.

@@ -1,0 +1,28 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+
+// On-demand retrieval of job output from the agent's local disk (Agent hosts this service).
+// All RPCs use EncryptedEnvelope. Inner payload types defined below.
+service OutputFetch {
+  // Request envelope contains GetJobOutputRequest; response contains GetJobOutputResponse.
+  rpc GetJobOutput (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message GetJobOutputRequest {
+  // The job ID whose output to retrieve.
+  string job_id = 1;
+  // The output file path on the agent (relative to the job output directory).
+  string output_path = 2;
+}
+
+message GetJobOutputResponse {
+  // Whether the output file was found and readable.
+  bool found = 1;
+  // The full contents of the output file.
+  string content = 2;
+  // Error message if the file was not found or not readable.
+  string error = 3;
+}

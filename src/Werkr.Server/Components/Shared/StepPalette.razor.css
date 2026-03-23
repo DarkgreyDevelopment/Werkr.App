@@ -1,0 +1,21 @@
+.step-palette {
+    width: 240px;
+    min-width: 240px;
+    border-right: 1px solid var(--bs-border-color);
+    background-color: var(--bs-body-bg);
+}
+
+.palette-item {
+    cursor: grab;
+    user-select: none;
+    transition: background-color 0.1s ease;
+}
+
+.palette-item:hover {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.palette-item:active {
+    cursor: grabbing;
+    background-color: var(--bs-primary-bg-subtle);
+}

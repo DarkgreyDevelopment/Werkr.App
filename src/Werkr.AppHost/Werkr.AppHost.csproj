@@ -1,0 +1,18 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.1.2">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>cdb4ebac-414e-4273-abb3-0f4922f71cf3</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Werkr.Agent\Werkr.Agent.csproj" />
+    <ProjectReference Include="..\Werkr.Api\Werkr.Api.csproj" />
+    <ProjectReference Include="..\Werkr.Server\Werkr.Server.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,15 @@
+@* Displays a centered spinner with optional message. *@
+
+<div class="d-flex justify-content-center align-items-center py-5">
+    <div class="spinner-border text-primary me-3" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    @if ( !string.IsNullOrWhiteSpace( Message ) ) {
+        <span class="text-muted">@Message</span>
+    }
+</div>
+
+@code {
+    /// <summary>Optional status message displayed next to the spinner.</summary>
+    [Parameter] public string? Message { get; set; }
+}

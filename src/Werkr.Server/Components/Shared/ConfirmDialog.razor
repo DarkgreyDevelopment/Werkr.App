@@ -1,0 +1,55 @@
+@* Confirmation dialog rendered as a Bootstrap modal. *@
+
+@if ( _isVisible ) {
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" style="background-color: rgba(0,0,0,.5);">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                    <button type="button" class="btn-close" @onclick="Cancel" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@Message</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                    <button type="button" class="btn btn-@ConfirmButtonLevel" @onclick="Confirm">@ConfirmButtonText</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isVisible;
+
+    /// <summary>Modal title.</summary>
+    [Parameter] public string Title { get; set; } = "Confirm";
+
+    /// <summary>Body message.</summary>
+    [Parameter] public string Message { get; set; } = "Are you sure?";
+
+    /// <summary>Bootstrap level for the confirm button (danger, primary, etc.).</summary>
+    [Parameter] public string ConfirmButtonLevel { get; set; } = "danger";
+
+    /// <summary>Text on the confirm button.</summary>
+    [Parameter] public string ConfirmButtonText { get; set; } = "Confirm";
+
+    /// <summary>Callback invoked when confirmed.</summary>
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+
+    /// <summary>Show the dialog.</summary>
+    public void Show( ) {
+        _isVisible = true;
+        StateHasChanged( );
+    }
+
+    private async Task Confirm( ) {
+        _isVisible = false;
+        await OnConfirmed.InvokeAsync( );
+    }
+
+    private void Cancel( ) {
+        _isVisible = false;
+    }
+}

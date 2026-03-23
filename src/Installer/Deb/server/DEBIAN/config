@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+. /usr/share/debconf/confmodule
+db_input medium werkr-server/config-path || true
+db_input medium werkr-server/install-components || true
+db_go || true

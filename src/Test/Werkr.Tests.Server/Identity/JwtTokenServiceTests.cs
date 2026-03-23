@@ -1,0 +1,257 @@
+using System.Security.Claims;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using Werkr.Data.Identity.Entities;
+using Werkr.Server.Identity;
+
+namespace Werkr.Tests.Server.Identity;
+
+/// <summary>
+/// Unit tests for <see cref="JwtTokenService"/>.
+/// </summary>
+[TestClass]
+public class JwtTokenServiceTests {
+    /// <summary>
+    /// A test signing key string that meets the minimum length requirement of 32 characters for HMAC-SHA256 symmetric
+    /// signing.
+    /// </summary>
+    private const string TestSigningKey = "test-signing-key-that-is-at-least-32-characters-long!";
+    /// <summary>
+    /// The test JWT issuer identifier used in configuration for token generation and validation.
+    /// </summary>
+    private const string TestIssuer = "werkr-test-issuer";
+    /// <summary>
+    /// The test JWT audience identifier used in configuration for token generation and validation.
+    /// </summary>
+    private const string TestAudience = "werkr-test-audience";
+
+    /// <summary>
+    /// Creates a configured <see cref="JwtTokenService"/> instance with optional overrides for the signing key,
+    /// issuer, and audience. Uses a 15-minute token lifetime by default.
+    /// </summary>
+    private static JwtTokenService CreateService(
+        string? signingKey = null,
+        string? issuer = null,
+        string? audience = null
+    ) {
+        Dictionary<string, string?> config = new( ) {
+            ["Jwt:SigningKey"] = signingKey ?? TestSigningKey,
+            ["Jwt:Issuer"] = issuer ?? TestIssuer,
+            ["Jwt:Audience"] = audience ?? TestAudience,
+            ["Jwt:TokenLifetimeMinutes"] = "15",
+        };
+
+        IConfiguration configuration = new ConfigurationBuilder( )
+            .AddInMemoryCollection( config )
+            .Build( );
+
+        return new JwtTokenService( configuration, NullLogger<JwtTokenService>.Instance );
+    }
+
+    /// <summary>
+    /// Creates a test <see cref="ApiKey"/> entity with predetermined values for ID, hash, prefix, name, role, creator
+    /// user ID, and creation timestamp. Used as input for token generation tests.
+    /// </summary>
+    private static ApiKey CreateTestApiKey( ) => new( ) {
+        Id = Guid.NewGuid( ),
+        KeyHash = "test-hash",
+        KeyPrefix = "wk_test_1234",
+        Name = "Test Key",
+        Role = "Admin",
+        CreatedByUserId = "user-123",
+        CreatedUtc = DateTime.UtcNow,
+    };
+
+    /// <summary>
+    /// Verifies that the <see cref="JwtTokenService"/> constructor throws an <see cref="InvalidOperationException"/>
+    /// when the "Jwt:SigningKey" configuration value is missing from the configuration, preventing insecure token
+    /// generation.
+    /// </summary>
+    [TestMethod]
+    public void Constructor_ThrowsWhenSigningKeyMissing( ) {
+        Dictionary<string, string?> config = new( ) {
+            ["Jwt:Issuer"] = TestIssuer,
+        };
+
+        IConfiguration configuration = new ConfigurationBuilder( )
+            .AddInMemoryCollection( config )
+            .Build( );
+
+        _ = Assert.ThrowsExactly<InvalidOperationException>(
+            ( ) => new JwtTokenService( configuration, NullLogger<JwtTokenService>.Instance ) );
+    }
+
+    /// <summary>
+    /// Verifies that the <see cref="JwtTokenService"/> constructor throws an <see cref="InvalidOperationException"/>
+    /// when the signing key is shorter than the minimum required length for HMAC-SHA256 security.
+    /// </summary>
+    [TestMethod]
+    public void Constructor_ThrowsWhenSigningKeyTooShort( ) {
+        Dictionary<string, string?> config = new( ) {
+            ["Jwt:SigningKey"] = "short",
+            ["Jwt:Issuer"] = TestIssuer,
+        };
+
+        IConfiguration configuration = new ConfigurationBuilder( )
+            .AddInMemoryCollection( config )
+            .Build( );
+
+        _ = Assert.ThrowsExactly<InvalidOperationException>(
+            ( ) => new JwtTokenService( configuration, NullLogger<JwtTokenService>.Instance ) );
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="JwtTokenService.GenerateToken"/> produces a non-empty JWT string that passes full
+    /// token validation against the service's own validation parameters, confirming the token is structurally valid
+    /// and properly signed.
+    /// </summary>
+    [TestMethod]
+    public async Task GenerateToken_ProducesValidJwt( ) {
+        JwtTokenService service = CreateService( );
+        ApiKey apiKey = CreateTestApiKey( );
+
+        string token = service.GenerateToken( apiKey );
+
+        Assert.IsFalse( string.IsNullOrWhiteSpace( token ) );
+
+        // Parse and validate the token
+        JsonWebTokenHandler handler = new( );
+        TokenValidationParameters tvp = service.GetValidationParameters( );
+
+        TokenValidationResult result = await handler.ValidateTokenAsync( token, tvp );
+
+        Assert.IsTrue( result.IsValid, $"Token validation failed: {result.Exception?.Message}" );
+        Assert.IsNotNull( result.ClaimsIdentity );
+    }
+
+    /// <summary>
+    /// Verifies that the JWT generated by <see cref="JwtTokenService.GenerateToken"/> contains the expected claims:
+    /// <c>NameIdentifier</c> (user ID), <c>Role</c>, <c>api_key_id</c>, <c>api_key_name</c>, and a non-empty
+    /// <c>jti</c> (JWT ID) claim.
+    /// </summary>
+    [TestMethod]
+    public void GenerateToken_ContainsExpectedClaims( ) {
+        JwtTokenService service = CreateService( );
+        ApiKey apiKey = CreateTestApiKey( );
+
+        string token = service.GenerateToken( apiKey );
+
+        JsonWebTokenHandler handler = new( );
+        JsonWebToken jwt = handler.ReadJsonWebToken( token );
+
+        Assert.AreEqual( apiKey.CreatedByUserId,
+            jwt.Claims.First( c => c.Type is ClaimTypes.NameIdentifier
+                or "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier" ).Value );
+        Assert.AreEqual( apiKey.Role,
+            jwt.Claims.First( c => c.Type is ClaimTypes.Role
+                or "http://schemas.microsoft.com/ws/2008/06/identity/claims/role" ).Value );
+        Assert.AreEqual( apiKey.Id.ToString( ),
+            jwt.Claims.First( c => c.Type == "api_key_id" ).Value );
+        Assert.AreEqual( apiKey.Name,
+            jwt.Claims.First( c => c.Type == "api_key_name" ).Value );
+        Assert.IsFalse( string.IsNullOrWhiteSpace(
+            jwt.Claims.First( c => c.Type == JwtRegisteredClaimNames.Jti ).Value ) );
+    }
+
+    /// <summary>
+    /// Verifies that the generated JWT's issuer and audience values match the configured <see cref="TestIssuer"/> and
+    /// <see cref="TestAudience"/> respectively.
+    /// </summary>
+    [TestMethod]
+    public void GenerateToken_SetsCorrectIssuerAndAudience( ) {
+        JwtTokenService service = CreateService( );
+        ApiKey apiKey = CreateTestApiKey( );
+
+        string token = service.GenerateToken( apiKey );
+        JsonWebToken jwt = new JsonWebTokenHandler( ).ReadJsonWebToken( token );
+
+        Assert.AreEqual( TestIssuer, jwt.Issuer );
+        Assert.IsTrue( jwt.Audiences.Contains( TestAudience ) );
+    }
+
+    /// <summary>
+    /// Verifies that the generated JWT's expiration timestamp (<see cref="JsonWebToken.ValidTo"/>) is in the future (after <see
+    /// cref="DateTime.UtcNow"/>) and within 20 minutes, matching the configured 15-minute token lifetime with a
+    /// reasonable tolerance.
+    /// </summary>
+    [TestMethod]
+    public void GenerateToken_SetsExpirationInFuture( ) {
+        JwtTokenService service = CreateService( );
+        ApiKey apiKey = CreateTestApiKey( );
+
+        string token = service.GenerateToken( apiKey );
+        JsonWebToken jwt = new JsonWebTokenHandler( ).ReadJsonWebToken( token );
+
+        Assert.IsGreaterThan( DateTime.UtcNow, jwt.ValidTo, "Token should expire in the future." );
+        Assert.IsLessThan( DateTime.UtcNow.AddMinutes( 20 ), jwt.ValidTo, "Token should expire within 20 minutes." );
+    }
+
+    /// <summary>
+    /// Verifies that two tokens generated for the same <see cref="ApiKey"/> have distinct <c>jti</c> (JWT ID) claim
+    /// values, ensuring each token is uniquely identifiable for revocation and audit purposes.
+    /// </summary>
+    [TestMethod]
+    public void GenerateToken_EachTokenHasUniqueJti( ) {
+        JwtTokenService service = CreateService( );
+        ApiKey apiKey = CreateTestApiKey( );
+
+        string token1 = service.GenerateToken( apiKey );
+        string token2 = service.GenerateToken( apiKey );
+
+        JsonWebTokenHandler handler = new( );
+        string jti1 = handler.ReadJsonWebToken( token1 ).Claims
+            .First( c => c.Type == JwtRegisteredClaimNames.Jti ).Value;
+        string jti2 = handler.ReadJsonWebToken( token2 ).Claims
+            .First( c => c.Type == JwtRegisteredClaimNames.Jti ).Value;
+
+        Assert.AreNotEqual( jti1, jti2, "Each token should have a unique JTI." );
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="JwtTokenService.GetValidationParameters"/> returns a <see
+    /// cref="TokenValidationParameters"/> instance with all validation flags enabled (issuer signing key, issuer,
+    /// audience, and lifetime) and the correct issuer, audience, and signing key configured.
+    /// </summary>
+    [TestMethod]
+    public void GetValidationParameters_ReturnsProperlyConfigure( ) {
+        JwtTokenService service = CreateService( );
+
+        TokenValidationParameters tvp = service.GetValidationParameters( );
+
+        Assert.IsTrue( tvp.ValidateIssuerSigningKey );
+        Assert.IsTrue( tvp.ValidateIssuer );
+        Assert.IsTrue( tvp.ValidateAudience );
+        Assert.IsTrue( tvp.ValidateLifetime );
+        Assert.AreEqual( TestIssuer, tvp.ValidIssuer );
+        Assert.AreEqual( TestAudience, tvp.ValidAudience );
+        Assert.IsNotNull( tvp.IssuerSigningKey );
+    }
+
+    /// <summary>
+    /// Verifies that when the "Jwt:Issuer" and "Jwt:Audience" configuration keys are missing, the <see
+    /// cref="JwtTokenService"/> falls back to default values of "werkr-api" for the issuer and "werkr" for the
+    /// audience.
+    /// </summary>
+    [TestMethod]
+    public void GenerateToken_DefaultsUsedWhenConfigMissing( ) {
+        Dictionary<string, string?> config = new( ) {
+            ["Jwt:SigningKey"] = TestSigningKey,
+            // Issuer and Audience not set — should use defaults
+        };
+
+        IConfiguration configuration = new ConfigurationBuilder( )
+            .AddInMemoryCollection( config )
+            .Build( );
+
+        JwtTokenService service = new( configuration, NullLogger<JwtTokenService>.Instance );
+        ApiKey apiKey = CreateTestApiKey( );
+
+        string token = service.GenerateToken( apiKey );
+        JsonWebToken jwt = new JsonWebTokenHandler( ).ReadJsonWebToken( token );
+
+        Assert.AreEqual( "werkr-api", jwt.Issuer );
+        Assert.IsTrue( jwt.Audiences.Contains( "werkr" ) );
+    }
+}

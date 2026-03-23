@@ -1,0 +1,87 @@
+@rendermode InteractiveServer
+
+<div>
+    @for ( int i = 0; i < _rows.Count; i++ ) {
+        int index = i;
+        <div class="input-group input-group-sm mb-1">
+            <input type="number" class="form-control font-monospace"
+                   placeholder="@Placeholder"
+                   value="@_rows[index].Text"
+                   @onchange="( e ) => UpdateRow( index, e.Value?.ToString( ) ?? string.Empty )" />
+            <button class="btn btn-outline-danger" type="button"
+                    @onclick="( ) => RemoveRow( index )"
+                    title="Remove item">&times;</button>
+            @if ( _rows[index].Error is not null ) {
+                <div class="invalid-feedback d-block">@_rows[index].Error</div>
+            }
+        </div>
+    }
+    <button class="btn btn-outline-primary btn-sm mt-1" type="button" @onclick="AddRow">
+        + Add Item
+    </button>
+</div>
+
+@code {
+    /// <summary>The list of integer values — two-way bound.</summary>
+    [Parameter]
+    public List<int>? Value { get; set; }
+
+    /// <summary>Callback when the list changes.</summary>
+    [Parameter]
+    public EventCallback<List<int>?> ValueChanged { get; set; }
+
+    /// <summary>Placeholder text for each input row.</summary>
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    private List<IntRow> _rows = [];
+
+    protected override void OnParametersSet( ) {
+        List<int> incoming = Value ?? [];
+        List<IntRow> mapped = incoming.Select( v => new IntRow( v.ToString( ), null ) ).ToList( );
+
+        // Only rebuild if values actually changed
+        if ( _rows.Count != mapped.Count
+                || !_rows.Zip( mapped ).All( pair => pair.First.Text == pair.Second.Text ) ) {
+            _rows = mapped;
+        }
+    }
+
+    private async Task UpdateRow( int index, string text ) {
+        if ( index < 0 || index >= _rows.Count ) {
+            return;
+        }
+
+        if ( int.TryParse( text, out int _ ) ) {
+            _rows[index] = new IntRow( text, null );
+        } else {
+            _rows[index] = new IntRow( text, "Must be a whole number." );
+        }
+        await NotifyChanged( );
+    }
+
+    private async Task RemoveRow( int index ) {
+        if ( index >= 0 && index < _rows.Count ) {
+            _rows.RemoveAt( index );
+            await NotifyChanged( );
+        }
+    }
+
+    private async Task AddRow( ) {
+        _rows.Add( new IntRow( "", null ) );
+        await NotifyChanged( );
+    }
+
+    private async Task NotifyChanged( ) {
+        List<int> result = [];
+        foreach ( IntRow row in _rows ) {
+            if ( int.TryParse( row.Text, out int parsed ) ) {
+                result.Add( parsed );
+            }
+        }
+        Value = result.Count > 0 ? result : null;
+        await ValueChanged.InvokeAsync( Value );
+    }
+
+    private sealed record IntRow( string Text, string? Error );
+}

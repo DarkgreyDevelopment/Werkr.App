@@ -1,221 +1,205 @@
-# Werkr - An open source task automation and workflow orchestration project.
-
-Introducing the Werkr Task Automation Project - your one-stop shop for task automation and workflow orchestration.
+# Werkr — Open Source Task Automation & Workflow Orchestration
 
 <a href="https://docs.werkr.app"><img src="https://docs.werkr.app/images/WerkrLogoWithText.png" alt="Werkr Logo & Text" width="300" height="360"></a>
 
-Whether you need a simple task scheduler/cron replacement or a comprehensive task orchestration platform, the Werkr
-project has got you covered. Revolutionize the way you automate tasks and orchestrate workflows with our user-friendly
-platform, designed to meet a wide range of automation needs.  
+Werkr is a task automation and workflow orchestration platform built on .NET 10. You can schedule individual tasks, chain them together into directed acyclic graph (DAG) workflows, and let Werkr handle the execution across your infrastructure.
 
-The Werkr project has two primary components: a Server and an Agent.  
-Both the Server and Agent are supported on a diverse set of operating systems and system architectures.
-Currently, both Windows 10+ and Debian Linux based platforms (with systemd) are supported on both x64 and
-arm64 cpu architectures. MacOS support is also planned for sometime after the .NET 8 release in November 2023.  
+The project has three core components — a **Server** (Blazor UI + Identity), an **API** (application data and gRPC services), and an **Agent** (task execution worker). Server-to-API and user-facing connections use HTTPS; API-to-Agent communication uses encrypted gRPC with AES-256-GCM envelope encryption.
+
+Currently supported on **Windows 10+** and **Linux** (x64 and arm64). macOS support is planned.
 
 <br/>
 
-# Streamlined Task Management:
-With the Werkr project, you can predefine tasks to run on a schedule, create ad-hoc tasks to run immediately,
-set tasks to run within a specific time frame, along with so many more configurable options. The choice is yours!  
+# Task Management
 
-Visit [docs.werkr.app](https://docs.werkr.app) to explore the Werkr Task Automation Project.  
+You can predefine tasks to run on a schedule, create ad-hoc tasks to run immediately, set start and end times, or combine tasks into workflow DAGs for more complex automation. Workflows support dependency-based execution, branching logic, and condition evaluation.
 
-<br/>
-
-# Downloads:
-- [Server Downloads](https://server.werkr.app/releases/latest)
-- [Agent Downloads](https://agent.werkr.app/releases/latest)
-
-Both server and agent are offered for download in portable and installer form. Once installed there is no difference between the two versions. 
-
-For users windows, download the latest msi installer for your cpu architecture (probably x64).  
-For users with Debian linux based operating systems (that have systemd enabled), select the latest .deb file
-for your cpu architecture.  
-When in doubt select the x64 version.  
-
-
-<br/><br/>
-
-
-# Documentation and Support:
-* [Quick Start Guide](#quick-start-guide)
-* [How To Articles](https://docs.werkr.app/articles/HowTo/index.html)
-* [API Documentation](https://docs.werkr.app/api/index.html)
-* Troubleshooting Guide (coming soon!)
-* [Contributors Guide](#contributing)
-* FAQ (coming soon!)
-
-
-<br/><br/>
-
-
-# Werkr Server/Agent features:
-
-## A Workflow-Centric Design:
-The Werkr project primarily operates on a workflow, or directed acyclic graph (DAG), model.  
-The workflow model and DAG visualizations allow you to easily create and manage series of interconnected tasks.  
+Visit [docs.werkr.app](https://docs.werkr.app) to explore the full documentation.
 
 <br/>
 
-## Schedulable Tasks:
-Tasks are the fundamental building blocks of your automation workflows.  
-Tasks can be scheduled to run inside or outside of a workflow.  
-  * Tasks outside a workflow can be scheduled to run at specific times, on pre-defined and cyclical schedules.
-  * Tasks ran inside a workflow have additional trigger mechanisms[*](#flexible-task-triggers).
+# Downloads
+
+- [Werkr Releases](https://github.com/DarkgreyDevelopment/Werkr.App/releases/latest)
+
+Both Server and Agent are offered as MSI installers (Windows) and portable editions. Once installed, there is no difference between the portable and installed versions.
+
+For Windows, download the latest MSI installer for your CPU architecture (most likely x64).
+
+<br/><br/>
+
+# Documentation and Support
+
+- [Design Specification](docs/1.0-Target-Featureset.md)
+- [Architecture Overview](docs/Architecture.md)
+- [Developer Guide](docs/Development.md)
+- [How-To Articles](https://docs.werkr.app/articles/HowTo/index.html)
+- [API Documentation](https://docs.werkr.app/api/index.html)
+- [Testing](docs/articles/Testing.md)
+- [Contributors Guide](#contributing)
+
+<br/><br/>
+
+# Features
+
+## Workflow-Centric Design
+
+Werkr operates primarily on a workflow (DAG) model. You create tasks, link them together as workflow steps with dependency declarations, and Werkr handles topological ordering and execution. The `ConditionEvaluator` supports branching logic within workflows based on step outcomes.
+
+See `src/Werkr.Core/Workflows/` for the workflow engine implementation.
 
 <br/>
 
-## Versatile Task Types:
-Choose from five primary task types to build your workflow(s):  
+## Schedulable Tasks
 
+Tasks are the building blocks of your automation. They can run standalone on a schedule or as steps within a workflow.
 
-### System-Defined Tasks:
-Perform common operations like file and directory manipulation with ease, thanks to Werkr's prebuilt system tasks.  
-Enjoy consistent output parameters and error handling for the following operations:  
-  * File and directory creation.
-  * Moving and copying files and directories.
-  * Deleting files and directories.
-  * Determine whether files or directories exist.
-  * Write pre-defined and dynamic content to a file.
+- **Standalone tasks** can be triggered on DateTime schedules or at recurring intervals (daily, weekly, monthly).
+- **Workflow tasks** are additionally triggered by dependency completion within the DAG, using configurable `DependencyMode` settings.
+- **Holiday Calendar** support lets you skip or shift scheduled occurrences on configured holidays, with audit logging for suppressed runs.
 
-
-### PowerShell Script Execution:
-Run PowerShell scripts effortlessly and receive standard PowerShell outputs.  
-
-
-### PowerShell Command Execution:
-Execute PowerShell commands and access standard PowerShell outputs.  
-
-
-### System Shell Command Execution:
-Run commands in your operating system's native shell and get the exit code from the command execution.  
-
-
-### User-Defined Tasks:
-Customize your workflows by creating your own tasks. Combine system-defined tasks, PowerShell scripts or commands,
-and native command executions into your own free-form repeatable task.  
-Branch, iterate, and handle exceptions with ease!  
+See `src/Werkr.Core/Scheduling/` for schedule calculation and holiday date handling.
 
 <br/>
 
-## Flexible Task Triggers:
-Start your tasks using various triggers, or combinations of triggers, including:  
-  * FileWatch
-    * Monitor file system events in real-time or by polling a path periodically.
-  * DateTime
-    * Set a specific time to run your tasks.
-  * On an Interval/Cyclically
-    * Run tasks periodically.
-  * Task Completion States
-    * Trigger tasks based on the completion state of other tasks within the same workflow.
-  * Workflow Completion State
-    * Trigger tasks based on the operating state of an outside workflow.
+## Task Types
 
+Werkr supports five task types (defined in the `TaskActionType` enum):
 
-<br/> <br/>
+### Action
+Built-in handlers for common operations — no scripting required. The current set of 26 action handlers covers file operations (copy, move, rename, create, delete, read, write, clear, find and replace, test existence, get info), directory operations (create, list), process control (start, stop), network and integration (HTTP request, test connectivity, send email, send webhook, file download, file upload), archive operations (compress, extract), JSON manipulation, a delay timer, and file event watching. Each action has consistent parameter handling and error reporting.
 
+See `src/Werkr.Agent/Operators/Actions/` for the full set of action handlers.
 
-# Example Use Cases:
-* (Placeholder)
+### PowerShell Script
+Run PowerShell scripts with an embedded PowerShell 7+ host. You get standard PowerShell output streams (output, error, debug, verbose, warning), exit codes, and exception information.
 
+### PowerShell Command
+Execute individual PowerShell commands with the same output handling as script execution.
 
-<br/><br/>
+### Shell Command
+Run commands in your operating system's native shell (cmd on Windows, bash/sh on Linux) and receive the process exit code.
 
+### Shell Script
+Execute shell scripts with the same native shell and exit code handling as shell commands.
 
-# Security:
-The Werkr project has a wide variety of very powerful tools. So, security is taken quite seriously and there are some
-mandatory steps that must be taken to set up the server and agent initially.  
+For complex multi-step automation, combine tasks into a **Workflow** (DAG) with dependency-based execution, branching, and condition evaluation.
 
-* TLS certificates are mandatory for the scheduler and agent.
-* The server and agent undergo an API key registration process before tasks can be run on the system.
-  * The agent generates an API key on first startup (and upon request thereafter). The generated API key must be
-  registered with a server within 12 hours of its generation.
-  * The server and agent then perform a mutual registration process using the API key where they record the opposing
-  parties' certificate information (ex HSTS information?).
+<br/>
 
-## Additional Security Considerations:
-* Access Control
-  * The scheduler has built-in user roles that make it easy to restrict access to key and sensitive parts of the system.
-* Allowed Hosts
-  * Both the scheduler and agent can restrict access via an allowed hosts list.
-* Native 2fa support (TOTP) is built in to the scheduler.
+## Flexible Triggers
 
+- **DateTime** — Run tasks at a specific date and time.
+- **Interval/Cyclical** — Run tasks periodically (daily, weekly, monthly recurrence with repeat intervals).
+- **Task Completion** — Within a workflow, trigger steps based on the completion state of their dependencies (via `ConditionEvaluator` and `DependencyMode`).
+- **Holiday Calendar** — Automatically skip or shift occurrences on configured holidays.
 
 <br/><br/>
 
+# 1.0 Roadmap
 
-# Licensing and Support:
-The Werkr Task Automation Project is offered free of charge, without any warranties, under an
-[MIT license](https://docs.werkr.app/LICENSE.html)!  
-Unfortunately, it does not come with any form of guaranteed or implied support.  
-Best effort support and triage will be offered on a volunteer basis via a
-[GitHub issue](https://werkr.App/issues/new/choose) process.  
+The [Design Specification](docs/1.0-Target-Featureset.md) defines every capability required for the 1.0 release. Key features beyond what is currently implemented:
 
+- **Composite nodes** — ForEach, While, Do, and Switch nodes for iteration, looping, and conditional branching within workflows.
+- **Task & workflow versioning** — Immutable versions on every save, snapshot binding between workflow steps and task versions, and on-demand version diffs.
+- **Additional trigger types** — Cron expressions, persistent file monitoring, authenticated API triggers, workflow-completion triggers, and manual triggers from a unified trigger registry.
+- **Expanded action handlers** — OS service management (Windows Services, systemd, launchd).
+- **Workflow variables & expressions** — Typed variable system with step output capture, namespaced scoping, collection types, and a condition expression language for branching and loop constructs.
+- **Manual approval gates** — Pause workflow execution at designated steps until a human approves continuation.
+- **JSON import/export** — Portable, schema-versioned workflow definitions for backup, migration, and version control.
+- **Error handling & retry** — Configurable per-step strategies (fail workflow, skip, continue, run error handler, remediate before retry) with fixed, linear, or exponential backoff.
+- **Sensitive data redaction** — Regex-based automatic masking of passwords, tokens, and secrets in execution logs.
+- **Centralized configuration & credential management** — Database-backed settings with hot reload, encrypted credential storage with injection into task execution contexts.
+- **Notifications** — Email, webhook, and in-app notification channels with configurable subscriptions and templates.
+- **Enhanced security** — WebAuthn passkeys, database encryption at rest, scoped API keys with rate limiting, outbound request allowlisting, and Content Security Policy headers.
+- **Versioned REST API** — OpenAPI-documented endpoints with pagination, filtering, and CORS policy.
+- **Real-time UI** — SignalR-powered live updates for workflow run monitoring and log streaming.
+- **Re-execution & replay** — Resume from a failed step (preserving completed outputs) or replay an entire workflow from the beginning.
+
+See the full [Design Specification](docs/1.0-Target-Featureset.md) for complete details on every 1.0 capability.
 
 <br/><br/>
 
+# Security
 
-# Quick Start Guide:
-* (Placeholder)
-* Example 1: ...
-* Example 2: ...
+Security is a core design concern — there are mandatory steps for initial setup, and multiple layers protect the system at runtime.
 
+- **TLS certificates** are mandatory for all Server, API, and Agent connections.
+- **Agent registration** uses an admin-bundle model: an administrator creates a registration bundle on the Server containing the Server's RSA public key, transfers it to the Agent out-of-band, and the Agent completes registration via an encrypted gRPC handshake using RSA+AES hybrid encryption. This establishes a shared AES-256 symmetric key for all subsequent communication.
+- **Encrypted gRPC** — After registration, every gRPC payload is wrapped in an `EncryptedEnvelope` (AES-256-GCM). Key rotation is supported via the `RotateSharedKey` RPC.
+- **RBAC** — The Server has built-in permission-based role authorization to control access to features and data.
+- **TOTP 2FA** — Native two-factor authentication is built into the Server.
+- **Path allowlisting** — Agents validate file paths against a configurable allowlist before execution.
+- **Platform-native secret storage** — Secrets are stored using OS-native mechanisms (DPAPI on Windows, Keychain on macOS, file-based on Linux).
+
+The 1.0 release adds WebAuthn passkey authentication, database encryption at rest, scoped API keys, centralized credential management, outbound request controls, and Content Security Policy headers. See the [Design Specification](docs/1.0-Target-Featureset.md) §9 for the full security model.
+
+See [Architecture.md](docs/Architecture.md) for the current security model breakdown.
 
 <br/><br/>
 
+# Licensing and Support
 
-# Contributing:
-The Werkr Task Automation Project is in its early stages and we're excited that you're interested in contributing!  
-We believe that open collaboration is key to the project's success and growth.  
-We welcome contributions from developers, users, and anyone interested in task automation and workflow orchestration.  
+The Werkr project is offered free of charge, without any warranties, under an [MIT license](https://docs.werkr.app/LICENSE.html).
 
-All official project collaboration will occur via
-[GitHub issues](https://werkr.App/issues/new/choose) or [discussions](https://werkr.App/discussions).  
+Best effort support and triage is provided on a volunteer basis via [GitHub issues](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new/choose).
 
-The project has been split into multiple different repositories to keep thing more specific and focused,
-so when looking for code please be aware of the following repositories.  
-* [Werkr.App](https://werkr.App)
-  * The primary documentation repository. Also hosts github pages.
-* [Werkr.Server](https://server.werkr.app)
-  * The scheduler and primary UI interface for the project.
-* [Werkr.Agent](https://agent.werkr.app)
-  * The agent software that performs the requested tasks.
-* [Werkr.Common](https://common.werkr.app)
-  * A shared library used by both the Werkr Server and Agent.
-* [Werkr.Common.Configuration](https://commonconfiguration.werkr.app)
-  * A shared configuration library used by both the Werkr Server and Agent. This is also used by the windows installer.
-* [Werkr.Installers](https://installers.werkr.app)
-  * A shared [Wix](https://wixtoolset.org/) CustomAction library used by both the Werkr Server and Agent.
-  This library is used in the Msi install process.
+<br/><br/>
 
-## Feedback, Suggestions, and Feature Requests:
-Do you have an idea for a new feature or enhancement? We'd love to hear it!  
-As the project is still in its early stages, your feedback and suggestions are invaluable.  
-We encourage you to share your thoughts on features, improvements, and potential use cases.  
-You can submit your ideas by creating a
-[new feature request](https://werkr.App/issues/new?template=feature_request.yaml).
-Be sure to provide a clear description of your proposal and its potential benefits.  
+# Quick Start Guide
 
-## Documentation Improvements:
-If you have suggestions for additional documentation, or corrections for existing documentation, then please submit a
-[documentation improvement request](https://werkr.App/issues/new?template=improve_documentation.yaml).  
+For developer setup (building from source, running locally with Aspire, running tests), see [Development.md](docs/Development.md).
 
-## Bug Reports:
-Please report any bugs, performance issues, or security vulnerabilities you encounter while using the Werkr Task
-Automation project by opening a
-[new bug report](https://werkr.App/issues/new?&template=bug_report.yaml).  
-Be sure to include as much information as possible, such as steps to reproduce the issue, any error messages,
-your system's configuration, and any additional context you think we should be aware of.  
+For end-user installation, see the [Windows Server Install](docs/articles/HowTo/WindowsServerInstall.md) and [Windows Agent Install](docs/articles/HowTo/WindowsAgentInstall.md) guides.
 
-## Code Contributions:
-If you'd like to contribute code directly to the project, please fork the repository, create a new branch, and submit
-a pull request with your changes. We encourage you to follow our existing coding style and conventions.  
-Make sure to include a detailed description of your changes in the pull request.  
+<br/><br/>
 
-Additionally you will need to agree to the
-[Contribution License Agreement](https://werkr.App/issues/new?template=cla_agreement.yml)
-before your PR will be merged.  
+# Contributing
 
-We appreciate all contributions, big or small, and look forward to building a vibrant and collaborative community
-around the Werkr Task Automation Project. Thank you for your support!  
+The Werkr project is in its early stages and we're excited that you're interested in contributing! We welcome contributions from developers, users, and anyone interested in task automation and workflow orchestration.
+
+All official project collaboration happens via [GitHub issues](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new/choose) or [discussions](https://github.com/DarkgreyDevelopment/Werkr.App/discussions).
+
+## Project Structure
+
+Werkr is a monorepo with all components under `src/`:
+
+| Project | Purpose |
+|---------|---------|
+| `Werkr.Server` | Blazor Server UI, ASP.NET Identity, SignalR, user authentication |
+| `Werkr.Api` | Application API, gRPC service host, schedule/task/workflow management |
+| `Werkr.Agent` | Task execution engine, embedded PowerShell host, built-in actions |
+| `Werkr.Core` | Shared business logic — scheduling, workflows, registration, cryptography |
+| `Werkr.Common` | Shared models, protobuf definitions, auth policies |
+| `Werkr.Common.Configuration` | Strongly-typed configuration classes |
+| `Werkr.Data` | EF Core database contexts and entities (PostgreSQL + SQLite) |
+| `Werkr.Data.Identity` | ASP.NET Identity database contexts and roles |
+| `Werkr.AppHost` | .NET Aspire orchestrator for local development |
+| `Werkr.ServiceDefaults` | Aspire service defaults (OpenTelemetry, health checks) |
+| `Installer/Msi/` | WiX MSI installer projects and custom actions |
+| `Test/Werkr.Tests` | Integration tests (Testcontainers + WebApplicationFactory) |
+| `Test/Werkr.Tests.Data` | Data layer unit tests |
+| `Test/Werkr.Tests.Server` | Server integration tests |
+| `Test/Werkr.Tests.Agent` | Agent end-to-end tests |
+
+See [Architecture.md](docs/Architecture.md) for the full architectural overview and [Development.md](docs/Development.md) for build/test/contribution instructions.
+
+## Feedback, Suggestions, and Feature Requests
+
+We'd love to hear your ideas! Submit a [feature request](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=feature_request.yaml) with a clear description of your proposal and its potential benefits.
+
+## Documentation Improvements
+
+Have suggestions or corrections for the documentation? Submit a [documentation improvement request](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=improve_documentation.yaml).
+
+## Bug Reports
+
+Please report any bugs, performance issues, or security vulnerabilities by opening a [bug report](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=bug_report.yaml). Include steps to reproduce the issue, error messages, your system configuration, and any additional context.
+
+## Code Contributions
+
+Fork the repository, create a new branch from `develop`, and submit a pull request with your changes. Please follow the coding conventions described in [Development.md](docs/Development.md) and include a detailed description in the pull request.
+
+You will need to agree to the [Contribution License Agreement](https://github.com/DarkgreyDevelopment/Werkr.App/issues/new?template=cla_agreement.yml) before your PR is merged.
+
+We appreciate all contributions and look forward to building a collaborative community around Werkr. Thank you for your support!

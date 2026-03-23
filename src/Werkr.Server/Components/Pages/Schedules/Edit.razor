@@ -1,0 +1,12 @@
+@page "/schedules/{Id:guid}"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject NavigationManager Navigation
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    protected override void OnInitialized( ) {
+        Navigation.NavigateTo( "/schedules", replace: true );
+    }
+}

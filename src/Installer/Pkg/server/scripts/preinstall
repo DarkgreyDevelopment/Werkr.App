@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+# Stop and unload existing services if upgrading
+for PLIST_DST in \
+    "/Library/LaunchDaemons/app.werkr.server.plist" \
+    "/Library/LaunchDaemons/app.werkr.api.plist"; do
+    if [ -f "${PLIST_DST}" ]; then
+        launchctl unload "${PLIST_DST}" 2>/dev/null || true
+    fi
+done
+
+exit 0

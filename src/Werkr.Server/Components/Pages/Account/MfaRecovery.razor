@@ -1,0 +1,75 @@
+@page "/account/mfa-recovery"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using Werkr.Data.Identity.Entities
+@using Werkr.Server.Helpers
+@inject SignInManager<WerkrUser> SignInManager
+@inject NavigationManager Navigation
+
+<PageTitle>MFA Recovery</PageTitle>
+
+<div class="container mt-4">
+    <h1>Recovery Code Verification</h1>
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    <EditForm Model="_model" OnValidSubmit="HandleVerify" FormName="mfa-recovery">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label" for="recovery-code">Recovery code</label>
+            <InputText id="recovery-code" class="form-control" @bind-Value="_model!.RecoveryCode" autofocus />
+            <ValidationMessage For="() => _model!.RecoveryCode" />
+        </div>
+
+        <button class="btn btn-primary me-2" type="submit">Verify</button>
+        <a href="/account/mfa-verify@(ReturnUrl is not null ? $"?returnUrl={Uri.EscapeDataString( ReturnUrl )}" : "")"
+           class="btn btn-link">Use authenticator code</a>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromQuery( Name = "returnUrl" )]
+    public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm]
+    private MfaRecoveryModel? _model { get; set; }
+
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync( ) {
+        _model ??= new( );
+        WerkrUser? user = await SignInManager.GetTwoFactorAuthenticationUserAsync( );
+        if (user is null) {
+            Navigation.NavigateTo( "/account/login", forceLoad: true );
+        }
+    }
+
+    private async Task HandleVerify( ) {
+        _errorMessage = null;
+
+        string recoveryCode = (_model!.RecoveryCode ?? string.Empty)
+            .Trim( ).Replace( " ", string.Empty );
+
+        SignInResult result = await SignInManager.TwoFactorRecoveryCodeSignInAsync( recoveryCode );
+
+        if (result.Succeeded) {
+            string safeUrl = UrlValidator.IsLocalUrl( ReturnUrl ) ? ReturnUrl! : "/";
+            Navigation.NavigateTo( safeUrl, forceLoad: true );
+            return;
+        }
+
+        _errorMessage = result.IsLockedOut
+            ? "Your account is locked due to too many failed attempts."
+            : "Invalid recovery code.";
+    }
+
+    private sealed class MfaRecoveryModel {
+        [Required]
+        public string RecoveryCode { get; set; } = string.Empty;
+    }
+}

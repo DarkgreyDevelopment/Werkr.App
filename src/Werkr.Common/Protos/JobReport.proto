@@ -1,0 +1,86 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
+
+// Agent reports completed job results to the Server (API hosts this service).
+// All RPCs use EncryptedEnvelope. Inner payload types defined below.
+service JobReporting {
+  // Request envelope contains JobResultRequest; response contains JobResultResponse.
+  rpc ReportJobResult (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Request envelope contains StepStartedRequest; response contains StepEventResponse.
+  rpc ReportStepStarted (EncryptedEnvelope) returns (EncryptedEnvelope);
+  // Request envelope contains StepSkippedRequest; response contains StepEventResponse.
+  rpc ReportStepSkipped (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+message JobResultRequest {
+  // Agent's connection ID for authentication.
+  string connection_id = 1;
+  // The task ID that was executed.
+  int64 task_id = 2;
+  // Snapshot of the task content at execution time.
+  string task_snapshot = 3;
+  // Total runtime in seconds.
+  double runtime_seconds = 4;
+  // Job start time in ISO 8601 UTC format.
+  string start_time = 5;
+  // Job end time in ISO 8601 UTC format.
+  string end_time = 6;
+  // Whether the job succeeded.
+  bool success = 7;
+  // Process/shell exit code.
+  int32 exit_code = 8;
+  // Error category enum value.
+  int32 error_category = 9;
+  // Relative path to the full output log file on the agent's local disk.
+  string output_path = 10;
+  // Optional workflow run ID if this job was part of a workflow.
+  string workflow_run_id = 11;
+  // Tail preview of the output (last N lines) for quick display without fetching the full log.
+  string output_preview = 12;
+  // Agent-assigned job ID. When present, the server upserts using this ID.
+  string job_id = 13;
+  // Schedule ID that triggered this job execution.
+  string schedule_id = 14;
+  // Variable name for step output (empty = no output).
+  string output_variable_name = 15;
+  // JSON blob of the output variable value (empty = no output).
+  string output_variable_value = 16;
+  // Optional workflow step ID linking this job to a specific workflow step.
+  int64 step_id = 17;
+}
+
+message JobResultResponse {
+  // Whether the server accepted the result.
+  bool accepted = 1;
+  // The assigned job ID on the server.
+  string job_id = 2;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
+}
+
+message StepStartedRequest {
+  string connection_id = 1;
+  string workflow_run_id = 2;
+  int64  step_id = 3;
+  string step_name = 4;
+  int64  task_id = 5;
+  string start_time = 6;
+}
+
+message StepSkippedRequest {
+  string connection_id = 1;
+  string workflow_run_id = 2;
+  int64  step_id = 3;
+  string step_name = 4;
+  string reason = 5;
+}
+
+message StepEventResponse {
+  bool accepted = 1;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
+}

@@ -1,0 +1,133 @@
+@rendermode InteractiveServer
+
+<div style="max-width: 400px;">
+    <select class="form-select form-select-sm mb-2" value="@_selectedOption"
+            @onchange="OnOptionChanged">
+        <option value="auto">Auto (default)</option>
+        <option value="exitCode">Exit Code</option>
+        @if (ActionType.StartsWith( "PowerShell", StringComparison.OrdinalIgnoreCase )) {
+            <option value="hadErrors">Had Errors</option>
+        }
+        <option value="outputContains">Output Contains</option>
+        <option value="always">Always</option>
+    </select>
+
+    @if (_selectedOption == "exitCode") {
+        <div class="input-group input-group-sm">
+            <span class="input-group-text">exitCode ==</span>
+            <input type="number" class="form-control" value="@_exitCodeValue"
+                   @onchange="OnExitCodeChanged" />
+        </div>
+        @if (!string.IsNullOrEmpty( _exitCodeWarning )) {
+            <div class="text-warning small mt-1">@_exitCodeWarning</div>
+        }
+    }
+
+    @if (_selectedOption == "outputContains") {
+        <div class="input-group input-group-sm">
+            <span class="input-group-text">output.contains</span>
+            <input type="text" class="form-control" placeholder="search text"
+                   value="@_outputText"
+                   @onchange="OnOutputTextChanged" />
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The criteria expression string — two-way bound.</summary>
+    [Parameter]
+    public string? Value { get; set; }
+
+    /// <summary>Callback when value changes.</summary>
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>Current action type — determines which options are available.</summary>
+    [Parameter]
+    public string ActionType { get; set; } = "";
+
+    private string _selectedOption = "auto";
+    private string _exitCodeValue = "0";
+    private string? _exitCodeWarning;
+    private string _outputText = "";
+    private bool _initialized;
+
+    protected override void OnParametersSet( ) {
+        if (!_initialized) {
+            ParseValue( Value );
+            _initialized = true;
+        }
+    }
+
+    private void ParseValue( string? value ) {
+        if (string.IsNullOrWhiteSpace( value )) {
+            _selectedOption = "auto";
+            return;
+        }
+
+        string trimmed = value.Trim( );
+
+        if (string.Equals( trimmed, "always", StringComparison.OrdinalIgnoreCase )) {
+            _selectedOption = "always";
+            return;
+        }
+
+        if (string.Equals( trimmed, "pwsh.HadErrors == false", StringComparison.OrdinalIgnoreCase )) {
+            _selectedOption = "hadErrors";
+            return;
+        }
+
+        // exitCode == N
+        if (trimmed.StartsWith( "exitCode", StringComparison.OrdinalIgnoreCase )
+            && trimmed.Contains( "==" )) {
+            _selectedOption = "exitCode";
+            string after = trimmed[( trimmed.IndexOf( "==" ) + 2 )..].Trim( );
+            _exitCodeValue = after;
+            return;
+        }
+
+        // output.contains("TEXT")
+        if (trimmed.StartsWith( "output.contains(", StringComparison.OrdinalIgnoreCase )
+            && trimmed.EndsWith( ')' )) {
+            _selectedOption = "outputContains";
+            string inner = trimmed["output.contains(".Length..^1];
+            if (inner.Length >= 2 && inner[0] == '"' && inner[^1] == '"') {
+                inner = inner[1..^1];
+            }
+            _outputText = inner;
+            return;
+        }
+
+        // Unknown — treat as auto
+        _selectedOption = "auto";
+    }
+
+    private async Task OnOptionChanged( ChangeEventArgs e ) {
+        _selectedOption = e.Value?.ToString( ) ?? "auto";
+        _exitCodeWarning = null;
+        await EmitValue( );
+    }
+
+    private async Task OnExitCodeChanged( ChangeEventArgs e ) {
+        _exitCodeValue = e.Value?.ToString( ) ?? "0";
+        _exitCodeWarning = int.TryParse( _exitCodeValue, out _ ) ? null : "Must be a number";
+        await EmitValue( );
+    }
+
+    private async Task OnOutputTextChanged( ChangeEventArgs e ) {
+        _outputText = e.Value?.ToString( ) ?? "";
+        await EmitValue( );
+    }
+
+    private async Task EmitValue( ) {
+        string? result = _selectedOption switch {
+            "exitCode" => $"exitCode == {_exitCodeValue}",
+            "hadErrors" => "pwsh.HadErrors == false",
+            "outputContains" => $"output.contains(\"{_outputText}\")",
+            "always" => "always",
+            _ => null, // auto clears the field
+        };
+        Value = result;
+        await ValueChanged.InvokeAsync( result );
+    }
+}

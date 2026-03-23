@@ -1,0 +1,193 @@
+@page "/account/login"
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components
+@using Werkr.Data.Identity.Entities
+@using Werkr.Server.Helpers
+@inject SignInManager<WerkrUser> SignInManager
+@inject UserManager<WerkrUser> UserManager
+@inject NavigationManager Navigation
+@using Werkr.Common.Models.Audit
+@using Werkr.Server.Services
+@inject ILogger<Login> Logger
+@inject AuditClient AuditClient
+
+<PageTitle>Login — Werkr</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-4">Werkr Login</h3>
+
+                    @if (!string.IsNullOrEmpty( _errorMessage )) {
+                        <div class="alert alert-danger" role="alert">
+                            @_errorMessage
+                        </div>
+                    }
+
+                    @if (_isLockedOut) {
+                        <div class="alert alert-warning" role="alert">
+                            <strong>Account locked.</strong> Too many failed login attempts.
+                            Please try again after @_lockoutEnd?.ToLocalTime( ).ToString( "g" ).
+                        </div>
+                    }
+
+                    <EditForm Model="@_model" OnValidSubmit="HandleLogin" FormName="login">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" class="form-control" @bind-Value="_model!.Email"
+                                       placeholder="admin@werkr.local" />
+                            <ValidationMessage For="@(() => _model!.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <InputText id="password" type="password" class="form-control"
+                                       @bind-Value="_model!.Password" />
+                            <ValidationMessage For="@(() => _model!.Password)" />
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <InputCheckbox id="rememberMe" class="form-check-input"
+                                           @bind-Value="_model!.RememberMe" />
+                            <label for="rememberMe" class="form-check-label">Remember me</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            Sign In
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery( Name = "returnUrl" )]
+    public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm]
+    private LoginModel? _model { get; set; }
+
+    private string? _errorMessage;
+    private bool _isLockedOut;
+    private DateTimeOffset? _lockoutEnd;
+
+    protected override void OnInitialized( ) {
+        _model ??= new( );
+    }
+
+    private async Task HandleLogin( ) {
+        _errorMessage = null;
+        _isLockedOut = false;
+        _lockoutEnd = null;
+
+        string remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString( ) ?? "unknown";
+
+        try {
+            WerkrUser? user = await UserManager.FindByEmailAsync( _model!.Email );
+            if (user is not null && !user.Enabled) {
+                _errorMessage = "Your account has been disabled. Contact an administrator.";
+                Logger.LogWarning( "Login blocked for disabled account {Email} from {RemoteIp}",
+                    _model.Email, remoteIp );
+
+                // Audit: login failure for disabled account — best-effort
+                _ = await AuditClient.LogAsync(
+                    AuditEventType.AuthLoginFailure, user.Id, "User",
+                    "User", user.Id, "LoginFailed",
+                    new { Email = _model.Email, RemoteIp = remoteIp, Reason = "Account disabled" } );
+
+                return;
+            }
+
+            Microsoft.AspNetCore.Identity.SignInResult result =
+                await SignInManager.PasswordSignInAsync(
+                    _model!.Email, _model.Password, _model.RememberMe, lockoutOnFailure: true );
+
+            if (result.Succeeded) {
+                if (user is not null) {
+                    user.LastLoginUtc = DateTime.UtcNow;
+                    _ = await UserManager.UpdateAsync( user );
+                }
+
+                Logger.LogInformation( "Login succeeded for {Email} from {RemoteIp}",
+                    _model!.Email, remoteIp );
+
+                // Audit: login success — must succeed before navigation commits
+                bool audited = await AuditClient.LogAsync(
+                    AuditEventType.AuthLoginSuccess, user?.Id, "User",
+                    "User", user?.Id, "Login",
+                    new { Email = _model.Email, RemoteIp = remoteIp } );
+                if (!audited) {
+                    await SignInManager.SignOutAsync( );
+                    _errorMessage = "Login succeeded but audit recording failed. Please try again.";
+                    return;
+                }
+
+                string safeUrl = UrlValidator.IsLocalUrl( ReturnUrl ) ? ReturnUrl! : "/";
+                Navigation.NavigateTo( safeUrl, forceLoad: true );
+            } else if (result.IsLockedOut) {
+                _isLockedOut = true;
+                _lockoutEnd = user is not null
+                    ? await UserManager.GetLockoutEndDateAsync( user )
+                    : null;
+                _errorMessage = "Account locked out. Please try again later.";
+
+                Logger.LogWarning( "Account locked out: {Email} from {RemoteIp}",
+                    _model!.Email, remoteIp );
+
+                // Audit: lockout — best-effort
+                _ = await AuditClient.LogAsync(
+                    AuditEventType.AuthLockout, user?.Id, "User",
+                    "User", user?.Id, "Lockout",
+                    new { Email = _model.Email, RemoteIp = remoteIp } );
+            } else if (result.RequiresTwoFactor) {
+                string safeUrl = UrlValidator.IsLocalUrl( ReturnUrl ) ? ReturnUrl! : "/";
+                string encodedReturnUrl = Uri.EscapeDataString( safeUrl );
+                Navigation.NavigateTo( $"/account/mfa-verify?returnUrl={encodedReturnUrl}", forceLoad: true );
+            } else {
+                _errorMessage = "Invalid email or password.";
+
+                Logger.LogWarning( "Login failed for {Email} from {RemoteIp}: {Reason}",
+                    _model!.Email, remoteIp, "Invalid credentials" );
+
+                // Audit: login failure — best-effort
+                _ = await AuditClient.LogAsync(
+                    AuditEventType.AuthLoginFailure, null, "User",
+                    "User", null, "LoginFailed",
+                    new { Email = _model.Email, RemoteIp = remoteIp, Reason = "Invalid credentials" } );
+            }
+        } catch (NavigationException) {
+            throw;
+        } catch (Exception ex) {
+            _errorMessage = "An error occurred during sign-in. Please try again.";
+
+            Logger.LogWarning( ex, "Login failed for {Email} from {RemoteIp}: {Reason}",
+                _model!.Email, remoteIp, "Unhandled exception" );
+
+            // Audit: unhandled exception during login — best-effort
+            _ = await AuditClient.LogAsync(
+                AuditEventType.AuthLoginFailure, null, "User",
+                "User", null, "LoginFailed",
+                new { Email = _model!.Email, RemoteIp = remoteIp, Reason = "Unhandled exception" } );
+        }
+    }
+
+    private sealed class LoginModel {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+}

@@ -1,0 +1,49 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
+
+// API-hosted service (Agent calls API).
+// Agent-initiated heartbeat with notification mailbox response.
+// All RPCs use EncryptedEnvelope. Inner payload types defined below.
+service AgentHeartbeat {
+  // Agent sends heartbeat; API responds with acknowledgment and pending notification channels.
+  // Request envelope contains AgentHeartbeatRequest; response contains AgentHeartbeatResponse.
+  rpc Heartbeat (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+// --- AgentHeartbeat inner messages ---
+
+message AgentHeartbeatRequest {
+  // Agent's connection ID.
+  string connection_id = 1;
+  // Agent's assembly version string.
+  string agent_version = 2;
+  // Seconds since agent process started.
+  int64 uptime_seconds = 3;
+  // Number of active schedules currently loaded.
+  int32 active_schedule_count = 4;
+  // Free-form status message.
+  string status_message = 5;
+}
+
+message AgentHeartbeatResponse {
+  // Whether the API acknowledged the heartbeat.
+  bool acknowledged = 1;
+  // API's assembly version string.
+  string server_version = 2;
+  // Channels with pending notifications the agent should fetch.
+  repeated PendingNotification pending_notifications = 3;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
+}
+
+message PendingNotification {
+  // Channel name: "schedule_invalidation", "key_rotation", "config_update",
+  // "workflow_disabled", "module_approval".
+  string channel = 1;
+  // Optional payload hint (e.g., schedule ID for targeted invalidation).
+  string payload = 2;
+}

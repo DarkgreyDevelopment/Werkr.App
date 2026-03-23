@@ -1,0 +1,150 @@
+﻿@page "/holiday-calendars"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject NavigationManager Navigation
+@using Werkr.Common.Models.Holidays
+
+<PageTitle>Werkr - Holiday Calendars</PageTitle>
+
+<h1>Holiday Calendars</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Manage holiday calendars used to filter schedule occurrences.</p>
+
+<div class="mb-3">
+    <a href="/holiday-calendars/create" class="btn btn-primary">
+        <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Calendar
+    </a>
+    <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _calendars is null ) {
+    <LoadingSpinner Message="Loading calendars…" />
+} else if ( _calendars is not null && _calendars.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Type</th>
+                    <th>Rules</th>
+                    <th>Attached Schedules</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( HolidayCalendarSummaryDto cal in _calendars ) {
+                    <tr>
+                        <td>
+                            <a href="/holiday-calendars/@cal.Id/detail">@cal.Name</a>
+                        </td>
+                        <td>@( string.IsNullOrWhiteSpace( cal.Description ) ? "—" : cal.Description )</td>
+                        <td>
+                            @if ( cal.IsSystemCalendar ) {
+                                <span class="badge bg-info">System</span>
+                            } else {
+                                <span class="badge bg-secondary">Custom</span>
+                            }
+                        </td>
+                        <td>@cal.RuleCount</td>
+                        <td>@cal.AttachedScheduleCount</td>
+                        <td class="text-end">
+                            @if ( cal.IsSystemCalendar ) {
+                                <a class="btn btn-outline-primary btn-sm me-1" href="/holiday-calendars/@cal.Id/detail">View</a>
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="() => CloneAsync( cal )">Clone</button>
+                            } else {
+                                <a class="btn btn-outline-primary btn-sm me-1" href="/holiday-calendars/@cal.Id">Edit</a>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( cal )">Delete</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( !_isLoading ) {
+    <EmptyState Message="No holiday calendars configured yet. Click 'New Calendar' to create one." />
+}
+
+<ConfirmDialog @ref="_confirmDialog"
+               Title="Delete Calendar"
+               Message="@_deleteMessage"
+               ConfirmButtonText="Delete"
+               OnConfirmed="DeleteConfirmedAsync" />
+
+@code {
+    private List<HolidayCalendarSummaryDto>? _calendars;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private ConfirmDialog _confirmDialog = default!;
+    private Guid _pendingDeleteId;
+    private string _deleteMessage = "";
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "Holiday Calendars" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            _calendars = await Api.GetAsync<List<HolidayCalendarSummaryDto>>( "/api/v1/holiday-calendars" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load calendars: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void PromptDelete( HolidayCalendarSummaryDto cal ) {
+        _pendingDeleteId = cal.Id;
+        _deleteMessage = $"Are you sure you want to delete calendar '{cal.Name}'? This will remove all rules, dates, and schedule attachments.";
+        _confirmDialog.Show( );
+    }
+
+    private async Task DeleteConfirmedAsync( ) {
+        try {
+            HttpResponseMessage response = await Api.DeleteAsync( $"/api/v1/holiday-calendars/{_pendingDeleteId}" );
+            if ( response.IsSuccessStatusCode ) {
+                await LoadAsync( );
+            } else {
+                _errorMessage = $"Failed to delete calendar: HTTP {(int) response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to delete calendar: {ex.Message}";
+        }
+    }
+
+    private async Task CloneAsync( HolidayCalendarSummaryDto cal ) {
+        try {
+            CloneHolidayCalendarRequest req = new( $"{cal.Name} (Copy)" );
+            HttpResponseMessage response = await Api.PostAsJsonAsync( $"/api/v1/holiday-calendars/{cal.Id}/clone", req );
+            if ( response.IsSuccessStatusCode ) {
+                HolidayCalendarDto? cloned = await response.Content.ReadFromJsonAsync<HolidayCalendarDto>( );
+                if ( cloned is not null ) {
+                    Navigation.NavigateTo( $"/holiday-calendars/{cloned.Id}" );
+                    return;
+                }
+            }
+            _errorMessage = $"Failed to clone calendar: HTTP {(int) response.StatusCode}";
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to clone calendar: {ex.Message}";
+        }
+    }
+}

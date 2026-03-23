@@ -1,0 +1,212 @@
+@page "/agents/register"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Werkr.Common.Models
+@attribute [Authorize( Roles = "Admin" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject IConfiguration Configuration
+
+<PageTitle>Werkr - Register Agent</PageTitle>
+
+<h1>Register New Agent</h1>
+<p>Generate a registration bundle to pair a new Agent with this Server.</p>
+
+<div class="card mb-4" style="max-width: 640px;">
+    <div class="card-body">
+        <EditForm Model="@_model" OnValidSubmit="HandleGenerate" FormName="register">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label for="connectionName" class="form-label fw-bold">Connection Name</label>
+                <InputText id="connectionName" class="form-control" @bind-Value="_model!.ConnectionName"
+                           placeholder="e.g. dev-agent-01" />
+                <ValidationMessage For="@(() => _model!.ConnectionName)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label fw-bold">Password</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="_model!.Password" />
+                <ValidationMessage For="@(() => _model!.Password)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="confirmPassword" class="form-label fw-bold">Confirm Password</label>
+                <InputText id="confirmPassword" type="password" class="form-control"
+                           @bind-Value="_model!.ConfirmPassword" />
+                @if ( _passwordMismatch ) {
+                    <div class="text-danger mt-1">Passwords do not match.</div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label for="expiration" class="form-label fw-bold">Expiration</label>
+                <InputSelect id="expiration" class="form-select" @bind-Value="_model!.ExpirationHours">
+                    <option value="1">1 hour</option>
+                    <option value="24">24 hours</option>
+                    <option value="168">7 days</option>
+                    <option value="0">Never</option>
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label for="tags" class="form-label fw-bold">Tags (optional)</label>
+                <InputText id="tags" class="form-control" @bind-Value="_model!.Tags"
+                           placeholder="e.g. windows, production" />
+                <div class="form-text">Comma-separated tags to assign to the agent upon registration.</div>
+            </div>
+
+            <div class="mb-3">
+                <span class="fw-bold d-block mb-1">Server URL</span>
+                <span class="font-monospace text-muted">@_serverUrl</span>
+                <div class="form-text">The Server's gRPC endpoint URL embedded in the bundle.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@_isGenerating">
+                @if ( _isGenerating ) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <span>Generating...</span>
+                } else {
+                    <span>Generate Bundle</span>
+                }
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@if ( !string.IsNullOrEmpty( _errorMessage ) ) {
+    <div class="alert alert-danger" style="max-width: 640px;">@_errorMessage</div>
+}
+
+@if ( !string.IsNullOrEmpty( _generatedBundle ) ) {
+    <div class="card border-success" style="max-width: 640px;">
+        <div class="card-header bg-success text-white">
+            <strong>Registration Bundle Generated</strong>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Encrypted Bundle</label>
+                <textarea class="form-control font-monospace" rows="6" readonly>@_generatedBundle</textarea>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="CopyToClipboard">
+                Copy to Clipboard
+            </button>
+            @if ( _copied ) {
+                <span class="text-success ms-2">Copied!</span>
+            }
+            <hr />
+            <p class="mb-0 text-muted">
+                Copy this bundle and paste it into your Agent's registration page at
+                <code>http://localhost:&lt;port&gt;/register</code>.
+                @if ( _model!.ExpirationHours > 0 ) {
+                    <span>The bundle expires in <strong>@FormatExpiration( _model!.ExpirationHours )</strong>.</span>
+                } else {
+                    <span>This bundle <strong>does not expire</strong>.</span>
+                }
+            </p>
+        </div>
+    </div>
+}
+
+<div class="mt-3">
+    <a href="/agents" class="btn btn-outline-secondary">Back to Agents</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private RegisterFormModel? _model { get; set; }
+
+    private string _serverUrl = string.Empty;
+    private string? _generatedBundle;
+    private string? _errorMessage;
+    private bool _isGenerating;
+    private bool _passwordMismatch;
+    private bool _copied;
+
+    /// <inheritdoc />
+    protected override void OnInitialized( ) {
+        _model ??= new( ) { ExpirationHours = 24 };
+        _serverUrl = Configuration.GetValue<string>( "Werkr:ServerUrl" ) ?? "https://localhost:7001";
+    }
+
+    private async Task HandleGenerate( ) {
+        _errorMessage = null;
+        _generatedBundle = null;
+        _copied = false;
+
+        // Validate password match
+        if ( _model!.Password != _model.ConfirmPassword ) {
+            _passwordMismatch = true;
+            return;
+        }
+        _passwordMismatch = false;
+
+        _isGenerating = true;
+        try {
+            int? expirationMinutes = _model.ExpirationHours > 0
+                ? _model.ExpirationHours * 60
+                : 0;
+
+            string[]? tags = string.IsNullOrWhiteSpace( _model.Tags )
+                ? null
+                : _model.Tags.Split( ',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries );
+
+            RegistrationGenerateRequest request = new(
+                ConnectionName: _model.ConnectionName,
+                Password: _model.Password,
+                ExpirationMinutes: expirationMinutes,
+                Tags: tags );
+
+            HttpResponseMessage response = await Api.PostAsJsonAsync(
+                "/api/v1/registration/generate",
+                request );
+
+            if ( response.IsSuccessStatusCode ) {
+                RegistrationGenerateResponse? result =
+                    await response.Content.ReadFromJsonAsync<RegistrationGenerateResponse>( );
+                if ( result is not null && result.Success ) {
+                    _generatedBundle = result.EncryptedBundle;
+                } else {
+                    _errorMessage = result?.Message ?? "Unknown error generating bundle.";
+                }
+            } else {
+                _errorMessage = $"API returned {(int) response.StatusCode}: {await response.Content.ReadAsStringAsync( )}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to contact the API service: {ex.Message}";
+        } finally {
+            _isGenerating = false;
+        }
+    }
+
+    private async Task CopyToClipboard( ) {
+        // Intentionally left empty — JS interop for clipboard is optional
+        // The textarea is selectable for manual copy
+        _copied = true;
+        await Task.CompletedTask;
+    }
+
+    private static string FormatExpiration( int hours ) {
+        return hours switch {
+            1 => "1 hour",
+            24 => "24 hours",
+            168 => "7 days",
+            _ => $"{hours} hours"
+        };
+    }
+
+    private sealed class RegisterFormModel {
+        [System.ComponentModel.DataAnnotations.Required( ErrorMessage = "Connection name is required." )]
+        public string ConnectionName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required( ErrorMessage = "Password is required." )]
+        public string Password { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required( ErrorMessage = "Please confirm the password." )]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        public int ExpirationHours { get; set; } = 24;
+
+        public string Tags { get; set; } = string.Empty;
+    }
+
+}

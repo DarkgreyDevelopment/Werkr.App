@@ -1,0 +1,167 @@
+@page "/workflows/{WorkflowId:long}/versions/diff"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Workflow Version Diff</PageTitle>
+
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Computing diff..." />
+} else if ( _diff is not null ) {
+    <h1>Version Comparison</h1>
+    <h5 class="text-muted mb-4">
+        <span class="badge bg-secondary">v@(_diff.FromVersionNumber)</span>
+        <i class="bi bi-arrow-right mx-2"></i>
+        <span class="badge bg-primary">v@(_diff.ToVersionNumber)</span>
+    </h5>
+
+    @if ( _diff.Changes.Count == 0 ) {
+        <div class="alert alert-info">
+            No differences found between these two versions.
+        </div>
+    } else {
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <button class="btn btn-outline-secondary btn-sm" disabled="@( _currentChangeIndex <= 0 )"
+                    @onclick="( ) => _currentChangeIndex--">
+                &laquo; Previous
+            </button>
+            <span class="text-muted small">Change @( _currentChangeIndex + 1 ) of @_diff.Changes.Count</span>
+            <button class="btn btn-outline-secondary btn-sm" disabled="@( _currentChangeIndex >= _diff.Changes.Count - 1 )"
+                    @onclick="( ) => _currentChangeIndex++">
+                Next &raquo;
+            </button>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Property</th>
+                                <th>Change</th>
+                                <th>Old Value</th>
+                                <th>New Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int wfIdx = 0; }
+                            @foreach ( WorkflowVersionDiffEntry change in _diff.Changes ) {
+                                int idx = wfIdx++;
+                                <tr class="@GetRowClass( change.ChangeType ) @( idx == _currentChangeIndex ? "border border-2 border-primary" : "" )">
+                                    <td class="fw-bold">@change.PropertyPath</td>
+                                    <td>
+                                        <span class="badge @GetBadgeClass( change.ChangeType )">
+                                            @change.ChangeType
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if ( change.OldValue is not null ) {
+                                            @if ( IsLongValue( change.OldValue ) ) {
+                                                <details>
+                                                    <summary class="text-truncate" style="max-width: 300px;">@change.OldValue[..Math.Min( 80, change.OldValue.Length )]...</summary>
+                                                    <pre class="mt-1 bg-light p-2 rounded small" style="max-height: 200px; overflow: auto;">@change.OldValue</pre>
+                                                </details>
+                                            } else {
+                                                <code class="text-break">@change.OldValue</code>
+                                            }
+                                        } else {
+                                            <span class="text-muted">&#x2014;</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if ( change.NewValue is not null ) {
+                                            @if ( IsLongValue( change.NewValue ) ) {
+                                                <details>
+                                                    <summary class="text-truncate" style="max-width: 300px;">@change.NewValue[..Math.Min( 80, change.NewValue.Length )]...</summary>
+                                                    <pre class="mt-1 bg-light p-2 rounded small" style="max-height: 200px; overflow: auto;">@change.NewValue</pre>
+                                                </details>
+                                            } else {
+                                                <code class="text-break">@change.NewValue</code>
+                                            }
+                                        } else {
+                                            <span class="text-muted">&#x2014;</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex gap-2">
+        <a href="/workflows/@WorkflowId/dag-editor" class="btn btn-outline-secondary">Back to Workflow</a>
+    </div>
+}
+
+@code {
+    [Parameter] public long WorkflowId { get; set; }
+    [SupplyParameterFromQuery] public long From { get; set; }
+    [SupplyParameterFromQuery] public long To { get; set; }
+
+    private WorkflowVersionDiffResponse? _diff;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private int _currentChangeIndex;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Workflows", "/workflows" ),
+        new( "Diff" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        _isLoading = true;
+        try {
+            if ( From == 0 || To == 0 ) {
+                _errorMessage = "Both 'from' and 'to' version IDs are required.";
+                return;
+            }
+
+            _diff = await Api.GetAsync<WorkflowVersionDiffResponse>(
+                $"/api/v1/workflows/{WorkflowId}/versions/diff?from={From}&to={To}" );
+
+            if ( _diff is null ) {
+                _errorMessage = "Could not load diff. One or both versions may not exist.";
+                return;
+            }
+
+            _breadcrumbs = [
+                new( "Workflows", "/workflows" ),
+                new( "Workflow", $"/workflows/{WorkflowId}/dag-editor" ),
+                new( $"Diff v{_diff.FromVersionNumber} -> v{_diff.ToVersionNumber}" )
+            ];
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load diff: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private static string GetRowClass( DiffChangeType changeType ) =>
+        changeType switch {
+            DiffChangeType.Added => "table-success",
+            DiffChangeType.Removed => "table-danger",
+            DiffChangeType.Modified => "table-warning",
+            _ => "",
+        };
+
+    private static string GetBadgeClass( DiffChangeType changeType ) =>
+        changeType switch {
+            DiffChangeType.Added => "bg-success",
+            DiffChangeType.Removed => "bg-danger",
+            DiffChangeType.Modified => "bg-warning text-dark",
+            _ => "bg-secondary",
+        };
+
+    private static bool IsLongValue( string value ) => value.Length > 100;
+}

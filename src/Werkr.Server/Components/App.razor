@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="@Assets["lib/bootstrap-icons/bootstrap-icons.min.css"]" />
+    <link rel="stylesheet" href="@Assets["css/theme.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["Werkr.Server.styles.css"]" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+</head>
+
+<body>
+    <script>
+        // Apply theme class before first paint to prevent FOUC
+        (function () {
+            var t = localStorage.getItem('theme');
+            var d = !t || t === 'dark-theme';
+            document.body.classList.add(d ? 'dark-theme' : 'light-theme');
+        })();
+    </script>
+    <div id="werkr-circuit-error" style="display:none">
+        <div class="alert alert-warning alert-dismissible d-flex align-items-start m-3 shadow-sm" role="alert">
+            <span class="me-2 mt-1" aria-hidden="true">&#9888;</span>
+            <div>
+                <strong>Interactive features unavailable</strong>
+                <p class="mb-0 mt-1" id="werkr-circuit-error-detail">
+                    The browser could not establish a live connection to the server.
+                    Buttons and form inputs will not respond until this is resolved.
+                </p>
+            </div>
+            <button type="button" class="btn-close" onclick="this.parentElement.parentElement.style.display='none'" aria-label="Close"></button>
+        </div>
+    </div>
+    <Routes />
+    <script src="_framework/blazor.web.js" autostart="false"></script>
+    <script>
+        (function () {
+            const errorBanner = document.getElementById('werkr-circuit-error');
+            const errorDetail = document.getElementById('werkr-circuit-error-detail');
+
+            function sanitize(msg) {
+                if (!msg || typeof msg !== 'string') return null;
+                // Strip stack traces (lines starting with "   at ") and internal paths
+                const cleaned = msg.split('\n')
+                    .filter(l => !l.trim().startsWith('at ') && !l.includes('\\') && !l.includes('/usr/'))
+                    .join(' ')
+                    .trim();
+                // Cap length to avoid leaking huge internal details
+                return cleaned.length > 300 ? cleaned.substring(0, 300) + '…' : cleaned;
+            }
+
+            function showError(detail) {
+                const sanitized = sanitize(detail);
+                if (sanitized) {
+                    errorDetail.textContent = sanitized;
+                }
+                errorBanner.style.display = 'block';
+            }
+
+            if (typeof Blazor === 'undefined') {
+                showError('The Blazor framework failed to load. Interactive features are unavailable.');
+                return;
+            }
+
+            Blazor.start({
+                circuit: {
+                    configureSignalR: function (builder) {
+                        builder.withServerTimeout(60000);
+                        builder.withKeepAliveInterval(15000);
+                    },
+                    reconnectionHandler: {
+                        onConnectionDown: function (options, error) {
+                            showError(error ? error.message || String(error)
+                                : 'Connection to the server was lost. Interactive features are unavailable until reconnected.');
+                        },
+                        onConnectionUp: function () {
+                            errorBanner.style.display = 'none';
+                        }
+                    }
+                }
+            }).catch(function (err) {
+                showError(err ? err.message || String(err)
+                    : 'Failed to start the interactive session. Check your network and TLS configuration.');
+            });
+        })();
+    </script>
+    <script src="js/toggle-theme.js"></script>
+    <script src="js/download.js"></script>
+</body>
+
+</html>

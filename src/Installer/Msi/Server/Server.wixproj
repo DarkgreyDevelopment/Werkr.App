@@ -1,0 +1,64 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+  <PropertyGroup>
+    <BuildVersion>0.0.0.1</BuildVersion>
+    <OutputName>Werkr.$(MSBuildProjectName).$(BuildVersion).$(RuntimeIdentifier)</OutputName>
+    <Deterministic>true</Deterministic>
+    <InstallerPlatform>$(RuntimeIdentifier)</InstallerPlatform>
+    <Platform>$(Platform)</Platform>
+  </PropertyGroup>
+  <!-- Project References -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Werkr.Server\Werkr.Server.csproj" />
+    <ProjectReference Include="..\CustomActions\Werkr.Installer.Msi.CustomActions.csproj" />
+  </ItemGroup>
+  <!-- Package References -->
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" />
+    <PackageReference Include="WixToolset.Util.wixext" />
+  </ItemGroup>
+  <!-- Define Build Properties -->
+  <PropertyGroup Condition=" '$(RuntimeIdentifier)' != '' ">
+    <ServiceDirPath>..\..\..\Werkr.Server\bin\$(Configuration)\net10.0</ServiceDirPath>
+    <HarvestDirPath>..\..\..\Werkr.Server\bin\$(Configuration)\net10.0\$(RuntimeIdentifier)</HarvestDirPath>
+    <CustomActionDirPath>..\CustomActions\bin\$(Configuration)\net481\$(RuntimeIdentifier)</CustomActionDirPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(RuntimeIdentifier)' == '' ">
+    <ServiceDirPath>..\..\..\Werkr.Server\bin\$(Configuration)</ServiceDirPath>
+    <HarvestDirPath>..\..\..\Werkr.Server\bin\$(Configuration)\net10.0</HarvestDirPath>
+    <CustomActionDirPath>..\CustomActions\bin\$(Configuration)\net481</CustomActionDirPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <WWWRoot>..\..\..\Werkr.Server\wwwroot</WWWRoot>
+  </PropertyGroup>
+  <!--
+    Custom Build Actions -
+    These ensure the CustomAction dll is available during build process.
+  -->
+  <Target Name="CopyCustomAction" BeforeTargets="BeforeCompile">
+    <Message Text="Copying CustomAction dll into project directory for msi harvesting." Importance="high" />
+    <Message Text="Werkr.Installer.Msi.CustomActions.CA.dll -&gt; $(MSBuildProjectDirectory)\Werkr.Installer.Msi.CustomActions.CA.dll" Importance="high" />
+    <Copy SourceFiles="$(CustomActionDirPath)\Werkr.Installer.Msi.CustomActions.CA.dll" DestinationFolder="$(MSBuildProjectDirectory)" />
+  </Target>
+  <Target Name="MoveServiceExecutable" BeforeTargets="BeforeCompile" Condition="Exists('$(HarvestDirPath)\Werkr.Server.exe')">
+    <Message Text="Moving Service Executable out of harvest directory." Importance="high" />
+    <Move SourceFiles="$(HarvestDirPath)\Werkr.Server.exe" DestinationFolder="$(ServiceDirPath)\">
+      <Output TaskParameter="DestinationFiles" ItemName="FilesWritten" />
+    </Move>
+    <Message Text="@(FilesWritten)" Importance="high" />
+  </Target>
+  <Target Name="Cleanup" AfterTargets="Build">
+    <Message Text="Cleaning up $(MSBuildProjectDirectory)\Werkr.Installer.Msi.CustomActions.CA.dll" Importance="high" />
+    <Delete Files="$(MSBuildProjectDirectory)\Werkr.Installer.Msi.CustomActions.CA.dll" />
+    <Move SourceFiles="$(ServiceDirPath)\Werkr.Server.exe" DestinationFolder="$(HarvestDirPath)" Condition="Exists('$(ServiceDirPath)\Werkr.Server.exe')">
+      <Output TaskParameter="DestinationFiles" ItemName="FilesWritten" />
+    </Move>
+  </Target>
+  <PropertyGroup>
+    <DefineConstants>Version=$(BuildVersion);ServiceDirPath=$(ServiceDirPath)</DefineConstants>
+  </PropertyGroup>
+  <!-- Don't warn about custom action differences -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);NU1701;MSB3246;WIX1076;WIX1098</NoWarn>
+  </PropertyGroup>
+  <Target Name="CollectSuggestedVisualStudioComponentIds" />
+</Project>

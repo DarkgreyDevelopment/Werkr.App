@@ -3,6 +3,16 @@
 - name: How-To Articles
   href: articles/HowTo/
   homepage: articles/HowTo/index.md
+- name: Design Specification
+  href: 1.0-Target-Featureset.md
+- name: Architecture
+  href: Architecture.md
+- name: Development
+  href: Development.md
+- name: Testing
+  href: articles/Testing.md
+- name: Security
+  href: articles/SecurityOverview.md
 - name: Api Documentation
   href: api/
   homepage: api/index.md

@@ -1,0 +1,208 @@
+.navbar-toggler {
+    appearance: none;
+    cursor: pointer;
+    width: 3.5rem;
+    height: 2.5rem;
+    color: white;
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
+}
+
+.navbar-toggler:checked {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+.top-row {
+    min-height: 3.5rem;
+    background-color: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.navbar-brand {
+    font-size: 1.1rem;
+}
+
+.nav-item {
+    font-size: 0.9rem;
+    padding-bottom: 0.5rem;
+}
+
+    .nav-item:first-of-type {
+        padding-top: 1rem;
+    }
+
+    .nav-item:last-of-type {
+        padding-bottom: 1rem;
+    }
+
+    .nav-item ::deep a {
+        color: var(--sidebar-text, #d7d7d7);
+        border-radius: 4px;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        line-height: 3rem;
+    }
+
+.nav-item ::deep a.active {
+    background-color: var(--sidebar-active-bg, rgba(255,255,255,0.37));
+    color: white;
+}
+
+.nav-item ::deep a:hover {
+    background-color: var(--sidebar-hover-bg, rgba(255,255,255,0.1));
+    color: white;
+}
+
+.nav-scrollable {
+    display: none;
+}
+
+.navbar-toggler:checked ~ .nav-scrollable {
+    display: block;
+}
+
+@media (min-width: 641px) {
+    .navbar-toggler {
+        display: none;
+    }
+
+    .nav-scrollable {
+        /* Never collapse the sidebar for wide screens */
+        display: block;
+
+        /* Allow sidebar to scroll for tall menus */
+        flex: 1;
+            min-height: 0;
+        overflow-y: auto;
+    }
+}
+
+/* ── Collapsible nav group (details/summary) ── */
+
+.nav-group {
+    padding-top: 0.5rem;
+}
+
+    /* Remove the native disclosure triangle */
+    .nav-group > summary {
+        list-style: none;
+    }
+
+    .nav-group > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .nav-group > summary::marker {
+        display: none;
+        content: "";
+    }
+
+.nav-group-toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    color: var(--sidebar-text, #d7d7d7);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border-radius: 4px;
+    user-select: none;
+}
+
+.nav-group-toggle:hover {
+    background-color: var(--sidebar-hover-bg, rgba(255,255,255,0.1));
+    color: white;
+}
+
+.nav-group-toggle::after {
+    content: "\25B8";
+    /* ▸ right-pointing triangle */
+    margin-left: auto;
+    font-size: 0.75rem;
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+}
+
+.nav-group[open]>.nav-group-toggle::after {
+    transform: rotate(90deg);
+}
+
+.nav-group-items {
+    padding-left: 0.25rem;
+}
+
+/* ── Sidebar footer (theme toggle + version) ── */
+.sidebar-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: auto;
+}
+
+.theme-toggle {
+    font-size: 0.85rem;
+}
+
+.theme-icon {
+    font-size: 1rem;
+    color: var(--sidebar-text, #d7d7d7);
+}
+
+.theme-label {
+    font-size: 0.75rem;
+    color: var(--sidebar-text, #d7d7d7);
+}
+
+.theme-toggle .form-check.form-switch {
+    min-height: unset;
+    padding-left: 2.5em;
+}
+
+.theme-toggle .form-check-input {
+    cursor: pointer;
+}
+
+/* ── Icon-rail (collapsed sidebar) ── */
+.sidebar.collapsed .nav-group-toggle span.nav-group-label,
+.sidebar.collapsed .nav-item ::deep a span.nav-label,
+.sidebar.collapsed .navbar-brand-text,
+.sidebar.collapsed .sidebar-footer .theme-toggle span.theme-label {
+    display: none;
+}
+
+.sidebar.collapsed .nav-item ::deep a,
+.sidebar.collapsed .nav-group-toggle {
+    justify-content: center;
+    padding: 0.5rem;
+}
+
+.sidebar.collapsed .nav-group-items {
+    padding-left: 0;
+}
+
+.sidebar.collapsed .nav-group {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.sidebar.collapsed .nav-item {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.sidebar.collapsed .sidebar-footer {
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-footer .theme-toggle {
+    justify-content: center;
+}

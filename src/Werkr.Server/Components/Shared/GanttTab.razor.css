@@ -1,0 +1,49 @@
+/* Gantt tab — vis-timeline style scoping and status color overrides */
+
+::deep .gantt-container .vis-item.gantt-succeeded {
+    background-color: var(--werkr-status-succeeded);
+    border-color: var(--werkr-status-succeeded);
+    color: #fff;
+}
+
+::deep .gantt-container .vis-item.gantt-failed {
+    background-color: var(--werkr-status-failed);
+    border-color: var(--werkr-status-failed);
+    color: #fff;
+}
+
+::deep .gantt-container .vis-item.gantt-running {
+    background-color: var(--werkr-status-running);
+    border-color: var(--werkr-status-running);
+    color: #212529;
+    animation: gantt-pulse 1.5s ease-in-out infinite;
+}
+
+::deep .gantt-container .vis-item.gantt-skipped {
+    background-color: var(--werkr-status-skipped);
+    border-color: var(--werkr-status-skipped);
+    color: #fff;
+}
+
+::deep .gantt-container .vis-item.gantt-pending {
+    background-color: var(--werkr-status-pending);
+    border-color: var(--werkr-status-pending);
+    color: #fff;
+}
+
+::deep .gantt-container .vis-item.gantt-cancelled {
+    background-color: var(--werkr-status-cancelled);
+    border-color: var(--werkr-status-cancelled);
+    color: #fff;
+}
+
+@keyframes gantt-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Ensure the timeline container respects dark theme backgrounds */
+::deep .gantt-container .vis-timeline {
+    border: 1px solid var(--werkr-grey-300, #dee2e6);
+    border-radius: 0.375rem;
+}

@@ -1,0 +1,292 @@
+@page "/workflows/{WorkflowId:long}/versions/{VersionId:long}"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - Workflow Version</PageTitle>
+
+<Breadcrumb Items="_breadcrumbs" />
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading ) {
+    <LoadingSpinner Message="Loading version..." />
+} else if ( _version is not null && _snapshot is not null ) {
+    <h1>Workflow Version</h1>
+    <h5 class="text-muted mb-4">@_snapshot.Name - Version @_version.VersionNumber</h5>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Version Info</h5>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Version</div>
+                <div class="col-md-9"><span class="badge bg-primary">v@(_version.VersionNumber)</span></div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Created</div>
+                <div class="col-md-9">@_version.CreatedUtc.ToString( "g" )</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Author</div>
+                <div class="col-md-9">@( _version.CreatedByUserId ?? "System" )</div>
+            </div>
+            @if ( !string.IsNullOrWhiteSpace( _version.ChangeDescription ) ) {
+                <div class="row mb-2">
+                    <div class="col-md-3 fw-bold">Change Description</div>
+                    <div class="col-md-9">@_version.ChangeDescription</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Workflow Definition (read-only)</h5>
+
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Name</div>
+                <div class="col-md-9">@_snapshot.Name</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Description</div>
+                <div class="col-md-9">@( string.IsNullOrWhiteSpace( _snapshot.Description ) ? "\u2014" : _snapshot.Description )</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Enabled</div>
+                <div class="col-md-9">
+                    <span class="badge @( _snapshot.Enabled ? "bg-success" : "bg-danger" )">
+                        @( _snapshot.Enabled ? "Yes" : "No" )
+                    </span>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3 fw-bold">Target Tags</div>
+                <div class="col-md-9">
+                    @if ( _snapshot.TargetTags is { Length: > 0 } ) {
+                        @foreach ( string tag in _snapshot.TargetTags ) {
+                            <span class="badge bg-secondary me-1">@tag</span>
+                        }
+                    } else {
+                        <span class="text-muted">None</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if ( _snapshot.Steps is { Length: > 0 } ) {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Steps (@_snapshot.Steps.Length)</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Step ID</th>
+                                <th>Order</th>
+                                <th>Task ID</th>
+                                <th>Control</th>
+                                <th>Composite</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( WorkflowStepSnapshotDto step in _snapshot.Steps ) {
+                                <tr>
+                                    <td>@step.StepId</td>
+                                    <td>@step.Order</td>
+                                    <td>@( step.TaskId?.ToString() ?? "\u2014" )</td>
+                                    <td>@step.ControlStatement</td>
+                                    <td>@( step.IsComposite ? step.CompositeType : "\u2014" )</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if ( _snapshot.Edges is { Length: > 0 } ) {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Edges (@_snapshot.Edges.Length)</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>From Step</th>
+                                <th>To Step</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( WorkflowEdgeSnapshotDto edge in _snapshot.Edges ) {
+                                <tr>
+                                    <td>@edge.DependsOnStepId</td>
+                                    <td>@edge.StepId</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if ( _snapshot.Variables is { Length: > 0 } ) {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Variables (@_snapshot.Variables.Length)</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Default</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( WorkflowVariableSnapshotDto variable in _snapshot.Variables ) {
+                                <tr>
+                                    <td>@variable.Name</td>
+                                    <td>@( variable.DataType ?? "\u2014" )</td>
+                                    <td>@( variable.DefaultValue ?? "\u2014" )</td>
+                                    <td>@( variable.IsRequired ? "Yes" : "No" )</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex gap-2">
+        <a href="/workflows/@WorkflowId/dag-editor" class="btn btn-outline-secondary">Back to Workflow</a>
+        @if ( _version.VersionNumber > 1 && _previousVersionId.HasValue ) {
+            <a href="/workflows/@WorkflowId/versions/diff?from=@_previousVersionId&to=@VersionId"
+               class="btn btn-outline-info">Compare with Previous</a>
+        }
+        <button type="button" class="btn btn-outline-warning" disabled="@_isRollingBack"
+                @onclick="RollbackAsync">
+            @if ( _isRollingBack ) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            Restore this Version
+        </button>
+    </div>
+
+    @if ( !string.IsNullOrWhiteSpace( _rollbackMessage ) ) {
+        <div class="alert alert-success mt-3">@_rollbackMessage</div>
+    }
+}
+
+@code {
+    [Parameter] public long WorkflowId { get; set; }
+    [Parameter] public long VersionId { get; set; }
+
+    private WorkflowVersionDto? _version;
+    private WorkflowDefinitionSnapshotDto? _snapshot;
+    private long? _previousVersionId;
+    private string? _errorMessage;
+    private string? _rollbackMessage;
+    private bool _isLoading;
+    private bool _isRollingBack;
+
+    private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Workflows", "/workflows" ),
+        new( "Version" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        _isLoading = true;
+        try {
+            _version = await Api.GetAsync<WorkflowVersionDto>( $"/api/v1/workflows/{WorkflowId}/versions/{VersionId}" );
+            if ( _version is null ) {
+                _errorMessage = "Version not found.";
+                return;
+            }
+
+            _snapshot = System.Text.Json.JsonSerializer.Deserialize<WorkflowDefinitionSnapshotDto>(
+                _version.Definition,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true } );
+
+            _breadcrumbs = [
+                new( "Workflows", "/workflows" ),
+                new( _snapshot?.Name ?? "Workflow", $"/workflows/{WorkflowId}/dag-editor" ),
+                new( $"Version {_version.VersionNumber}" )
+            ];
+
+            // Find previous version for comparison link
+            if ( _version.VersionNumber > 1 ) {
+                PagedResult<WorkflowVersionDto>? versions = await Api.GetAsync<PagedResult<WorkflowVersionDto>>(
+                    $"/api/v1/workflows/{WorkflowId}/versions?limit=100" );
+                _previousVersionId = versions?.Items
+                    .FirstOrDefault( v => v.VersionNumber == _version.VersionNumber - 1 )?.Id;
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load version: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RollbackAsync( ) {
+        _isRollingBack = true;
+        _rollbackMessage = null;
+        _errorMessage = null;
+        try {
+            HttpResponseMessage response = await Api.PostAsync(
+                $"/api/v1/workflows/{WorkflowId}/versions/{VersionId}/rollback", null );
+
+            if ( response.IsSuccessStatusCode ) {
+                _rollbackMessage = $"Workflow restored to version {_version?.VersionNumber}. A new version has been created.";
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Rollback failed: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Rollback failed: {ex.Message}";
+        } finally {
+            _isRollingBack = false;
+        }
+    }
+
+    private sealed record WorkflowDefinitionSnapshotDto(
+        string Name,
+        string Description,
+        bool Enabled,
+        string[]? TargetTags,
+        string? Annotations,
+        WorkflowStepSnapshotDto[]? Steps,
+        WorkflowEdgeSnapshotDto[]? Edges,
+        WorkflowVariableSnapshotDto[]? Variables
+    );
+
+    private sealed record WorkflowStepSnapshotDto(
+        long StepId,
+        long? TaskId,
+        int Order,
+        string ControlStatement,
+        bool IsComposite,
+        string CompositeType
+    );
+
+    private sealed record WorkflowEdgeSnapshotDto(
+        long StepId,
+        long DependsOnStepId
+    );
+
+    private sealed record WorkflowVariableSnapshotDto(
+        string Name,
+        string? Description,
+        string? DefaultValue,
+        string? DataType,
+        bool IsRequired,
+        bool LogRedaction
+    );
+}

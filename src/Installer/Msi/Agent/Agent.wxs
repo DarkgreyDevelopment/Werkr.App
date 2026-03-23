@@ -1,0 +1,411 @@
+<Wix
+    xmlns="http://wixtoolset.org/schemas/v4/wxs"
+    xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+    xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Werkr Agent"
+          Manufacturer="Darkgrey Development"
+          Version="$(Version)"
+          UpgradeCode="996647aa-2db1-45dc-a709-7e69596bf2ea"
+          Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="Main">
+      <ComponentGroupRef Id="DynamicFiles"/>
+      <ComponentGroupRef Id="WindowsService"/>
+    </Feature>
+
+    <!-- Configure Binary Custom Actions -->
+    <Binary Id="WixWerkr" SourceFile="Werkr.Installer.Msi.CustomActions.CA.dll"/>
+
+    <CustomAction Id="ConvertPropertiesToCompletedAppSettingsJson"
+                  BinaryRef="WixWerkr"
+                  DllEntry="ConvertPropertiesToCompletedAppSettingsJson"
+                  Execute="immediate"
+                  HideTarget="true"/>
+
+    <CustomAction Id="ConfigSaveExec"
+                  BinaryRef="WixWerkr"
+                  DllEntry="ConfigSaveExec"
+                  Execute="deferred"
+                  Impersonate="no"/>
+
+    <!-- Save Msi Options so they're accessible to the ConfigSaveExec customaction. -->
+    <CustomAction Id="CopyInstallerProps"
+                  Property="ConfigSaveExec"
+                  Value="INSTALLDIRECTORY=[INSTALLDIRECTORY];CompletedAppSettingsJson=[CompletedAppSettingsJson];ProductName=[ProductName]"
+                  Execute="immediate"
+                  HideTarget="true"/>
+
+    <!-- Save GUI Selected Options. -->
+    <CustomAction Id="SaveShellWorkingDir"
+                  Property='SHELLWORKINGDIR'
+                  Value='[SHELLWORKINGDIR]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveENABLEPWSH"
+                  Property='ENABLEPWSH'
+                  Value='[ENABLEPWSH]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveENABLESHELL"
+                  Property='ENABLESHELL'
+                  Value='[ENABLESHELL]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveALLOWEDHOSTS"
+                  Property='ALLOWEDHOSTS'
+                  Value='[ALLOWEDHOSTS]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTFILEURL"
+                  Property='HTTPSINLINECERTFILE.URL'
+                  Value='[HTTPSINLINECERTFILE.URL]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTFILEPATH"
+                  Property='HTTPSINLINECERTFILE.CERTPATH'
+                  Value='[HTTPSINLINECERTFILE.CERTPATH]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTFILEPWD"
+                  Property='HTTPSINLINECERTFILE.PASSWORD'
+                  Value='[HTTPSINLINECERTFILE.PASSWORD]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTKEYFILEURL"
+                  Property='HTTPSINLINECERTANDKEYFILE.URL'
+                  Value='[HTTPSINLINECERTANDKEYFILE.URL]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTKEYFILEPATH"
+                  Property='HTTPSINLINECERTANDKEYFILE.CERTPATH'
+                  Value='[HTTPSINLINECERTANDKEYFILE.CERTPATH]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTKEYFILEPWD"
+                  Property='HTTPSINLINECERTANDKEYFILE.PASSWORD'
+                  Value='[HTTPSINLINECERTANDKEYFILE.PASSWORD]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTKEYFILEKEYPATH"
+                  Property='HTTPSINLINECERTANDKEYFILE.KEYPATH'
+                  Value='[HTTPSINLINECERTANDKEYFILE.KEYPATH]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTSTOREURL"
+                  Property='HTTPSINLINECERTSTORE.URL'
+                  Value='[HTTPSINLINECERTSTORE.URL]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTSTORESUBJECT"
+                  Property='HTTPSINLINECERTSTORE.SUBJECT'
+                  Value='[HTTPSINLINECERTSTORE.SUBJECT]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTSTORESTORE"
+                  Property='HTTPSINLINECERTSTORE.STORE'
+                  Value='[HTTPSINLINECERTSTORE.STORE]'
+                  Execute='firstSequence'/>
+
+    <CustomAction Id="SaveCERTSTORELOCATION"
+                  Property='HTTPSINLINECERTSTORE.LOCATION'
+                  Value='[HTTPSINLINECERTSTORE.LOCATION]'
+                  Execute='firstSequence'/>
+
+    <InstallExecuteSequence>
+      <Custom Action="SaveShellWorkingDir"                         Before="AppSearch"/>
+      <Custom Action="SaveENABLEPWSH"                              Before="AppSearch"/>
+      <Custom Action="SaveENABLESHELL"                             Before="AppSearch"/>
+      <Custom Action="SaveALLOWEDHOSTS"                            Before="AppSearch"/>
+      <Custom Action="SaveCERTFILEURL"                             Before="AppSearch"/>
+      <Custom Action="SaveCERTFILEPATH"                            Before="AppSearch"/>
+      <Custom Action="SaveCERTFILEPWD"                             Before="AppSearch"/>
+      <Custom Action="SaveCERTKEYFILEURL"                          Before="AppSearch"/>
+      <Custom Action="SaveCERTKEYFILEPATH"                         Before="AppSearch"/>
+      <Custom Action="SaveCERTKEYFILEPWD"                          Before="AppSearch"/>
+      <Custom Action="SaveCERTKEYFILEKEYPATH"                      Before="AppSearch"/>
+      <Custom Action="SaveCERTSTOREURL"                            Before="AppSearch"/>
+      <Custom Action="SaveCERTSTORESUBJECT"                        Before="AppSearch"/>
+      <Custom Action="SaveCERTSTORESTORE"                          Before="AppSearch"/>
+      <Custom Action="SaveCERTSTORELOCATION"                       Before="AppSearch"/>
+      <Custom Action="ConvertPropertiesToCompletedAppSettingsJson" Before="CopyInstallerProps" Condition="NOT Installed OR REINSTALL"/>
+      <Custom Action="CopyInstallerProps"                          Before="ConfigSaveExec"     Condition="NOT Installed OR REINSTALL"/>
+      <Custom Action="ConfigSaveExec"                              Before="StartServices"      Condition="NOT Installed OR REINSTALL"/>
+    </InstallExecuteSequence>
+
+    <!-- Images -->
+    <Binary Id="bannerbmp" SourceFile="images\WerkrMsiBanner.bmp" />
+    <Binary Id="imagebmp" SourceFile="images\WerkrAgentMsiDialog.bmp" />
+    <Property Id="BannerBitmap" Value="bannerbmp"/>
+    <Property Id="ImageBitmap" Value="imagebmp"/>
+    <WixVariable Id="WixUIDialogBmp" Value="images\WerkrAgentMsiDialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="images\WerkrMsiBanner.bmp" />
+    <Icon Id="icon.ico" SourceFile="..\..\..\..\docs\images\WerkrLogo.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="icon.ico" />
+
+    <UI>
+      <Dialog Id="AgentOptions" Width="370" Height="270" Title="[ProductName] Options">
+        <!-- Define Background image. -->
+        <Control Id="Image" Type="Bitmap" X="0" Y="0" Width="369" Height="234" Text="[ImageBitmap]" TabSkip="no"/>
+
+        <!-- Shell Startup/Working Dir -->
+        <Control Id="TextShellDir"    Type="Text" X="135" Y="0"  Width="228" Height="15" Text="Agent Working Directory:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="ShellWorkingDir" Type="Edit" X="135" Y="20" Width="228" Height="18" Property="SHELLWORKINGDIR" Sunken="true">
+          <Publish Property="SHELLWORKINGDIR" Value="[SHELLWORKINGDIR]"/>
+        </Control>
+
+        <!-- Enable PowerShell -->
+        <Control Id="TextEnablePwsh" Type="Text"             X="135" Y="60" Width="228" Height="15" Text="Enable Agent to use PowerShell?" TabSkip="yes" Transparent="yes"/>
+        <Control Id="EnablePwsh"     Type="RadioButtonGroup" X="135" Y="75" Width="228" Height="20" Property="ENABLEPWSH">
+          <RadioButtonGroup Property="ENABLEPWSH">
+            <RadioButton Text="True"  Value="true"  X="0"  Y="0" Width="50" Height="16"/>
+            <RadioButton Text="False" Value="false" X="51" Y="0" Width="50" Height="16"/>
+          </RadioButtonGroup>
+        </Control>
+
+        <!-- Enable System Shell -->
+        <Control Id="TextEnableSystemShell" Type="Text"             X="135" Y="96"  Width="228" Height="15" Text="Enable Agent to use System Shell (cmd)?" TabSkip="yes" Transparent="yes"/>
+        <Control Id="EnableSystemShell"     Type="RadioButtonGroup" X="135" Y="115" Width="228" Height="20" Property="ENABLESHELL">
+          <RadioButtonGroup Property="ENABLESHELL">
+            <RadioButton Text="True"  Value="true"  X="0"  Y="0" Width="50" Height="16"/>
+            <RadioButton Text="False" Value="false" X="51" Y="0" Width="50" Height="16"/>
+          </RadioButtonGroup>
+        </Control>
+
+        <!-- Allowed Hosts -->
+        <Control Id="TextAllowedHosts" Type="Text" X="135" Y="160" Width="228" Height="15" Text="Allowed Hosts:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="AllowedHosts"     Type="Edit" X="135" Y="180" Width="228" Height="18" Property="ALLOWEDHOSTS" Sunken="true">
+          <Publish Property="ALLOWEDHOSTS" Value="[ALLOWEDHOSTS]"/>
+        </Control>
+
+        <!-- Navigation -->
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="Next">
+          <Publish Property="SHELLWORKINGDIR" Value="[SHELLWORKINGDIR]"/>
+          <Publish Property="ENABLEPWSH"      Value="[ENABLEPWSH]"/>
+          <Publish Property="ENABLESHELL"     Value="[ENABLESHELL]"/>
+          <Publish Property="ALLOWEDHOSTS"    Value="[ALLOWEDHOSTS]"/>
+        </Control>
+        <Control Id="Back"   Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="Back"/>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Text="Cancel" Cancel="yes">
+          <Publish Event="SpawnDialog" Value="CancelDlg"/>
+        </Control>
+      </Dialog>
+
+      <Dialog Id="LogLevelOptions" Width="370" Height="270" Title="[ProductName] Logging Options">
+        <!-- Define Background image. -->
+        <Control Id="Image" Type="Bitmap" X="0" Y="0" Width="369" Height="234" Text="[ImageBitmap]" TabSkip="no"/>
+
+        <!-- LOGLEVEL.DEFAULT -->
+        <Control Id="TextDefaultLogLevel"  Type="Text"     X="135" Y="0"  Width="228" Height="15" Text="Default Application LogLevel:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="DefaultLogLevelCombo" Type="ComboBox" X="135" Y="16" Width="228" Height="17" Property="LOGLEVEL.DEFAULT">
+          <ComboBox Property="LOGLEVEL.DEFAULT">
+            <ListItem Text="Trace"       Value="Trace"/>
+            <ListItem Text="Debug"       Value="Debug"/>
+            <ListItem Text="Information" Value="Information"/>
+            <ListItem Text="Warning"     Value="Warning"/>
+            <ListItem Text="Error"       Value="Error"/>
+            <ListItem Text="Critical"    Value="Critical"/>
+            <ListItem Text="None"        Value="None"/>
+          </ComboBox>
+          <Publish Property="LOGLEVEL.DEFAULT" Value="[LOGLEVEL.DEFAULT]"/>
+        </Control>
+
+        <!-- LOGLEVEL.LIFETIME -->
+        <Control Id="TextHostingLogLevel"  Type="Text"     X="135" Y="60" Width="228" Height="15" Text="Hosting Lifetime LogLevel:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="HostingLogLevelCombo" Type="ComboBox" X="135" Y="75" Width="228" Height="17" Property="LOGLEVEL.LIFETIME">
+          <ComboBox Property="LOGLEVEL.LIFETIME">
+            <ListItem Text="Trace"       Value="Trace"/>
+            <ListItem Text="Debug"       Value="Debug"/>
+            <ListItem Text="Information" Value="Information"/>
+            <ListItem Text="Warning"     Value="Warning"/>
+            <ListItem Text="Error"       Value="Error"/>
+            <ListItem Text="Critical"    Value="Critical"/>
+            <ListItem Text="None"        Value="None"/>
+          </ComboBox>
+          <Publish Property="LOGLEVEL.LIFETIME" Value="[LOGLEVEL.LIFETIME]"/>
+        </Control>
+
+        <!-- LOGLEVEL.ASPNETCORE -->
+        <Control Id="TextAspNetCoreLogLevel"  Type="Text"     X="135" Y="96" Width="228" Height="15" Text="AspNetCore LogLevel:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="AspNetCoreLogLevelCombo" Type="ComboBox" X="135" Y="111" Width="228" Height="17" Property="LOGLEVEL.ASPNETCORE">
+          <ComboBox Property="LOGLEVEL.ASPNETCORE">
+            <ListItem Text="Trace"       Value="Trace"/>
+            <ListItem Text="Debug"       Value="Debug"/>
+            <ListItem Text="Information" Value="Information"/>
+            <ListItem Text="Warning"     Value="Warning"/>
+            <ListItem Text="Error"       Value="Error"/>
+            <ListItem Text="Critical"    Value="Critical"/>
+            <ListItem Text="None"        Value="None"/>
+          </ComboBox>
+          <Publish Property="LOGLEVEL.ASPNETCORE" Value="[LOGLEVEL.ASPNETCORE]"/>
+        </Control>
+
+        <!-- Navigation -->
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="Next">
+          <Publish Property="LOGLEVEL.DEFAULT"    Value="[LOGLEVEL.DEFAULT]"/>
+          <Publish Property="LOGLEVEL.LIFETIME"   Value="[LOGLEVEL.LIFETIME]"/>
+          <Publish Property="LOGLEVEL.ASPNETCORE" Value="[LOGLEVEL.ASPNETCORE]"/>
+        </Control>
+        <Control Id="Back"   Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="Back"/>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Text="Cancel" Cancel="yes">
+          <Publish Event="SpawnDialog" Value="CancelDlg"/>
+        </Control>
+      </Dialog>
+
+      <Dialog Id="CertificateOptions" Width="370" Height="270" Title="[ProductName] Certificate Options">
+        <!-- Define Background image. -->
+        <Control Id="Image" Type="Bitmap" X="0" Y="0" Width="369" Height="234" Text="[ImageBitmap]" TabSkip="no"/>
+
+        <Control Id="TextCertificateType" Type="Text"     X="135" Y="0"  Width="228" Height="15" Text="Kestrel Certificate Config:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertificateType"     Type="ComboBox" X="135" Y="16" Width="228" Height="17" Property="CertificateType">
+          <ComboBox Property="CertificateType">
+            <ListItem Text="File (CERTFILE)"                   Value="CERTFILE"/>
+            <ListItem Text="File and Keyfile (CERTANDKEYFILE)" Value="CERTANDKEYFILE"/>
+            <ListItem Text="Certificate Store (CERTSTORE)"     Value="CERTSTORE"/>
+          </ComboBox>
+          <Publish Property="CertificateType" Value="[CertificateType]"/>
+        </Control>
+
+        <!-- HTTPSINLINECERTFILE -->
+        <Control Id="CertFileUrlText" Type="Text" X="135" Y="45" Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTFILE&quot;" Text="Certificate Url:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertFileUrl"     Type="Edit" X="135" Y="60" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTFILE&quot;" Property="HTTPSINLINECERTFILE.URL" Sunken="true"/>
+
+        <Control Id="CertFilePathText" Type="Text" X="135" Y="90"  Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTFILE&quot;" Text="Certificate Path:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertFilePath"     Type="Edit" X="135" Y="105" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTFILE&quot;" Property="HTTPSINLINECERTFILE.CERTPATH" Sunken="true"/>
+
+        <Control Id="CertFilePwdText" Type="Text" X="135" Y="138" Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTFILE&quot;" Text="Certificate Password:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertFilePwd"     Type="Edit" X="135" Y="153" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTFILE&quot;" Property="HTTPSINLINECERTFILE.PASSWORD" Sunken="true" Password="true"/>
+
+        <!-- HTTPSINLINECERTANDKEYFILE -->
+        <Control Id="CertKeyFileUrlText" Type="Text" X="135" Y="45" Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTANDKEYFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTANDKEYFILE&quot;" Text="Certificate Url:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertKeyFileUrl"     Type="Edit" X="135" Y="60" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTANDKEYFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTANDKEYFILE&quot;" Property="HTTPSINLINECERTANDKEYFILE.URL" Sunken="true"/>
+
+        <Control Id="CertKeyFilePathText" Type="Text" X="135" Y="90"  Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTANDKEYFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTANDKEYFILE&quot;" Text="Certificate Path:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertKeyFilePath"     Type="Edit" X="135" Y="105" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTANDKEYFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTANDKEYFILE&quot;" Property="HTTPSINLINECERTANDKEYFILE.CERTPATH" Sunken="true"/>
+
+        <Control Id="CertKeyFilePwdText" Type="Text" X="135" Y="138" Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTANDKEYFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTANDKEYFILE&quot;" Text="Certificate Password:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertKeyFilePwd"     Type="Edit" X="135" Y="153" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTANDKEYFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTANDKEYFILE&quot;" Property="HTTPSINLINECERTANDKEYFILE.PASSWORD" Sunken="true" Password="true"/>
+
+        <Control Id="CertKeyFileKeyPathText" Type="Text" X="135" Y="184"  Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTANDKEYFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTANDKEYFILE&quot;" Text="KeyFile Path:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertKeyFileKeyPath"     Type="Edit" X="135" Y="199"  Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTANDKEYFILE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTANDKEYFILE&quot;" Property="HTTPSINLINECERTANDKEYFILE.KEYPATH" Sunken="true"/>
+
+        <!-- HTTPSINLINECERTSTORE -->
+        <Control Id="CertStoreUrlText" Type="Text" X="135" Y="45" Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTSTORE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTSTORE&quot;" Text="Certificate Url:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertStoreUrl"     Type="Edit" X="135" Y="60" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTSTORE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTSTORE&quot;" Property="HTTPSINLINECERTSTORE.URL" Sunken="true"/>
+
+        <Control Id="CertStoreSubjectText" Type="Text" X="135" Y="90"  Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTSTORE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTSTORE&quot;" Text="Certificate Subject:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertStoreSubject"     Type="Edit" X="135" Y="105" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTSTORE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTSTORE&quot;" Property="HTTPSINLINECERTSTORE.SUBJECT" Sunken="true"/>
+
+        <Control Id="CertStoreStoreText" Type="Text" X="135" Y="138" Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTSTORE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTSTORE&quot;" Text="Certificate Store:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertStoreStore"     Type="Edit" X="135" Y="153" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTSTORE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTSTORE&quot;" Property="HTTPSINLINECERTSTORE.STORE" Sunken="true"/>
+
+        <Control Id="CertStoreLocationText" Type="Text" X="135" Y="184" Width="228" Height="15" ShowCondition="CertificateType = &quot;CERTSTORE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTSTORE&quot;" Text="Certificate Location:" TabSkip="yes" Transparent="yes"/>
+        <Control Id="CertStoreLocation"     Type="Edit" X="135" Y="199" Width="228" Height="18" ShowCondition="CertificateType = &quot;CERTSTORE&quot;" HideCondition="CertificateType &lt;&gt; &quot;CERTSTORE&quot;" Property="HTTPSINLINECERTSTORE.LOCATION" Sunken="true"/>
+
+        <!-- Navigation -->
+        <Control Id="Next"
+                 Type="PushButton"
+                 X="236"
+                 Y="243"
+                 Width="56"
+                 Height="17"
+                 Default="yes"
+                 Text="Next"
+                 DisableCondition="(CertificateType=&quot;(Select)&quot;)OR(((CertificateType=&quot;CERTFILE&quot;)AND(HTTPSINLINECERTFILE.URL=&quot;&quot;))OR((CertificateType=&quot;CERTANDKEYFILE&quot;)AND(HTTPSINLINECERTANDKEYFILE.URL=&quot;&quot;))OR((CertificateType=&quot;CERTSTORE&quot;)AND(HTTPSINLINECERTSTORE.URL=&quot;&quot;)))"
+                 EnableCondition="(CertificateType&lt;&gt;&quot;(Select)&quot;)AND(((CertificateType=&quot;CERTFILE&quot;)AND(HTTPSINLINECERTFILE.URL&lt;&gt;&quot;&quot;))OR((CertificateType=&quot;CERTANDKEYFILE&quot;)AND(HTTPSINLINECERTANDKEYFILE.URL&lt;&gt;&quot;&quot;))OR((CertificateType=&quot;CERTSTORE&quot;)AND(HTTPSINLINECERTSTORE.URL&lt;&gt;&quot;&quot;)))"
+        >
+          <Publish Property="HTTPSINLINECERTFILE.URL"            Value="[HTTPSINLINECERTFILE.URL]"/>
+          <Publish Property="HTTPSINLINECERTFILE.CERTPATH"       Value="[HTTPSINLINECERTFILE.CERTPATH]"/>
+          <Publish Property="HTTPSINLINECERTFILE.PASSWORD"       Value="[HTTPSINLINECERTFILE.PASSWORD]"/>
+          <Publish Property="HTTPSINLINECERTANDKEYFILE.URL"      Value="[HTTPSINLINECERTANDKEYFILE.URL]"/>
+          <Publish Property="HTTPSINLINECERTANDKEYFILE.CERTPATH" Value="[HTTPSINLINECERTANDKEYFILE.CERTPATH]"/>
+          <Publish Property="HTTPSINLINECERTANDKEYFILE.PASSWORD" Value="[HTTPSINLINECERTANDKEYFILE.PASSWORD]"/>
+          <Publish Property="HTTPSINLINECERTANDKEYFILE.KEYPATH"  Value="[HTTPSINLINECERTANDKEYFILE.KEYPATH]"/>
+          <Publish Property="HTTPSINLINECERTSTORE.URL"           Value="[HTTPSINLINECERTSTORE.URL]"/>
+          <Publish Property="HTTPSINLINECERTSTORE.SUBJECT"       Value="[HTTPSINLINECERTSTORE.SUBJECT]"/>
+          <Publish Property="HTTPSINLINECERTSTORE.STORE"         Value="[HTTPSINLINECERTSTORE.STORE]"/>
+          <Publish Property="HTTPSINLINECERTSTORE.LOCATION"      Value="[HTTPSINLINECERTSTORE.LOCATION]"/>
+        </Control>
+        <Control Id="Back"   Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="Back"/>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Text="Cancel" Cancel="yes">
+          <Publish Event="SpawnDialog" Value="CancelDlg"/>
+        </Control>
+      </Dialog>
+
+      <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLDIRECTORY"/>
+      <Publish Dialog="WelcomeDlg"         Control="Next" Event="NewDialog" Value="AgentOptions" Order="2"/>
+      <Publish Dialog="AgentOptions"       Control="Back" Event="NewDialog" Value="WelcomeDlg"/>
+      <Publish Dialog="AgentOptions"       Control="Next" Event="NewDialog" Value="CertificateOptions"/>
+      <Publish Dialog="CertificateOptions" Control="Back" Event="NewDialog" Value="AgentOptions"/>
+      <Publish Dialog="CertificateOptions" Control="Next" Event="NewDialog" Value="LogLevelOptions"/>
+      <Publish Dialog="LogLevelOptions"    Control="Back" Event="NewDialog" Value="CertificateOptions"/>
+      <Publish Dialog="LogLevelOptions"    Control="Next" Event="NewDialog" Value="InstallDirDlg"/>
+      <Publish Dialog="InstallDirDlg"      Control="Back" Event="NewDialog" Value="LogLevelOptions" Order="2"/>
+    </UI>
+
+    <!-- Add configurable properties -->
+    <Property Id="SHELLWORKINGDIR"                    Secure="yes" Admin="yes" Value="C:\"/>
+    <Property Id="ENABLEPWSH"                         Secure="yes" Admin="yes" Value="true"/>
+    <Property Id="ENABLESHELL"                        Secure="yes" Admin="yes" Value="true"/>
+    <Property Id="ALLOWEDHOSTS"                       Secure="yes" Admin="yes" Value="*"/>
+    <Property Id="ENABLETELEMETRYLOGGING"             Secure="yes" Admin="yes"/>
+    <Property Id="TELEMETRYCOLLECTORADDRESS"          Secure="yes" Admin="yes"/>
+    <Property Id="LOGLEVEL.DEFAULT"                   Secure="yes" Admin="yes" Value="Trace"/>
+    <Property Id="LOGLEVEL.LIFETIME"                  Secure="yes" Admin="yes" Value="Error"/>
+    <Property Id="LOGLEVEL.ASPNETCORE"                Secure="yes" Admin="yes" Value="Error"/>
+    <Property Id="HTTPSINLINECERTFILE.URL"            Secure="yes" Admin="yes"/>
+    <Property Id="HTTPSINLINECERTFILE.CERTPATH"       Secure="yes" Admin="yes"/>
+    <Property Id="HTTPSINLINECERTFILE.PASSWORD"       Secure="yes" Admin="yes" Hidden="true"/>
+    <Property Id="HTTPSINLINECERTANDKEYFILE.URL"      Secure="yes" Admin="yes"/>
+    <Property Id="HTTPSINLINECERTANDKEYFILE.CERTPATH" Secure="yes" Admin="yes"/>
+    <Property Id="HTTPSINLINECERTANDKEYFILE.PASSWORD" Secure="yes" Admin="yes" Hidden="true"/>
+    <Property Id="HTTPSINLINECERTANDKEYFILE.KEYPATH"  Secure="yes" Admin="yes"/>
+    <Property Id="HTTPSINLINECERTSTORE.URL"           Secure="yes" Admin="yes"/>
+    <Property Id="HTTPSINLINECERTSTORE.SUBJECT"       Secure="yes" Admin="yes"/>
+    <Property Id="HTTPSINLINECERTSTORE.STORE"         Secure="yes" Admin="yes"/>
+    <Property Id="HTTPSINLINECERTSTORE.LOCATION"      Secure="yes" Admin="yes"/>
+    <Property Id="CertificateType"                    Secure="no"  Admin="yes" Value="(Select)"/>
+    <Property Id="CompletedAppSettingsJson"           Secure="no"  Admin="yes" Hidden="true"/>
+  </Package>
+
+  <!-- Configure Install Folder -->
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="ManufacturerDir" Name="!(bind.Property.Manufacturer)">
+        <Directory Id="INSTALLDIRECTORY" Name="!(bind.Property.ProductName)">
+          <Directory Id="log" Name="log"/>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+  </Fragment>
+
+  <!-- Dynamic Files (replaces deprecated Heat harvesting) -->
+  <Fragment>
+    <ComponentGroup Id="DynamicFiles" Directory="INSTALLDIRECTORY">
+      <Files Include="$(var.Werkr.Agent.TargetDir)**" />
+    </ComponentGroup>
+  </Fragment>
+
+  <!-- Configure Service Install -->
+  <Fragment>
+    <ComponentGroup Id="WindowsService" Directory="INSTALLDIRECTORY">
+      <Component Id="ServiceComponent">
+        <File Id="Werkr.Agent.exe" Source="$(ServiceDirPath)\Werkr.Agent.exe"/>
+        <ServiceInstall Name="Werkr.Agent" DisplayName="Werkr.Agent" Description="The Werkr task automation agent." Start="auto" Type="ownProcess" ErrorControl="normal" Vital="yes" Account="NT Authority\Local Service">
+          <util:ServiceConfig FirstFailureActionType="restart" SecondFailureActionType="restart" ThirdFailureActionType="restart" ResetPeriodInDays="1" RestartServiceDelayInSeconds="30"/>
+        </ServiceInstall>
+        <ServiceControl Id="StartService" Name="Werkr.Agent" Start="install" Wait="no" />
+        <ServiceControl Id="StopService" Name="Werkr.Agent" Stop="both" Wait="yes" />
+        <ServiceControl Id="RemoveService" Name="Werkr.Agent" Remove="uninstall" Wait="yes" />
+      </Component>
+      <Component Id="LogFolderPermissions" Subdirectory="log" Guid="02ce3198-e323-43be-a399-010f5c54b463">
+        <CreateFolder>
+          <util:PermissionEx User="NT Authority\Local Service" GenericAll="yes"/>
+        </CreateFolder>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+</Wix>

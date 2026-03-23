@@ -1,0 +1,26 @@
+syntax = "proto3";
+option csharp_namespace = "Werkr.Common.Protos";
+package werkr.common.protos;
+
+import "EncryptedEnvelope.proto";
+
+// Agent hosts this service. The sole remaining API→Agent push.
+// All other operations (heartbeat, key rotation, config sync) are now agent-initiated.
+service ConnectionManagement {
+  // Request envelope contains NotifyServerUrlChangedRequest; response contains NotifyServerUrlChangedResponse.
+  rpc NotifyServerUrlChanged (EncryptedEnvelope) returns (EncryptedEnvelope);
+}
+
+// --- NotifyServerUrlChanged ---
+
+message NotifyServerUrlChangedRequest {
+  // The new server URL the agent should use for outbound connections.
+  string new_server_url = 1;
+}
+
+message NotifyServerUrlChangedResponse {
+  // Whether the agent acknowledged and applied the new URL.
+  bool acknowledged = 1;
+  // Optional status message.
+  string message = 2;
+}

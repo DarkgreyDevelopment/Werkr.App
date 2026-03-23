@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Werkr.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Werkr.Tests.Data" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\Werkr.Common\Protos\ConnectionManagement.proto" GrpcServices="Both" Link="Protos\ConnectionManagement.proto" AdditionalImportDirs="..\Werkr.Common\Protos" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Werkr.Data\Werkr.Data.csproj" />
+    <ProjectReference Include="..\Werkr.Common\Werkr.Common.csproj" />
+  </ItemGroup>
+
+</Project>
