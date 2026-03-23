@@ -9,7 +9,7 @@ using namespace System.IO
         executables and optionally creates platform-specific installers:
           - Windows  : MSI (WiX 6 SDK-style)
           - Linux    : .deb package with debconf, systemd service, non-root user
-          - macOS    : .app bundle with launcher script
+          - macOS    : .pkg installer with launchd service
 
         GitVersion is used for semantic versioning.  If dotnet-gitversion is not
         available or the workspace is not a git repo, the script falls back to
@@ -120,6 +120,30 @@ function Assert-TarInstalled {
         throw 'tar is not installed. Install tar or use -SkipTar.'
     }
     Write-Verbose "tar found at $Tar"
+}
+
+function Assert-PkgBuildInstalled {
+<#
+    .SYNOPSIS
+        Assert that pkgbuild and productbuild are available when macOS .pkg
+        installers are requested.
+#>
+    [CmdletBinding()]
+    [OutputType([System.Void])]
+    param (
+        [Parameter(Mandatory)]
+        [bool]$BuildMacOSPackage
+    )
+
+    if (-not $BuildMacOSPackage) { return }
+
+    foreach ($tool in @('pkgbuild', 'productbuild')) {
+        [string]$ToolPath = Get-Command $tool -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+        if ([string]::IsNullOrWhiteSpace($ToolPath)) {
+            throw "$tool is not installed. Install Xcode Command Line Tools: xcode-select --install"
+        }
+        Write-Verbose "$tool found at $ToolPath"
+    }
 }
 
 function Get-GitVersion {
@@ -322,16 +346,17 @@ function Build-Installer {
         }
         'macos' {
             if ($BuildMacOSPackage) {
-                $MacOSPackageParams = @{
+                $PkgInstallerParams = @{
                     ProductType = $ProductType
                     VersionInfo = $VersionInfo
                     EditionName = $EditionName
                     OutputPath  = $OutputPath
                     PublishPath = $PublishPath
+                    Arch        = $Arch
                     Counter     = $Counter
                     Verbose     = $Verbose
                 }
-                $Counter = New-MacPackage @MacOSPackageParams
+                $Counter = New-PkgInstaller @PkgInstallerParams
             }
         }
     }
@@ -415,9 +440,9 @@ function New-MsiInstaller {
 function New-DebPackage {
 <#
     .SYNOPSIS
-        Create a .deb package with debconf, systemd service unit, and non-root
-        service user.  The package installs to /opt/werkr/<product>/ and creates
-        a werkr system user/group.
+        Create a .deb package from static template files in src/Installer/Deb/.
+        Substitutes build-time values (version, architecture) into the control
+        template and stages published binaries.
 #>
     [CmdletBinding()]
     [OutputType([int])]
@@ -447,427 +472,37 @@ function New-DebPackage {
     Write-Host "[$Counter] Building deb: $EditionName"
 
     [string]$ProductLower = $ProductType.ToLower()
-    # For ServerBundle the package name is werkr-server
-    [string]$PackageName = switch ($ProductType) {
-        'ServerBundle' { 'werkr-server' }
-        'Agent'        { 'werkr-agent' }
-        default        { "werkr-$ProductLower" }
-    }
-    [string]$ServiceName = $PackageName
-    [string]$InstallDir = "/opt/werkr/$ProductLower"
-    [string]$ConfigDir = "/etc/werkr"
-
-    # Determine the main binary name
-    [string]$BinaryName = switch ($ProductType) {
-        'ServerBundle' { 'Werkr.Server' }
-        'Agent'        { 'Werkr.Agent' }
-        default        { "Werkr.$ProductType" }
-    }
-
-    # Create staging structure
-    [string]$StagingDir = Join-Path -Path ([Path]::GetTempPath()) -ChildPath "werkr-deb-$EditionName"
-    if (Test-Path $StagingDir) { Remove-Item $StagingDir -Recurse -Force }
-
-    # Directories
-    $null = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir 'DEBIAN')
-    $null = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir "opt/werkr/$ProductLower")
-    $null = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir 'etc/werkr')
-    $null = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir "lib/systemd/system")
-
-    # ---- DEBIAN/control ----
     [string]$DebArch = $RuntimeIdentifier -match 'arm64' ? 'arm64' : 'amd64'
-    [string]$Description = switch ($ProductType) {
-        'ServerBundle' { 'Werkr Server — Blazor UI + REST/gRPC API' }
-        'Agent'        { 'Werkr Agent — background agent with gRPC and PowerShell' }
-        default        { "Werkr $ProductType" }
-    }
-    @"
-Package: $PackageName
-Version: $($VersionInfo.MajorMinorPatch)
-Section: admin
-Priority: optional
-Architecture: $DebArch
-Depends: libicu74 | libicu72 | libicu70, libssl3 | libssl3t64
-Maintainer: Werkr <support@werkr.app>
-Description: $Description
-Homepage: https://werkr.app
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/control') -NoNewline
 
-    # ---- DEBIAN/conffiles ----
-    @"
-/etc/werkr/appsettings.json
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/conffiles') -NoNewline
+    # Resolve the template directory relative to the repo root
+    [string]$RepoRoot = Split-Path -Parent $PSScriptRoot
+    [string]$DebInstallerRoot = Join-Path $RepoRoot 'src/Installer/Deb'
+    [string]$BuildScript = Join-Path $DebInstallerRoot 'build-deb.ps1'
 
-    # ---- DEBIAN/templates (debconf) ----
-    if ($ProductType -ieq 'ServerBundle') {
-        @"
-Template: $PackageName/config-path
-Type: string
-Default: $ConfigDir
-Description: Configuration directory for $PackageName
- The directory where $PackageName stores its configuration files.
- The default is $ConfigDir.
-
-Template: $PackageName/install-components
-Type: select
-Choices: all, server-only, api-only
-Default: all
-Description: Which components to enable
- Select which Werkr components to enable via systemd services.
- Both Server and Api binaries are always installed. This controls
- which systemd services are enabled on install.
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/templates') -NoNewline
-    }
-    else {
-        @"
-Template: $PackageName/config-path
-Type: string
-Default: $ConfigDir
-Description: Configuration directory for $PackageName
- The directory where $PackageName stores its configuration files.
- The default is $ConfigDir.
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/templates') -NoNewline
+    if (-not (Test-Path $BuildScript)) {
+        throw "build-deb.ps1 not found at $BuildScript. Ensure src/Installer/Deb/ is intact."
     }
 
-    # ---- DEBIAN/config (debconf) ----
-    if ($ProductType -ieq 'ServerBundle') {
-        @"
-#!/bin/sh
-set -e
-. /usr/share/debconf/confmodule
-db_input medium $PackageName/config-path || true
-db_input medium $PackageName/install-components || true
-db_go || true
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/config') -NoNewline
+    & $BuildScript `
+        -ProductType $ProductType `
+        -BinaryPath $OutputPath `
+        -Version $VersionInfo.MajorMinorPatch `
+        -Architecture $DebArch `
+        -OutputPath $PublishPath `
+        -EditionName $EditionName
+
+    if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+        throw "build-deb.ps1 failed for $EditionName (exit $LASTEXITCODE)"
     }
-    else {
-        @"
-#!/bin/sh
-set -e
-. /usr/share/debconf/confmodule
-db_input medium $PackageName/config-path || true
-db_go || true
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/config') -NoNewline
-    }
-
-    # ---- DEBIAN/postinst ----
-    if ($ProductType -ieq 'ServerBundle') {
-        @"
-#!/bin/sh
-set -e
-
-# Create werkr system user and group
-if ! getent group werkr >/dev/null 2>&1; then
-    groupadd --system werkr
-fi
-if ! getent passwd werkr >/dev/null 2>&1; then
-    useradd --system --gid werkr --no-create-home --shell /usr/sbin/nologin werkr
-fi
-
-# Ensure directories exist with correct ownership
-mkdir -p $ConfigDir
-mkdir -p /var/lib/werkr
-mkdir -p /var/log/werkr
-chown -R werkr:werkr $InstallDir
-chown -R werkr:werkr $ConfigDir
-chown -R werkr:werkr /var/lib/werkr
-chown -R werkr:werkr /var/log/werkr
-
-# Create default config if it doesn't exist
-if [ ! -f "$ConfigDir/appsettings.json" ]; then
-    echo '{}' > "$ConfigDir/appsettings.json"
-    chown werkr:werkr "$ConfigDir/appsettings.json"
-    chmod 640 "$ConfigDir/appsettings.json"
-fi
-
-# debconf: read config path and install-components
-. /usr/share/debconf/confmodule
-db_get $PackageName/config-path || true
-WERKR_CONFIG_PATH="\$RET"
-db_get $PackageName/install-components || true
-INSTALL_COMPONENTS="\$RET"
-
-# Enable services based on install-components selection
-systemctl daemon-reload
-
-case "\$INSTALL_COMPONENTS" in
-    server-only)
-        mkdir -p /etc/systemd/system/werkr-server.service.d
-        cat > /etc/systemd/system/werkr-server.service.d/override.conf << EOF
-[Service]
-Environment=WERKR_CONFIG_PATH=\$WERKR_CONFIG_PATH
-EOF
-        systemctl enable werkr-server.service || true
-        systemctl restart werkr-server.service || true
-        ;;
-    api-only)
-        mkdir -p /etc/systemd/system/werkr-api.service.d
-        cat > /etc/systemd/system/werkr-api.service.d/override.conf << EOF
-[Service]
-Environment=WERKR_CONFIG_PATH=\$WERKR_CONFIG_PATH
-EOF
-        systemctl enable werkr-api.service || true
-        systemctl restart werkr-api.service || true
-        ;;
-    *)
-        # all — enable both
-        mkdir -p /etc/systemd/system/werkr-server.service.d
-        cat > /etc/systemd/system/werkr-server.service.d/override.conf << EOF
-[Service]
-Environment=WERKR_CONFIG_PATH=\$WERKR_CONFIG_PATH
-EOF
-        mkdir -p /etc/systemd/system/werkr-api.service.d
-        cat > /etc/systemd/system/werkr-api.service.d/override.conf << EOF
-[Service]
-Environment=WERKR_CONFIG_PATH=\$WERKR_CONFIG_PATH
-EOF
-        systemctl enable werkr-server.service || true
-        systemctl restart werkr-server.service || true
-        systemctl enable werkr-api.service || true
-        systemctl restart werkr-api.service || true
-        ;;
-esac
-
-#DEBHELPER#
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/postinst') -NoNewline
-    }
-    else {
-        @"
-#!/bin/sh
-set -e
-
-# Create werkr system user and group
-if ! getent group werkr >/dev/null 2>&1; then
-    groupadd --system werkr
-fi
-if ! getent passwd werkr >/dev/null 2>&1; then
-    useradd --system --gid werkr --no-create-home --shell /usr/sbin/nologin werkr
-fi
-
-# Ensure directories exist with correct ownership
-mkdir -p $ConfigDir
-mkdir -p /var/lib/werkr
-mkdir -p /var/log/werkr
-chown -R werkr:werkr $InstallDir
-chown -R werkr:werkr $ConfigDir
-chown -R werkr:werkr /var/lib/werkr
-chown -R werkr:werkr /var/log/werkr
-
-# Create default config if it doesn't exist
-if [ ! -f "$ConfigDir/appsettings.json" ]; then
-    echo '{}' > "$ConfigDir/appsettings.json"
-    chown werkr:werkr "$ConfigDir/appsettings.json"
-    chmod 640 "$ConfigDir/appsettings.json"
-fi
-
-# debconf: read config path
-. /usr/share/debconf/confmodule
-db_get $PackageName/config-path || true
-WERKR_CONFIG_PATH="\$RET"
-
-# Update systemd environment override
-mkdir -p /etc/systemd/system/$ServiceName.service.d
-cat > /etc/systemd/system/$ServiceName.service.d/override.conf << EOF
-[Service]
-Environment=WERKR_CONFIG_PATH=\$WERKR_CONFIG_PATH
-EOF
-
-# Enable and restart service
-systemctl daemon-reload
-systemctl enable $ServiceName.service || true
-systemctl restart $ServiceName.service || true
-
-#DEBHELPER#
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/postinst') -NoNewline
-    }
-
-    # ---- DEBIAN/prerm ----
-    if ($ProductType -ieq 'ServerBundle') {
-        @"
-#!/bin/sh
-set -e
-systemctl stop werkr-server.service || true
-systemctl stop werkr-api.service || true
-#DEBHELPER#
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/prerm') -NoNewline
-    }
-    else {
-        @"
-#!/bin/sh
-set -e
-systemctl stop $ServiceName.service || true
-#DEBHELPER#
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/prerm') -NoNewline
-    }
-
-    # ---- DEBIAN/postrm ----
-    if ($ProductType -ieq 'ServerBundle') {
-        @"
-#!/bin/sh
-set -e
-
-case "`$1" in
-    purge)
-        # Remove config, data, logs, and system user
-        rm -rf $ConfigDir
-        rm -rf /var/lib/werkr
-        rm -rf /var/log/werkr
-        rm -rf $InstallDir
-        rm -rf /etc/systemd/system/werkr-server.service.d
-        rm -rf /etc/systemd/system/werkr-api.service.d
-        userdel werkr 2>/dev/null || true
-        groupdel werkr 2>/dev/null || true
-        systemctl daemon-reload
-        ;;
-    remove)
-        systemctl daemon-reload
-        ;;
-esac
-
-#DEBHELPER#
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/postrm') -NoNewline
-    }
-    else {
-        @"
-#!/bin/sh
-set -e
-
-case "`$1" in
-    purge)
-        # Remove config, data, logs, and system user
-        rm -rf $ConfigDir
-        rm -rf /var/lib/werkr
-        rm -rf /var/log/werkr
-        rm -rf $InstallDir
-        rm -rf /etc/systemd/system/$ServiceName.service.d
-        userdel werkr 2>/dev/null || true
-        groupdel werkr 2>/dev/null || true
-        systemctl daemon-reload
-        ;;
-    remove)
-        systemctl daemon-reload
-        ;;
-esac
-
-#DEBHELPER#
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/postrm') -NoNewline
-    }
-
-    # ---- systemd service unit(s) ----
-    if ($ProductType -ieq 'ServerBundle') {
-        # Server service
-        @"
-[Unit]
-Description=Werkr Server — Blazor UI
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=notify
-ExecStart=$InstallDir/Werkr.Server
-WorkingDirectory=$InstallDir
-Restart=on-failure
-RestartSec=10
-User=werkr
-Group=werkr
-Environment=DOTNET_ENVIRONMENT=Production
-Environment=WERKR_CONFIG_PATH=$ConfigDir
-Environment=WERKR_DATA_DIR=/var/lib/werkr
-KillSignal=SIGTERM
-TimeoutStopSec=30
-
-[Install]
-WantedBy=multi-user.target
-"@ | Set-Content -Path (Join-Path $StagingDir 'lib/systemd/system/werkr-server.service') -NoNewline
-
-        # Api service
-        @"
-[Unit]
-Description=Werkr API — REST/gRPC API
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=notify
-ExecStart=$InstallDir/Werkr.Api
-WorkingDirectory=$InstallDir
-Restart=on-failure
-RestartSec=10
-User=werkr
-Group=werkr
-Environment=DOTNET_ENVIRONMENT=Production
-Environment=WERKR_CONFIG_PATH=$ConfigDir
-Environment=WERKR_DATA_DIR=/var/lib/werkr
-KillSignal=SIGTERM
-TimeoutStopSec=30
-
-[Install]
-WantedBy=multi-user.target
-"@ | Set-Content -Path (Join-Path $StagingDir 'lib/systemd/system/werkr-api.service') -NoNewline
-    }
-    else {
-        @"
-[Unit]
-Description=$Description
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=notify
-ExecStart=$InstallDir/$BinaryName
-WorkingDirectory=$InstallDir
-Restart=on-failure
-RestartSec=10
-User=werkr
-Group=werkr
-Environment=DOTNET_ENVIRONMENT=Production
-Environment=WERKR_CONFIG_PATH=$ConfigDir
-Environment=WERKR_DATA_DIR=/var/lib/werkr
-KillSignal=SIGTERM
-TimeoutStopSec=30
-
-[Install]
-WantedBy=multi-user.target
-"@ | Set-Content -Path (Join-Path $StagingDir "lib/systemd/system/$ServiceName.service") -NoNewline
-    }
-
-    # ---- DEBIAN/rules ----
-    @"
-#!/usr/bin/make -f
-%:
-`tdh `$@ --with systemd
-override_dh_shlibdeps:
-override_dh_strip:
-"@ | Set-Content -Path (Join-Path $StagingDir 'DEBIAN/rules') -NoNewline
-
-    # Set executable permissions on maintainer scripts
-    if ($IsLinux -or $IsMacOS) {
-        chmod 755 (Join-Path $StagingDir 'DEBIAN/postinst')
-        chmod 755 (Join-Path $StagingDir 'DEBIAN/prerm')
-        chmod 755 (Join-Path $StagingDir 'DEBIAN/postrm')
-        chmod 755 (Join-Path $StagingDir 'DEBIAN/config')
-        chmod 755 (Join-Path $StagingDir 'DEBIAN/rules')
-    }
-
-    # Copy published binaries
-    Copy-Item -Path (Join-Path $OutputPath '*') -Destination (Join-Path $StagingDir "opt/werkr/$ProductLower") -Recurse -Force
-
-    # Build the .deb
-    [string]$DebFile = Join-Path -Path $PublishPath -ChildPath "$EditionName.deb"
-    & dpkg-deb --build --root-owner-group $StagingDir $DebFile
-    if ($LASTEXITCODE -ne 0) { throw "dpkg-deb failed for $EditionName (exit $LASTEXITCODE)" }
-
-    # Cleanup staging
-    Remove-Item -Path $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
 
     return $Counter + 1
 }
 
-function New-MacPackage {
+function New-PkgInstaller {
 <#
     .SYNOPSIS
-        Create a macOS .app bundle.  For ServerBundle, a launcher shell script
-        starts both Server and Api processes.
+        Create a macOS .pkg installer by delegating to
+        src/Installer/Pkg/build-pkg.ps1.
 #>
     [CmdletBinding()]
     [OutputType([int])]
@@ -888,99 +523,33 @@ function New-MacPackage {
         [string]$PublishPath,
 
         [Parameter(Mandatory)]
+        [string]$Arch,
+
+        [Parameter(Mandatory)]
         [int]$Counter
     )
 
-    Write-Host "[$Counter] Building macOS package: $EditionName"
+    Write-Host "[$Counter] Building macOS .pkg: $EditionName"
 
-    [string]$DisplayName = switch ($ProductType) {
-        'ServerBundle' { 'Werkr Server' }
-        'Agent'        { 'Werkr Agent' }
-        default        { "Werkr $ProductType" }
+    # Resolve the build script relative to the repo root
+    [string]$RepoRoot = Split-Path -Parent $PSScriptRoot
+    [string]$PkgInstallerRoot = Join-Path $RepoRoot 'src/Installer/Pkg'
+    [string]$BuildScript = Join-Path $PkgInstallerRoot 'build-pkg.ps1'
+
+    if (-not (Test-Path $BuildScript)) {
+        throw "build-pkg.ps1 not found at $BuildScript. Ensure src/Installer/Pkg/ is intact."
     }
 
-    [string]$BundleIdentifier = switch ($ProductType) {
-        'ServerBundle' { 'app.werkr.server' }
-        'Agent'        { 'app.werkr.agent' }
-        default        { "app.werkr.$($ProductType.ToLower())" }
-    }
+    & $BuildScript `
+        -ProductType $ProductType `
+        -BinaryPath $OutputPath `
+        -Version $VersionInfo.MajorMinorPatch `
+        -Architecture $Arch `
+        -OutputPath $PublishPath `
+        -EditionName $EditionName
 
-    [string]$AppDir = Join-Path -Path $PublishPath -ChildPath "$DisplayName.app"
-    [string]$ContentsDir = Join-Path $AppDir 'Contents'
-    [string]$MacOSDir = Join-Path $ContentsDir 'MacOS'
-    [string]$ResourcesDir = Join-Path $ContentsDir 'Resources'
-
-    # Create dirs
-    $null = New-Item -ItemType Directory -Force -Path $MacOSDir
-    $null = New-Item -ItemType Directory -Force -Path $ResourcesDir
-    $null = New-Item -ItemType Directory -Force -Path (Join-Path $ContentsDir 'en.lproj')
-
-    # Info.plist
-    @"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleName</key>
-    <string>$DisplayName</string>
-    <key>CFBundleDisplayName</key>
-    <string>$DisplayName</string>
-    <key>CFBundleIdentifier</key>
-    <string>$BundleIdentifier</string>
-    <key>CFBundleVersion</key>
-    <string>$($VersionInfo.MajorMinorPatch)</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$($VersionInfo.MajorMinorPatch)</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleExecutable</key>
-    <string>launcher</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>15.0</string>
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026 Werkr. All rights reserved.</string>
-    <key>LSBackgroundOnly</key>
-    <true/>
-</dict>
-</plist>
-"@ | Set-Content -Path (Join-Path $ContentsDir 'Info.plist') -NoNewline
-
-    # Copy published binaries into MacOS/
-    Copy-Item -Path (Join-Path $OutputPath '*') -Destination $MacOSDir -Recurse -Force
-
-    # Create launcher script
-    if ($ProductType -ieq 'ServerBundle') {
-        # ServerBundle launcher starts both Server and Api
-        @"
-#!/bin/bash
-SCRIPT_DIR="`$(cd "`$(dirname "`$0")" && pwd)"
-"`$SCRIPT_DIR/Werkr.Server" &
-SERVER_PID=`$!
-"`$SCRIPT_DIR/Werkr.Api" &
-API_PID=`$!
-
-cleanup() {
-    kill `$SERVER_PID `$API_PID 2>/dev/null
-    wait `$SERVER_PID `$API_PID 2>/dev/null
-}
-trap cleanup EXIT INT TERM
-
-wait `$SERVER_PID `$API_PID
-"@ | Set-Content -Path (Join-Path $MacOSDir 'launcher') -NoNewline
-    }
-    else {
-        # Single product launcher
-        [string]$BinaryName = "Werkr.$ProductType"
-        @"
-#!/bin/bash
-SCRIPT_DIR="`$(cd "`$(dirname "`$0")" && pwd)"
-exec "`$SCRIPT_DIR/$BinaryName"
-"@ | Set-Content -Path (Join-Path $MacOSDir 'launcher') -NoNewline
-    }
-
-    # Make launcher executable
-    if ($IsLinux -or $IsMacOS) {
-        chmod +x (Join-Path $MacOSDir 'launcher')
+    if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+        throw "build-pkg.ps1 failed for $EditionName (exit $LASTEXITCODE)"
     }
 
     return $Counter + 1
@@ -1008,19 +577,6 @@ function Compress-PublishArtifacts {
 
     Write-Host 'Compressing publish artifacts...'
     foreach ($dir in (Get-ChildItem -Path $PublishPath -Directory)) {
-        # Skip .app bundles (they get compressed as a directory)
-        if ($dir.Name -like '*.app') {
-            [hashtable]$ZipParams = @{
-                Path            = $dir.FullName
-                DestinationPath = "$($dir.FullName).zip"
-                Force           = $true
-                Verbose         = $Verbose
-            }
-            Compress-Archive @ZipParams | Out-Null
-            Remove-Item -Path $dir.FullName -Recurse -Force -Verbose:$Verbose
-            continue
-        }
-
         [hashtable]$ZipParams = @{
             Path            = $dir.FullName
             DestinationPath = "$($dir.FullName).zip"
@@ -1057,6 +613,7 @@ try {
     # Assert prerequisites
     Assert-DotnetInstalled -DotNetVersion $DotNetVersion -Verbose:$Verbose
     Assert-DpkgDebInstalled -BuildDebInstallers $BuildDebInstallers -Verbose:$Verbose
+    Assert-PkgBuildInstalled -BuildMacOSPackage $BuildMacOSPackage -Verbose:$Verbose
     Assert-TarInstalled -SkipTar $SkipTar -Verbose:$Verbose
 
     # Obtain version

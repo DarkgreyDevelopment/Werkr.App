@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -12,6 +13,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Supports recursive deletion and forced removal of read-only files.
 /// </summary>
 /// <remarks>Creates a new <see cref="DeleteFileHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class DeleteFileHandler(
     IFilePathResolver resolver,
     ILogger<DeleteFileHandler> logger

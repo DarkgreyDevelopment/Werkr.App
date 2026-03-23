@@ -315,10 +315,10 @@ public class RetryFromFailedServiceTests {
         CancellationToken ct = TestContext.CancellationToken;
         (long workflowId, Guid runId, long stepId) = await SeedFailedRunAsync( ct );
 
-        // Change the execution status to Completed
+        // Change the execution status to Succeeded
         WorkflowStepExecution exec = await _dbContext.WorkflowStepExecutions
             .FirstAsync( e => e.WorkflowRunId == runId && e.StepId == stepId, ct );
-        exec.Status = StepExecutionStatus.Completed;
+        exec.Status = StepExecutionStatus.Succeeded;
         _ = await _dbContext.SaveChangesAsync( ct );
 
         _ = await Assert.ThrowsExactlyAsync<InvalidOperationException>( ( ) =>
@@ -412,9 +412,9 @@ public class RetryFromFailedServiceTests {
         _ = _dbContext.WorkflowRuns.Add( run );
         _ = await _dbContext.SaveChangesAsync( ct );
 
-        // A = Completed (attempt 1), B = Failed (attempt 1), C = Pending (attempt 1)
+        // A = Succeeded (attempt 1), B = Failed (attempt 1), C = Pending (attempt 1)
         _dbContext.WorkflowStepExecutions.AddRange(
-            new WorkflowStepExecution { WorkflowRunId = runId, StepId = stepA.Id, Attempt = 1, Status = StepExecutionStatus.Completed },
+            new WorkflowStepExecution { WorkflowRunId = runId, StepId = stepA.Id, Attempt = 1, Status = StepExecutionStatus.Succeeded },
             new WorkflowStepExecution { WorkflowRunId = runId, StepId = stepB.Id, Attempt = 1, Status = StepExecutionStatus.Failed },
             new WorkflowStepExecution { WorkflowRunId = runId, StepId = stepC.Id, Attempt = 1, Status = StepExecutionStatus.Pending }
         );
@@ -444,7 +444,7 @@ public class RetryFromFailedServiceTests {
             .Where(e => e.WorkflowRunId == runId && e.StepId == stepAId)
             .ToListAsync(ct);
         Assert.HasCount( 1, execA );
-        Assert.AreEqual( StepExecutionStatus.Completed, execA[0].Status );
+        Assert.AreEqual( StepExecutionStatus.Succeeded, execA[0].Status );
 
         // Step B should have attempt 1 (Failed) + attempt 2 (Pending)
         List<WorkflowStepExecution> execB = await _dbContext.WorkflowStepExecutions
@@ -510,6 +510,205 @@ public class RetryFromFailedServiceTests {
         Assert.AreEqual( StepExecutionStatus.Failed, allExecs[1].Status );
         Assert.AreEqual( 3, allExecs[2].Attempt );
         Assert.AreEqual( StepExecutionStatus.Pending, allExecs[2].Status );
+    }
+
+    #endregion
+
+    #region Variable Chaining and Diamond DAG Tests
+
+    /// <summary>
+    /// In a linear A→B→C DAG where B fails, verifies that retrying from B preserves
+    /// the output variable written by A (version 1) and does not duplicate it.
+    /// </summary>
+    [TestMethod]
+    public async Task RetryAsync_LinearDagWithVariableChaining_PreservesUpstreamVariables( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+        (long workflowId, Guid runId, long stepAId, long stepBId, long stepCId) =
+            await SeedDagFailedRunAsync( ct );
+
+        // Simulate step A having written an output variable
+        WorkflowRunVariable outputFromA = new()
+        {
+            WorkflowRunId = runId,
+            VariableName = "StepAOutput",
+            Value = """{"result":"hello"}""",
+            Version = 1,
+            Source = VariableSource.StepOutput,
+            Created = DateTime.UtcNow,
+        };
+        _ = _dbContext.Set<WorkflowRunVariable>( ).Add( outputFromA );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        _ = await _service.RetryAsync( workflowId, runId, stepBId, null, ct );
+
+        // Step A's output variable should be untouched (still version 1, value preserved)
+        List<WorkflowRunVariable> aVars = await _dbContext.Set<WorkflowRunVariable>()
+            .Where(v => v.WorkflowRunId == runId && v.VariableName == "StepAOutput")
+            .ToListAsync(ct);
+
+        Assert.HasCount( 1, aVars );
+        Assert.AreEqual( 1, aVars[0].Version );
+        Assert.AreEqual( """{"result":"hello"}""", aVars[0].Value );
+        Assert.AreEqual( VariableSource.StepOutput, aVars[0].Source );
+    }
+
+    /// <summary>
+    /// Verifies that variable override precedence is correct: a ReExecutionEdit override
+    /// at version 2 takes precedence over the original Default at version 1, and a second
+    /// retry override at version 3 takes precedence over version 2.
+    /// </summary>
+    [TestMethod]
+    public async Task RetryAsync_VariableOverridePrecedence_HigherVersionWins( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+        (long workflowId, Guid runId, long stepId) = await SeedFailedRunAsync( ct );
+
+        // Seed default variable (version 1)
+        WorkflowRunVariable defaultVar = new()
+        {
+            WorkflowRunId = runId,
+            VariableName = "Config",
+            Value = "default-value",
+            Version = 1,
+            Source = VariableSource.Default,
+            Created = DateTime.UtcNow,
+        };
+        _ = _dbContext.Set<WorkflowRunVariable>( ).Add( defaultVar );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        // First retry with override
+        Dictionary<string, string> overrides1 = new() { ["Config"] = "override-v2" };
+        _ = await _service.RetryAsync( workflowId, runId, stepId, overrides1, ct );
+
+        // Simulate second failure
+        _dbContext.ChangeTracker.Clear( );
+        _ = await _dbContext.WorkflowStepExecutions
+            .Where( e => e.WorkflowRunId == runId && e.StepId == stepId && e.Attempt == 2 )
+            .ExecuteUpdateAsync( s => s.SetProperty( e => e.Status, StepExecutionStatus.Failed ), ct );
+        _ = await _dbContext.WorkflowRuns
+            .Where( r => r.Id == runId )
+            .ExecuteUpdateAsync( s => s
+                .SetProperty( r => r.Status, WorkflowRunStatus.Failed )
+                .SetProperty( r => r.EndTime, DateTime.UtcNow ), ct );
+
+        // Second retry with another override
+        Dictionary<string, string> overrides2 = new() { ["Config"] = "override-v3" };
+        _ = await _service.RetryAsync( workflowId, runId, stepId, overrides2, ct );
+
+        _dbContext.ChangeTracker.Clear( );
+
+        List<WorkflowRunVariable> allVersions = await _dbContext.Set<WorkflowRunVariable>()
+            .Where(v => v.WorkflowRunId == runId && v.VariableName == "Config")
+            .OrderBy(v => v.Version)
+            .ToListAsync(ct);
+
+        Assert.HasCount( 3, allVersions );
+        Assert.AreEqual( "default-value", allVersions[0].Value );
+        Assert.AreEqual( VariableSource.Default, allVersions[0].Source );
+        Assert.AreEqual( "override-v2", allVersions[1].Value );
+        Assert.AreEqual( VariableSource.ReExecutionEdit, allVersions[1].Source );
+        Assert.AreEqual( "override-v3", allVersions[2].Value );
+        Assert.AreEqual( VariableSource.ReExecutionEdit, allVersions[2].Source );
+    }
+
+    /// <summary>
+    /// Seeds a diamond DAG:
+    ///       A
+    ///      / \
+    ///     B   C
+    ///      \ /
+    ///       D
+    /// Where C is Failed. Retrying from C should reset C and D but NOT A or B.
+    /// </summary>
+    [TestMethod]
+    public async Task RetryAsync_DiamondDagPartialRetry_ResetsOnlyTargetAndDownstream( ) {
+        CancellationToken ct = TestContext.CancellationToken;
+
+        Workflow workflow = new() { Name = "Diamond DAG", Description = "A→{B,C}→D" };
+        _ = _dbContext.Set<Workflow>( ).Add( workflow );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        WerkrTask taskA = new() { Name = "A", WorkflowId = workflow.Id, ActionType = TaskActionType.PowerShellCommand, Content = "echo A", TargetTags = ["default"] };
+        WerkrTask taskB = new() { Name = "B", WorkflowId = workflow.Id, ActionType = TaskActionType.PowerShellCommand, Content = "echo B", TargetTags = ["default"] };
+        WerkrTask taskC = new() { Name = "C", WorkflowId = workflow.Id, ActionType = TaskActionType.PowerShellCommand, Content = "echo C", TargetTags = ["default"] };
+        WerkrTask taskD = new() { Name = "D", WorkflowId = workflow.Id, ActionType = TaskActionType.PowerShellCommand, Content = "echo D", TargetTags = ["default"] };
+        _dbContext.Set<WerkrTask>( ).AddRange( taskA, taskB, taskC, taskD );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        WorkflowStep stepA = new() { WorkflowId = workflow.Id, TaskId = taskA.Id, Order = 1 };
+        WorkflowStep stepB = new() { WorkflowId = workflow.Id, TaskId = taskB.Id, Order = 2 };
+        WorkflowStep stepC = new() { WorkflowId = workflow.Id, TaskId = taskC.Id, Order = 3 };
+        WorkflowStep stepD = new() { WorkflowId = workflow.Id, TaskId = taskD.Id, Order = 4 };
+        _dbContext.WorkflowSteps.AddRange( stepA, stepB, stepC, stepD );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        // Dependencies: B→A, C→A, D→B, D→C (diamond)
+        _dbContext.WorkflowStepDependencies.AddRange(
+            new WorkflowStepDependency { StepId = stepB.Id, DependsOnStepId = stepA.Id },
+            new WorkflowStepDependency { StepId = stepC.Id, DependsOnStepId = stepA.Id },
+            new WorkflowStepDependency { StepId = stepD.Id, DependsOnStepId = stepB.Id },
+            new WorkflowStepDependency { StepId = stepD.Id, DependsOnStepId = stepC.Id }
+        );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        Guid runId = Guid.NewGuid();
+        WorkflowRun run = new()
+        {
+            Id = runId,
+            WorkflowId = workflow.Id,
+            StartTime = DateTime.UtcNow.AddMinutes(-5),
+            EndTime = DateTime.UtcNow.AddMinutes(-1),
+            Status = WorkflowRunStatus.Failed,
+        };
+        _ = _dbContext.WorkflowRuns.Add( run );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        // A = Succeeded, B = Succeeded, C = Failed, D = Pending
+        _dbContext.WorkflowStepExecutions.AddRange(
+            new WorkflowStepExecution { WorkflowRunId = runId, StepId = stepA.Id, Attempt = 1, Status = StepExecutionStatus.Succeeded },
+            new WorkflowStepExecution { WorkflowRunId = runId, StepId = stepB.Id, Attempt = 1, Status = StepExecutionStatus.Succeeded },
+            new WorkflowStepExecution { WorkflowRunId = runId, StepId = stepC.Id, Attempt = 1, Status = StepExecutionStatus.Failed },
+            new WorkflowStepExecution { WorkflowRunId = runId, StepId = stepD.Id, Attempt = 1, Status = StepExecutionStatus.Pending }
+        );
+        _ = await _dbContext.SaveChangesAsync( ct );
+
+        RetryFromFailedService.RetryResult result = await _service.RetryAsync(
+            workflow.Id, runId, stepC.Id, null, ct);
+
+        // C and D should be reset (2 steps: C is the target, D is downstream of C)
+        Assert.AreEqual( 2, result.ResetStepCount );
+
+        // Step A: untouched — 1 execution, Succeeded
+        List<WorkflowStepExecution> execA = await _dbContext.WorkflowStepExecutions
+            .Where(e => e.WorkflowRunId == runId && e.StepId == stepA.Id)
+            .ToListAsync(ct);
+        Assert.HasCount( 1, execA );
+        Assert.AreEqual( StepExecutionStatus.Succeeded, execA[0].Status );
+
+        // Step B: untouched — 1 execution, Succeeded
+        List<WorkflowStepExecution> execB = await _dbContext.WorkflowStepExecutions
+            .Where(e => e.WorkflowRunId == runId && e.StepId == stepB.Id)
+            .ToListAsync(ct);
+        Assert.HasCount( 1, execB );
+        Assert.AreEqual( StepExecutionStatus.Succeeded, execB[0].Status );
+
+        // Step C: attempt 1 (Failed) + attempt 2 (Pending)
+        List<WorkflowStepExecution> execC = await _dbContext.WorkflowStepExecutions
+            .Where(e => e.WorkflowRunId == runId && e.StepId == stepC.Id)
+            .OrderBy(e => e.Attempt)
+            .ToListAsync(ct);
+        Assert.HasCount( 2, execC );
+        Assert.AreEqual( StepExecutionStatus.Failed, execC[0].Status );
+        Assert.AreEqual( StepExecutionStatus.Pending, execC[1].Status );
+        Assert.AreEqual( 2, execC[1].Attempt );
+
+        // Step D: attempt 1 (Pending) + attempt 2 (Pending)
+        List<WorkflowStepExecution> execD = await _dbContext.WorkflowStepExecutions
+            .Where(e => e.WorkflowRunId == runId && e.StepId == stepD.Id)
+            .OrderBy(e => e.Attempt)
+            .ToListAsync(ct);
+        Assert.HasCount( 2, execD );
+        Assert.AreEqual( StepExecutionStatus.Pending, execD[1].Status );
+        Assert.AreEqual( 2, execD[1].Attempt );
     }
 
     #endregion

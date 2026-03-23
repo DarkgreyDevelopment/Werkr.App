@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
@@ -13,6 +14,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Uses <see cref="PathType"/> to discriminate between file, directory, or any.
 /// </summary>
 /// <remarks>Creates a new <see cref="TestExistsHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class TestExistsHandler( IFilePathResolver resolver, ILogger<TestExistsHandler> logger ) : IActionHandler {
 
     /// <summary>

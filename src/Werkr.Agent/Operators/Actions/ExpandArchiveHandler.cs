@@ -2,6 +2,7 @@ using System.Formats.Tar;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
@@ -15,6 +16,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// to a destination directory. Includes zip-slip protection.
 /// </summary>
 /// <remarks>Creates a new <see cref="ExpandArchiveHandler"/>.</remarks>
+[ActionCategory( "Archive" )]
 public sealed partial class ExpandArchiveHandler( IFilePathResolver resolver, ILogger<ExpandArchiveHandler> logger ) : IActionHandler {
 
     /// <summary>

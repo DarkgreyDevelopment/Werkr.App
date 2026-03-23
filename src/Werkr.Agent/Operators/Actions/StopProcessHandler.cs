@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -12,6 +13,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Optionally force-kills the process.
 /// </summary>
 /// <remarks>Creates a new <see cref="StopProcessHandler"/>.</remarks>
+[ActionCategory( "Process" )]
 public sealed partial class StopProcessHandler( ILogger<StopProcessHandler> logger ) : IActionHandler {
 
     /// <summary>

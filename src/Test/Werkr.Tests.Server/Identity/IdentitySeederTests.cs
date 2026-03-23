@@ -4,10 +4,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Werkr.Common.Configuration;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 using Werkr.Data.Identity.Extensions;
 using Werkr.Data.Identity.Roles;
+using Werkr.Data.Identity.Services;
 using Werkr.Server.Identity;
 using Werkr.Server.Services;
 
@@ -57,6 +59,10 @@ public class IdentitySeederTests {
         _ = services.AddSingleton<IConfiguration>(
             new ConfigurationBuilder( ).AddInMemoryCollection( ).Build( )
         );
+
+        // Password history service (used by IdentitySeeder to record initial passwords)
+        _ = services.Configure<PasswordHistoryOptions>( _ => { } );
+        _ = services.AddScoped<PasswordHistoryService>( );
 
         // ServerConfigCache uses WerkrIdentityDbContext for config persistence
         _ = services.AddSingleton<ServerConfigCache>( );
@@ -305,6 +311,8 @@ public class IdentitySeederTests {
             } ).Build( )
         );
 
+        _ = services.Configure<PasswordHistoryOptions>( _ => { } );
+        _ = services.AddScoped<PasswordHistoryService>( );
         _ = services.AddSingleton<ServerConfigCache>( );
 
         ServiceProvider provider = services.BuildServiceProvider();

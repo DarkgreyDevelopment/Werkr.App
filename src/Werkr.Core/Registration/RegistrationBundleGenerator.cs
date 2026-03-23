@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Registration.Models;
 using Werkr.Data.Entities.Registration;
@@ -49,6 +50,11 @@ public static class RegistrationBundleGenerator {
         // Encrypt payload with password
         string encryptedBundle = payload.ToEncryptedString( password );
 
+        // Derive 256-bit AES key from the password using the same SHA-512 truncation
+        // that AesGcmPasswordEncrypt uses. The Agent derives the identical key from the
+        // same password, so both sides share a symmetric key for the registration RPC.
+        byte[] registrationKey = DeriveRegistrationKey( password );
+
         // Create entity
         DateTime expiresAt = expiration switch {
             null => DateTime.UtcNow + TimeSpan.FromHours( 24 ),
@@ -64,8 +70,22 @@ public static class RegistrationBundleGenerator {
             Status = Common.Models.RegistrationStatus.Pending,
             ExpiresAt = expiresAt,
             KeySize = keySize,
+            RegistrationKey = registrationKey,
         };
 
         return (encryptedBundle, entity);
+    }
+
+    /// <summary>
+    /// Derives a 32-byte AES-256 key from a password using SHA-512 truncation.
+    /// Uses the same derivation as <see cref="EncryptionProvider.AesGcmPasswordEncrypt"/>:
+    /// SHA-512 hash of the UTF-8 password bytes, truncated to 32 bytes.
+    /// Both Server and Agent call this with the same password to produce an identical key.
+    /// </summary>
+    /// <param name="password">The bundle password.</param>
+    /// <returns>A 32-byte AES-256 key.</returns>
+    public static byte[] DeriveRegistrationKey( string password ) {
+        byte[] fullHash = SHA512.HashData( System.Text.Encoding.UTF8.GetBytes( password ) );
+        return fullHash[..EncryptionProvider.AesGcmKeySize];
     }
 }

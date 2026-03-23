@@ -52,4 +52,11 @@ public class RegistrationBundle : ConcurrencyBase, IKey<Guid> {
     /// Mirrors the <see cref="RegisteredConnection.AllowedPaths"/> pattern.
     /// </summary>
     public string[] AllowedPaths { get; set; } = [];
+
+    /// <summary>
+    /// AES-256 key derived from the bundle password at creation time.
+    /// Used as the EncryptedEnvelope symmetric key during the registration RPC.
+    /// Cleared after successful registration.
+    /// </summary>
+    public byte[]? RegistrationKey { get; set; }
 }

@@ -1,3 +1,4 @@
+import "../polyfills";
 import type { Graph } from "@antv/x6";
 import type { DotNetObjectReference } from "../types/dotnet-interop";
 import type { DagNodeDto, DagEdgeDto, LayoutConfig } from "./dag-types";

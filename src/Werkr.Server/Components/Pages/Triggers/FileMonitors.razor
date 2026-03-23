@@ -1,0 +1,140 @@
+@page "/triggers/file-monitors"
+@rendermode InteractiveServer
+@attribute [Authorize( Roles = "Admin,Operator" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject NavigationManager Navigation
+
+<PageTitle>Werkr - File Monitor Triggers</PageTitle>
+
+<h1>File Monitor Triggers</h1>
+<Breadcrumb Items="_breadcrumbs" />
+
+<p>Manage file system triggers that watch directories and start workflow runs on file events.</p>
+
+<div class="mb-3">
+    <a href="/triggers/file-monitors/new" class="btn btn-primary">
+        <span class="bi bi-plus-circle me-1" aria-hidden="true"></span> New Trigger
+    </a>
+    <button class="btn btn-outline-secondary ms-2" @onclick="LoadAsync" disabled="@_isLoading">
+        @if ( _isLoading ) {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        Refresh
+    </button>
+</div>
+
+@if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
+    <StatusBanner Visible="true" Level="danger" Title="Error" Message="@_errorMessage" />
+}
+
+@if ( _isLoading && _triggers is null ) {
+    <LoadingSpinner Message="Loading triggers..." />
+} else if ( _triggers is not null && _triggers.Count > 0 ) {
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Workflow</th>
+                    <th>Watch Directory</th>
+                    <th>Pattern</th>
+                    <th>Events</th>
+                    <th>Debounce</th>
+                    <th>Enabled</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ( FileMonitorTriggerDto trigger in _triggers ) {
+                    <tr>
+                        <td>@trigger.Id</td>
+                        <td>@trigger.WorkflowName</td>
+                        <td><code>@trigger.WatchDirectory</code></td>
+                        <td><code>@trigger.FilePattern</code></td>
+                        <td>@trigger.EventTypes</td>
+                        <td>@trigger.DebounceMs ms</td>
+                        <td>
+                            @if ( trigger.Enabled ) {
+                                <span class="badge bg-success">Enabled</span>
+                            } else {
+                                <span class="badge bg-secondary">Disabled</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm me-1" href="/triggers/file-monitors/@trigger.Id">Edit</a>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => PromptDelete( trigger )">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+} else if ( !_isLoading ) {
+    <EmptyState Message="No file monitor triggers configured yet. Click 'New Trigger' to create one." />
+}
+
+<ConfirmDialog @ref="_confirmDialog"
+               Title="Delete Trigger"
+               Message="@_deleteMessage"
+               ConfirmButtonText="Delete"
+               OnConfirmed="DeleteConfirmedAsync" />
+
+@code {
+    private List<FileMonitorTriggerDto>? _triggers;
+    private string? _errorMessage;
+    private bool _isLoading;
+    private ConfirmDialog _confirmDialog = default!;
+    private long _pendingDeleteId;
+    private string _deleteMessage = "";
+
+    private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
+        new( "Task List", "/" ),
+        new( "File Monitor Triggers" )
+    ];
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadAsync( );
+    }
+
+    private async Task LoadAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        try {
+            _triggers = await Api.GetAsync<List<FileMonitorTriggerDto>>( "/api/v1/triggers/file-monitor" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load triggers: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void PromptDelete( FileMonitorTriggerDto trigger ) {
+        _pendingDeleteId = trigger.Id;
+        _deleteMessage = $"Are you sure you want to delete the file monitor trigger for '{trigger.WorkflowName}' watching '{trigger.WatchDirectory}'?";
+        _confirmDialog.Show( );
+    }
+
+    private async Task DeleteConfirmedAsync( ) {
+        try {
+            HttpResponseMessage response = await Api.DeleteAsync( $"/api/v1/triggers/file-monitor/{_pendingDeleteId}" );
+            if ( response.IsSuccessStatusCode ) {
+                await LoadAsync( );
+            } else {
+                _errorMessage = $"Failed to delete trigger: HTTP {(int) response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to delete trigger: {ex.Message}";
+        }
+    }
+
+    private sealed record FileMonitorTriggerDto(
+        long Id,
+        long WorkflowId,
+        string WorkflowName,
+        string WatchDirectory,
+        string FilePattern,
+        string EventTypes,
+        int DebounceMs,
+        bool Enabled,
+        string? TargetTags );
+}

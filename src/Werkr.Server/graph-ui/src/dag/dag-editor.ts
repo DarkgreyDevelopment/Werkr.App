@@ -1,3 +1,4 @@
+import "../polyfills";
 import type { Graph, Dnd } from "@antv/x6";
 import type { DotNetObjectReference } from "../types/dotnet-interop";
 import type { DagEdgeDto, EditorDagNodeDto, EditorNodeData, LayoutConfig } from "./dag-types";
@@ -154,6 +155,9 @@ export function loadGraph(
         dependencyMode: dto.dependencyMode,
         conditionExpression: dto.conditionExpression,
         maxIterations: dto.maxIterations,
+        isComposite: dto.isComposite,
+        compositeType: dto.compositeType,
+        childWorkflowId: dto.childWorkflowId,
       } satisfies EditorNodeData as unknown as EditorNodeData,
     } );
 
@@ -171,8 +175,10 @@ export function loadGraph(
     } );
   }
 
-  // Run Dagre layout
+  // Run Dagre layout — invert rankdir to match visual direction convention
   const effectiveConfig = { ...defaultLayoutConfig, ...( layoutConfig ?? {} ) };
+  const dagreDir: "LR" | "TB" = currentDirection === "LR" ? "TB" : "LR";
+  effectiveConfig.rankdir = dagreDir;
   const nodeRanks = applyDagreLayout( graph, effectiveConfig );
   renderParallelLanes( graph, nodeRanks );
   graph.zoomToFit( { padding: 40, maxScale: 1.5 } );
@@ -240,7 +246,11 @@ export function addNode(
   // Select the new node so Delete/Backspace can target it
   graph.select( node );
 
-  changeset.addStep( stepId, data.taskId, data.order, { x, y } );
+  changeset.addStep( stepId, data.taskId, data.order, { x, y }, {
+    isComposite: data.isComposite,
+    compositeType: data.compositeType,
+    childWorkflowId: data.childWorkflowId,
+  } );
   dotNetRef?.invokeMethodAsync( "OnGraphDirtyChangedCallback", changeset.getDirtyCount() );
 
   // Focus the graph container so keyboard shortcuts work
@@ -256,7 +266,14 @@ export function removeNodes( stepIds: number[] ): void {
   }
 }
 
-/** Update node data (e.g. after config panel changes). */
+/** Read current node data by step ID. Returns null if not found. */
+export function getNodeData( stepId: number ): EditorNodeData | null {
+  if ( !graph ) return null;
+  const node = graph.getCellById( `step-${stepId}` );
+  return node ? node.getData<EditorNodeData>() ?? null : null;
+}
+
+/** Update node data (e.g. after config panel changes). Also tracks the change in the changeset. */
 export function updateNodeData( stepId: number, fields: Partial<EditorNodeData> ): void {
   if ( !graph ) return;
   const node = graph.getCellById( `step-${stepId}` );
@@ -264,6 +281,8 @@ export function updateNodeData( stepId: number, fields: Partial<EditorNodeData> 
     const existing = node.getData<EditorNodeData>();
     node.setData( { ...existing, ...fields } );
   }
+  changeset.updateStep( stepId, fields );
+  dotNetRef?.invokeMethodAsync( "OnGraphDirtyChangedCallback", changeset.getDirtyCount() );
 }
 
 /** Undo last graph operation. */
@@ -297,10 +316,20 @@ export function zoomTo( scale: number ): void {
   graph?.zoomTo( scale );
 }
 
-/** Switch layout direction (LR ↔ TB) and re-layout. */
+/**
+ * Switch layout direction (LR ↔ TB) and re-layout.
+ * Port positions follow the user direction (LR → left/right ports, TB → top/bottom ports).
+ * Dagre rankdir is inverted: LR arrangement uses dagre TB (ranks spread horizontally),
+ * TB arrangement uses dagre LR (ranks spread vertically).
+ */
 export function setLayoutDirection( direction: "LR" | "TB" ): void {
   if ( !graph ) return;
   currentDirection = direction;
+
+  // Dagre rankdir is the opposite of the user's visual arrangement:
+  // User "LR" (nodes side by side) = dagre "TB" (flow top→bottom, ranks spread horizontally)
+  // User "TB" (nodes stacked) = dagre "LR" (flow left→right, ranks spread vertically)
+  const dagreDir: "LR" | "TB" = direction === "LR" ? "TB" : "LR";
 
   for ( const node of graph.getNodes() ) {
     const data = node.getData<{ isLane?: boolean }>();
@@ -309,7 +338,7 @@ export function setLayoutDirection( direction: "LR" | "TB" ): void {
     node.prop( "ports/groups/out/position", direction === "LR" ? "right" : "bottom" );
   }
 
-  const nodeRanks = relayout( graph, direction );
+  const nodeRanks = relayout( graph, dagreDir );
   renderParallelLanes( graph, nodeRanks );
   graph.zoomToFit( { padding: 40, maxScale: 1.5 } );
 }
@@ -317,7 +346,8 @@ export function setLayoutDirection( direction: "LR" | "TB" ): void {
 /** Re-run Dagre auto-layout. */
 export function autoLayout(): void {
   if ( !graph ) return;
-  const nodeRanks = relayout( graph, currentDirection );
+  const dagreDir: "LR" | "TB" = currentDirection === "LR" ? "TB" : "LR";
+  const nodeRanks = relayout( graph, dagreDir );
   renderParallelLanes( graph, nodeRanks );
   graph.zoomToFit( { padding: 40, maxScale: 1.5 } );
 }

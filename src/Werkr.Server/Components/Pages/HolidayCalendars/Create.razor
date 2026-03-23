@@ -2,7 +2,7 @@
 @using System.ComponentModel.DataAnnotations
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 @using Werkr.Common.Models.Holidays
 
@@ -62,9 +62,8 @@
         _errorMessage = null;
 
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             HolidayCalendarCreateRequest request = new( _model.Name, _model.Description ?? "" );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/holiday-calendars", request );
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/holiday-calendars", request );
 
             if ( response.IsSuccessStatusCode ) {
                 HolidayCalendarDto? created = await response.Content.ReadFromJsonAsync<HolidayCalendarDto>( );

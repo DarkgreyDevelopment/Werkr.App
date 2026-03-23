@@ -1,6 +1,9 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Werkr.Common.Models;
+using Werkr.Common.Models.Audit;
+using Werkr.Core.Audit;
 using Werkr.Core.Workflows;
 using Werkr.Data;
 using Werkr.Data.Entities.Tasks;
@@ -48,8 +51,17 @@ public class WorkflowServiceTests {
         _dbContext = new SqliteWerkrDbContext( options );
         _ = _dbContext.Database.EnsureCreated( );
 
+        NoopAuditService auditService = new( );
+        WorkflowVersionService versionService = new(
+            _dbContext,
+            auditService,
+            NullLogger<WorkflowVersionService>.Instance
+        );
+
         _service = new WorkflowService(
             _dbContext,
+            versionService,
+            auditService,
             NullLogger<WorkflowService>.Instance
         );
     }
@@ -75,7 +87,7 @@ public class WorkflowServiceTests {
 
         Workflow created = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
 
         Assert.IsGreaterThan(
@@ -97,13 +109,13 @@ public class WorkflowServiceTests {
         Workflow w1 = new( ) { Name = "Dupe", Description = "First" };
         _ = await _service.CreateAsync(
             w1,
-            ct
+            ct: ct
         );
 
         Workflow w2 = new( ) { Name = "Dupe", Description = "Second" };
         _ = await Assert.ThrowsExactlyAsync<InvalidOperationException>( ( ) => _service.CreateAsync(
             w2,
-            ct
+            ct: ct
         ) );
     }
 
@@ -116,7 +128,7 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "Full Load", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
         await SeedTaskAsync( ct );
 
@@ -170,13 +182,13 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "Original", Description = "Desc" };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
 
         Workflow update = new( ) { Id = workflow.Id, Name = "Updated", Description = "New", Enabled = false };
         Workflow updated = await _service.UpdateAsync(
             update,
-            ct
+            ct: ct
         );
 
         Assert.AreEqual(
@@ -196,7 +208,7 @@ public class WorkflowServiceTests {
 
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.UpdateAsync(
             update,
-            ct
+            ct: ct
         ) );
     }
 
@@ -209,12 +221,19 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "ToDelete", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
+        );
+
+        // DeleteAsync requires the workflow to be disabled first
+        Workflow disable = new( ) { Id = workflow.Id, Name = workflow.Name, Description = workflow.Description, Enabled = false };
+        _ = await _service.UpdateAsync(
+            disable,
+            ct: ct
         );
 
         await _service.DeleteAsync(
             workflow.Id,
-            ct
+            ct: ct
         );
 
         Workflow? gone = await _service.GetByIdAsync(
@@ -232,7 +251,7 @@ public class WorkflowServiceTests {
         CancellationToken ct = TestContext.CancellationToken;
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.DeleteAsync(
             999,
-            ct
+            ct: ct
         ) );
     }
 
@@ -246,11 +265,11 @@ public class WorkflowServiceTests {
         Workflow w2 = new( ) { Name = "Beta", Description = string.Empty };
         _ = await _service.CreateAsync(
             w1,
-            ct
+            ct: ct
         );
         _ = await _service.CreateAsync(
             w2,
-            ct
+            ct: ct
         );
 
         IReadOnlyList<Workflow> all = await _service.GetAllAsync( ct );
@@ -272,7 +291,7 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "StepTest", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
         await SeedTaskAsync( ct );
 
@@ -317,7 +336,7 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "RemoveStep", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
         await SeedTaskAsync( ct );
 
@@ -349,7 +368,7 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "UpdateStep", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
         await SeedTaskAsync( ct );
 
@@ -542,7 +561,7 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "EmptyDag", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
 
         IReadOnlyList<WorkflowStep> sorted = await _service.ValidateDagAsync(
@@ -574,7 +593,7 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "Levels", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
         await SeedTaskAsync( ct );
 
@@ -632,7 +651,7 @@ public class WorkflowServiceTests {
     public async Task GetTopologicalLevelsAsync_ThreeIndependentSteps_AllAtLevelZero( ) {
         CancellationToken ct = TestContext.CancellationToken;
         Workflow workflow = new( ) { Name = "ThreeIndependent", Description = string.Empty };
-        _ = await _service.CreateAsync( workflow, ct );
+        _ = await _service.CreateAsync( workflow, ct: ct );
         await SeedTaskAsync( ct );
 
         _ = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 0 }, ct );
@@ -654,7 +673,7 @@ public class WorkflowServiceTests {
     public async Task GetTopologicalLevelsAsync_DiamondDag_GroupsCorrectly( ) {
         CancellationToken ct = TestContext.CancellationToken;
         Workflow workflow = new( ) { Name = "Diamond", Description = string.Empty };
-        _ = await _service.CreateAsync( workflow, ct );
+        _ = await _service.CreateAsync( workflow, ct: ct );
         await SeedTaskAsync( ct );
 
         WorkflowStep a = await _service.AddStepAsync( workflow.Id, new WorkflowStep { TaskId = 1, Order = 0 }, ct );
@@ -685,7 +704,7 @@ public class WorkflowServiceTests {
     public async Task GetTopologicalLevelsAsync_MixedControlStatements_SameLevelGrouped( ) {
         CancellationToken ct = TestContext.CancellationToken;
         Workflow workflow = new( ) { Name = "MixedControl", Description = string.Empty };
-        _ = await _service.CreateAsync( workflow, ct );
+        _ = await _service.CreateAsync( workflow, ct: ct );
         await SeedTaskAsync( ct );
 
         // Root step
@@ -727,7 +746,7 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = "BadIf", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
         await SeedTaskAsync( ct );
 
@@ -762,7 +781,7 @@ public class WorkflowServiceTests {
         Workflow workflow = new( ) { Name = $"W_{Guid.NewGuid( ):N}", Description = string.Empty };
         _ = await _service.CreateAsync(
             workflow,
-            ct
+            ct: ct
         );
         await SeedTaskAsync( ct );
 
@@ -781,5 +800,14 @@ public class WorkflowServiceTests {
             s1,
             s2
         );
+    }
+
+    /// <summary>No-op audit service for unit tests that don't need audit logging.</summary>
+    private sealed class NoopAuditService : IAuditService {
+        public Task LogAsync( AuditEntry entry, CancellationToken ct = default ) => Task.CompletedTask;
+        public Task<PagedResult<AuditEventDto>> QueryAsync( AuditQuery query, CancellationToken ct = default ) =>
+            Task.FromResult( new PagedResult<AuditEventDto>( [], 0, 25, 0 ) );
+        public Task ExportAsync( AuditQuery query, ExportFormat format, Stream outputStream, CancellationToken ct = default, int? maxRows = null ) =>
+            Task.CompletedTask;
     }
 }

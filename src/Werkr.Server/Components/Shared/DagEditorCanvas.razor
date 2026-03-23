@@ -23,6 +23,7 @@
     [Parameter] public EventCallback<(string SourceId, string TargetId)> OnCycleDetected { get; set; }
     [Parameter] public EventCallback<int> OnDirtyCountChanged { get; set; }
     [Parameter] public EventCallback<double> OnZoomChanged { get; set; }
+    [Parameter] public EventCallback OnCanvasReady { get; set; }
 
     private readonly string _containerId = $"dag-edit-{Guid.NewGuid( ):N}";
     private readonly string _minimapId = $"dag-edit-mini-{Guid.NewGuid( ):N}";
@@ -46,6 +47,7 @@
             _interop.OnGraphDirtyChanged += HandleDirtyChangedAsync;
             _interop.OnZoomChanged += HandleZoomChangedAsync;
             await _interop.InitEditorAsync( _containerId, _minimapId, UserId, WorkflowId );
+            await OnCanvasReady.InvokeAsync( );
         } catch (Exception ex) {
             Logger.LogError( ex, "Failed to initialize DAG editor canvas." );
         }

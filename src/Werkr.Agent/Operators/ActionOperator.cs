@@ -39,7 +39,6 @@ public sealed partial class ActionOperator : IActionOperator {
         "CompressArchive",
         "ExpandArchive",
         "WatchFile",
-        "ForEach",
         "TransformJson",
         "HttpRequest",
         "DownloadFile",

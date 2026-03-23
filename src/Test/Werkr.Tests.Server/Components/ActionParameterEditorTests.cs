@@ -263,7 +263,8 @@ public class ActionParameterEditorTests : BunitContext {
     public void Validate_Number_Below_Min_Returns_Error( ) {
         string json = JsonSerializer.Serialize( new {
             host = "localhost",
-            port = 0   // Below Min=1
+            port = 0,          // Below Min=1
+            protocol = "Tcp",  // Required for ShowWhen to activate Port field
         }, s_jsonOptions );
 
         IRenderedComponent<ActionParameterEditor> cut = Render<ActionParameterEditor>( parameters => parameters
@@ -290,7 +291,8 @@ public class ActionParameterEditorTests : BunitContext {
     public void Validate_Number_Above_Max_Returns_Error( ) {
         string json = JsonSerializer.Serialize( new {
             host = "localhost",
-            port = 99999   // Above Max=65535
+            port = 99999,      // Above Max=65535
+            protocol = "Tcp",  // Required for ShowWhen to activate Port field
         }, s_jsonOptions );
 
         IRenderedComponent<ActionParameterEditor> cut = Render<ActionParameterEditor>( parameters => parameters
@@ -493,20 +495,20 @@ public class ActionParameterEditorTests : BunitContext {
     public void Setting_Value_Emits_ActionParametersChanged( ) {
         string? emittedJson = null;
         IRenderedComponent<ActionParameterEditor> cut = Render<ActionParameterEditor>( parameters => parameters
-            .Add( p => p.ActionSubType, "ForEach" )
+            .Add( p => p.ActionSubType, "CreateFile" )
             .Add( p => p.ActionSubTypeChanged, EventCallback.Factory.Create<string>( this, _ => { } ) )
             .Add( p => p.ActionParametersChanged, EventCallback.Factory.Create<string?>( this, v => emittedJson = v ) ) );
 
-        // ForEach has a single required text field: ArrayPropertyName.
+        // CreateFile has a required text field: Path.
         AngleSharp.Dom.IElement input = cut.Find( "input[type='text']" );
-        input.Change( "items" );
+        input.Change( "/tmp/test.txt" );
 
         Assert.IsNotNull( emittedJson, "ActionParametersChanged should have been invoked." );
 
         using JsonDocument doc = JsonDocument.Parse( emittedJson );
         Assert.AreEqual(
-            "items",
-            doc.RootElement.GetProperty( "arrayPropertyName" ).GetString( ),
+            "/tmp/test.txt",
+            doc.RootElement.GetProperty( "path" ).GetString( ),
             "Emitted JSON should contain the typed value." );
     }
 

@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Werkr.Common.Models.Audit;
+using Werkr.Core.Audit;
 using Werkr.Data;
 using Werkr.Data.Entities.Tasks;
 
@@ -12,9 +14,13 @@ namespace Werkr.Core.Tasks;
 /// mediating between the API layer and the underlying <see cref="WerkrDbContext"/>.
 /// </summary>
 /// <param name="dbContext">Database context.</param>
+/// <param name="versionService">Task versioning service.</param>
+/// <param name="auditService">Audit event service.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class TaskService(
     WerkrDbContext dbContext,
+    TaskVersionService versionService,
+    IAuditService auditService,
     ILogger<TaskService> logger
 ) {
 
@@ -22,11 +28,13 @@ public sealed partial class TaskService(
     /// Creates a new task with randomized <see cref="WerkrTask.SyncIntervalMinutes"/>.
     /// </summary>
     /// <param name="task">The task entity to create. <c>Id</c> is generated.</param>
+    /// <param name="userId">The user who created the task, or null for system operations.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The created task with its generated Id.</returns>
     /// <exception cref="ValidationException">Thrown when the task fails validation.</exception>
     public async Task<WerkrTask> CreateAsync(
         WerkrTask task,
+        string? userId = null,
         CancellationToken ct = default
     ) {
         Validate( task );
@@ -48,6 +56,8 @@ public sealed partial class TaskService(
             );
         }
 
+        _ = await versionService.CreateVersionAsync( task, userId, "Initial version", ct );
+
         return task;
     }
 
@@ -61,7 +71,9 @@ public sealed partial class TaskService(
         long? workflowId = null,
         CancellationToken ct = default
     ) {
-        IQueryable<WerkrTask> query = dbContext.Tasks.AsNoTracking( );
+        IQueryable<WerkrTask> query = dbContext.Tasks
+            .AsNoTracking( )
+            .Include( t => t.CurrentVersion );
 
         if (workflowId.HasValue) {
             query = query.Where( t => t.WorkflowId == workflowId.Value );
@@ -80,21 +92,25 @@ public sealed partial class TaskService(
         long id,
         CancellationToken ct = default
     ) =>
-        await dbContext.Tasks.AsNoTracking( ).FirstOrDefaultAsync(
-            t => t.Id == id,
-            ct
-        );
+        await dbContext.Tasks
+            .AsNoTracking( )
+            .Include( t => t.CurrentVersion )
+            .FirstOrDefaultAsync( t => t.Id == id, ct );
 
     /// <summary>
     /// Updates an existing task.
     /// </summary>
     /// <param name="task">The task entity with updated values. <c>Id</c> must match an existing task.</param>
+    /// <param name="userId">The user who updated the task, or null for system operations.</param>
+    /// <param name="changeDescription">Optional human-readable description of the change.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The updated task.</returns>
     /// <exception cref="KeyNotFoundException">Thrown when the task ID does not exist.</exception>
     /// <exception cref="ValidationException">Thrown when the task fails validation.</exception>
     public async Task<WerkrTask> UpdateAsync(
         WerkrTask task,
+        string? userId = null,
+        string? changeDescription = null,
         CancellationToken ct = default
     ) {
         Validate( task );
@@ -128,6 +144,8 @@ public sealed partial class TaskService(
             );
         }
 
+        _ = await versionService.CreateVersionAsync( existing, userId, changeDescription, ct );
+
         return existing;
     }
 
@@ -135,10 +153,12 @@ public sealed partial class TaskService(
     /// Deletes a task by ID.
     /// </summary>
     /// <param name="id">The task identifier.</param>
+    /// <param name="userId">The user who deleted the task, or null for system operations.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Thrown when the task ID does not exist.</exception>
     public async Task DeleteAsync(
         long id,
+        string? userId = null,
         CancellationToken ct = default
     ) {
         WerkrTask? existing = await dbContext.Tasks.FirstOrDefaultAsync(
@@ -147,8 +167,24 @@ public sealed partial class TaskService(
         )
             ?? throw new KeyNotFoundException( $"Task with Id={id} was not found." );
 
+        // Clear circular FK before deletion to avoid cycle between Task ↔ TaskVersion
+        if (existing.CurrentVersionId.HasValue) {
+            existing.CurrentVersionId = null;
+            _ = await dbContext.SaveChangesAsync( ct );
+        }
+
         _ = dbContext.Tasks.Remove( existing );
         _ = await dbContext.SaveChangesAsync( ct );
+
+        await auditService.LogAsync( new AuditEntry(
+            EventTypeId: AuditEventType.TaskDeleted.ToEventId( ),
+            ActorId: userId,
+            ActorType: userId is not null ? "User" : "system",
+            EntityType: "Task",
+            EntityId: id.ToString( ),
+            ActionPerformed: "Deleted",
+            Details: new { TaskName = existing.Name }
+        ), ct );
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
@@ -164,11 +200,13 @@ public sealed partial class TaskService(
     /// </summary>
     /// <param name="id">The task identifier.</param>
     /// <param name="enabled">The new enabled state.</param>
+    /// <param name="userId">The user who toggled the state, or null for system operations.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="KeyNotFoundException">Thrown when the task ID does not exist.</exception>
     public async Task SetEnabledAsync(
         long id,
         bool enabled,
+        string? userId = null,
         CancellationToken ct = default
     ) {
         WerkrTask? existing = await dbContext.Tasks.FirstOrDefaultAsync(
@@ -187,6 +225,19 @@ public sealed partial class TaskService(
                 enabled.ToString( )
             );
         }
+
+        _ = await versionService.CreateVersionAsync(
+            existing, userId, enabled ? "Enabled task" : "Disabled task", ct );
+
+        await auditService.LogAsync( new AuditEntry(
+            EventTypeId: (enabled ? AuditEventType.TaskEnabled : AuditEventType.TaskDisabled).ToEventId( ),
+            ActorId: userId,
+            ActorType: userId is not null ? "User" : "system",
+            EntityType: "Task",
+            EntityId: id.ToString( ),
+            ActionPerformed: enabled ? "Enabled" : "Disabled",
+            Details: new { TaskName = existing.Name }
+        ), ct );
     }
 
     /// <summary>

@@ -59,7 +59,7 @@ public class ActionDispatchIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.Created, response.StatusCode,
             $"Action task creation failed: {await response.Content.ReadAsStringAsync( ct )}" );
 
@@ -97,7 +97,7 @@ public class ActionDispatchIntegrationTests {
             "ActionParameters should be persisted." );
 
         // Read back
-        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+        HttpResponseMessage getResponse = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
         Assert.AreEqual( HttpStatusCode.OK, getResponse.StatusCode );
 
         JsonElement retrieved = await getResponse.Content.ReadFromJsonAsync<JsonElement>( JsonOptions, ct );
@@ -113,7 +113,7 @@ public class ActionDispatchIntegrationTests {
         Assert.IsTrue( parsedParams.RootElement.GetProperty( "overwrite" ).GetBoolean( ) );
 
         // Cleanup
-        _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
     }
 
     /// <summary>
@@ -165,7 +165,7 @@ public class ActionDispatchIntegrationTests {
 
         // Cleanup
         foreach (long id in createdIds) {
-            _ = await Api.DeleteAsync( $"/api/tasks/{id}", ct );
+            _ = await Api.DeleteAsync( $"/api/v1/tasks/{id}", ct );
         }
     }
 
@@ -207,7 +207,7 @@ public class ActionDispatchIntegrationTests {
         };
 
         HttpResponseMessage putResponse = await Api.PutAsJsonAsync(
-            $"/api/tasks/{taskId}", updateRequest, JsonOptions, ct );
+            $"/api/v1/tasks/{taskId}", updateRequest, JsonOptions, ct );
         Assert.AreEqual( HttpStatusCode.OK, putResponse.StatusCode,
             $"Task update failed: {await putResponse.Content.ReadAsStringAsync( ct )}" );
 
@@ -223,7 +223,7 @@ public class ActionDispatchIntegrationTests {
         Assert.IsTrue( parsedParams.RootElement.GetProperty( "append" ).GetBoolean( ) );
 
         // Cleanup
-        _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
     }
 
     /// <summary>
@@ -245,10 +245,10 @@ public class ActionDispatchIntegrationTests {
 
         long taskId = created.GetProperty( "id" ).GetInt64( );
 
-        HttpResponseMessage deleteResponse = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+        HttpResponseMessage deleteResponse = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
         Assert.AreEqual( HttpStatusCode.NoContent, deleteResponse.StatusCode );
 
-        HttpResponseMessage notFoundResponse = await Api.GetAsync( $"/api/tasks/{taskId}", ct );
+        HttpResponseMessage notFoundResponse = await Api.GetAsync( $"/api/v1/tasks/{taskId}", ct );
         Assert.AreEqual( HttpStatusCode.NotFound, notFoundResponse.StatusCode );
     }
 
@@ -279,7 +279,7 @@ public class ActionDispatchIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
 
         Assert.AreEqual( HttpStatusCode.BadRequest, response.StatusCode,
             "Missing ActionSubType should return 400 Bad Request." );
@@ -314,7 +314,7 @@ public class ActionDispatchIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
 
         Assert.AreEqual( HttpStatusCode.BadRequest, response.StatusCode,
             "Unknown ActionSubType should return 400 Bad Request." );
@@ -353,7 +353,7 @@ public class ActionDispatchIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
 
         Assert.AreEqual( HttpStatusCode.BadRequest, response.StatusCode,
             "Missing ActionParameters should return 400 Bad Request." );
@@ -388,7 +388,7 @@ public class ActionDispatchIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
 
         Assert.AreEqual( HttpStatusCode.BadRequest, response.StatusCode,
             "Malformed JSON in ActionParameters should return 400 Bad Request." );
@@ -420,7 +420,7 @@ public class ActionDispatchIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
 
         Assert.AreEqual( HttpStatusCode.BadRequest, response.StatusCode,
             "ShellCommand task with ActionSubType should return 400 Bad Request." );
@@ -454,7 +454,7 @@ public class ActionDispatchIntegrationTests {
         };
 
         HttpResponseMessage response = await Api.PostAsJsonAsync(
-            "/api/tasks", request, JsonOptions, ct );
+            "/api/v1/tasks", request, JsonOptions, ct );
 
         Assert.AreEqual( HttpStatusCode.BadRequest, response.StatusCode,
             "ShellCommand task with ActionParameters should return 400 Bad Request." );
@@ -490,13 +490,13 @@ public class ActionDispatchIntegrationTests {
         long taskId = task.GetProperty( "id" ).GetInt64( );
 
         HttpResponseMessage runResponse = await Api.PostAsJsonAsync(
-            $"/api/tasks/{taskId}/run", new object( ), JsonOptions, ct );
+            $"/api/v1/tasks/{taskId}/run", new object( ), JsonOptions, ct );
 
         Assert.AreEqual( HttpStatusCode.Accepted, runResponse.StatusCode,
             "Ad-hoc action run should return 202 Accepted (one-time schedule created)." );
 
         // Cleanup
-        _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
     }
 
     #endregion Ad-Hoc Execution — No Agent
@@ -521,7 +521,7 @@ public class ActionDispatchIntegrationTests {
 
         long taskId = task.GetProperty( "id" ).GetInt64( );
 
-        HttpResponseMessage jobsResponse = await Api.GetAsync( $"/api/tasks/{taskId}/jobs", ct );
+        HttpResponseMessage jobsResponse = await Api.GetAsync( $"/api/v1/tasks/{taskId}/jobs", ct );
         Assert.AreEqual( HttpStatusCode.OK, jobsResponse.StatusCode );
 
         JsonElement jobList = await jobsResponse.Content
@@ -531,7 +531,7 @@ public class ActionDispatchIntegrationTests {
             "A newly created action task should have no job history." );
 
         // Cleanup
-        _ = await Api.DeleteAsync( $"/api/tasks/{taskId}", ct );
+        _ = await Api.DeleteAsync( $"/api/v1/tasks/{taskId}", ct );
     }
 
     #endregion Job History — New Action Task

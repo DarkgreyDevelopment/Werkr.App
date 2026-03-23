@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Werkr.Common.Models;
+using Werkr.Common.Models.Audit;
+using Werkr.Core.Audit;
 using Werkr.Core.Tasks;
 using Werkr.Data;
 using Werkr.Data.Entities.Tasks;
@@ -48,8 +51,18 @@ public class TaskServiceTests {
         _dbContext = new SqliteWerkrDbContext( options );
         _ = _dbContext.Database.EnsureCreated( );
 
+        TaskVersionService versionService = new(
+            _dbContext,
+            new NoopAuditService( ),
+            NullLogger<TaskVersionService>.Instance
+        );
+
+        NoopAuditService auditService = new( );
+
         _service = new TaskService(
             _dbContext,
+            versionService,
+            auditService,
             NullLogger<TaskService>.Instance
         );
     }
@@ -83,7 +96,7 @@ public class TaskServiceTests {
         WerkrTask task = MakeTask( );
         WerkrTask created = await _service.CreateAsync(
             task,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         Assert.IsGreaterThan(
@@ -101,7 +114,7 @@ public class TaskServiceTests {
         WerkrTask task = MakeTask( );
         WerkrTask created = await _service.CreateAsync(
             task,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         WerkrTask? fromDb = await _dbContext.Tasks.FirstOrDefaultAsync(
@@ -125,7 +138,7 @@ public class TaskServiceTests {
 
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         ) );
     }
 
@@ -139,7 +152,7 @@ public class TaskServiceTests {
 
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         ) );
     }
 
@@ -154,7 +167,7 @@ public class TaskServiceTests {
 
         WerkrTask created = await _service.CreateAsync(
             task,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         Assert.IsNotNull( created );
@@ -172,7 +185,7 @@ public class TaskServiceTests {
 
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         ) );
     }
 
@@ -186,7 +199,7 @@ public class TaskServiceTests {
 
         _ = await Assert.ThrowsExactlyAsync<ValidationException>( ( ) => _service.CreateAsync(
             task,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         ) );
     }
 
@@ -208,11 +221,11 @@ public class TaskServiceTests {
     public async Task GetAll_ReturnsCreatedTasks( ) {
         _ = await _service.CreateAsync(
             MakeTask( "A" ),
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
         _ = await _service.CreateAsync(
             MakeTask( "B" ),
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         IReadOnlyList<WerkrTask> tasks = await _service.GetAllAsync( ct: TestContext.CancellationToken );
@@ -231,7 +244,7 @@ public class TaskServiceTests {
     public async Task GetById_ReturnsTask( ) {
         WerkrTask created = await _service.CreateAsync(
             MakeTask( ),
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         WerkrTask? found = await _service.GetByIdAsync(
@@ -266,14 +279,14 @@ public class TaskServiceTests {
     public async Task Update_ChangesName( ) {
         WerkrTask created = await _service.CreateAsync(
             MakeTask( ),
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         WerkrTask update = MakeTask( "Updated Name" );
         update.Id = created.Id;
         WerkrTask updated = await _service.UpdateAsync(
             update,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         Assert.AreEqual(
@@ -292,7 +305,7 @@ public class TaskServiceTests {
 
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.UpdateAsync(
             update,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         ) );
     }
 
@@ -305,11 +318,11 @@ public class TaskServiceTests {
     public async Task Delete_RemovesTask( ) {
         WerkrTask created = await _service.CreateAsync(
             MakeTask( ),
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
         await _service.DeleteAsync(
             created.Id,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         WerkrTask? found = await _service.GetByIdAsync(
@@ -326,7 +339,7 @@ public class TaskServiceTests {
     public async Task Delete_ThrowsKeyNotFound_WhenMissing( ) {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.DeleteAsync(
             999,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         ) );
     }
 
@@ -339,14 +352,14 @@ public class TaskServiceTests {
     public async Task SetEnabled_TogglesState( ) {
         WerkrTask created = await _service.CreateAsync(
             MakeTask( ),
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
         Assert.IsTrue( created.Enabled );
 
         await _service.SetEnabledAsync(
             created.Id,
             false,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         );
 
         WerkrTask? found = await _dbContext.Tasks.FirstOrDefaultAsync(
@@ -366,7 +379,88 @@ public class TaskServiceTests {
         _ = await Assert.ThrowsExactlyAsync<KeyNotFoundException>( ( ) => _service.SetEnabledAsync(
             999,
             false,
-            TestContext.CancellationToken
+            ct: TestContext.CancellationToken
         ) );
+    }
+
+    // ── Versioning ──
+
+    /// <summary>
+    /// Verifies that creating a task sets <see cref="WerkrTask.CurrentVersionId"/> and creates version 1.
+    /// </summary>
+    [TestMethod]
+    public async Task Create_SetsCurrentVersionId( ) {
+        WerkrTask created = await _service.CreateAsync(
+            MakeTask( ),
+            ct: TestContext.CancellationToken
+        );
+
+        WerkrTask? fromDb = await _dbContext.Tasks
+            .Include( t => t.CurrentVersion )
+            .FirstOrDefaultAsync( t => t.Id == created.Id, TestContext.CancellationToken );
+
+        Assert.IsNotNull( fromDb );
+        Assert.IsNotNull( fromDb.CurrentVersionId );
+        Assert.IsNotNull( fromDb.CurrentVersion );
+        Assert.AreEqual( 1, fromDb.CurrentVersion.VersionNumber );
+    }
+
+    /// <summary>
+    /// Verifies that updating a task increments the version number.
+    /// </summary>
+    [TestMethod]
+    public async Task Update_IncrementsVersionNumber( ) {
+        WerkrTask created = await _service.CreateAsync(
+            MakeTask( ),
+            ct: TestContext.CancellationToken
+        );
+
+        WerkrTask update = MakeTask( "Updated" );
+        update.Id = created.Id;
+        _ = await _service.UpdateAsync(
+            update,
+            changeDescription: "Test update",
+            ct: TestContext.CancellationToken
+        );
+
+        WerkrTask? fromDb = await _dbContext.Tasks
+            .Include( t => t.CurrentVersion )
+            .FirstOrDefaultAsync( t => t.Id == created.Id, TestContext.CancellationToken );
+
+        Assert.IsNotNull( fromDb?.CurrentVersion );
+        Assert.AreEqual( 2, fromDb.CurrentVersion.VersionNumber );
+    }
+
+    /// <summary>
+    /// Verifies that toggling enabled creates a new version.
+    /// </summary>
+    [TestMethod]
+    public async Task SetEnabled_CreatesVersion( ) {
+        WerkrTask created = await _service.CreateAsync(
+            MakeTask( ),
+            ct: TestContext.CancellationToken
+        );
+
+        await _service.SetEnabledAsync(
+            created.Id,
+            false,
+            ct: TestContext.CancellationToken
+        );
+
+        WerkrTask? fromDb = await _dbContext.Tasks
+            .Include( t => t.CurrentVersion )
+            .FirstOrDefaultAsync( t => t.Id == created.Id, TestContext.CancellationToken );
+
+        Assert.IsNotNull( fromDb?.CurrentVersion );
+        Assert.AreEqual( 2, fromDb.CurrentVersion.VersionNumber );
+    }
+
+    /// <summary>No-op audit service for unit tests that don't need audit logging.</summary>
+    private sealed class NoopAuditService : IAuditService {
+        public Task LogAsync( AuditEntry entry, CancellationToken ct = default ) => Task.CompletedTask;
+        public Task<PagedResult<AuditEventDto>> QueryAsync( AuditQuery query, CancellationToken ct = default ) =>
+            Task.FromResult( new PagedResult<AuditEventDto>( [], 0, 25, 0 ) );
+        public Task ExportAsync( AuditQuery query, ExportFormat format, Stream outputStream, CancellationToken ct = default, int? maxRows = null ) =>
+            Task.CompletedTask;
     }
 }

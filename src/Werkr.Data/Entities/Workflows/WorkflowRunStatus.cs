@@ -9,11 +9,20 @@ public enum WorkflowRunStatus {
     Running = 0,
 
     /// <summary>All steps completed successfully.</summary>
-    Completed = 1,
+    Succeeded = 1,
 
     /// <summary>One or more steps failed.</summary>
     Failed = 2,
 
     /// <summary>Workflow execution was cancelled.</summary>
     Cancelled = 3,
+
+    /// <summary>Workflow has been created but execution has not yet started.</summary>
+    Pending = 4,
+
+    /// <summary>Workflow is waiting for agent capacity to begin execution.</summary>
+    Queued = 5,
+
+    /// <summary>Workflow execution is temporarily suspended (e.g. awaiting approval).</summary>
+    Paused = 6,
 }

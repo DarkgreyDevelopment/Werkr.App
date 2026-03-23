@@ -1,12 +1,13 @@
-﻿@page "/settings"
+@page "/settings"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.Extensions.Options
 @using System.Runtime.InteropServices
+@using System.Text.Json
 @using Werkr.Common.Models
 @attribute [Authorize( Roles = "Admin" )]
 @rendermode InteractiveServer
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject IConfiguration Configuration
 @inject IOptions<IdentityOptions> IdentityConfig
 
@@ -16,211 +17,720 @@
     <h1>Settings</h1>
     <Breadcrumb Items="_breadcrumbs" />
 
-    <p>Read-only configuration and diagnostics for this Werkr instance.</p>
-
-    <div class="mb-3">
-        <button class="btn btn-outline-secondary" @onclick="LoadAsync" disabled="@_isLoading">
-            @if ( _isLoading ) {
-                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-            }
-            Refresh
-        </button>
-    </div>
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "config" ? "active" : "")" @onclick='() => _activeTab = "config"'>Configuration</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "credentials" ? "active" : "")" @onclick="ActivateCredentialsTab">Credentials</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "diagnostics" ? "active" : "")" @onclick='() => _activeTab = "diagnostics"'>Diagnostics</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "retention" ? "active" : "")" @onclick="ActivateRetentionTab">Retention</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "tools" ? "active" : "")" @onclick='() => _activeTab = "tools"'>Tools</button>
+        </li>
+    </ul>
 
     @if ( !string.IsNullOrWhiteSpace( _errorMessage ) ) {
-        <div class="alert alert-warning">@_errorMessage</div>
+        <div class="alert alert-warning alert-dismissible">
+            @_errorMessage
+            <button type="button" class="btn-close" @onclick='() => _errorMessage = null'></button>
+        </div>
     }
 
-    <div class="card mt-3">
-        <div class="card-body">
-            <h5 class="card-title">Server Configuration</h5>
-            <dl class="row mb-0">
-                <dt class="col-sm-4">Server Name</dt>
-                <dd class="col-sm-8">@_serverName</dd>
-
-                <dt class="col-sm-4">Server URL</dt>
-                <dd class="col-sm-8"><code>@_serverUrl</code></dd>
-
-                <dt class="col-sm-4">Default Command Timeout</dt>
-                <dd class="col-sm-8">@_defaultCommandTimeoutMinutes minutes</dd>
-
-                <dt class="col-sm-4">RSA Key Size</dt>
-                <dd class="col-sm-8">@_defaultKeySize bits</dd>
-
-                <dt class="col-sm-4">Allow Registration</dt>
-                <dd class="col-sm-8">
-                    <span class="badge @(_allowRegistration ? "bg-success" : "bg-danger")">
-                        @(_allowRegistration ? "Yes" : "No")
-                    </span>
-                </dd>
-            </dl>
+    @if ( !string.IsNullOrWhiteSpace( _successMessage ) ) {
+        <div class="alert alert-success alert-dismissible">
+            @_successMessage
+            <button type="button" class="btn-close" @onclick='() => _successMessage = null'></button>
         </div>
-    </div>
+    }
 
-    <div class="card mt-3">
-        <div class="card-body">
-            <h5 class="card-title">Identity Configuration</h5>
-            <dl class="row mb-0">
-                <dt class="col-sm-4">Min Password Length</dt>
-                <dd class="col-sm-8">@IdentityConfig.Value.Password.RequiredLength</dd>
-
-                <dt class="col-sm-4">Require Digit</dt>
-                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.Password.RequireDigit )</dd>
-
-                <dt class="col-sm-4">Require Lowercase</dt>
-                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.Password.RequireLowercase )</dd>
-
-                <dt class="col-sm-4">Require Uppercase</dt>
-                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.Password.RequireUppercase )</dd>
-
-                <dt class="col-sm-4">Require Special Character</dt>
-                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.Password.RequireNonAlphanumeric )</dd>
-
-                <dt class="col-sm-4">Min Unique Characters</dt>
-                <dd class="col-sm-8">@IdentityConfig.Value.Password.RequiredUniqueChars</dd>
-
-                <dt class="col-sm-4">Lockout Duration</dt>
-                <dd class="col-sm-8">@IdentityConfig.Value.Lockout.DefaultLockoutTimeSpan.TotalMinutes minutes</dd>
-
-                <dt class="col-sm-4">Max Failed Attempts</dt>
-                <dd class="col-sm-8">@IdentityConfig.Value.Lockout.MaxFailedAccessAttempts</dd>
-
-                <dt class="col-sm-4">Require Unique Email</dt>
-                <dd class="col-sm-8">@FormatBoolean( IdentityConfig.Value.User.RequireUniqueEmail )</dd>
-            </dl>
-        </div>
-    </div>
-
-    <div class="card mt-3">
-        <div class="card-body">
-            <h5 class="card-title">Database Health</h5>
-            @if ( _databaseHealth.Count == 0 ) {
-                <p class="text-muted mb-0">No database diagnostics available.</p>
-            } else {
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Context</th>
-                                <th>Provider</th>
-                                <th>Connected</th>
-                                <th>Applied</th>
-                                <th>Pending</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ( DatabaseHealthDto item in _databaseHealth ) {
-                                <tr>
-                                    <td>@item.ContextName</td>
-                                    <td>@item.ProviderName</td>
-                                    <td>
-                                        <span class="badge @(item.IsConnected ? "bg-success" : "bg-danger")">
-                                            @(item.IsConnected ? "Yes" : "No")
-                                        </span>
-                                    </td>
-                                    <td>@item.AppliedMigrationCount</td>
-                                    <td>@item.PendingMigrationCount</td>
-                                </tr>
-                                @if ( item.PendingMigrationCount > 0 ) {
-                                    <tr>
-                                        <td colspan="5" class="text-muted">
-                                            Pending: @string.Join( ", ", item.PendingMigrations )
-                                        </td>
-                                    </tr>
-                                }
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </div>
-    </div>
-
-    <div class="card mt-3">
-        <div class="card-body">
-            <h5 class="card-title">Agent Configuration Summary</h5>
-            @if ( _agentHealth.Count == 0 ) {
-                <p class="text-muted mb-0">No agent health data available.</p>
-            } else {
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Agent Name</th>
-                                <th>PowerShell</th>
-                                <th>SystemShell</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ( AgentHealthDto item in _agentHealth ) {
-                                <tr>
-                                    <td>@item.ConnectionName</td>
-                                    <td>@FormatNullableBoolean( item.PowerShellAvailable )</td>
-                                    <td>@FormatNullableBoolean( item.SystemShellAvailable )</td>
-                                    <td><span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.Status )">@item.Status</span></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </div>
-    </div>
-
-    <div class="card mt-3 mb-4">
-        <div class="card-body">
-            <h5 class="card-title">Infrastructure</h5>
-            <dl class="row mb-0">
-                <dt class="col-sm-4">Aspire Service Discovery</dt>
-                <dd class="col-sm-8">@( _serviceDiscoveryKeys.Count > 0 ? string.Join( ", ", _serviceDiscoveryKeys ) : "No services:* keys found" )</dd>
-
-                <dt class="col-sm-4">OTLP Endpoint</dt>
-                <dd class="col-sm-8">@(string.IsNullOrWhiteSpace( _otlpEndpoint ) ? "Not configured" : _otlpEndpoint)</dd>
-
-                <dt class="col-sm-4">.NET Runtime</dt>
-                <dd class="col-sm-8">@Environment.Version</dd>
-
-                <dt class="col-sm-4">OS</dt>
-                <dd class="col-sm-8">@RuntimeInformation.OSDescription</dd>
-
-                <dt class="col-sm-4">Architecture</dt>
-                <dd class="col-sm-8">@RuntimeInformation.ProcessArchitecture</dd>
-            </dl>
-        </div>
-    </div>
-
-    <div class="card mt-3 mb-4">
-        <div class="card-body">
-            <h5 class="card-title">Notify Agents of Server URL Change</h5>
-            <p class="text-muted">
-                If this Server's gRPC URL has changed, notify all connected Agents so they update
-                their stored endpoint and reconnect automatically.
-            </p>
-            <div class="mb-3" style="max-width: 480px;">
-                <label for="newServerUrl" class="form-label fw-bold">New Server URL</label>
-                <input id="newServerUrl" class="form-control" @bind="_notifyNewUrl"
-                       placeholder="https://new-server-host:port" />
-            </div>
-            <button class="btn btn-warning" @onclick="NotifyUrlChangeAsync" disabled="@_isNotifying">
-                @if ( _isNotifying ) {
+    @* ── Configuration Tab ── *@
+    @if ( _activeTab == "config" ) {
+        @* E3: Per-agent settings selector *@
+        <div class="mb-3 d-flex gap-2 align-items-center">
+            <select class="form-select" style="max-width: 200px;" @bind="_filterCategory">
+                <option value="">All Categories</option>
+                @foreach ( string cat in _categories ) {
+                    <option value="@cat">@cat</option>
+                }
+            </select>
+            <button class="btn btn-outline-secondary" @onclick="LoadConfigAsync" disabled="@_isLoading">
+                @if ( _isLoading ) {
                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                 }
-                Notify All Agents
+                Refresh
             </button>
-
-            @if ( _notifyResult is not null ) {
-                <div class="alert mt-3 @(_notifyResult.Failed > 0 ? "alert-warning" : "alert-success")">
-                    <span><strong>@_notifyResult.Notified</strong> agents notified successfully.</span>
-                    @if ( _notifyResult.Failed > 0 ) {
-                        <br />
-                        <span><strong>@_notifyResult.Failed</strong> agents failed:</span>
-                        <span>@string.Join( ", ", _notifyResult.FailedAgents )</span>
-                    }
-                </div>
-            }
+            <div class="vr mx-2"></div>
+            <label class="form-label mb-0 me-1 fw-bold text-nowrap">Agent View:</label>
+            <select class="form-select" style="max-width: 240px;" @bind="_selectedAgentId" @bind:after="OnAgentSelectedAsync">
+                <option value="">-- Global Settings --</option>
+                @foreach ( AgentListDto agent in _agents ) {
+                    <option value="@agent.Id">@agent.ConnectionName</option>
+                }
+            </select>
         </div>
-    </div>
+
+        @if ( string.IsNullOrEmpty( _selectedAgentId ) ) {
+            @* Global configuration table *@
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Value</th>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th style="width: 160px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ( ConfigurationEntryDto entry in FilteredEntries ) {
+                            <tr>
+                                <td>
+                                    <code>@entry.Key</code>
+                                    @if ( !string.IsNullOrEmpty( entry.Description ) ) {
+                                        <br /><small class="text-muted">@entry.Description</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if ( _editingKey == entry.Key ) {
+                                        <input class="form-control form-control-sm" @bind="_editValue" />
+                                        @if ( !string.IsNullOrEmpty( GetValidationHint( entry ) ) ) {
+                                            <small class="text-muted d-block mt-1">@GetValidationHint( entry )</small>
+                                        }
+                                    } else {
+                                        <code>@entry.Value</code>
+                                        @if ( entry.Value != entry.DefaultValue ) {
+                                            <span class="badge bg-info ms-1" title="Modified from default">modified</span>
+                                        }
+                                    }
+                                </td>
+                                <td><span class="badge bg-secondary">@entry.ValueType</span></td>
+                                <td>@entry.Category</td>
+                                <td>
+                                    @if ( _editingKey == entry.Key ) {
+                                        <button class="btn btn-sm btn-success me-1" @onclick="() => PreviewSave( entry )">Save</button>
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+                                    } else {
+                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEdit( entry )">Edit</button>
+                                        <button class="btn btn-sm btn-outline-info" @onclick="() => ToggleHistoryAsync( entry.Key )">
+                                            @( _historyKey == entry.Key ? "Hide" : "History" )
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                            @* E1: Collapsible history row *@
+                            @if ( _historyKey == entry.Key ) {
+                                <tr>
+                                    <td colspan="5" class="bg-light">
+                                        @if ( _historyEntries.Count == 0 ) {
+                                            <small class="text-muted">No change history for this setting.</small>
+                                        } else {
+                                            <table class="table table-sm table-borderless mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Changed By</th>
+                                                        <th>Changed (UTC)</th>
+                                                        <th>Previous Value</th>
+                                                        <th></th>
+                                                        <th>New Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach ( ConfigurationChangeLogDto log in _historyEntries ) {
+                                                        <tr>
+                                                            <td><code>@log.ChangedByUserId</code></td>
+                                                            <td><small>@log.ChangedUtc.ToString( "g" )</small></td>
+                                                            <td><code>@(log.PreviousValue ?? "(none)")</code></td>
+                                                            <td class="text-center">&rarr;</td>
+                                                            <td><code>@log.NewValue</code></td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        } else {
+            @* E3: Per-agent effective settings table *@
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Effective Value</th>
+                            <th>Source</th>
+                            <th>Global Value</th>
+                            <th>Override Value</th>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th style="width: 180px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ( EffectiveConfigurationDto entry in FilteredAgentSettings ) {
+                            <tr>
+                                <td>
+                                    <code>@entry.Key</code>
+                                    @if ( !string.IsNullOrEmpty( entry.Description ) ) {
+                                        <br /><small class="text-muted">@entry.Description</small>
+                                    }
+                                </td>
+                                <td><code>@entry.EffectiveValue</code></td>
+                                <td>
+                                    @entry.Source
+                                    @* E4: Override indication badge *@
+                                    @if ( entry.Source == "Agent Override" ) {
+                                        <span class="badge bg-warning ms-1">Override</span>
+                                    }
+                                </td>
+                                <td><code>@entry.GlobalValue</code></td>
+                                <td>
+                                    @if ( entry.OverrideValue is not null ) {
+                                        <code>@entry.OverrideValue</code>
+                                    } else {
+                                        <small class="text-muted">(none)</small>
+                                    }
+                                </td>
+                                <td><span class="badge bg-secondary">@entry.ValueType</span></td>
+                                <td>@entry.Category</td>
+                                <td>
+                                    @if ( entry.Source == "Agent Override" ) {
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                @onclick="() => StartOverrideEdit( entry )">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => RemoveOverrideAsync( entry )">Remove</button>
+                                    } else {
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick="() => StartOverrideCreate( entry )">Add Override</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @* Agent override create/edit modal *@
+        @if ( _showOverrideModal ) {
+            <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">@( _overrideIsEdit ? "Edit" : "Add" ) Agent Override</h5>
+                            <button type="button" class="btn-close" @onclick="CloseOverrideModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <dl class="row mb-3">
+                                <dt class="col-sm-4">Key</dt>
+                                <dd class="col-sm-8"><code>@_overrideKey</code></dd>
+                                <dt class="col-sm-4">Global Value</dt>
+                                <dd class="col-sm-8"><code>@_overrideGlobalValue</code></dd>
+                            </dl>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Override Value</label>
+                                <input class="form-control" @bind="_overrideValue" />
+                                @if ( !string.IsNullOrEmpty( _overrideValidationHint ) ) {
+                                    <small class="text-muted d-block mt-1">@_overrideValidationHint</small>
+                                }
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CloseOverrideModal">Cancel</button>
+                            <button class="btn btn-primary" @onclick="SaveOverrideAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* E2: Change preview modal *@
+        @if ( _showPreviewModal ) {
+            <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirm Setting Change</h5>
+                            <button type="button" class="btn-close" @onclick="CancelPreview"></button>
+                        </div>
+                        <div class="modal-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-3">Key</dt>
+                                <dd class="col-sm-9"><code>@_previewKey</code></dd>
+                                <dt class="col-sm-3">Old Value</dt>
+                                <dd class="col-sm-9"><code class="text-danger">@_previewOldValue</code></dd>
+                                <dt class="col-sm-3">New Value</dt>
+                                <dd class="col-sm-9"><code class="text-success">@_previewNewValue</code></dd>
+                            </dl>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CancelPreview">Cancel</button>
+                            <button class="btn btn-primary" @onclick="ConfirmSaveAsync">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    @* ── Credentials Tab ── *@
+    @if ( _activeTab == "credentials" ) {
+        <div class="mb-3">
+            <button class="btn btn-primary" @onclick="() => _showCreateModal = true">New Credential</button>
+            <button class="btn btn-outline-secondary ms-2" @onclick="LoadCredentialsAsync" disabled="@_isLoading">Refresh</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Agent Scopes</th>
+                        <th>Modified</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ( CredentialDto cred in _credentials ) {
+                        <tr>
+                            <td><code>@cred.Name</code></td>
+                            <td><span class="badge bg-secondary">@cred.Type</span></td>
+                            <td>@(cred.Description ?? "")</td>
+                            <td>@(cred.AgentScopeIds.Count == 0 ? "All Agents" : $"{cred.AgentScopeIds.Count} agents")</td>
+                            <td><small class="text-muted">@cred.ModifiedUtc.ToString("g")</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEditCredential( cred )">Edit</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => StartRenameCredential( cred )">Rename</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteCredentialAsync( cred )">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* Create / Edit credential modal (with F2: agent scope selector) *@
+        @if ( _showCreateModal ) {
+            <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">@(_editCredentialId.HasValue ? "Edit Credential" : "New Credential")</h5>
+                            <button type="button" class="btn-close" @onclick="CloseCredentialModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Name</label>
+                                <input class="form-control" @bind="_credName" disabled="@_editCredentialId.HasValue" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" @bind="_credType">
+                                    <option value="Password">Password</option>
+                                    <option value="ApiKey">API Key</option>
+                                    <option value="ConnectionString">Connection String</option>
+                                    <option value="Certificate">Certificate</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Value</label>
+                                <input type="password" class="form-control" @bind="_credValue"
+                                       placeholder="@(_editCredentialId.HasValue ? "Leave blank to keep current" : "Enter credential value")" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <input class="form-control" @bind="_credDescription" />
+                            </div>
+                            @* F2: Agent scope selector *@
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Agent Scopes</label>
+                                <small class="text-muted d-block mb-2">Leave all unchecked for "All Agents".</small>
+                                @if ( _agentList.Count == 0 ) {
+                                    <small class="text-muted">No agents registered.</small>
+                                } else {
+                                    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                        @foreach ( AgentListDto agent in _agentList ) {
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="scope-@agent.Id"
+                                                       checked="@_selectedAgentScopes.Contains( agent.Id )"
+                                                       @onchange="( e ) => ToggleAgentScope( agent.Id, (bool)(e.Value ?? false) )" />
+                                                <label class="form-check-label" for="scope-@agent.Id">
+                                                    @agent.ConnectionName
+                                                    <small class="text-muted">(@agent.Status)</small>
+                                                </label>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CloseCredentialModal">Cancel</button>
+                            <button class="btn btn-primary" @onclick="SaveCredentialAsync">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* F1: Rename credential modal *@
+        @if ( _showRenameModal ) {
+            <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Rename Credential</h5>
+                            <button type="button" class="btn-close" @onclick="CloseRenameModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Current Name</label>
+                                <input class="form-control" value="@_renameOldName" disabled />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">New Name</label>
+                                <input class="form-control" @bind="_renameNewName" />
+                            </div>
+                            <div class="alert alert-warning mb-0">
+                                <strong>Warning:</strong> Renaming a credential will cascade updates to all tasks
+                                that reference it by name. Verify that downstream task configurations are correct
+                                after the rename completes.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CloseRenameModal">Cancel</button>
+                            <button class="btn btn-primary" @onclick="ConfirmRenameAsync">Rename</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if ( _createdPlaintext is not null ) {
+            <div class="alert alert-warning mt-3">
+                <strong>Credential created.</strong> Copy the value now - it will not be shown again:
+                <code class="d-block mt-1 p-2 bg-dark text-light rounded">@_createdPlaintext</code>
+                <button class="btn btn-sm btn-outline-secondary mt-1" @onclick='() => _createdPlaintext = null'>Dismiss</button>
+            </div>
+        }
+    }
+
+    @* ── Diagnostics Tab ── *@
+    @if ( _activeTab == "diagnostics" ) {
+        <div class="mb-3">
+            <button class="btn btn-outline-secondary" @onclick="LoadDiagnosticsAsync" disabled="@_isLoading">
+                @if ( _isLoading ) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                Refresh
+            </button>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h5 class="card-title">Identity Configuration</h5>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Min Password Length</dt>
+                    <dd class="col-sm-8">@IdentityConfig.Value.Password.RequiredLength</dd>
+                    <dt class="col-sm-4">Lockout Duration</dt>
+                    <dd class="col-sm-8">@IdentityConfig.Value.Lockout.DefaultLockoutTimeSpan.TotalMinutes minutes</dd>
+                    <dt class="col-sm-4">Max Failed Attempts</dt>
+                    <dd class="col-sm-8">@IdentityConfig.Value.Lockout.MaxFailedAccessAttempts</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h5 class="card-title">Database Health</h5>
+                @if ( _databaseHealth.Count == 0 ) {
+                    <p class="text-muted mb-0">No database diagnostics available.</p>
+                } else {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr><th>Context</th><th>Provider</th><th>Connected</th><th>Applied</th><th>Pending</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( DatabaseHealthDto item in _databaseHealth ) {
+                                    <tr>
+                                        <td>@item.ContextName</td>
+                                        <td>@item.ProviderName</td>
+                                        <td><span class="badge @(item.IsConnected ? "bg-success" : "bg-danger")">@(item.IsConnected ? "Yes" : "No")</span></td>
+                                        <td>@item.AppliedMigrationCount</td>
+                                        <td>@item.PendingMigrationCount</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h5 class="card-title">Agent Health</h5>
+                @if ( _agentHealth.Count == 0 ) {
+                    <p class="text-muted mb-0">No agent health data available.</p>
+                } else {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr><th>Agent Name</th><th>PowerShell</th><th>SystemShell</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( AgentHealthDto item in _agentHealth ) {
+                                    <tr>
+                                        <td>@item.ConnectionName</td>
+                                        <td>@FormatNullableBoolean( item.PowerShellAvailable )</td>
+                                        <td>@FormatNullableBoolean( item.SystemShellAvailable )</td>
+                                        <td><span class="badge @StatusDisplayHelper.GetStatusBadgeClass( item.Status )">@item.Status</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3 mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Infrastructure</h5>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Aspire Service Discovery</dt>
+                    <dd class="col-sm-8">@( _serviceDiscoveryKeys.Count > 0 ? string.Join( ", ", _serviceDiscoveryKeys ) : "No services:* keys found" )</dd>
+                    <dt class="col-sm-4">OTLP Endpoint</dt>
+                    <dd class="col-sm-8">@(string.IsNullOrWhiteSpace( _otlpEndpoint ) ? "Not configured" : _otlpEndpoint)</dd>
+                    <dt class="col-sm-4">.NET Runtime</dt>
+                    <dd class="col-sm-8">@Environment.Version</dd>
+                    <dt class="col-sm-4">OS</dt>
+                    <dd class="col-sm-8">@RuntimeInformation.OSDescription</dd>
+                    <dt class="col-sm-4">Architecture</dt>
+                    <dd class="col-sm-8">@RuntimeInformation.ProcessArchitecture</dd>
+                </dl>
+            </div>
+        </div>
+    }
+
+    @* ── Retention Tab ── *@
+    @if ( _activeTab == "retention" ) {
+        <div class="mb-3">
+            <button class="btn btn-outline-secondary" @onclick="LoadRetentionPoliciesAsync" disabled="@_isLoading">
+                @if ( _isLoading ) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                Refresh
+            </button>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Retention Policies</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Entity Type</th>
+                                <th>Retention (Days)</th>
+                                <th>Enabled</th>
+                                <th>Last Modified</th>
+                                <th style="width: 100px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ( RetentionPolicyDto policy in _retentionPolicies ) {
+                                <tr>
+                                    <td><code>@policy.EntityType</code></td>
+                                    <td>
+                                        @if ( _editRetentionType == policy.EntityType ) {
+                                            <input type="number" class="form-control form-control-sm" style="max-width: 120px;"
+                                                   min="0" @bind="_editRetentionDays" />
+                                        } else {
+                                            @policy.RetentionDays
+                                            @if ( policy.RetentionDays == 0 ) {
+                                                <span class="badge bg-danger ms-1">Immediate</span>
+                                            }
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @(policy.IsEnabled ? "bg-success" : "bg-secondary")">
+                                            @(policy.IsEnabled ? "Yes" : "No")
+                                        </span>
+                                    </td>
+                                    <td><small class="text-muted">@policy.ModifiedUtc.ToString("g")</small></td>
+                                    <td>
+                                        @if ( _editRetentionType == policy.EntityType ) {
+                                            <button class="btn btn-sm btn-success me-1" @onclick="() => SaveRetentionPolicyAsync( policy )">Save</button>
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="CancelRetentionEdit">Cancel</button>
+                                        } else {
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => StartRetentionEdit( policy )">Edit</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Manual Sweep</h5>
+                <p class="text-muted">Preview what would be deleted, then confirm to execute.</p>
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-outline-info" @onclick="DryRunSweepAsync" disabled="@_isSweeping">
+                        @if ( _isSweeping && _sweepIsDryRun ) {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Preview (Dry Run)
+                    </button>
+                    <button class="btn btn-warning" @onclick="ConfirmSweepAsync" disabled="@(_isSweeping || _sweepPreview.Count == 0)">
+                        @if ( _isSweeping && !_sweepIsDryRun ) {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Execute Sweep
+                    </button>
+                </div>
+
+                @if ( _sweepPreview.Count > 0 ) {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Entity Type</th>
+                                    <th>@(_sweepExecuted ? "Deleted" : "Eligible")</th>
+                                    <th>Oldest</th>
+                                    <th>Newest</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( SweepResultDto r in _sweepPreview ) {
+                                    <tr>
+                                        <td><code>@r.EntityType</code></td>
+                                        <td>@r.DeletedCount</td>
+                                        <td><small>@(r.OldestDeleted?.ToString("g") ?? "-")</small></td>
+                                        <td><small>@(r.NewestDeleted?.ToString("g") ?? "-")</small></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Low retention warning modal *@
+        @if ( _showLowRetentionWarning ) {
+            <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Low Retention Warning</h5>
+                            <button type="button" class="btn-close" @onclick="CancelRetentionEdit"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning mb-0">
+                                <strong>Warning:</strong> Setting retention to <strong>@_editRetentionDays days</strong>
+                                for <code>@_editRetentionType</code> is below the recommended minimum of 7 days.
+                                Records may be deleted very quickly. Are you sure?
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CancelRetentionEdit">Cancel</button>
+                            <button class="btn btn-danger" @onclick="ConfirmLowRetentionSaveAsync">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    @* ── Tools Tab ── *@
+    @if ( _activeTab == "tools" ) {
+        <div class="card mt-3 mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Notify Agents of Server URL Change</h5>
+                <p class="text-muted">
+                    If this Server's gRPC URL has changed, notify all connected Agents so they update
+                    their stored endpoint and reconnect automatically.
+                </p>
+                <div class="mb-3" style="max-width: 480px;">
+                    <label for="newServerUrl" class="form-label fw-bold">New Server URL</label>
+                    <input id="newServerUrl" class="form-control" @bind="_notifyNewUrl"
+                           placeholder="https://new-server-host:port" />
+                </div>
+                <button class="btn btn-warning" @onclick="NotifyUrlChangeAsync" disabled="@_isNotifying">
+                    @if ( _isNotifying ) {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    Notify All Agents
+                </button>
+
+                @if ( _notifyResult is not null ) {
+                    <div class="alert mt-3 @(_notifyResult.Failed > 0 ? "alert-warning" : "alert-success")">
+                        <span><strong>@_notifyResult.Notified</strong> agents notified successfully.</span>
+                        @if ( _notifyResult.Failed > 0 ) {
+                            <br />
+                            <span><strong>@_notifyResult.Failed</strong> agents failed:</span>
+                            <span>@string.Join( ", ", _notifyResult.FailedAgents )</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3 mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Encryption Key Rotation</h5>
+                <p class="text-muted">
+                    Rotate the field-level encryption key used for sensitive data at rest.
+                    A new key is generated, all encrypted fields are re-encrypted, and the old key is removed.
+                </p>
+                @if ( _rotationStatus is not null && _rotationStatus.InProgress ) {
+                    <div class="progress mb-3" style="height: 24px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar"
+                             style="width: @(_rotationStatus.PercentComplete)%">
+                            @($"{_rotationStatus.PercentComplete:F1}%  ({_rotationStatus.ProcessedRows}/{_rotationStatus.TotalRows})")
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-secondary" @onclick="RefreshRotationStatusAsync">
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Refresh Status
+                    </button>
+                } else {
+                    <button class="btn btn-warning" @onclick="StartKeyRotationAsync" disabled="@_isRotating">
+                        @if ( _isRotating ) {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Rotate Encryption Key
+                    </button>
+                }
+
+                @if ( _rotationStatus is not null && !_rotationStatus.InProgress && _rotationStatus.ProcessedRows > 0 ) {
+                    <div class="alert alert-success mt-3 mb-0">
+                        Key rotation completed. <strong>@_rotationStatus.ProcessedRows</strong> rows re-encrypted.
+                    </div>
+                }
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -229,17 +739,75 @@
         new( "Settings" )
     ];
 
+    private string _activeTab = "config";
+    private string? _errorMessage;
+    private string? _successMessage;
+    private bool _isLoading;
+
+    // Configuration state
+    private List<ConfigurationEntryDto> _configEntries = [];
+    private string _filterCategory = "";
+    private string? _editingKey;
+    private string _editValue = "";
+    private string[] _categories = ["server", "agent", "workflow", "security", "network"];
+
+    private IEnumerable<ConfigurationEntryDto> FilteredEntries =>
+        string.IsNullOrEmpty( _filterCategory )
+            ? _configEntries
+            : _configEntries.Where( e => e.Category == _filterCategory );
+
+    // E1: Change history state
+    private string? _historyKey;
+    private List<ConfigurationChangeLogDto> _historyEntries = [];
+
+    // E2: Change preview state
+    private bool _showPreviewModal;
+    private string? _previewKey;
+    private string _previewOldValue = "";
+    private string _previewNewValue = "";
+
+    // E3: Per-agent settings state
+    private List<AgentListDto> _agents = [];
+    private string? _selectedAgentId;
+    private List<EffectiveConfigurationDto> _agentSettings = [];
+
+    private IEnumerable<EffectiveConfigurationDto> FilteredAgentSettings =>
+        string.IsNullOrEmpty( _filterCategory )
+            ? _agentSettings
+            : _agentSettings.Where( e => e.Category == _filterCategory );
+
+    // Agent override modal state
+    private bool _showOverrideModal;
+    private bool _overrideIsEdit;
+    private string _overrideKey = "";
+    private string _overrideGlobalValue = "";
+    private string _overrideValue = "";
+    private string _overrideValidationHint = "";
+
+    // Credential state
+    private List<CredentialDto> _credentials = [];
+    private bool _showCreateModal;
+    private long? _editCredentialId;
+    private string _credName = "";
+    private string _credType = "Password";
+    private string _credValue = "";
+    private string _credDescription = "";
+    private string? _createdPlaintext;
+
+    // F1: Rename credential state
+    private bool _showRenameModal;
+    private long? _renameCredentialId;
+    private string _renameOldName = "";
+    private string _renameNewName = "";
+
+    // F2: Agent scope selector state
+    private List<AgentListDto> _agentList = [];
+    private HashSet<Guid> _selectedAgentScopes = [];
+
+    // Diagnostics state
     private List<DatabaseHealthDto> _databaseHealth = [];
     private List<AgentHealthDto> _agentHealth = [];
     private List<string> _serviceDiscoveryKeys = [];
-    private string? _errorMessage;
-    private bool _isLoading;
-
-    private string _serverName = "Werkr Server";
-    private string _serverUrl = "Not configured";
-    private int _defaultCommandTimeoutMinutes = 30;
-    private int _defaultKeySize = 4096;
-    private bool _allowRegistration = true;
     private string _otlpEndpoint = string.Empty;
 
     // URL notification state
@@ -247,48 +815,411 @@
     private bool _isNotifying;
     private NotifyUrlChangeResponse? _notifyResult;
 
+    // Retention state
+    private List<RetentionPolicyDto> _retentionPolicies = [];
+    private string? _editRetentionType;
+    private int _editRetentionDays;
+    private bool _showLowRetentionWarning;
+    private bool _isSweeping;
+    private bool _sweepIsDryRun;
+    private bool _sweepExecuted;
+    private List<SweepResultDto> _sweepPreview = [];
+
+    // Key rotation state
+    private RotationStatusDto? _rotationStatus;
+    private bool _isRotating;
+
+    // Local DTOs for types not in Werkr.Common (they live in Werkr.Core which Server doesn't reference)
+    private sealed record SweepResultDto( string EntityType, int DeletedCount, DateTime? OldestDeleted, DateTime? NewestDeleted );
+    private sealed record RotationStatusDto( bool InProgress, int TotalRows, int ProcessedRows, double PercentComplete, string? CurrentKeyName, string? PreviousKeyName );
+
     protected override async Task OnInitializedAsync( ) {
-        LoadConfiguration( );
-        await LoadAsync( );
+        LoadInfrastructureConfig( );
+        await LoadAgentsAsync( );
+        await LoadConfigAsync( );
+        await LoadCredentialsAsync( );
     }
 
-    private void LoadConfiguration( ) {
-        _serverName = Configuration["Server:Name"] ?? "Werkr Server";
-        _serverUrl = Configuration["Werkr:ServerUrl"] ?? "Not configured";
+    // ── Agents (shared) ──
 
-        _defaultCommandTimeoutMinutes = int.TryParse( Configuration["Werkr:DefaultCommandTimeoutMinutes"], out int timeoutMinutes )
-            ? timeoutMinutes
-            : 30;
-
-        _defaultKeySize = int.TryParse( Configuration["Werkr:DefaultKeySize"], out int keySize )
-            ? keySize
-            : 4096;
-
-        _allowRegistration = bool.TryParse( Configuration["Server:AllowRegistration"], out bool allowRegistration )
-            ? allowRegistration
-            : true;
-
-        _serviceDiscoveryKeys = [.. Configuration.AsEnumerable( )
-            .Where( kvp => !string.IsNullOrWhiteSpace( kvp.Key ) && kvp.Key.StartsWith( "services:", StringComparison.OrdinalIgnoreCase ) )
-            .Select( kvp => kvp.Key )
-            .Distinct( )
-            .OrderBy( key => key )];
-
-        _otlpEndpoint = Environment.GetEnvironmentVariable( "OTEL_EXPORTER_OTLP_ENDPOINT" ) ?? string.Empty;
+    private async Task LoadAgentsAsync( ) {
+        try {
+            _agents = await Api.GetAsync<List<AgentListDto>>( "/api/v1/agents" ) ?? [];
+            _agentList = _agents;
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load agents: {ex.Message}";
+        }
     }
 
-    private async Task LoadAsync( ) {
+    // ── Configuration ──
+
+    private async Task LoadConfigAsync( ) {
         _isLoading = true;
-        _errorMessage = null;
+        try {
+            _configEntries = await Api.GetAsync<List<ConfigurationEntryDto>>( "/api/v1/settings" ) ?? [];
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load settings: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void StartEdit( ConfigurationEntryDto entry ) {
+        _editingKey = entry.Key;
+        _editValue = entry.Value;
+    }
+
+    private void CancelEdit( ) {
+        _editingKey = null;
+        _editValue = "";
+    }
+
+    // E2: Preview before committing
+    private void PreviewSave( ConfigurationEntryDto entry ) {
+        _previewKey = entry.Key;
+        _previewOldValue = entry.Value;
+        _previewNewValue = _editValue;
+        _showPreviewModal = true;
+    }
+
+    private void CancelPreview( ) {
+        _showPreviewModal = false;
+        _previewKey = null;
+        _previewOldValue = "";
+        _previewNewValue = "";
+    }
+
+    private async Task ConfirmSaveAsync( ) {
+        _showPreviewModal = false;
+        if ( _previewKey is not null ) {
+            await SaveSettingAsync( _previewKey );
+        }
+        _previewKey = null;
+        _previewOldValue = "";
+        _previewNewValue = "";
+    }
+
+    private async Task SaveSettingAsync( string key ) {
+        try {
+            ConfigurationUpdateRequest request = new( _editValue );
+            HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/settings/{key}", request );
+
+            if (response.IsSuccessStatusCode) {
+                _successMessage = $"Setting '{key}' updated.";
+                _editingKey = null;
+                await LoadConfigAsync( );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to update: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to update setting: {ex.Message}";
+        }
+    }
+
+    // E1: Toggle history panel
+    private async Task ToggleHistoryAsync( string key ) {
+        if ( _historyKey == key ) {
+            _historyKey = null;
+            _historyEntries = [];
+            return;
+        }
 
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
+            _historyEntries = await Api.GetAsync<List<ConfigurationChangeLogDto>>(
+                $"/api/v1/settings/{key}/history" ) ?? [];
+            _historyKey = key;
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load history: {ex.Message}";
+        }
+    }
 
-            Task<List<DatabaseHealthDto>?> databaseTask = client.GetFromJsonAsync<List<DatabaseHealthDto>>( "/api/diagnostics/health" );
-            Task<List<AgentHealthDto>?> healthTask = client.GetFromJsonAsync<List<AgentHealthDto>>( "/api/agents/health" );
+    // E3: Per-agent settings
+    private async Task OnAgentSelectedAsync( ) {
+        if ( string.IsNullOrEmpty( _selectedAgentId ) ) {
+            _agentSettings = [];
+            return;
+        }
 
+        try {
+            _agentSettings = await Api.GetAsync<List<EffectiveConfigurationDto>>(
+                $"/api/v1/agents/{_selectedAgentId}/settings" ) ?? [];
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load agent settings: {ex.Message}";
+        }
+    }
+
+    // Agent override management
+    private void StartOverrideCreate( EffectiveConfigurationDto entry ) {
+        _overrideIsEdit = false;
+        _overrideKey = entry.Key;
+        _overrideGlobalValue = entry.GlobalValue;
+        _overrideValue = entry.GlobalValue;
+        _overrideValidationHint = entry.ValidationRules is not null
+            ? GetValidationHintFromRules( entry.ValidationRules ) : "";
+        _showOverrideModal = true;
+    }
+
+    private void StartOverrideEdit( EffectiveConfigurationDto entry ) {
+        _overrideIsEdit = true;
+        _overrideKey = entry.Key;
+        _overrideGlobalValue = entry.GlobalValue;
+        _overrideValue = entry.OverrideValue ?? entry.GlobalValue;
+        _overrideValidationHint = entry.ValidationRules is not null
+            ? GetValidationHintFromRules( entry.ValidationRules ) : "";
+        _showOverrideModal = true;
+    }
+
+    private void CloseOverrideModal( ) {
+        _showOverrideModal = false;
+        _overrideKey = "";
+        _overrideGlobalValue = "";
+        _overrideValue = "";
+        _overrideValidationHint = "";
+    }
+
+    private async Task SaveOverrideAsync( ) {
+        try {
+            ConfigurationUpdateRequest request = new( _overrideValue, ScopeLevel: 1, ScopeId: _selectedAgentId );
+            HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/settings/{_overrideKey}", request );
+
+            if (response.IsSuccessStatusCode) {
+                _successMessage = _overrideIsEdit
+                    ? $"Override for '{_overrideKey}' updated."
+                    : $"Override for '{_overrideKey}' created.";
+                CloseOverrideModal( );
+                await OnAgentSelectedAsync( );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to save override: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to save override: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveOverrideAsync( EffectiveConfigurationDto entry ) {
+        try {
+            HttpResponseMessage response = await Api.DeleteAsync(
+                $"/api/v1/agents/{_selectedAgentId}/settings/{entry.Key}" );
+
+            if (response.IsSuccessStatusCode) {
+                _successMessage = $"Override for '{entry.Key}' removed.";
+                await OnAgentSelectedAsync( );
+            } else {
+                _errorMessage = $"Failed to remove override: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to remove override: {ex.Message}";
+        }
+    }
+
+    private static string GetValidationHintFromRules( string validationRules ) {
+        try {
+            using JsonDocument doc = JsonDocument.Parse( validationRules );
+            JsonElement root = doc.RootElement;
+            List<string> parts = [];
+            if ( root.TryGetProperty( "min", out JsonElement minEl ) ) { parts.Add( $"Min: {minEl}" ); }
+            if ( root.TryGetProperty( "max", out JsonElement maxEl ) ) { parts.Add( $"Max: {maxEl}" ); }
+            return parts.Count > 0 ? string.Join( " | ", parts ) : "";
+        } catch {
+            return "";
+        }
+    }
+
+    // E5: Validation hint helper
+    private static string GetValidationHint( ConfigurationEntryDto entry ) {
+        if ( string.IsNullOrWhiteSpace( entry.ValidationRules ) ) {
+            return "";
+        }
+
+        try {
+            using JsonDocument doc = JsonDocument.Parse( entry.ValidationRules );
+            JsonElement root = doc.RootElement;
+            List<string> parts = [];
+
+            if ( root.TryGetProperty( "min", out JsonElement minEl ) ) {
+                parts.Add( $"Min: {minEl}" );
+            }
+            if ( root.TryGetProperty( "max", out JsonElement maxEl ) ) {
+                parts.Add( $"Max: {maxEl}" );
+            }
+            if ( root.TryGetProperty( "pattern", out JsonElement patternEl ) ) {
+                parts.Add( $"Pattern: {patternEl.GetString()}" );
+            }
+            if ( root.TryGetProperty( "options", out JsonElement optionsEl )
+                 && optionsEl.ValueKind == JsonValueKind.Array ) {
+                List<string> options = [];
+                foreach ( JsonElement item in optionsEl.EnumerateArray( ) ) {
+                    options.Add( item.GetString( ) ?? item.ToString( ) );
+                }
+                parts.Add( $"Options: {string.Join( ", ", options )}" );
+            }
+
+            return parts.Count > 0 ? string.Join( " | ", parts ) : "";
+        } catch {
+            return "";
+        }
+    }
+
+    // ── Credentials ──
+
+    private async Task ActivateCredentialsTab( ) {
+        _activeTab = "credentials";
+        if ( _agentList.Count == 0 ) {
+            await LoadAgentsAsync( );
+        }
+    }
+
+    private async Task LoadCredentialsAsync( ) {
+        try {
+            _credentials = await Api.GetAsync<List<CredentialDto>>( "/api/v1/settings/credentials" ) ?? [];
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load credentials: {ex.Message}";
+        }
+    }
+
+    private void StartEditCredential( CredentialDto cred ) {
+        _editCredentialId = cred.Id;
+        _credName = cred.Name;
+        _credType = cred.Type;
+        _credValue = "";
+        _credDescription = cred.Description ?? "";
+        _selectedAgentScopes = [.. cred.AgentScopeIds];
+        _showCreateModal = true;
+    }
+
+    private void CloseCredentialModal( ) {
+        _showCreateModal = false;
+        _editCredentialId = null;
+        _credName = "";
+        _credType = "Password";
+        _credValue = "";
+        _credDescription = "";
+        _selectedAgentScopes = [];
+    }
+
+    private async Task SaveCredentialAsync( ) {
+        try {
+            if (_editCredentialId.HasValue) {
+                // Update credential value/description
+                CredentialUpdateRequest request = new( _credValue, _credDescription, _credType );
+                HttpResponseMessage response = await Api.PutAsJsonAsync(
+                    $"/api/v1/settings/credentials/{_editCredentialId}", request );
+                if (!response.IsSuccessStatusCode) {
+                    _errorMessage = "Failed to update credential.";
+                    return;
+                }
+
+                // F2: Update agent scopes
+                CredentialScopeUpdateRequest scopeRequest = new( [.. _selectedAgentScopes] );
+                HttpResponseMessage scopeResponse = await Api.PutAsJsonAsync(
+                    $"/api/v1/settings/credentials/{_editCredentialId}/scope", scopeRequest );
+                if (!scopeResponse.IsSuccessStatusCode) {
+                    _errorMessage = "Credential updated but failed to update agent scopes.";
+                    CloseCredentialModal( );
+                    await LoadCredentialsAsync( );
+                    return;
+                }
+
+                _successMessage = $"Credential '{_credName}' updated.";
+            } else {
+                // F2: Pass agent scopes in create request
+                IReadOnlyList<Guid>? scopes = _selectedAgentScopes.Count > 0
+                    ? [.. _selectedAgentScopes]
+                    : null;
+                CredentialCreateRequest request = new( _credName, _credType, _credValue, _credDescription, scopes );
+                HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/settings/credentials", request );
+                if (response.IsSuccessStatusCode) {
+                    CredentialCreateResponse? created = await response.Content.ReadFromJsonAsync<CredentialCreateResponse>( );
+                    _createdPlaintext = created?.PlaintextValue;
+                    _successMessage = $"Credential '{_credName}' created.";
+                } else {
+                    _errorMessage = "Failed to create credential.";
+                    return;
+                }
+            }
+
+            CloseCredentialModal( );
+            await LoadCredentialsAsync( );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Credential operation failed: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteCredentialAsync( CredentialDto cred ) {
+        try {
+            HttpResponseMessage response = await Api.DeleteAsync( $"/api/v1/settings/credentials/{cred.Id}" );
+            if (response.IsSuccessStatusCode) {
+                _successMessage = $"Credential '{cred.Name}' deleted.";
+                await LoadCredentialsAsync( );
+            } else if ((int)response.StatusCode == 409) {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Cannot delete: {body}";
+            } else {
+                _errorMessage = $"Failed to delete credential: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to delete credential: {ex.Message}";
+        }
+    }
+
+    // F1: Rename credential
+    private void StartRenameCredential( CredentialDto cred ) {
+        _renameCredentialId = cred.Id;
+        _renameOldName = cred.Name;
+        _renameNewName = "";
+        _showRenameModal = true;
+    }
+
+    private void CloseRenameModal( ) {
+        _showRenameModal = false;
+        _renameCredentialId = null;
+        _renameOldName = "";
+        _renameNewName = "";
+    }
+
+    private async Task ConfirmRenameAsync( ) {
+        if ( string.IsNullOrWhiteSpace( _renameNewName ) ) {
+            _errorMessage = "New name cannot be empty.";
+            return;
+        }
+
+        try {
+            CredentialRenameRequest request = new( _renameNewName.Trim( ) );
+            HttpResponseMessage response = await Api.PutAsJsonAsync(
+                $"/api/v1/settings/credentials/{_renameCredentialId}/name", request );
+
+            if ( response.IsSuccessStatusCode ) {
+                _successMessage = $"Credential renamed from '{_renameOldName}' to '{_renameNewName.Trim()}'.";
+                CloseRenameModal( );
+                await LoadCredentialsAsync( );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to rename credential: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to rename credential: {ex.Message}";
+        }
+    }
+
+    // F2: Toggle agent scope checkbox
+    private void ToggleAgentScope( Guid agentId, bool isChecked ) {
+        if ( isChecked ) {
+            _ = _selectedAgentScopes.Add( agentId );
+        } else {
+            _ = _selectedAgentScopes.Remove( agentId );
+        }
+    }
+
+    // ── Diagnostics ──
+
+    private async Task LoadDiagnosticsAsync( ) {
+        _isLoading = true;
+        try {
+            Task<List<DatabaseHealthDto>?> databaseTask = Api.GetAsync<List<DatabaseHealthDto>>( "/api/v1/diagnostics/health" );
+            Task<List<AgentHealthDto>?> healthTask = Api.GetAsync<List<AgentHealthDto>>( "/api/v1/agents/health" );
             await Task.WhenAll( databaseTask, healthTask );
-
             _databaseHealth = await databaseTask ?? [];
             _agentHealth = await healthTask ?? [];
         } catch ( Exception ex ) {
@@ -298,17 +1229,155 @@
         }
     }
 
-    private static string FormatBoolean( bool value ) {
-        return value ? "Yes" : "No";
+    private void LoadInfrastructureConfig( ) {
+        _serviceDiscoveryKeys = [.. Configuration.AsEnumerable( )
+            .Where( kvp => !string.IsNullOrWhiteSpace( kvp.Key ) && kvp.Key.StartsWith( "services:", StringComparison.OrdinalIgnoreCase ) )
+            .Select( kvp => kvp.Key )
+            .Distinct( )
+            .OrderBy( key => key )];
+
+        _otlpEndpoint = Environment.GetEnvironmentVariable( "OTEL_EXPORTER_OTLP_ENDPOINT" ) ?? string.Empty;
     }
 
-    private static string FormatNullableBoolean( bool? value ) {
-        return value switch {
-            true => "Yes",
-            false => "No",
-            null => "Unknown"
-        };
+    private static string FormatNullableBoolean( bool? value ) =>
+        value switch { true => "Yes", false => "No", null => "Unknown" };
+
+    // ── Retention ──
+
+    private async Task ActivateRetentionTab( ) {
+        _activeTab = "retention";
+        if ( _retentionPolicies.Count == 0 ) {
+            await LoadRetentionPoliciesAsync( );
+        }
     }
+
+    private async Task LoadRetentionPoliciesAsync( ) {
+        _isLoading = true;
+        try {
+            _retentionPolicies = await Api.GetAsync<List<RetentionPolicyDto>>( "/api/v1/retention/policies" ) ?? [];
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to load retention policies: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private void StartRetentionEdit( RetentionPolicyDto policy ) {
+        _editRetentionType = policy.EntityType;
+        _editRetentionDays = policy.RetentionDays;
+    }
+
+    private void CancelRetentionEdit( ) {
+        _editRetentionType = null;
+        _showLowRetentionWarning = false;
+    }
+
+    private async Task SaveRetentionPolicyAsync( RetentionPolicyDto policy ) {
+        if ( _editRetentionDays < 7 ) {
+            _showLowRetentionWarning = true;
+            return;
+        }
+
+        await CommitRetentionSaveAsync( );
+    }
+
+    private async Task ConfirmLowRetentionSaveAsync( ) {
+        _showLowRetentionWarning = false;
+        await CommitRetentionSaveAsync( );
+    }
+
+    private async Task CommitRetentionSaveAsync( ) {
+        try {
+            RetentionPolicyUpdateRequest request = new( _editRetentionDays );
+            HttpResponseMessage response = await Api.PutAsJsonAsync(
+                $"/api/v1/retention/policies/{_editRetentionType}", request );
+
+            if ( response.IsSuccessStatusCode ) {
+                _successMessage = $"Retention policy for '{_editRetentionType}' updated to {_editRetentionDays} days.";
+                _editRetentionType = null;
+                await LoadRetentionPoliciesAsync( );
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Failed to update retention policy: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to update retention policy: {ex.Message}";
+        }
+    }
+
+    private async Task DryRunSweepAsync( ) {
+        _isSweeping = true;
+        _sweepIsDryRun = true;
+        _sweepExecuted = false;
+        try {
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/retention/sweep?dryRun=true", new { } );
+            if ( response.IsSuccessStatusCode ) {
+                _sweepPreview = await response.Content.ReadFromJsonAsync<List<SweepResultDto>>( ) ?? [];
+            } else {
+                _errorMessage = $"Dry-run sweep failed: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Dry-run sweep failed: {ex.Message}";
+        } finally {
+            _isSweeping = false;
+        }
+    }
+
+    private async Task ConfirmSweepAsync( ) {
+        _isSweeping = true;
+        _sweepIsDryRun = false;
+        try {
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/retention/sweep", new { } );
+            if ( response.IsSuccessStatusCode ) {
+                List<SweepResultDto>? results = await response.Content.ReadFromJsonAsync<List<SweepResultDto>>( );
+                if ( results is not null ) {
+                    _sweepPreview = results;
+                    _sweepExecuted = true;
+                    int total = results.Sum( r => r.DeletedCount );
+                    _successMessage = $"Retention sweep completed. {total} total records deleted.";
+                }
+            } else {
+                _errorMessage = $"Sweep execution failed: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Sweep execution failed: {ex.Message}";
+        } finally {
+            _isSweeping = false;
+        }
+    }
+
+    // ── Key Rotation ──
+
+    private async Task StartKeyRotationAsync( ) {
+        _isRotating = true;
+        _errorMessage = null;
+        try {
+            HttpResponseMessage response = await Api.PostAsJsonAsync(
+                "/api/v1/settings/encryption/rotate", new { } );
+            if ( response.IsSuccessStatusCode ) {
+                _rotationStatus = await response.Content.ReadFromJsonAsync<RotationStatusDto>( );
+                if ( _rotationStatus is not null && !_rotationStatus.InProgress ) {
+                    _successMessage = $"Key rotation completed. {_rotationStatus.ProcessedRows} rows re-encrypted.";
+                }
+            } else {
+                _errorMessage = $"Key rotation failed: {response.StatusCode}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Key rotation failed: {ex.Message}";
+        } finally {
+            _isRotating = false;
+        }
+    }
+
+    private async Task RefreshRotationStatusAsync( ) {
+        try {
+            _rotationStatus = await Api.GetAsync<RotationStatusDto>( "/api/v1/settings/encryption/rotate/status" );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to get rotation status: {ex.Message}";
+        }
+    }
+
+    // ── URL Notification ──
 
     private async Task NotifyUrlChangeAsync( ) {
         if (string.IsNullOrWhiteSpace( _notifyNewUrl )) {
@@ -321,9 +1390,8 @@
         _errorMessage = null;
 
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
             NotifyUrlChangeRequest request = new( _notifyNewUrl.Trim( ) );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/settings/notify-url-change", request );
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/settings/notify-url-change", request );
 
             if (response.IsSuccessStatusCode) {
                 _notifyResult = await response.Content.ReadFromJsonAsync<NotifyUrlChangeResponse>( );

@@ -1,10 +1,13 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Grpc.Core;
 using Grpc.Net.Client;
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
+using Werkr.Core.Communication;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Cryptography.KeyInfo;
+using Werkr.Core.Registration;
 using Werkr.Core.Registration.Models;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
@@ -54,28 +57,45 @@ public partial class AgentRegistrationHandler( ILogger<AgentRegistrationHandler>
                 "Failed to decrypt registration bundle. Verify the password and that the bundle was copied correctly." );
         }
 
-        // 2. Generate Agent's own RSA keypair
+        // 2. Derive the same AES-256 registration key from the password.
+        //    The Server derived this identical key at bundle creation time.
+        byte[] registrationKey = RegistrationBundleGenerator.DeriveRegistrationKey( password );
+
+        // 3. Generate Agent's own RSA keypair
         RSAKeyPair agentKeyPair = EncryptionProvider.GenerateRSAKeyPair( 4096 );
 
-        // 3. Hybrid-encrypt Agent's public key with Server's public key
+        // 4. Hybrid-encrypt Agent's public key with Server's public key
         byte[] agentPublicKeyBytes = EncryptionProvider.SerializePublicKey( agentKeyPair.PublicKey );
         RSAParameters serverPublicKey = EncryptionProvider.DeserializePublicKey( payload.ServerPublicKeyBytes );
         byte[] encryptedAgentPublicKey = EncryptionProvider.HybridEncrypt( agentPublicKeyBytes, serverPublicKey );
 
-        // 4. Create gRPC channel and call RegisterAgent
-        using GrpcChannel channel = GrpcChannel.ForAddress( payload.ServerUrl );
-        AgentRegistration.AgentRegistrationClient client = new( channel );
-
+        // 5. Build the RegisterAgentRequest and encrypt it into an EncryptedEnvelope
         RegisterAgentRequest request = new( ) {
             BundleId = Google.Protobuf.ByteString.CopyFrom( payload.BundleId ),
             EncryptedAgentPublicKey = Google.Protobuf.ByteString.CopyFrom( encryptedAgentPublicKey ),
             AgentUrl = agentUrl,
-            AgentName = Environment.MachineName
+            AgentName = Environment.MachineName,
+            AgentVersion = VersionHelper.GetAgentVersion( ),
         };
 
-        RegisterAgentResponse response;
+        EncryptedEnvelope requestEnvelope = PayloadEncryptor.EncryptToEnvelope(
+            request, registrationKey, "registration" );
+
+        // 6. Create gRPC channel and call RegisterAgent with bundle-id metadata
+        using GrpcChannel channel = GrpcChannel.ForAddress( payload.ServerUrl );
+        AgentRegistration.AgentRegistrationClient client = new( channel );
+
+        Metadata headers = new( ) {
+            { "x-werkr-bundle-id", Convert.ToHexString( payload.BundleId ) }
+        };
+
+        CallOptions callOptions = new(
+            headers: headers,
+            cancellationToken: ct );
+
+        EncryptedEnvelope responseEnvelope;
         try {
-            response = await client.RegisterAgentAsync( request, cancellationToken: ct );
+            responseEnvelope = await client.RegisterAgentAsync( requestEnvelope, callOptions );
         } catch (Exception ex) {
             if (logger.IsEnabled( LogLevel.Error )) {
                 logger.LogError( ex, "gRPC call to Server's RegisterAgent endpoint failed." );
@@ -85,11 +105,25 @@ public partial class AgentRegistrationHandler( ILogger<AgentRegistrationHandler>
                 $"Failed to contact the Server at {payload.ServerUrl}. Verify the Server is running and reachable." );
         }
 
+        // 7. Decrypt the response envelope
+        RegisterAgentResponse response;
+        try {
+            response = PayloadEncryptor.DecryptFromEnvelope<RegisterAgentResponse>(
+                responseEnvelope, registrationKey );
+        } catch (WerkrCryptoException ex) {
+            if (logger.IsEnabled( LogLevel.Error )) {
+                logger.LogError( ex, "Failed to decrypt registration response envelope." );
+            }
+
+            return new AgentRegistrationResult( false, null, null,
+                "Registration response could not be decrypted. The bundle password may be incorrect." );
+        }
+
         if (!response.Success) {
             return new AgentRegistrationResult( false, null, null, response.Message );
         }
 
-        // 5. Hybrid-decrypt the registration response data
+        // 8. Hybrid-decrypt the registration response data (API keys, shared key, connection ID)
         byte[] decryptedResponseBytes;
         try {
             decryptedResponseBytes = EncryptionProvider.HybridDecrypt(
@@ -111,9 +145,9 @@ public partial class AgentRegistrationHandler( ILogger<AgentRegistrationHandler>
                 "Registration succeeded but the response payload was invalid." );
         }
 
-        // 6. Persist RegisteredConnection locally
+        // 9. Persist RegisteredConnection locally
         // Use the shared ConnectionId from the Server so both sides reference the same ID
-        // Agent stores: OutboundApiKey = raw Agent→Server key, InboundApiKeyHash = hash of Server→Agent key
+        // Agent stores: OutboundApiKey = raw Agent->Server key, InboundApiKeyHash = hash of Server->Agent key
         RegisteredConnection connection = new( ) {
             Id = responsePayload.ConnectionId,
             ConnectionName = payload.ConnectionName,

@@ -1,0 +1,37 @@
+#!/bin/bash
+set -e
+
+INSTALL_DIR="/Library/Werkr/Server"
+CONFIG_DIR="/etc/werkr"
+DATA_DIR="/var/lib/werkr"
+LOG_DIR="/var/log/werkr"
+
+# Create directories
+mkdir -p "${CONFIG_DIR}"
+mkdir -p "${DATA_DIR}"
+mkdir -p "${LOG_DIR}"
+
+# Create default config if it doesn't exist
+if [ ! -f "${CONFIG_DIR}/appsettings.json" ]; then
+    echo '{}' > "${CONFIG_DIR}/appsettings.json"
+    chmod 640 "${CONFIG_DIR}/appsettings.json"
+fi
+
+# Set permissions on install directory
+chmod -R 755 "${INSTALL_DIR}"
+chmod +x "${INSTALL_DIR}/Werkr.Server"
+chmod +x "${INSTALL_DIR}/Werkr.Api"
+
+# Install launchd plists and load services
+for PLIST_NAME in "app.werkr.server" "app.werkr.api"; do
+    PLIST_SRC="${INSTALL_DIR}/launchd/${PLIST_NAME}.plist"
+    PLIST_DST="/Library/LaunchDaemons/${PLIST_NAME}.plist"
+
+    cp "${PLIST_SRC}" "${PLIST_DST}"
+    chmod 644 "${PLIST_DST}"
+    chown root:wheel "${PLIST_DST}"
+
+    launchctl load "${PLIST_DST}" 2>/dev/null || true
+done
+
+exit 0

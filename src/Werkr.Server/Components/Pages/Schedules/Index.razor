@@ -1,8 +1,10 @@
 ﻿@page "/schedules"
 @rendermode InteractiveServer
 @using Werkr.Common.Models
+@using Werkr.Common.Scheduling
+@using Werkr.Data
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 
 <PageTitle>Werkr - Schedules</PageTitle>
@@ -116,15 +118,14 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _schedules = await client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" );
+            _schedules = await Api.GetAsync<List<ScheduleDto>>( "/api/v1/schedules" );
 
             // Fetch next occurrence for each schedule concurrently
             if ( _schedules is not null ) {
                 DateTime windowEnd = DateTime.UtcNow.AddDays( 60 );
                 string windowEndParam = Uri.EscapeDataString( windowEnd.ToString( "o" ) );
                 Task[] fetchTasks = _schedules.Select( s =>
-                    FetchNextOccurrenceAsync( client, s.Id, windowEndParam ) ).ToArray( );
+                    FetchNextOccurrenceAsync( s.Id, windowEndParam ) ).ToArray( );
                 await Task.WhenAll( fetchTasks );
             }
         } catch ( Exception ex ) {
@@ -134,10 +135,10 @@
         }
     }
 
-    private async Task FetchNextOccurrenceAsync( HttpClient client, Guid scheduleId, string windowEndParam ) {
+    private async Task FetchNextOccurrenceAsync( Guid scheduleId, string windowEndParam ) {
         try {
-            OccurrencePreview? preview = await client.GetFromJsonAsync<OccurrencePreview>(
-                $"/api/schedules/{scheduleId}/occurrences?windowEnd={windowEndParam}" );
+            OccurrencePreview? preview = await Api.GetAsync<OccurrencePreview>(
+                $"/api/v1/schedules/{scheduleId}/occurrences?windowEnd={windowEndParam}" );
             DateTime? next = preview?.Occurrences?.Where( o => o > DateTime.UtcNow ).OrderBy( o => o ).FirstOrDefault( );
             _nextOccurrences[scheduleId] = next == default ? null : next;
         } catch {
@@ -153,8 +154,7 @@
 
     private async Task DeleteConfirmedAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/schedules/{_pendingDeleteId}" );
+            HttpResponseMessage response = await Api.DeleteAsync( $"/api/v1/schedules/{_pendingDeleteId}" );
             if ( response.IsSuccessStatusCode ) {
                 await LoadAsync( );
             } else {
@@ -173,7 +173,21 @@
     }
 
     private static string FormatStart( StartDateTimeDto? start ) {
-        return start is null ? "—" : $"{start.Date:yyyy-MM-dd} {start.Time:HH:mm} ({start.TimeZoneId})";
+        if (start is null) return "—";
+        string tzLabel = FormatTimeZoneLabel( start.TimeZoneId, start.IsFixedOffset,
+            start.Date.ToDateTime( start.Time ) );
+        return $"{start.Date:yyyy-MM-dd} {start.Time:HH:mm} ({tzLabel})";
+    }
+
+    private static string FormatTimeZoneLabel( string tzId, bool isFixedOffset, DateTime instant ) {
+        try {
+            TimeZoneInfo tz = TimeZoneResolver.FindOrCreate( tzId );
+            return isFixedOffset
+                ? TimeZoneDisplayService.GetFixedOffsetLabel( tz.BaseUtcOffset )
+                : TimeZoneDisplayService.GetAbbreviation( tz, instant );
+        } catch {
+            return tzId;
+        }
     }
 
     private static string FormatExpiration( ExpirationDateTimeDto? exp ) {

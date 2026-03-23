@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Grpc.Core;
 using Werkr.Agent.Communication;
 using Werkr.Common.Protos;
+using Werkr.Core.Communication;
 
 namespace Werkr.Agent.Services;
 
@@ -44,8 +45,8 @@ public sealed partial class OutputStreamingService(
     /// <summary>Ring buffers holding the last N output lines per execution.</summary>
     private readonly ConcurrentDictionary<ExecutionKey, BoundedBuffer> _buffers = new( );
 
-    /// <summary>Channel used to send messages over the gRPC stream.</summary>
-    private readonly Channel<OutputMessage> _outbound = Channel.CreateUnbounded<OutputMessage>(
+    /// <summary>Channel used to send encrypted envelopes over the gRPC stream.</summary>
+    private readonly Channel<EncryptedEnvelope> _outbound = Channel.CreateUnbounded<EncryptedEnvelope>(
         new UnboundedChannelOptions { SingleReader = true } );
 
     private CancellationTokenSource? _streamCts;
@@ -54,8 +55,8 @@ public sealed partial class OutputStreamingService(
 
     /// <summary>
     /// Publishes an output message.  The line is always buffered.  If a
-    /// matching subscription is active the message is also enqueued for the
-    /// gRPC stream.
+    /// matching subscription is active the message is encrypted and enqueued
+    /// for the gRPC stream.
     /// </summary>
     public void Publish( OutputMessage message ) {
         ExecutionKey key = new( message.TaskId, message.ScheduleId );
@@ -66,7 +67,9 @@ public sealed partial class OutputStreamingService(
 
         // Only push to stream if subscribed
         if (_subscriptions.ContainsKey( key )) {
-            _ = _outbound.Writer.TryWrite( message );
+            EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
+                message, clientFactory.GetSharedKey( ), clientFactory.GetKeyId( ) );
+            _ = _outbound.Writer.TryWrite( envelope );
         }
     }
 
@@ -109,7 +112,7 @@ public sealed partial class OutputStreamingService(
                 CallOptions callOptions = clientFactory.CreateCallOptions(
                     timeout: Timeout.InfiniteTimeSpan, cancellationToken: ct );
 
-                using AsyncDuplexStreamingCall<OutputMessage, OutputSubscription> call =
+                using AsyncDuplexStreamingCall<EncryptedEnvelope, EncryptedEnvelope> call =
                     client.StreamOutput( callOptions );
 
                 // Use a per-stream token so we can cancel the writer when the
@@ -174,10 +177,13 @@ public sealed partial class OutputStreamingService(
     }
 
     private async Task ReadSubscriptionsAsync(
-        IAsyncStreamReader<OutputSubscription> reader,
+        IAsyncStreamReader<EncryptedEnvelope> reader,
         CancellationToken ct
     ) {
-        await foreach (OutputSubscription sub in reader.ReadAllAsync( ct )) {
+        await foreach (EncryptedEnvelope envelope in reader.ReadAllAsync( ct )) {
+            OutputSubscription sub = PayloadEncryptor.DecryptFromEnvelope<OutputSubscription>(
+                envelope, clientFactory.GetSharedKey( ) );
+
             ExecutionKey key = new( sub.TaskId, sub.ScheduleId );
 
             if (sub.Subscribe) {
@@ -188,10 +194,12 @@ public sealed partial class OutputStreamingService(
                         sub.TaskId, sub.ScheduleId );
                 }
 
-                // Replay buffered lines
+                // Replay buffered lines (encrypt each before sending)
                 if (_buffers.TryGetValue( key, out BoundedBuffer? buffer )) {
                     foreach (OutputMessage buffered in buffer.Snapshot( )) {
-                        _ = _outbound.Writer.TryWrite( buffered );
+                        EncryptedEnvelope bufferedEnvelope = PayloadEncryptor.EncryptToEnvelope(
+                            buffered, clientFactory.GetSharedKey( ), clientFactory.GetKeyId( ) );
+                        _ = _outbound.Writer.TryWrite( bufferedEnvelope );
                     }
                 }
             } else {
@@ -206,11 +214,11 @@ public sealed partial class OutputStreamingService(
     }
 
     private async Task WriteOutputAsync(
-        IClientStreamWriter<OutputMessage> writer,
+        IClientStreamWriter<EncryptedEnvelope> writer,
         CancellationToken ct
     ) {
-        await foreach (OutputMessage message in _outbound.Reader.ReadAllAsync( ct )) {
-            await writer.WriteAsync( message, ct );
+        await foreach (EncryptedEnvelope envelope in _outbound.Reader.ReadAllAsync( ct )) {
+            await writer.WriteAsync( envelope, ct );
         }
     }
 

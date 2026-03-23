@@ -13,7 +13,7 @@ public static class AuthProxyEndpoints {
     /// </summary>
     public static WebApplication MapAuthProxyEndpoints( this WebApplication app ) {
         _ = app.MapPost(
-            "/api/auth/token",
+            "/api/v1/auth/token",
             async (
                 TokenRequest request,
                 IHttpClientFactory httpClientFactory,
@@ -27,7 +27,7 @@ public static class AuthProxyEndpoints {
                 using HttpClient serverClient = httpClientFactory.CreateClient( "ServerService" );
 
                 using HttpResponseMessage response = await serverClient.PostAsJsonAsync(
-                    "/api/auth/token", request, ct );
+                    "/api/v1/auth/token", request, ct );
 
                 if (!response.IsSuccessStatusCode) {
                     // Forward the Server's status code (e.g. 401 for invalid key)

@@ -57,13 +57,13 @@ body.dark-theme {
     --text-muted-color:     var(--grey-600);
     --badge-bg:             var(--grey-700);
 
-    /* ── Werkr Status Colors ── */
-    --werkr-success:          #28a745;
-    --werkr-failed:           #dc3545;
-    --werkr-running:          #ffc107;
-    --werkr-pending:          #6f42c1;
-    --werkr-skipped:          #6c757d;
-    --werkr-not-run:          #4a4a4a;
+    /* ── Werkr Status Colors (§7 Color Standard) ── */
+    --werkr-status-succeeded: #28a745;
+    --werkr-status-failed:    #dc3545;
+    --werkr-status-running:   #ffc107;
+    --werkr-status-pending:   #6f42c1;
+    --werkr-status-skipped:   #6c757d;
+    --werkr-status-cancelled: #4a4a4a;
 
     /* ── DAG Node Types ── */
     --werkr-node-default:     #0d6efd;
@@ -109,13 +109,13 @@ body.light-theme {
     --text-muted-color:     var(--grey-600);
     --badge-bg:             var(--grey-400);
 
-    /* ── Werkr Status Colors ── */
-    --werkr-success:          #198754;
-    --werkr-failed:           #dc3545;
-    --werkr-running:          #ffc107;
-    --werkr-pending:          #6f42c1;
-    --werkr-skipped:          #6c757d;
-    --werkr-not-run:          #e9ecef;
+    /* ── Werkr Status Colors (§7 Color Standard) ── */
+    --werkr-status-succeeded: #198754;
+    --werkr-status-failed:    #dc3545;
+    --werkr-status-running:   #ffc107;
+    --werkr-status-pending:   #6f42c1;
+    --werkr-status-skipped:   #6c757d;
+    --werkr-status-cancelled: #adb5bd;
 
     /* ── DAG Node Types ── */
     --werkr-node-default:     #0d6efd;
@@ -489,10 +489,18 @@ body.light-theme legend {
     line-height: 1;
 }
 
-/* ── Badge → Werkr semantic color bridge ──────────────────── */
-.badge.bg-success   { background-color: var(--werkr-success) !important; }
-.badge.bg-danger    { background-color: var(--werkr-failed) !important; }
-.badge.bg-warning   { background-color: var(--werkr-running) !important; }
-.badge.bg-primary   { background-color: var(--werkr-pending) !important; }
-.badge.bg-secondary { background-color: var(--werkr-skipped) !important; }
-.badge.bg-info      { background-color: var(--werkr-pending) !important; }
+/* ── Werkr status utilities ──────────────────────── */
+.werkr-status-succeeded { background-color: var(--werkr-status-succeeded) !important; color: #fff; }
+.werkr-status-failed    { background-color: var(--werkr-status-failed) !important; color: #fff; }
+.werkr-status-running   { background-color: var(--werkr-status-running) !important; color: #212529; }
+.werkr-status-pending   { background-color: var(--werkr-status-pending) !important; color: #fff; }
+.werkr-status-skipped   { background-color: var(--werkr-status-skipped) !important; color: #fff; }
+.werkr-status-cancelled { background-color: var(--werkr-status-cancelled) !important; color: #fff; }
+
+/* Border variants for timeline card headers */
+.werkr-border-succeeded { border-color: var(--werkr-status-succeeded) !important; }
+.werkr-border-failed    { border-color: var(--werkr-status-failed) !important; }
+.werkr-border-running   { border-color: var(--werkr-status-running) !important; }
+.werkr-border-pending   { border-color: var(--werkr-status-pending) !important; }
+.werkr-border-skipped   { border-color: var(--werkr-status-skipped) !important; }
+.werkr-border-cancelled { border-color: var(--werkr-status-cancelled) !important; }

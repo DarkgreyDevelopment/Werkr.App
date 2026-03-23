@@ -1,9 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Common.Models;
-using Werkr.Core.Communication;
 using Werkr.Core.Tasks;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
@@ -25,14 +23,6 @@ public class AgentResolverTests {
     /// The <see cref="SqliteWerkrDbContext"/> used for seeding and querying test data.
     /// </summary>
     private SqliteWerkrDbContext _dbContext = null!;
-    /// <summary>
-    /// The service provider supplying scoped <see cref="WerkrDbContext"/> instances.
-    /// </summary>
-    private ServiceProvider _serviceProvider = null!;
-    /// <summary>
-    /// The <see cref="AgentConnectionManager"/> managing gRPC channels.
-    /// </summary>
-    private AgentConnectionManager _connectionManager = null!;
     /// <summary>
     /// The <see cref="AgentResolver"/> instance under test.
     /// </summary>
@@ -59,25 +49,8 @@ public class AgentResolverTests {
         _dbContext = new SqliteWerkrDbContext( options );
         _ = _dbContext.Database.EnsureCreated( );
 
-        ServiceCollection services = new( );
-        _ = services.AddDbContext<WerkrDbContext>(
-            b => b.UseSqlite( _connection ),
-            ServiceLifetime.Scoped
-        );
-        _ = services.AddDbContext<SqliteWerkrDbContext>(
-            b => b.UseSqlite( _connection ),
-            ServiceLifetime.Scoped
-        );
-        _serviceProvider = services.BuildServiceProvider( );
-
-        _connectionManager = new AgentConnectionManager(
-            _serviceProvider.GetRequiredService<IServiceScopeFactory>( ),
-            NullLogger<AgentConnectionManager>.Instance
-        );
-
         _resolver = new AgentResolver(
             _dbContext,
-            _connectionManager,
             NullLogger<AgentResolver>.Instance
         );
     }
@@ -87,8 +60,6 @@ public class AgentResolverTests {
     /// </summary>
     [TestCleanup]
     public void TestCleanup( ) {
-        _connectionManager?.Dispose( );
-        _serviceProvider?.Dispose( );
         _dbContext?.Dispose( );
         _connection?.Dispose( );
     }

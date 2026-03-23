@@ -4,10 +4,11 @@
 @page "/workflows/new/edit"
 @rendermode InteractiveServer
 @attribute [Authorize( Roles = "Admin,Operator" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthState
 @inject ILogger<DagEditor> Logger
+@inject IJSRuntime JS
 
 <PageTitle>Werkr - @( IsNewMode ? "New" : "Edit" ) Workflow</PageTitle>
 
@@ -20,6 +21,53 @@
 
 @if ( !string.IsNullOrWhiteSpace( _successMessage ) ) {
     <StatusBanner Visible="true" Level="success" Title="Success" Message="@_successMessage" />
+}
+
+@if ( _conflictDetected ) {
+    <div class="card border-warning mb-4">
+        <div class="card-header bg-warning text-dark">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Version Conflict</strong> — This workflow was modified by another user since you loaded it.
+        </div>
+        <div class="card-body">
+            <p>Your changes are based on version <strong>v@(_currentVersionNumber)</strong>, but the server has a newer version.</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-warning" @onclick="ConflictOverwriteAsync">
+                    <i class="bi bi-cloud-upload me-1"></i> Overwrite with My Changes
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="ConflictReloadAsync">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Reload Latest Version
+                </button>
+                <button class="btn btn-outline-info" @onclick="ConflictExportJsonAsync">
+                    <i class="bi bi-download me-1"></i> Export My Changes as JSON
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if ( _pinnedTriggerMismatches is { Count: > 0 } ) {
+    <div class="card border-info mb-4">
+        <div class="card-header bg-info text-white">
+            <i class="bi bi-pin-angle-fill me-2"></i>
+            <strong>Pinned Triggers Need Updating</strong>
+        </div>
+        <div class="card-body">
+            <p>The following pinned triggers still reference an older workflow version:</p>
+            <ul class="list-group list-group-flush mb-3">
+                @foreach ( PinnedTriggerMismatch trigger in _pinnedTriggerMismatches ) {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>@( trigger.Name ?? $"Trigger #{trigger.Id}" )</span>
+                        <button class="btn btn-outline-primary btn-sm"
+                                @onclick="( ) => UpdatePinnedTriggerAsync( trigger.Id, _workflow!.CurrentVersionId!.Value )">
+                            Update to Latest
+                        </button>
+                    </li>
+                }
+            </ul>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="( ) => _pinnedTriggerMismatches = null">Dismiss</button>
+        </div>
+    </div>
 }
 
 @if ( _isLoading ) {
@@ -64,31 +112,23 @@
             <h5 class="mb-0 d-inline">Workflow Details</h5>
         </summary>
         <div class="card-body">
-            <EditForm Model="_model" OnValidSubmit="SaveMetadataAsync" FormName="EditWorkflowMeta">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label" for="wf-name">Name</label>
-                        <InputText id="wf-name" class="form-control" @bind-Value="_model!.Name" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="wf-desc">Description</label>
-                        <InputTextArea id="wf-desc" class="form-control" rows="2" @bind-Value="_model!.Description" />
-                    </div>
-                    <div class="col-md-3">
-                        <ToggleSwitch @bind-Value="_model!.Enabled" Label="Enabled" />
-                    </div>
-                    <div class="col-md-9">
-                        <label class="form-label">Target Tags</label>
-                        <TagInput @bind-Value="_model!.TargetTags" />
-                    </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="wf-name">Name</label>
+                    <InputText id="wf-name" class="form-control" @bind-Value="_model!.Name" />
                 </div>
-                <button type="submit" class="btn btn-outline-primary btn-sm mt-3" disabled="@_isSavingMeta">
-                    @if ( _isSavingMeta ) {
-                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                    }
-                    Save Metadata
-                </button>
-            </EditForm>
+                <div class="col-md-6">
+                    <label class="form-label" for="wf-desc">Description</label>
+                    <InputTextArea id="wf-desc" class="form-control" rows="2" @bind-Value="_model!.Description" />
+                </div>
+                <div class="col-md-3">
+                    <ToggleSwitch @bind-Value="_model!.Enabled" Label="Enabled" />
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label">Target Tags</label>
+                    <TagInput @bind-Value="_model!.TargetTags" />
+                </div>
+            </div>
         </div>
     </details>
 
@@ -113,11 +153,12 @@
     @* ── Editor Layout: Palette | Canvas | Config Panel ── *@
     <div class="dag-editor-layout d-flex" style="height: calc(100vh - 320px); min-height: 400px;">
         @* ── Step Palette (left) ── *@
-        <StepPalette OnPaletteDragStart="HandlePaletteDragStartAsync" />
+        <StepPalette OnPaletteDragStart="HandlePaletteDragStartAsync"
+                     OnCompositeDragStart="HandleCompositeDragStartAsync" />
 
         @* ── Canvas (center) ── *@
         <DagEditorCanvas @ref="_canvas"
-                         WorkflowId="@Id"
+                         WorkflowId="@_workflowId"
                          UserId="@_userId"
                          OnNodeSelected="HandleNodeSelectedAsync"
                          OnNodeDeselected="HandleNodeDeselectedAsync"
@@ -125,7 +166,8 @@
                          OnSaveRequested="SaveAsync"
                          OnCycleDetected="HandleCycleDetectedAsync"
                          OnDirtyCountChanged="HandleDirtyCountChangedAsync"
-                         OnZoomChanged="HandleZoomChanged" />
+                         OnZoomChanged="HandleZoomChanged"
+                         OnCanvasReady="HandleCanvasReadyAsync" />
 
         @* ── Config Panel (right) ── *@
         <NodeConfigPanel SelectedStepId="_selectedStepId"
@@ -133,18 +175,27 @@
                          Dependencies="_selectedStepDependencies"
                          TaskId="_selectedTaskId"
                          TaskName="@_selectedTaskName"
+                         ActionKey="@_selectedActionKey"
                          ControlStatement="@_selectedControlStatement"
                          ConditionExpression="@_selectedConditionExpression"
                          MaxIterations="_selectedMaxIterations"
                          DependencyMode="@_selectedDependencyMode"
                          InputVariableName="@_selectedInputVariable"
                          OutputVariableName="@_selectedOutputVariable"
+                         IsComposite="_selectedIsComposite"
+                         CompositeType="@_selectedCompositeType"
+                         ChildWorkflowId="_selectedChildWorkflowId"
+                         CollectionVariableName="@_selectedCollectionVariable"
+                         IterationVariableName="@_selectedIterationVariable"
+                         TaskVersionNumber="_selectedTaskVersionNumber"
+                         TaskCurrentVersionNumber="_selectedTaskCurrentVersionNumber"
                          OnFieldChanged="HandleFieldChangedAsync"
                          OnClose="HandleConfigPanelClose"
                          OnDelete="HandleDeleteSelectedAsync"
                          OnEditTaskRequested="HandleEditTaskAsync"
                          OnCreateTaskRequested="HandleCreateTaskAsync"
-                         OnRemoveDependency="HandleRemoveDependencyAsync" />
+                         OnRemoveDependency="HandleRemoveDependencyAsync"
+                         OnUpdateToLatestVersion="HandleUpdateToLatestVersionAsync" />
     </div>
 
     @* ── Status Bar ── *@
@@ -154,18 +205,84 @@
         @if ( _lastSaved.HasValue ) {
             <span>Last saved: @_lastSaved.Value.ToString( "HH:mm:ss" )</span>
         }
-        <span class="ms-auto badge @( _selectedStepId.HasValue ? "bg-success" : "bg-secondary" )">
-            DEBUG selectedStepId=@( _selectedStepId?.ToString() ?? "null" )
+        <span class="ms-auto badge @( _currentVersionNumber.HasValue ? "bg-info" : "bg-secondary" )">
+            @if ( _currentVersionNumber.HasValue ) {
+                <text>v@(_currentVersionNumber)</text>
+            } else {
+                <text>Draft</text>
+            }
         </span>
     </div>
 
-    <TaskSetupModal @ref="_taskSetupModal" WorkflowId="Id" OnTaskCreated="OnTaskCreatedAsync" OnTaskUpdated="OnTaskUpdatedAsync" />
+    @* ── Version History ── *@
+    @if ( !IsNewMode && _currentVersionNumber.HasValue ) {
+        <div class="card mb-4 mt-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">
+                        Version History
+                        <span class="badge bg-primary ms-2">Current: v@(_currentVersionNumber)</span>
+                    </h5>
+                </div>
+                @if ( _versions is { Items.Count: > 0 } ) {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Version</th>
+                                    <th>Created</th>
+                                    <th>Author</th>
+                                    <th>Description</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ( WorkflowVersionDto v in _versions.Items ) {
+                                    <tr>
+                                        <td>
+                                            <span class="badge @( v.VersionNumber == _currentVersionNumber ? "bg-primary" : "bg-secondary" )">
+                                                v@(v.VersionNumber)
+                                            </span>
+                                        </td>
+                                        <td>@v.CreatedUtc.ToString( "g" )</td>
+                                        <td>@( v.CreatedByUserId ?? "System" )</td>
+                                        <td>@( v.ChangeDescription ?? "\u2014" )</td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <a href="/workflows/@_workflowId/versions/@v.Id"
+                                                   class="btn btn-outline-secondary btn-sm">View</a>
+                                                @if ( v.VersionNumber > 1 && GetPreviousVersionId( v.VersionNumber ) is long prevId ) {
+                                                    <a href="/workflows/@_workflowId/versions/diff?from=@prevId&to=@v.Id"
+                                                       class="btn btn-outline-info btn-sm">Diff</a>
+                                                }
+                                                @if ( v.VersionNumber != _currentVersionNumber ) {
+                                                    <button class="btn btn-outline-warning btn-sm"
+                                                            @onclick="( ) => RollbackAsync( v.Id )">Rollback</button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } else {
+                    <p class="text-muted mb-0">No version history available.</p>
+                }
+            </div>
+        </div>
+    }
+
+    <TaskSetupModal @ref="_taskSetupModal" WorkflowId="_workflowId" OnTaskCreated="OnTaskCreatedAsync" OnTaskUpdated="OnTaskUpdatedAsync" />
 }
 
 @code {
     [Parameter] public long Id { get; set; }
 
-    private bool IsNewMode => Id == 0;
+    /// <summary>Effective workflow ID. Starts as the route parameter, updated to the real ID after first save.</summary>
+    private long _workflowId;
+
+    private bool IsNewMode => _workflowId == 0;
 
     // ── State ──
     private WorkflowDto? _workflow;
@@ -180,7 +297,6 @@
     private string? _successMessage;
     private bool _isLoading;
     private bool _isSaving;
-    private bool _isSavingMeta;
     private bool _isValidating;
     private bool _hasDraft;
     private bool _draftDismissed;
@@ -194,6 +310,14 @@
     private DateTime? _lastSaved;
     private bool _gridVisible;
 
+    // ── Version State ──
+    private int? _currentVersionNumber;
+    private PagedResult<WorkflowVersionDto>? _versions;
+
+    // ── Conflict Resolution State ──
+    private bool _conflictDetected;
+    private WorkflowUpdateRequest? _conflictLocalRequest;
+
     // ── Selected Node State ──
     private long? _selectedStepId;
     private long _selectedTaskId;
@@ -201,16 +325,28 @@
     private string _selectedControlStatement = "Default";
     private string? _selectedConditionExpression;
     private int _selectedMaxIterations = 100;
-    private string _selectedDependencyMode = "All";
+    private string _selectedDependencyMode = "AllSuccess";
     private string? _selectedInputVariable;
     private string? _selectedOutputVariable;
     private IReadOnlyList<long>? _selectedStepDependencies;
+    private bool _selectedIsComposite;
+    private string _selectedCompositeType = "None";
+    private long? _selectedChildWorkflowId;
+    private string? _selectedCollectionVariable;
+    private string? _selectedIterationVariable;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [];
+
+    // Track all state for unsaved temp nodes (stepId → state)
+    private readonly Dictionary<long, TempNodeState> _tempNodes = new( );
+    private string? _selectedActionKey;
+    private int? _selectedTaskVersionNumber;
+    private int? _selectedTaskCurrentVersionNumber;
 
     private static readonly System.Text.Json.JsonSerializerOptions s_jsonWeb = new( System.Text.Json.JsonSerializerDefaults.Web );
 
     protected override async Task OnInitializedAsync( ) {
+        _workflowId = Id;
         AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
         _userId = authState.User.Identity?.Name ?? "unknown";
 
@@ -223,19 +359,22 @@
         }
     }
 
-    protected override async Task OnAfterRenderAsync( bool firstRender ) {
-        if ( firstRender && _canvas?.Interop is not null && !IsNewMode ) {
-            _hasDraft = await _canvas.Interop.CheckDraftAsync( _userId, Id );
+    private async Task HandleCanvasReadyAsync( ) {
+        if ( _canvas?.Interop is null ) return;
+
+        // Canvas just initialized — load graph data if available
+        if ( _workflow is not null && !IsNewMode ) {
+            await LoadGraphIntoCanvasAsync( );
+            _hasDraft = await _canvas.Interop.CheckDraftAsync( _userId, _workflowId );
             if ( _hasDraft ) {
-                StateHasChanged( );
+                await InvokeAsync( StateHasChanged );
             }
         }
     }
 
     private async Task LoadReferenceDataAsync( ) {
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            _tasks = await Api.GetAsync<List<TaskDto>>( "/api/v1/tasks" );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load tasks: {ex.Message}";
         }
@@ -245,18 +384,26 @@
         _isLoading = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            _workflow = await client.GetFromJsonAsync<WorkflowDto>( $"/api/workflows/{Id}" );
+            _workflow = await Api.GetAsync<WorkflowDto>( $"/api/v1/workflows/{_workflowId}" );
             if ( _workflow is null ) {
                 _errorMessage = "Workflow not found.";
                 return;
             }
 
-            _breadcrumbs = [
-                new( "Workflows", "/workflows" ),
-                new( _workflow.Name, $"/workflows/{Id}" ),
-                new( "Editor" )
-            ];
+            if ( _workflow.IsChildWorkflow && _workflow.ParentStepId.HasValue ) {
+                _breadcrumbs = [
+                    new( "Workflows", "/workflows" ),
+                    new( "Parent Workflow", $"/workflows/{_workflow.ParentStepId.Value}/dag-editor" ),
+                    new( "ForEach Step" ),
+                    new( $"{_workflow.Name} (Inner Workflow)" )
+                ];
+            } else {
+                _breadcrumbs = [
+                    new( "Workflows", "/workflows" ),
+                    new( _workflow.Name, $"/workflows/{_workflowId}" ),
+                    new( "Editor" )
+                ];
+            }
 
             _model = new WorkflowFormModel {
                 Name = _workflow.Name,
@@ -265,18 +412,52 @@
                 TargetTags = _workflow.TargetTags ?? [],
             };
 
-            _tasks = await client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
+            _tasks = await Api.GetAsync<List<TaskDto>>( "/api/v1/tasks" );
             _stepCount = _workflow.Steps.Count;
             _edgeCount = _workflow.Steps.Sum( s => s.Dependencies.Count );
 
-            // Load graph into canvas after initial render
-            if ( _canvas?.Interop is not null ) {
-                await LoadGraphIntoCanvasAsync( );
-            }
+            _currentVersionNumber = _workflow.CurrentVersionNumber;
+            await LoadVersionHistoryAsync( );
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load workflow: {ex.Message}";
         } finally {
             _isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Reload workflow + task data after save and rebuild the canvas graph
+    /// so node IDs match the server (temp IDs → real IDs).
+    /// </summary>
+    private async Task ReloadAfterSaveAsync( ) {
+        try {
+            _workflow = await Api.GetAsync<WorkflowDto>( $"/api/v1/workflows/{_workflowId}" );
+            _tasks = await Api.GetAsync<List<TaskDto>>( "/api/v1/tasks" );
+
+            if ( _workflow is not null ) {
+                _stepCount = _workflow.Steps.Count;
+                _edgeCount = _workflow.Steps.Sum( s => s.Dependencies.Count );
+
+                _breadcrumbs = [
+                    new( "Workflows", "/workflows" ),
+                    new( _workflow.Name, $"/workflows/{_workflowId}" ),
+                    new( "Editor" )
+                ];
+
+                // Rebuild the canvas with real IDs from the server
+                if ( _canvas?.Interop is not null ) {
+                    await LoadGraphIntoCanvasAsync( );
+                }
+            }
+
+            _tempNodes.Clear( );
+            _selectedStepId = null;
+            _selectedActionKey = null;
+
+            _currentVersionNumber = _workflow?.CurrentVersionNumber;
+            await LoadVersionHistoryAsync( );
+        } catch ( Exception ex ) {
+            _errorMessage = $"Failed to reload after save: {ex.Message}";
         }
     }
 
@@ -285,16 +466,19 @@
 
         object[] nodes = _workflow.Steps.Select( step => (object) new {
             stepId = step.Id,
-            stepLabel = $"Step #{step.Order}",
-            taskName = step.TaskName ?? $"Task {step.TaskId}",
+            stepLabel = step.IsComposite ? $"ForEach #{step.Order}" : $"Step #{step.Order}",
+            taskName = step.IsComposite ? "ForEach" : ( step.TaskName ?? $"Task {step.TaskId ?? 0}" ),
             controlStatement = step.ControlStatement,
             order = step.Order,
-            taskId = step.TaskId,
+            taskId = step.TaskId ?? 0,
             inputVariableName = step.InputVariableName,
             outputVariableName = step.OutputVariableName,
             dependencyMode = step.DependencyMode,
             conditionExpression = step.ConditionExpression,
             maxIterations = step.MaxIterations,
+            isComposite = step.IsComposite,
+            compositeType = step.CompositeType,
+            childWorkflowId = step.ChildWorkflowId,
         } ).ToArray( );
 
         object[] edges = _workflow.Steps
@@ -322,26 +506,91 @@
         _successMessage = null;
 
         try {
-            string changesetJson = await _canvas.Interop.GetChangesetJsonAsync( );
-            if ( string.IsNullOrEmpty( changesetJson ) || changesetJson == "{}" ) {
-                _successMessage = "No changes to save.";
+            if ( _model is null || string.IsNullOrWhiteSpace( _model.Name ) ) {
+                _errorMessage = "Please enter a workflow name before saving.";
                 return;
             }
 
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsync(
-                $"/api/workflows/{Id}/steps/batch",
-                new StringContent( changesetJson, System.Text.Encoding.UTF8, "application/json" ) );
+            // ── Create or update workflow metadata ──
+            if ( IsNewMode ) {
+                WorkflowCreateRequest createRequest = new(
+                    Name: _model.Name,
+                    Description: _model.Description,
+                    Enabled: _model.Enabled,
+                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
 
-            if ( response.IsSuccessStatusCode ) {
-                await _canvas.Interop.ClearChangesetAsync( );
-                _lastSaved = DateTime.Now;
-                _successMessage = "Changes saved.";
-                await LoadAsync( );
+                HttpResponseMessage createResponse = await Api.PostAsJsonAsync( "/api/v1/workflows", createRequest );
+                if ( !createResponse.IsSuccessStatusCode ) {
+                    string body = await createResponse.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to create workflow: {body}";
+                    return;
+                }
+
+                WorkflowDto? created = await createResponse.Content.ReadFromJsonAsync<WorkflowDto>( );
+                if ( created is null || created.Id == 0 ) {
+                    _errorMessage = "Failed to create workflow: no ID returned.";
+                    return;
+                }
+
+                _workflowId = created.Id;
             } else {
-                string body = await response.Content.ReadAsStringAsync( );
-                _errorMessage = $"Save failed: {body}";
+                // Update metadata on existing workflow
+                List<AnnotationDto>? annotations = null;
+                if ( _canvas?.Interop is not null ) {
+                    string annotationsJson = await _canvas.Interop.GetAnnotationsJsonAsync( );
+                    if ( !string.IsNullOrEmpty( annotationsJson ) && annotationsJson != "[]" ) {
+                        annotations = System.Text.Json.JsonSerializer.Deserialize<List<AnnotationDto>>( annotationsJson, s_jsonWeb );
+                    }
+                }
+
+                WorkflowUpdateRequest updateRequest = new(
+                    Name: _model.Name,
+                    Description: _model.Description,
+                    Enabled: _model.Enabled,
+                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null,
+                    Annotations: annotations,
+                    ExpectedVersionNumber: _currentVersionNumber );
+
+                HttpResponseMessage updateResponse = await Api.PutAsJsonAsync( $"/api/v1/workflows/{_workflowId}", updateRequest );
+                if ( updateResponse.StatusCode == System.Net.HttpStatusCode.Conflict ) {
+                    _conflictDetected = true;
+                    _conflictLocalRequest = updateRequest;
+                    return;
+                }
+                if ( !updateResponse.IsSuccessStatusCode ) {
+                    string body = await updateResponse.Content.ReadAsStringAsync( );
+                    _errorMessage = $"Failed to save workflow metadata: {body}";
+                    return;
+                }
             }
+
+            // ── Save steps (batch changeset) ──
+            string changesetJson = _canvas?.Interop is not null
+                ? await _canvas.Interop.GetChangesetJsonAsync( )
+                : "{}";
+            bool hasStepChanges = !string.IsNullOrEmpty( changesetJson )
+                && changesetJson != "{}"
+                && changesetJson != "{\"operations\":[]}";
+
+            if ( hasStepChanges ) {
+                HttpResponseMessage response = await Api.PostAsync(
+                    $"/api/v1/workflows/{_workflowId}/steps/batch",
+                    new StringContent( changesetJson, System.Text.Encoding.UTF8, "application/json" ) );
+
+                string responseBody = await response.Content.ReadAsStringAsync( );
+                if ( !response.IsSuccessStatusCode ) {
+                    _errorMessage = $"Save failed: {responseBody}";
+                    return;
+                }
+            }
+
+            if ( _canvas?.Interop is not null ) {
+                await _canvas.Interop.ClearChangesetAsync( );
+            }
+            _lastSaved = DateTime.Now;
+            _successMessage = "Changes saved.";
+            await ReloadAfterSaveAsync( );
+            await CheckPinnedTriggersAsync( );
         } catch ( Exception ex ) {
             _errorMessage = $"Save failed: {ex.Message}";
         } finally {
@@ -366,8 +615,7 @@
         _isValidating = true;
         _errorMessage = null;
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.PostAsync( $"/api/workflows/{Id}/validate", null );
+            HttpResponseMessage response = await Api.PostAsync( $"/api/v1/workflows/{_workflowId}/validate", null );
             _dagResult = await response.Content.ReadFromJsonAsync<DagValidationResult>( );
         } catch ( Exception ex ) {
             _errorMessage = $"Validation failed: {ex.Message}";
@@ -443,83 +691,18 @@
         }
     }
 
-    // ── Save Metadata (separate from batch step save) ──
-
-    private async Task SaveMetadataAsync( ) {
-        if ( _model is null ) return;
-        _isSavingMeta = true;
-        _errorMessage = null;
-        _successMessage = null;
-
-        try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
-            if ( IsNewMode ) {
-                WorkflowCreateRequest createRequest = new(
-                    Name: _model.Name,
-                    Description: _model.Description,
-                    Enabled: _model.Enabled,
-                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null );
-
-                HttpResponseMessage response = await client.PostAsJsonAsync( "/api/workflows", createRequest );
-                if ( !response.IsSuccessStatusCode ) {
-                    string body = await response.Content.ReadAsStringAsync( );
-                    _errorMessage = $"Failed to create workflow: {body}";
-                    return;
-                }
-
-                WorkflowDto? created = await response.Content.ReadFromJsonAsync<WorkflowDto>( );
-                if ( created is null || created.Id == 0 ) {
-                    _errorMessage = "Failed to create workflow: no ID returned.";
-                    return;
-                }
-
-                _successMessage = "Workflow created. Redirecting to editor…";
-                Navigation.NavigateTo( $"/workflows/{created.Id}/dag-editor" );
-            } else {
-                // Collect annotations from the canvas
-                List<AnnotationDto>? annotations = null;
-                if ( _canvas?.Interop is not null ) {
-                    string annotationsJson = await _canvas.Interop.GetAnnotationsJsonAsync( );
-                    if ( !string.IsNullOrEmpty( annotationsJson ) && annotationsJson != "[]" ) {
-                        annotations = System.Text.Json.JsonSerializer.Deserialize<List<AnnotationDto>>( annotationsJson, s_jsonWeb );
-                    }
-                }
-
-                WorkflowUpdateRequest request = new(
-                    Name: _model.Name,
-                    Description: _model.Description,
-                    Enabled: _model.Enabled,
-                    TargetTags: _model.TargetTags.Length > 0 ? _model.TargetTags : null,
-                    Annotations: annotations );
-
-                HttpResponseMessage response = await client.PutAsJsonAsync( $"/api/workflows/{Id}", request );
-                if ( response.IsSuccessStatusCode ) {
-                    _successMessage = "Metadata saved.";
-                } else {
-                    string body = await response.Content.ReadAsStringAsync( );
-                    _errorMessage = $"Failed to save metadata: {body}";
-                }
-            }
-        } catch ( Exception ex ) {
-            _errorMessage = $"Failed to save metadata: {ex.Message}";
-        } finally {
-            _isSavingMeta = false;
-        }
-    }
-
     // ── Draft Management ──
 
     private async Task RestoreDraftAsync( ) {
         if ( _canvas?.Interop is not null ) {
-            await _canvas.Interop.RestoreDraftAsync( _userId, Id );
+            await _canvas.Interop.RestoreDraftAsync( _userId, _workflowId );
         }
         _draftDismissed = true;
     }
 
     private async Task DismissDraftAsync( ) {
         if ( _canvas?.Interop is not null ) {
-            await _canvas.Interop.DismissDraftAsync( _userId, Id );
+            await _canvas.Interop.DismissDraftAsync( _userId, _workflowId );
         }
         _draftDismissed = true;
     }
@@ -532,8 +715,8 @@
 
         WorkflowStepDto? step = _workflow?.Steps.FirstOrDefault( s => s.Id == stepId );
         if ( step is not null ) {
-            _selectedTaskId = step.TaskId;
-            _selectedTaskName = step.TaskName ?? $"Task #{step.TaskId}";
+            _selectedTaskId = step.TaskId ?? 0;
+            _selectedTaskName = step.TaskName ?? $"Task #{step.TaskId ?? 0}";
             _selectedControlStatement = step.ControlStatement;
             _selectedConditionExpression = step.ConditionExpression;
             _selectedMaxIterations = step.MaxIterations;
@@ -541,17 +724,55 @@
             _selectedInputVariable = step.InputVariableName;
             _selectedOutputVariable = step.OutputVariableName;
             _selectedStepDependencies = step.Dependencies.Select( d => d.DependsOnStepId ).ToList( );
+            _selectedIsComposite = step.IsComposite;
+            _selectedCompositeType = step.CompositeType;
+            _selectedChildWorkflowId = step.ChildWorkflowId;
+            _selectedCollectionVariable = step.CollectionVariableName;
+            _selectedIterationVariable = step.IterationVariableName;
+
+            _selectedTaskVersionNumber = step.TaskVersionNumber;
+            _selectedTaskCurrentVersionNumber = step.TaskCurrentVersionNumber;
+
+            // Derive action key from the step's assigned task
+            _selectedActionKey = step.TaskId.HasValue ? DeriveActionKeyFromTask( step.TaskId.Value ) : null;
+        } else if ( _tempNodes.TryGetValue( stepId, out TempNodeState? ts ) ) {
+            // Temp node — restore all state from C#-side tracking
+            _selectedTaskId = ts.TaskId;
+            _selectedTaskName = ts.TaskName;
+            _selectedControlStatement = ts.ControlStatement;
+            _selectedConditionExpression = ts.ConditionExpression;
+            _selectedMaxIterations = ts.MaxIterations;
+            _selectedDependencyMode = ts.DependencyMode;
+            _selectedInputVariable = ts.InputVariableName;
+            _selectedOutputVariable = ts.OutputVariableName;
+            _selectedStepDependencies = [];
+            _selectedIsComposite = ts.IsComposite;
+            _selectedCompositeType = ts.CompositeType;
+            _selectedChildWorkflowId = ts.ChildWorkflowId;
+            _selectedCollectionVariable = ts.CollectionVariableName;
+            _selectedIterationVariable = ts.IterationVariableName;
+            _selectedActionKey = ts.ActionKey;
+            _selectedTaskVersionNumber = null;
+            _selectedTaskCurrentVersionNumber = null;
         } else {
-            // New node (temp ID) — set defaults
+            // Unknown node — shouldn't happen, but fall back to defaults
             _selectedTaskId = 0;
             _selectedTaskName = "";
             _selectedControlStatement = "Default";
             _selectedConditionExpression = null;
             _selectedMaxIterations = 100;
-            _selectedDependencyMode = "All";
+            _selectedDependencyMode = "AllSuccess";
             _selectedInputVariable = null;
             _selectedOutputVariable = null;
             _selectedStepDependencies = [];
+            _selectedIsComposite = false;
+            _selectedCompositeType = "None";
+            _selectedChildWorkflowId = null;
+            _selectedCollectionVariable = null;
+            _selectedIterationVariable = null;
+            _selectedActionKey = null;
+            _selectedTaskVersionNumber = null;
+            _selectedTaskCurrentVersionNumber = null;
         }
 
         await InvokeAsync( StateHasChanged );
@@ -560,6 +781,7 @@
     private async Task HandleNodeDeselectedAsync( ) {
         Logger.LogInformation( "[DagEditor] HandleNodeDeselectedAsync" );
         _selectedStepId = null;
+        _selectedActionKey = null;
         await InvokeAsync( StateHasChanged );
     }
 
@@ -570,29 +792,34 @@
         long tempId = _nextTempStepId--;
         _stepCount++;
 
+        bool isComposite = args.ActionType.StartsWith( "composite:", StringComparison.Ordinal );
+        string compositeType = isComposite ? args.ActionType["composite:".Length..] : "None";
+        string? actionKey = isComposite ? null : args.ActionType;
+
         var data = new {
             stepId = tempId,
-            stepLabel = args.ActionType,
-            taskName = "Unassigned",
+            stepLabel = isComposite ? $"{compositeType} (new)" : args.ActionType,
+            taskName = isComposite ? compositeType : "Unassigned",
             controlStatement = "Default",
             order = _stepCount,
             taskId = 0,
-            actionType = args.ActionType
+            actionType = args.ActionType,
+            isComposite,
+            compositeType,
+        };
+
+        // Track all temp node state on the C# side
+        _tempNodes[tempId] = new TempNodeState {
+            IsComposite = isComposite,
+            CompositeType = compositeType,
+            ActionKey = actionKey,
         };
 
         await _canvas.Interop.AddNodeAsync( tempId, data, args.X, args.Y );
 
         // Select the new node so the config panel opens immediately.
         _selectedStepId = tempId;
-        _selectedTaskId = 0;
-        _selectedTaskName = "";
-        _selectedControlStatement = "Default";
-        _selectedConditionExpression = null;
-        _selectedMaxIterations = 100;
-        _selectedDependencyMode = "All";
-        _selectedInputVariable = null;
-        _selectedOutputVariable = null;
-        _selectedStepDependencies = [];
+        await ApplyTempNodeToSelection( _tempNodes[tempId] );
 
         await InvokeAsync( StateHasChanged );
     }
@@ -620,6 +847,13 @@
         }
     }
 
+    private async Task HandleCompositeDragStartAsync( (string CompositeType, double ClientX, double ClientY) args ) {
+        if ( _canvas?.Interop is not null ) {
+            // Use a "composite:" prefix so the drop handler can distinguish composite nodes
+            await _canvas.Interop.StartPaletteDragAsync( $"composite:{args.CompositeType}", args.ClientX, args.ClientY );
+        }
+    }
+
     // ── Config Panel ──
 
     private async Task HandleFieldChangedAsync( (string Field, object? Value) args ) {
@@ -627,18 +861,27 @@
 
         Dictionary<string, object?> fields = new( ) { [args.Field] = args.Value };
         await _canvas.Interop.UpdateNodeDataAsync( _selectedStepId.Value, fields );
+
+        // Keep C#-side temp node state in sync
+        if ( _tempNodes.TryGetValue( _selectedStepId.Value, out TempNodeState? ts ) ) {
+            UpdateTempNodeField( ts, args.Field, args.Value );
+        }
     }
 
     private Task HandleConfigPanelClose( ) {
         _selectedStepId = null;
+        _selectedActionKey = null;
         StateHasChanged( );
         return Task.CompletedTask;
     }
 
     private async Task HandleDeleteSelectedAsync( ) {
         if ( _selectedStepId is null || _canvas?.Interop is null ) return;
-        await _canvas.Interop.RemoveNodesAsync( [_selectedStepId.Value] );
+        long stepId = _selectedStepId.Value;
+        await _canvas.Interop.RemoveNodesAsync( [stepId] );
+        _tempNodes.Remove( stepId );
         _selectedStepId = null;
+        _selectedActionKey = null;
         StateHasChanged( );
     }
 
@@ -650,7 +893,30 @@
     }
 
     private void HandleCreateTaskAsync( ) {
-        _taskSetupModal?.Show( );
+        if ( !string.IsNullOrWhiteSpace( _selectedActionKey ) ) {
+            _taskSetupModal?.Show( _selectedActionKey );
+        } else {
+            _taskSetupModal?.Show( );
+        }
+    }
+
+    private async Task HandleUpdateToLatestVersionAsync( ) {
+        if ( _selectedStepId is null || _workflow is null ) return;
+
+        // Find the step and its task to get the current version
+        WorkflowStepDto? step = _workflow.Steps.FirstOrDefault( s => s.Id == _selectedStepId );
+        if ( step?.TaskId is null ) return;
+
+        TaskDto? task = _tasks?.FirstOrDefault( t => t.Id == step.TaskId );
+        if ( task?.CurrentVersionId is null ) return;
+
+        // Update the step's TaskVersionId via the field change mechanism
+        await HandleFieldChangedAsync( ("taskVersionId", task.CurrentVersionId) );
+
+        // Update local display state
+        _selectedTaskVersionNumber = task.CurrentVersionNumber;
+        _selectedTaskCurrentVersionNumber = task.CurrentVersionNumber;
+        await InvokeAsync( StateHasChanged );
     }
 
     private async Task HandleRemoveDependencyAsync( long depStepId ) {
@@ -666,16 +932,110 @@
         if ( _selectedStepId.HasValue && _canvas?.Interop is not null ) {
             await _canvas.Interop.UpdateNodeDataAsync( _selectedStepId.Value,
                 new Dictionary<string, object?> { ["taskId"] = task.Id, ["taskName"] = task.Name } );
-            _selectedTaskId = task.Id;
-            _selectedTaskName = task.Name;
+
+            // Track in temp node state
+            if ( _tempNodes.TryGetValue( _selectedStepId.Value, out TempNodeState? ts ) ) {
+                ts.TaskId = task.Id;
+                ts.TaskName = task.Name;
+            }
         }
+
+        // Load tasks first so the dropdown option exists, then set the selection
         await LoadReferenceDataAsync( );
+        _selectedTaskId = task.Id;
+        _selectedTaskName = task.Name;
     }
 
     private async Task OnTaskUpdatedAsync( TaskDto task ) {
         await LoadReferenceDataAsync( );
         if ( _selectedTaskId == task.Id ) {
             _selectedTaskName = task.Name;
+        }
+    }
+
+    /// <summary>Derives the action registry key from a task's ActionType/ActionSubType.</summary>
+    private string? DeriveActionKeyFromTask( long taskId ) {
+        TaskDto? task = _tasks?.FirstOrDefault( t => t.Id == taskId );
+        if ( task is null ) return null;
+
+        if ( task.ActionType == "Action" && !string.IsNullOrWhiteSpace( task.ActionSubType ) ) {
+            return task.ActionSubType;
+        }
+
+        // For shell/PS types, use the ActionType directly as the key
+        return ActionRegistry.Actions.ContainsKey( task.ActionType ) ? task.ActionType : null;
+    }
+
+    /// <summary>Copy temp node state into the selected-node fields for the config panel.</summary>
+    private Task ApplyTempNodeToSelection( TempNodeState ts ) {
+        _selectedTaskId = ts.TaskId;
+        _selectedTaskName = ts.TaskName;
+        _selectedControlStatement = ts.ControlStatement;
+        _selectedConditionExpression = ts.ConditionExpression;
+        _selectedMaxIterations = ts.MaxIterations;
+        _selectedDependencyMode = ts.DependencyMode;
+        _selectedInputVariable = ts.InputVariableName;
+        _selectedOutputVariable = ts.OutputVariableName;
+        _selectedStepDependencies = [];
+        _selectedIsComposite = ts.IsComposite;
+        _selectedCompositeType = ts.CompositeType;
+        _selectedChildWorkflowId = ts.ChildWorkflowId;
+        _selectedCollectionVariable = ts.CollectionVariableName;
+        _selectedIterationVariable = ts.IterationVariableName;
+        _selectedActionKey = ts.ActionKey;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Update a single field on a temp node state from a config panel change.</summary>
+    private static void UpdateTempNodeField( TempNodeState ts, string field, object? value ) {
+        switch ( field ) {
+            case "taskId": ts.TaskId = value is long l ? l : 0; break;
+            case "taskName": ts.TaskName = value?.ToString( ) ?? ""; break;
+            case "controlStatement": ts.ControlStatement = value?.ToString( ) ?? "Default"; break;
+            case "conditionExpression": ts.ConditionExpression = value?.ToString( ); break;
+            case "maxIterations": ts.MaxIterations = value is int i ? i : 100; break;
+            case "dependencyMode": ts.DependencyMode = value?.ToString( ) ?? "AllSuccess"; break;
+            case "inputVariableName": ts.InputVariableName = value?.ToString( ); break;
+            case "outputVariableName": ts.OutputVariableName = value?.ToString( ); break;
+            case "collectionVariableName": ts.CollectionVariableName = value?.ToString( ); break;
+            case "iterationVariableName": ts.IterationVariableName = value?.ToString( ); break;
+        }
+    }
+
+    // ── Version Helpers ──
+
+    private async Task LoadVersionHistoryAsync( ) {
+        try {
+            _versions = await Api.GetAsync<PagedResult<WorkflowVersionDto>>(
+                $"/api/v1/workflows/{_workflowId}/versions?limit=25" );
+        } catch {
+            // Non-critical — version history is informational
+        }
+    }
+
+    private long? GetPreviousVersionId( int versionNumber ) {
+        return _versions?.Items
+            .FirstOrDefault( v => v.VersionNumber == versionNumber - 1 )?.Id;
+    }
+
+    private async Task RollbackAsync( long versionId ) {
+        _errorMessage = null;
+        _successMessage = null;
+        try {
+            HttpResponseMessage response = await Api.PostAsync(
+                $"/api/v1/workflows/{_workflowId}/versions/{versionId}/rollback", null );
+            if ( response.IsSuccessStatusCode ) {
+                _successMessage = "Workflow rolled back successfully. Reloading...";
+                await LoadAsync( );
+                if ( _canvas?.Interop is not null && _workflow is not null ) {
+                    await LoadGraphIntoCanvasAsync( );
+                }
+            } else {
+                string body = await response.Content.ReadAsStringAsync( );
+                _errorMessage = $"Rollback failed: {body}";
+            }
+        } catch ( Exception ex ) {
+            _errorMessage = $"Rollback failed: {ex.Message}";
         }
     }
 
@@ -686,5 +1046,108 @@
         public string? Description { get; set; }
         public bool Enabled { get; set; } = true;
         public string[] TargetTags { get; set; } = [];
+    }
+
+    // ── Conflict Resolution ──
+
+    private async Task ConflictOverwriteAsync( ) {
+        _conflictDetected = false;
+        if ( _conflictLocalRequest is null ) return;
+
+        // Resend without expectedVersionNumber to force overwrite
+        WorkflowUpdateRequest overwrite = _conflictLocalRequest with { ExpectedVersionNumber = null };
+        HttpResponseMessage response = await Api.PutAsJsonAsync( $"/api/v1/workflows/{_workflowId}", overwrite );
+        if ( response.IsSuccessStatusCode ) {
+            _successMessage = "Workflow saved (overwrite).";
+            _conflictLocalRequest = null;
+            await LoadAsync( );
+        } else {
+            string body = await response.Content.ReadAsStringAsync( );
+            _errorMessage = $"Overwrite failed: {body}";
+        }
+    }
+
+    private async Task ConflictReloadAsync( ) {
+        _conflictDetected = false;
+        _conflictLocalRequest = null;
+        await LoadAsync( );
+        _successMessage = "Reloaded latest version from server.";
+    }
+
+    private async Task ConflictExportJsonAsync( ) {
+        if ( _model is null ) return;
+        string json = System.Text.Json.JsonSerializer.Serialize( new {
+            _model.Name,
+            _model.Description,
+            _model.Enabled,
+            _model.TargetTags,
+            ExportedAt = DateTime.UtcNow,
+            Note = "Exported from conflict resolution — contains your unsaved changes."
+        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true } );
+
+        // Trigger browser download via JS interop
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes( json );
+        string base64 = Convert.ToBase64String( bytes );
+        string fileName = $"workflow-{_workflowId}-conflict-export.json";
+        await JS.InvokeVoidAsync( "eval",
+            $"(() => {{ const a = document.createElement('a'); a.href = 'data:application/json;base64,{base64}'; a.download = '{fileName}'; a.click(); }})()" );
+    }
+
+    // ── Pinned Trigger Prompt (post-save) ──
+
+    private List<PinnedTriggerMismatch>? _pinnedTriggerMismatches;
+
+    private async Task CheckPinnedTriggersAsync( ) {
+        if ( _workflowId == 0 || _workflow is null ) return;
+        try {
+            // Load file monitor triggers for this workflow and check for pinned mismatches
+            List<PinnedTriggerMismatch>? triggers = await Api.GetAsync<List<PinnedTriggerMismatch>>(
+                $"/api/v1/triggers/file-monitor?workflowId={_workflowId}" );
+
+            _pinnedTriggerMismatches = triggers?
+                .Where( t => string.Equals( t.VersionBindingMode, "Pinned", StringComparison.OrdinalIgnoreCase )
+                             && t.PinnedWorkflowVersionId.HasValue
+                             && t.PinnedWorkflowVersionId != _workflow.CurrentVersionId )
+                .ToList( );
+        } catch {
+            // Best-effort — don't block save success
+        }
+    }
+
+    private async Task UpdatePinnedTriggerAsync( long triggerId, long newVersionId ) {
+        try {
+            await Api.PutAsJsonAsync( $"/api/v1/triggers/file-monitor/{triggerId}/binding", new {
+                VersionBindingMode = "Pinned",
+                PinnedWorkflowVersionId = newVersionId
+            } );
+            _pinnedTriggerMismatches?.RemoveAll( t => t.Id == triggerId );
+        } catch {
+            // ignore
+        }
+    }
+
+    private sealed record PinnedTriggerMismatch(
+        long Id,
+        string? Name,
+        string VersionBindingMode,
+        long? PinnedWorkflowVersionId
+    );
+
+    /// <summary>C#-side state for an unsaved temp node. Single source of truth for config panel values.</summary>
+    private sealed class TempNodeState {
+        public long TaskId { get; set; }
+        public string TaskName { get; set; } = "";
+        public string ControlStatement { get; set; } = "Default";
+        public string? ConditionExpression { get; set; }
+        public int MaxIterations { get; set; } = 100;
+        public string DependencyMode { get; set; } = "AllSuccess";
+        public string? InputVariableName { get; set; }
+        public string? OutputVariableName { get; set; }
+        public bool IsComposite { get; set; }
+        public string CompositeType { get; set; } = "None";
+        public long? ChildWorkflowId { get; set; }
+        public string? CollectionVariableName { get; set; }
+        public string? IterationVariableName { get; set; }
+        public string? ActionKey { get; set; }
     }
 }

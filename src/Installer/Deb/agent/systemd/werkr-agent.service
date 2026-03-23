@@ -1,0 +1,22 @@
+[Unit]
+Description=Werkr Agent — background agent with gRPC and PowerShell
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/opt/werkr/agent/Werkr.Agent
+WorkingDirectory=/opt/werkr/agent
+Restart=on-failure
+RestartSec=10
+User=werkr
+Group=werkr
+Environment=DOTNET_ENVIRONMENT=Production
+Environment=WERKR_CONFIG_PATH=/etc/werkr
+Environment=WERKR_DATA_DIR=/var/lib/werkr
+Environment=WERKR_LOG_DIR=/var/log/werkr
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

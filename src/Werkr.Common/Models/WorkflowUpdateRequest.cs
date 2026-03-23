@@ -6,5 +6,7 @@ public sealed record WorkflowUpdateRequest(
     string? Description = null,
     bool Enabled = true,
     string[]? TargetTags = null,
-    List<AnnotationDto>? Annotations = null
+    List<AnnotationDto>? Annotations = null,
+    int? ExpectedVersionNumber = null,
+    string? ChangeDescription = null
 );

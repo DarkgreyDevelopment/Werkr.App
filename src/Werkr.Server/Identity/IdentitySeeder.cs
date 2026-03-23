@@ -5,6 +5,7 @@ using Werkr.Common.Auth;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
 using Werkr.Data.Identity.Roles;
+using Werkr.Data.Identity.Services;
 
 namespace Werkr.Server.Identity;
 
@@ -80,6 +81,11 @@ public static partial class IdentitySeeder {
             IdentityResult result = await userManager.CreateAsync( admin, generatedPassword );
             if (result.Succeeded) {
                 _ = await userManager.AddToRoleAsync( admin, DefaultRoles.Admin.ToString( ) );
+
+                // Record the initial password hash in history for reuse prevention
+                PasswordHistoryService historyService = scope.ServiceProvider
+                    .GetRequiredService<PasswordHistoryService>( );
+                await historyService.RecordAsync( admin.Id, admin.PasswordHash! );
 
                 ILogger logger = services.GetRequiredService<ILoggerFactory>( )
                     .CreateLogger( "Werkr.Identity.Seeder" );
@@ -162,6 +168,12 @@ public static partial class IdentitySeeder {
         IdentityResult result = await userManager.CreateAsync(operatorUser, password);
         if (result.Succeeded) {
             _ = await userManager.AddToRoleAsync( operatorUser, DefaultRoles.Operator.ToString( ) );
+
+            // Record the initial password hash in history for reuse prevention
+            using IServiceScope historyScope = services.CreateScope( );
+            PasswordHistoryService historyService = historyScope.ServiceProvider
+                .GetRequiredService<PasswordHistoryService>( );
+            await historyService.RecordAsync( operatorUser.Id, operatorUser.PasswordHash! );
 
             ILogger logger = services.GetRequiredService<ILoggerFactory>()
                 .CreateLogger("Werkr.Identity.Seeder");

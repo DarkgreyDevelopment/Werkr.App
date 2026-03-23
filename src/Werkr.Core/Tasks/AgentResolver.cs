@@ -1,9 +1,5 @@
-using Grpc.Core;
-using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Werkr.Common.Protos;
-using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
 
@@ -15,11 +11,9 @@ namespace Werkr.Core.Tasks;
 /// matches any of the task's <c>TargetTags</c> (case-insensitive).
 /// </summary>
 /// <param name="dbContext">Database context for querying registered connections.</param>
-/// <param name="connectionManager">Singleton gRPC channel cache for live health checks.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class AgentResolver(
     WerkrDbContext dbContext,
-    AgentConnectionManager connectionManager,
     ILogger<AgentResolver> logger
 ) {
 
@@ -146,69 +140,30 @@ public sealed partial class AgentResolver(
             return null;
         }
 
-        if (logger.IsEnabled( LogLevel.Debug )) {
-            logger.LogDebug(
-                "AgentResolver attempting live health check on {Count} non-connected candidate(s).",
-                tagMatches.Count
-            );
-        }
+        // With agent-initiated heartbeats, check if any candidate has a recent LastSeen
+        // within the offline threshold (180s). A recent heartbeat indicates the agent is reachable.
+        TimeSpan offlineThreshold = TimeSpan.FromSeconds( 180 );
+        DateTime cutoff = DateTime.UtcNow - offlineThreshold;
 
-        foreach (RegisteredConnection candidate in tagMatches) {
-            try {
-                (
-                    GrpcChannel channel,
-                    RegisteredConnection resolved
-                ) =
-                    await connectionManager.GetChannelAsync(
-                        candidate.Id,
-                        ct
-                    );
+        RegisteredConnection? recentCandidate = tagMatches
+            .Where( c => c.LastSeen.HasValue && c.LastSeen.Value >= cutoff )
+            .OrderByDescending( c => c.LastSeen )
+            .FirstOrDefault( );
 
-                string keyId = resolved.ActiveKeyId ?? resolved.Id.ToString( );
-                HeartbeatRequest heartbeat = new( ) { StatusMessage = "live-resolve" };
-                EncryptedEnvelope requestEnvelope = PayloadEncryptor.EncryptToEnvelope(
-                    heartbeat, resolved.SharedKey, keyId );
+        if (recentCandidate is not null) {
+            recentCandidate.Status = Common.Models.ConnectionStatus.Connected;
+            recentCandidate.LastSeen = DateTime.UtcNow;
+            _ = await dbContext.SaveChangesAsync( ct );
 
-                ConnectionManagement.ConnectionManagementClient client = new( channel );
-                EncryptedEnvelope responseEnvelope = await client.HeartbeatAsync(
-                    requestEnvelope,
-                    AgentConnectionManager.CreateCallOptions(
-                        resolved,
-                        timeout: TimeSpan.FromSeconds( 5 ),
-                        cancellationToken: ct
-                    )
-                    );
-
-                // Decrypt to validate shared key
-                HeartbeatResponse heartbeatResponse = PayloadEncryptor.DecryptFromEnvelope<HeartbeatResponse>(
-                    responseEnvelope, resolved.SharedKey );
-
-                // Agent responded — update DB status and return it
-                candidate.Status = Common.Models.ConnectionStatus.Connected;
-                candidate.LastSeen = DateTime.UtcNow;
-                _ = await dbContext.SaveChangesAsync( ct );
-
-                if (logger.IsEnabled( LogLevel.Information )) {
-                    logger.LogInformation(
-                        "AgentResolver recovered agent {AgentId} ({Name}) via live health check.",
-                        candidate.Id,
-                        candidate.ConnectionName
-                    );
-                }
-
-                return candidate;
-            } catch (OperationCanceledException) {
-                throw;
-            } catch (RpcException) {
-                // Agent still unreachable — skip
-            } catch (Exception ex) {
-                if (logger.IsEnabled( LogLevel.Debug )) {
-                    logger.LogDebug( ex,
-                        "AgentResolver live probe failed for {AgentId}.",
-                        candidate.Id
-                    );
-                }
+            if (logger.IsEnabled( LogLevel.Information )) {
+                logger.LogInformation(
+                    "AgentResolver recovered agent {AgentId} ({Name}) via recent heartbeat.",
+                    recentCandidate.Id,
+                    recentCandidate.ConnectionName
+                );
             }
+
+            return recentCandidate;
         }
 
         return null;

@@ -1,9 +1,14 @@
-﻿@page "/admin/apikeys"
+@page "/admin/apikeys"
 @rendermode InteractiveServer
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Werkr.Common.Models
+@using Werkr.Common.Models.Audit
+@using Werkr.Data.Identity.Entities
 @attribute [Authorize( Roles = "Admin" )]
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Identity.ApiKeyService ApiKeyService
+@inject Werkr.Server.Services.AuditClient AuditClient
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Werkr - API Keys</PageTitle>
 
@@ -147,14 +152,20 @@
         await LoadKeysAsync( );
     }
 
+    private async Task<string?> GetUserIdAsync( ) {
+        AuthenticationState authState = await AuthState.GetAuthenticationStateAsync( );
+        return authState.User.FindFirst( ClaimTypes.NameIdentifier )?.Value;
+    }
+
     private async Task LoadKeysAsync( ) {
         _isLoading = true;
         _errorMessage = null;
 
         try {
-            using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            List<ApiKeyDto>? result = await client.GetFromJsonAsync<List<ApiKeyDto>>( "/api/keys" );
-            _keys = result ?? [];
+            IReadOnlyList<ApiKey> entities = await ApiKeyService.GetAllAsync( );
+            _keys = [.. entities.Select( k => new ApiKeyDto(
+                k.Id, k.Name, k.KeyPrefix, k.Role, k.CreatedByUserId,
+                k.CreatedUtc, k.ExpiresUtc, k.IsRevoked, k.LastUsedUtc ) )];
         } catch (Exception ex) {
             _errorMessage = $"Failed to load API keys: {ex.Message}";
         } finally {
@@ -172,19 +183,23 @@
         _errorMessage = null;
 
         try {
-            using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            ApiKeyCreateRequest request = new( _newKeyName.Trim( ), _newKeyExpiry );
-            HttpResponseMessage response = await client.PostAsJsonAsync( "/api/keys", request );
+            string? userId = await GetUserIdAsync( );
+            (ApiKey entity, string rawKey) = await ApiKeyService.CreateAsync(
+                _newKeyName.Trim( ), "Admin", userId ?? "unknown", _newKeyExpiry );
 
-            if (response.IsSuccessStatusCode) {
-                _createdKey = await response.Content.ReadFromJsonAsync<ApiKeyCreateResponse>( );
-                _showCreate = false;
-                _newKeyName = string.Empty;
-                _newKeyExpiry = null;
-                await LoadKeysAsync( );
-            } else {
-                _errorMessage = $"Failed to create key: {response.StatusCode}";
-            }
+            _createdKey = new ApiKeyCreateResponse(
+                entity.Id, entity.Name, rawKey, entity.KeyPrefix,
+                entity.Role, entity.CreatedUtc, entity.ExpiresUtc );
+
+            _ = await AuditClient.LogAsync(
+                AuditEventType.ApiKeyCreated,
+                userId, "User", "ApiKey", entity.Id.ToString( ),
+                "Created", new { entity.Name, entity.KeyPrefix } );
+
+            _showCreate = false;
+            _newKeyName = string.Empty;
+            _newKeyExpiry = null;
+            await LoadKeysAsync( );
         } catch (Exception ex) {
             _errorMessage = $"Failed to create key: {ex.Message}";
         } finally {
@@ -197,13 +212,17 @@
         _errorMessage = null;
 
         try {
-            using HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-            HttpResponseMessage response = await client.DeleteAsync( $"/api/keys/{id}" );
+            bool revoked = await ApiKeyService.RevokeAsync( id );
+            if (revoked) {
+                string? userId = await GetUserIdAsync( );
+                _ = await AuditClient.LogAsync(
+                    AuditEventType.ApiKeyRevoked,
+                    userId, "User", "ApiKey", id.ToString( ),
+                    "Revoked" );
 
-            if (response.IsSuccessStatusCode) {
                 await LoadKeysAsync( );
             } else {
-                _errorMessage = $"Failed to revoke key: {response.StatusCode}";
+                _errorMessage = "API key not found.";
             }
         } catch (Exception ex) {
             _errorMessage = $"Failed to revoke key: {ex.Message}";

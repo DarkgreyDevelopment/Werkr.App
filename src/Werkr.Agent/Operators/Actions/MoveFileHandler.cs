@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -12,6 +13,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Supports wildcard file resolution. Directory move is implemented as copy + delete.
 /// </summary>
 /// <remarks>Creates a new <see cref="MoveFileHandler"/>.</remarks>
+[ActionCategory( "File" )]
 public sealed partial class MoveFileHandler(
     IFilePathResolver resolver,
     ILogger<MoveFileHandler> logger

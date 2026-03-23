@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Channels;
+using Werkr.Common.Attributes;
 using Werkr.Common.Models.Actions;
 using Werkr.Core.Communication;
 using Werkr.Core.Operators;
@@ -16,6 +17,7 @@ namespace Werkr.Agent.Operators.Actions;
 /// Uses JSON Pointer (RFC 6901) path syntax with an optional <c>$.</c> convenience prefix.
 /// </summary>
 /// <remarks>Creates a new <see cref="TransformJsonHandler"/>.</remarks>
+[ActionCategory( "Data" )]
 public sealed partial class TransformJsonHandler( IFilePathResolver resolver, ILogger<TransformJsonHandler> logger ) : IActionHandler {
 
     /// <summary>

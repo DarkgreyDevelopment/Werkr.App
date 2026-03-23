@@ -20,5 +20,8 @@ public sealed class WerkrConfiguration {
     public string AgentUrl { get; set; } = string.Empty;
 
     /// <summary>Default timeout for command execution in minutes.</summary>
-    public int DefaultCommandTimeoutMinutes { get; set; } = 30;
+    public int DefaultCommandTimeoutMinutes { get; set; } = 60;
+
+    /// <summary>Minutes to retain the previous shared key after rotation (default: 5).</summary>
+    public int KeyRotationGracePeriodMinutes { get; set; } = 5;
 }

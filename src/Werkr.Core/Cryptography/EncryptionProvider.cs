@@ -5,7 +5,10 @@ namespace Werkr.Core.Cryptography;
 
 /// <summary>
 /// Provides RSA-4096, AES-256-GCM, and hybrid cryptographic operations.
-/// SHA-512 is the default for all hashing and RSA OAEP padding.
+/// <para>
+/// All RSA operations use <c>OaepSHA512</c> padding — agent registration key exchange and periodic shared key rotation.
+/// SHA-512 is the default for all hashing and RSA OAEP operations.
+/// </para>
 /// </summary>
 public static class EncryptionProvider {
     /// <summary>AES-GCM key size in bytes (256 bits).</summary>

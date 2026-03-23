@@ -1,6 +1,6 @@
 # Development
 
-This guide covers how to build, run, test, and contribute to the Werkr project. For architectural context, see [Architecture.md](Architecture.md).
+This guide covers how to build, run, test, and contribute to the Werkr project. For architectural context, see [Architecture.md](Architecture.md). For the definitive 1.0 featureset specification, see [1.0-Target-Featureset.md](1.0-Target-Featureset.md).
 
 ---
 
@@ -12,6 +12,7 @@ This guide covers how to build, run, test, and contribute to the Werkr project. 
 | **Docker** | Required for running PostgreSQL locally (via Aspire) and for integration tests (Testcontainers). |
 | **PostgreSQL 17** | Provided automatically by the Aspire AppHost or Docker Compose. No manual install needed if you have Docker. |
 | **PowerShell 7+** | The Agent embeds a PowerShell host — the SDK is useful for running project scripts. |
+| **Node.js 22+** | Required for building and testing the graph-ui TypeScript project in `src/Werkr.Server/graph-ui/`. |
 | **Git** | Conventional commits are used for versioning via GitVersion. |
 
 ---
@@ -36,7 +37,11 @@ Werkr_Complete/
 │   ├── Werkr.Server/                # Blazor Server UI + Identity
 │   ├── Werkr.ServiceDefaults/       # Aspire service defaults
 │   ├── Installer/Msi/               # WiX MSI projects + custom actions
-│   └── Test/                        # Test projects
+│   └── Test/
+│       ├── Werkr.Tests/              # API integration tests (Testcontainers)
+│       ├── Werkr.Tests.Agent/        # Agent end-to-end tests
+│       ├── Werkr.Tests.Data/         # Data layer unit tests
+│       └── Werkr.Tests.Server/       # Server integration tests (bunit)
 ├── Directory.Build.props       # Shared build properties (net10.0, nullable, etc.)
 ├── Directory.Packages.props    # Central package management
 ├── GitVersion.yml              # Versioning configuration
@@ -96,47 +101,23 @@ Alternatively, you can use `docker-compose.yml` at the repository root to run th
 
 ## Testing
 
-The project has four test projects under `src/Test/`:
+Werkr has five test surfaces: four .NET test projects under `src/Test/` and a TypeScript test suite in `src/Werkr.Server/graph-ui/`.
 
-| Project | Scope |
-|---------|-------|
-| `Werkr.Tests` | Integration tests — spins up the full API with a Testcontainers PostgreSQL instance using `AppHostFixture`. Tests schedules, workflows, actions, and holiday calendars end-to-end. |
-| `Werkr.Tests.Data` | Unit tests for data layer logic, entity validation, and EF Core query behavior. |
-| `Werkr.Tests.Server` | Integration tests for the Server (Blazor UI) endpoints and identity flows. |
-| `Werkr.Tests.Agent` | End-to-end tests for the Agent's task execution pipeline. |
-
-### Running Tests
-
-Run all tests:
+Run all .NET tests:
 
 ```shell
 dotnet test Werkr.slnx
 ```
 
-Run a specific test project:
+Run graph-ui tests:
 
 ```shell
-dotnet test --project src/Test/Werkr.Tests/Werkr.Tests.csproj
+npm test --prefix src/Werkr.Server/graph-ui
 ```
 
-### Test Infrastructure
+> **Prerequisites:** Docker must be running for integration tests (Testcontainers). Node.js 22+ is required for graph-ui tests.
 
-The `Werkr.Tests` project uses an `AppHostFixture` pattern:
-1. Starts a disposable PostgreSQL container via **Testcontainers**
-2. Creates an in-process API server via `WebApplicationFactory<Werkr.Api.Program>`
-3. Runs EF Core migrations and seeds identity roles/permissions
-4. Generates a JWT admin token for authenticated API calls
-
-Tests use **MSTest** with the `Microsoft.Testing.Platform` runner (configured in `global.json`).
-
-### CI
-
-The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on `ubuntu-latest`:
-1. Restores with `--locked-mode` to ensure `packages.lock.json` files are current
-2. Builds in Release configuration with GitVersion-derived version numbers
-3. Runs all tests and uploads `.trx` result files as artifacts
-
-See [Testing.md](articles/Testing.md) for more detail.
+For full details — test project scopes, AppHostFixture pattern, bunit component testing, Vitest configuration, CI pipeline steps, VS Code tasks, and test infrastructure — see [Testing.md](articles/Testing.md).
 
 ---
 

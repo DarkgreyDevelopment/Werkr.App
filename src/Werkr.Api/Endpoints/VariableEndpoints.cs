@@ -31,7 +31,7 @@ internal static class VariableEndpoints {
     /// </summary>
     private static void MapDefinitionEndpoints( WebApplication app ) {
 
-        _ = app.MapGet( "/api/workflows/{workflowId}/variables", async (
+        _ = app.MapGet( "/api/v1/workflows/{workflowId}/variables", async (
             long workflowId,
             WerkrDbContext dbContext,
             CancellationToken ct
@@ -53,7 +53,7 @@ internal static class VariableEndpoints {
         .WithName( "GetWorkflowVariables" )
         .RequireAuthorization( Policies.IsAdmin );
 
-        _ = app.MapPost( "/api/workflows/{workflowId}/variables", async (
+        _ = app.MapPost( "/api/v1/workflows/{workflowId}/variables", async (
             long workflowId,
             CreateVariableRequest request,
             WerkrDbContext dbContext,
@@ -93,18 +93,21 @@ internal static class VariableEndpoints {
                 Name = request.Name.ToLowerInvariant( ),
                 Description = request.Description,
                 DefaultValue = request.DefaultValue,
+                DataType = request.DataType,
+                IsRequired = request.IsRequired,
+                LogRedaction = request.LogRedaction,
             };
 
             _ = dbContext.WorkflowVariables.Add( entity );
             _ = await dbContext.SaveChangesAsync( ct );
 
             WorkflowVariableDto dto = WorkflowMapper.ToVariableDto( entity );
-            return Results.Created( $"/api/workflows/{workflowId}/variables/{dto.Id}", dto );
+            return Results.Created( $"/api/v1/workflows/{workflowId}/variables/{dto.Id}", dto );
         } )
         .WithName( "CreateWorkflowVariable" )
         .RequireAuthorization( Policies.IsAdmin );
 
-        _ = app.MapPut( "/api/workflows/{workflowId}/variables/{variableId}", async (
+        _ = app.MapPut( "/api/v1/workflows/{workflowId}/variables/{variableId}", async (
             long workflowId,
             long variableId,
             UpdateVariableRequest request,
@@ -154,13 +157,25 @@ internal static class VariableEndpoints {
                 entity.DefaultValue = request.DefaultValue;
             }
 
+            if (request.DataType is not null) {
+                entity.DataType = request.DataType;
+            }
+
+            if (request.IsRequired is not null) {
+                entity.IsRequired = request.IsRequired.Value;
+            }
+
+            if (request.LogRedaction is not null) {
+                entity.LogRedaction = request.LogRedaction.Value;
+            }
+
             _ = await dbContext.SaveChangesAsync( ct );
             return Results.Ok( WorkflowMapper.ToVariableDto( entity ) );
         } )
         .WithName( "UpdateWorkflowVariable" )
         .RequireAuthorization( Policies.IsAdmin );
 
-        _ = app.MapDelete( "/api/workflows/{workflowId}/variables/{variableId}", async (
+        _ = app.MapDelete( "/api/v1/workflows/{workflowId}/variables/{variableId}", async (
             long workflowId,
             long variableId,
             WerkrDbContext dbContext,
@@ -187,7 +202,7 @@ internal static class VariableEndpoints {
     /// </summary>
     private static void MapRuntimeEndpoints( WebApplication app ) {
 
-        _ = app.MapGet( "/api/workflow-runs/{runId}/variables", async (
+        _ = app.MapGet( "/api/v1/workflow-runs/{runId}/variables", async (
             Guid runId,
             WerkrDbContext dbContext,
             CancellationToken ct
@@ -211,7 +226,7 @@ internal static class VariableEndpoints {
         .WithName( "GetRunVariables" )
         .RequireAuthorization( Policies.IsAdmin );
 
-        _ = app.MapGet( "/api/workflow-runs/{runId}/variables/{name}/history", async (
+        _ = app.MapGet( "/api/v1/workflow-runs/{runId}/variables/{name}/history", async (
             Guid runId,
             string name,
             WerkrDbContext dbContext,
@@ -234,7 +249,7 @@ internal static class VariableEndpoints {
         .WithName( "GetRunVariableHistory" )
         .RequireAuthorization( Policies.IsAdmin );
 
-        _ = app.MapPut( "/api/workflow-runs/{runId}/variables/{name}", async (
+        _ = app.MapPut( "/api/v1/workflow-runs/{runId}/variables/{name}", async (
             Guid runId,
             string name,
             EditVariableRequest request,

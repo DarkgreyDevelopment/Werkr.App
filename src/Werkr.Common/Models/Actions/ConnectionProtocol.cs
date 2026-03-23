@@ -13,4 +13,7 @@ public enum ConnectionProtocol {
 
     /// <summary>HTTPS connection (sends HEAD request over TLS).</summary>
     Https,
+
+    /// <summary>ICMP Echo Request (ping). May require elevated privileges on Linux.</summary>
+    Icmp,
 }

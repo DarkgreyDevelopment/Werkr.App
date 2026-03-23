@@ -2,18 +2,21 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Settings.Configuration;
 using Serilog.Sinks.OpenTelemetry;
 using Werkr.Agent.Communication;
+using Werkr.Agent.Configuration;
 using Werkr.Agent.Interceptors;
 using Werkr.Agent.Operators;
 using Werkr.Agent.Registration;
 using Werkr.Agent.Scheduling;
 using Werkr.Agent.Security;
 using Werkr.Agent.Services;
+using Werkr.Agent.Triggers;
 using Werkr.Common;
 using Werkr.Common.Configuration;
 using Werkr.Common.Extensions;
@@ -42,10 +45,7 @@ public partial class Program {
         try {
             Log.Information( "Starting Werkr Agent..." );
 
-            string version = System.Reflection.CustomAttributeExtensions
-                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
-                    System.Reflection.Assembly.GetEntryAssembly( )! )
-                ?.InformationalVersion ?? "unknown";
+            string version = VersionHelper.GetAgentVersion( );
             Log.Information( "Werkr Agent version {Version}", version );
 
             // Validate platform crypto support
@@ -107,7 +107,7 @@ public partial class Program {
             // environment variables. Outside containers, the dev cert handles TLS.
             _ = builder.WebHost.ConfigureKestrel( options => {
                 options.ConfigureEndpointDefaults( listenOptions => {
-                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
                 } );
 
                 options.Limits.Http2.KeepAlivePingDelay = TimeSpan.FromSeconds( 30 );
@@ -167,6 +167,11 @@ public partial class Program {
             } );
             _ = builder.Services.AddScoped<AgentRegistrationHandler>( );
 
+            // Urgency channel — signals HeartbeatBackgroundService to send immediate heartbeat
+            Channel<bool> urgencyChannel = Channel.CreateBounded<bool>(
+                new BoundedChannelOptions( 1 ) { FullMode = BoundedChannelFullMode.DropOldest } );
+            _ = builder.Services.AddSingleton( urgencyChannel );
+
             // Schedule evaluation services
             _ = builder.Services.AddSingleton<AgentGrpcClientFactory>( );
             _ = builder.Services.AddSingleton<VariableClient>( );
@@ -179,11 +184,23 @@ public partial class Program {
             _ = builder.Services.AddSingleton<ConditionEvaluator>( sp =>
                 new ConditionEvaluator(
                     sp.GetRequiredService<ILoggerFactory>( ).CreateLogger<ConditionEvaluator>( ) ) );
+            _ = builder.Services.AddSingleton<CompositeNodeExecutor>( );
             _ = builder.Services.AddSingleton<WorkflowExecutionService>( );
             _ = builder.Services.AddSingleton<OutputStreamingService>( );
             _ = builder.Services.AddSingleton( Channel.CreateUnbounded<string>(
                 new UnboundedChannelOptions { SingleReader = true } ) );
+
+            // Configuration sync channel + services
+            _ = builder.Services.AddSingleton( Channel.CreateUnbounded<long>(
+                new UnboundedChannelOptions { SingleReader = true } ) );
+            _ = builder.Services.AddSingleton<AgentConfigurationProvider>( );
+            _ = builder.Services.AddHostedService<ConfigurationSyncBackgroundService>( );
+
+            _ = builder.Services.AddSingleton<TriggerEventClient>( );
+            _ = builder.Services.AddSingleton<FileMonitorService>( );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<FileMonitorService>( ) );
             _ = builder.Services.AddHostedService<ScheduleEvaluatorService>( );
+            _ = builder.Services.AddHostedService<HeartbeatBackgroundService>( );
 
             WebApplication app = builder.Build( );
 
@@ -209,7 +226,6 @@ public partial class Program {
 
             // Map gRPC services
             _ = app.MapGrpcService<OutputFetchService>( );
-            _ = app.MapGrpcService<ScheduleInvalidationService>( );
             _ = app.MapGrpcService<ConnectionManagementService>( );
 
             // Sweep stale variable temp files from previous runs (crash recovery)
@@ -224,6 +240,17 @@ public partial class Program {
             _ = app.MapRegistrationEndpoints( );
 
             _ = app.MapGet( "/", GetAgentArt );
+
+            // Register graceful shutdown drain callback
+            TimeSpan shutdownTimeout = TimeSpan.FromSeconds(
+                builder.Configuration.GetValue( "Agent:ShutdownTimeoutSeconds", 30 ) );
+
+            _ = app.Lifetime.ApplicationStopping.Register( ( ) => {
+                Log.Information( "Graceful shutdown initiated, waiting for active jobs..." );
+                WorkflowExecutionService wes = app.Services.GetRequiredService<WorkflowExecutionService>( );
+                wes.DrainAsync( shutdownTimeout, CancellationToken.None ).GetAwaiter( ).GetResult( );
+                Log.Information( "Drain complete, shutting down." );
+            } );
 
             // Start the output streaming service (opens persistent gRPC stream to server)
             OutputStreamingService outputStreaming = app.Services.GetRequiredService<OutputStreamingService>( );
@@ -252,26 +279,26 @@ public partial class Program {
  ║    ║ \ \      / /__ _ __| | ___ __  ║    ║                         `--`
  ║    ║  \ \ /\ / / _ \ '__| |/ / '__| ║    ║
  ║____║   \ V  V /  __/ |  |   <| |    ║____║    \|/    \|/    \|/    \|/    \|/    \|/    \|/
-      ║    \_/\_/ \___|_|  |_|\_\_|    ║        --*--  --*--  --*--  --*--  --*--  --*--  --*--
+ ╚════║    \_/\_/ \___|_|  |_|\_\_|    ║════╝   --*--  --*--  --*--  --*--  --*--  --*--  --*--
       ╚════════════════════════════════╝          |      |      |      |      |      |      |
               |AGENT|     | gRPC|                 |      |      |      |      |      |      |
 ++++++++++++++++++++++++++++++++++++++++._______._|_.__._|_.__._|_.__._|_.__._|_.__._|_.__._|_.
 """
                 : """
-    ╔════════════════════════════════╗
-    ║ ┌────────────────────────────┐ ║
-    ║ │      ---          ---      │ ║
-    ║ │       •            •       │ ║
-╔═══║ │   ______________________   │ ║═══╗
-║   ║ └────────────────────────────┘ ║   ║
-║   ║ __        __        _          ║   ║
-║   ║ \ \      / /__ _ __| | ___ __  ║   ║
-║   ║  \ \ /\ / / _ \ '__| |/ / '__| ║   ║
-║___║   \ V  V /  __/ |  |   <| |    ║___║
-    ║    \_/\_/ \___|_|  |_|\_\_|    ║
-    ╚════════════════════════════════╝
-            |AGENT|     | gRPC|
-    ++++++++++++++++++++++++++++++++++
+     ╔════════════════════════════════╗
+     ║ ┌────────────────────────────┐ ║
+     ║ │      ---          ---      │ ║
+     ║ │       •            •       │ ║
+╔════║ │   ______________________   │ ║════╗
+║    ║ └────────────────────────────┘ ║    ║
+║    ║ __        __        _          ║    ║
+║    ║ \ \      / /__ _ __| | ___ __  ║    ║
+║    ║  \ \ /\ / / _ \ '__| |/ / '__| ║    ║
+║____║   \ V  V /  __/ |  |   <| |    ║____║
+╚════║    \_/\_/ \___|_|  |_|\_\_|    ║════╝
+     ╚════════════════════════════════╝     
+             |AGENT|     | gRPC|            
++++++++++++++++++++++++++++++++++++++++++++
 """,
             contentType: "text/plain; charset=utf-8"
         );

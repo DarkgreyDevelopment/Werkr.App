@@ -28,6 +28,20 @@ public class WorkflowRun : ConcurrencyBase, IKey<Guid> {
     /// <summary>Current status of the workflow run.</summary>
     public WorkflowRunStatus Status { get; set; } = WorkflowRunStatus.Running;
 
+    /// <summary>Foreign key to the workflow version that was active when this run started.</summary>
+    public long? WorkflowVersionId { get; set; }
+
+    /// <summary>Snapshot of the workflow name at run start.</summary>
+    [MaxLength( 200 )]
+    public string? WorkflowNameSnapshot { get; set; }
+
+    /// <summary>Snapshot of the workflow version number at run start.</summary>
+    public int? WorkflowVersionSnapshot { get; set; }
+
+    /// <summary>Navigation to the workflow version bound to this run.</summary>
+    [ForeignKey( nameof( WorkflowVersionId ) )]
+    public WorkflowVersion? WorkflowVersion { get; set; }
+
     /// <summary>Navigation to the parent workflow.</summary>
     [ForeignKey( nameof( WorkflowId ) )]
     public Workflow? Workflow { get; set; }

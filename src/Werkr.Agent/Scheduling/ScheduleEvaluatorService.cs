@@ -43,6 +43,7 @@ namespace Werkr.Agent.Scheduling;
 /// <param name="outputStreamingService">Manages real-time output streaming to the server.</param>
 /// <param name="invalidationChannel">Channel for receiving invalidation signals.</param>
 /// <param name="serviceScopeFactory">Factory for creating DI scopes to resolve scoped services (e.g. WerkrDbContext).</param>
+/// <param name="fileMonitorService">File monitor trigger service for reconciling watchers.</param>
 /// <param name="logger">Logger.</param>
 public sealed partial class ScheduleEvaluatorService(
     AgentGrpcClientFactory clientFactory,
@@ -55,6 +56,7 @@ public sealed partial class ScheduleEvaluatorService(
     Werkr.Agent.Services.OutputStreamingService outputStreamingService,
     Channel<string> invalidationChannel,
     IServiceScopeFactory serviceScopeFactory,
+    Werkr.Agent.Triggers.FileMonitorService fileMonitorService,
     ILogger<ScheduleEvaluatorService> logger
 ) : BackgroundService {
 
@@ -106,6 +108,12 @@ public sealed partial class ScheduleEvaluatorService(
     /// Key: schedule ID, Value: (mode, holiday dates).
     /// </summary>
     private readonly Dictionary<Guid, (HolidayCalendarMode Mode, IReadOnlyList<HolidayDate> Dates)> _holidayCache = [];
+
+    /// <summary>
+    /// Cached calendar rule definitions per schedule (populated from proto CalendarDefinition during sync).
+    /// Enables client-side rule evaluation for unmaterialized years.
+    /// </summary>
+    private readonly Dictionary<Guid, CalendarDefinition> _calendarRuleCache = [];
 
     // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -218,6 +226,28 @@ public sealed partial class ScheduleEvaluatorService(
             _currentTasks.AddRange( response.Tasks );
             _currentWorkflows.Clear( );
             _currentWorkflows.AddRange( response.Workflows );
+        }
+
+        // Reconcile file monitor triggers with the FileMonitorService
+        if (response.FileMonitorTriggers.Count > 0) {
+            fileMonitorService.ReconcileWatchers( [.. response.FileMonitorTriggers] );
+        } else {
+            fileMonitorService.ReconcileWatchers( [] );
+        }
+
+        // Cache calendar rule definitions from proto for client-side evaluation
+        _calendarRuleCache.Clear( );
+        foreach (ScheduledTaskDefinition task in response.Tasks) {
+            if (task.Schedule?.Calendar is not null
+                && Guid.TryParse( task.Schedule.ScheduleId, out Guid taskSchId )) {
+                _calendarRuleCache[taskSchId] = task.Schedule.Calendar;
+            }
+        }
+        foreach (ScheduledWorkflowDefinition wf in response.Workflows) {
+            if (wf.Schedule?.Calendar is not null
+                && Guid.TryParse( wf.Schedule.ScheduleId, out Guid wfSchId )) {
+                _calendarRuleCache[wfSchId] = wf.Schedule.Calendar;
+            }
         }
 
         // ── Bulk-fetch holiday dates for holiday-enabled schedules ──
@@ -485,8 +515,20 @@ public sealed partial class ScheduleEvaluatorService(
         IReadOnlyList<DateTime> allPast;
 
         if (_holidayCache.TryGetValue( scheduleId, out (HolidayCalendarMode Mode, IReadOnlyList<HolidayDate> Dates) cached )) {
+            IReadOnlyList<HolidayDate> holidayDates = MergeWithComputedDates(
+                scheduleId, cached.Dates, DateTime.UtcNow, now );
+
+            ShiftMode shiftMode = schedule.ShiftMode ?? ShiftMode.None;
+            DaysOfWeek workingDays = DaysOfWeek.Monday | DaysOfWeek.Tuesday
+                | DaysOfWeek.Wednesday | DaysOfWeek.Thursday | DaysOfWeek.Friday;
+
+            if (_calendarRuleCache.TryGetValue( scheduleId, out CalendarDefinition? calDef )
+                && calDef.WorkingDays > 0) {
+                workingDays = (DaysOfWeek)calDef.WorkingDays;
+            }
+
             ScheduleOccurrenceResult result = ScheduleCalculator.CalculateOccurrences(
-                schedule, now, cached.Dates, cached.Mode );
+                schedule, now, holidayDates, cached.Mode, shiftMode, workingDays );
             allPast = [.. result.Occurrences.Where( o => o <= now )];
         } else {
             allPast = [.. ScheduleCalculator.CalculateOccurrences( schedule, now ).Where( o => o <= now )];
@@ -641,7 +683,7 @@ public sealed partial class ScheduleEvaluatorService(
         }
 
         foreach (FireQueueEntry entry in dueEntries) {
-            if (ct.IsCancellationRequested) {
+            if (ct.IsCancellationRequested || workflowExecutionService.IsShuttingDown) {
                 break;
             }
 
@@ -695,8 +737,27 @@ public sealed partial class ScheduleEvaluatorService(
         Guid scheduleId = schedule.DbSchedule.Id;
 
         if (_holidayCache.TryGetValue( scheduleId, out (HolidayCalendarMode Mode, IReadOnlyList<HolidayDate> Dates) cached )) {
+            // Merge client-computed dates for unmaterialized years
+            IReadOnlyList<HolidayDate> holidayDates = MergeWithComputedDates(
+                scheduleId, cached.Dates, now, endOfWindow );
+
+            // Determine shift mode and working days from proto
+            ShiftMode shiftMode = ShiftMode.None;
+            DaysOfWeek workingDays = DaysOfWeek.Monday | DaysOfWeek.Tuesday
+                | DaysOfWeek.Wednesday | DaysOfWeek.Thursday | DaysOfWeek.Friday;
+
+            if (_calendarRuleCache.TryGetValue( scheduleId, out CalendarDefinition? calDef )) {
+                if (calDef.WorkingDays > 0) {
+                    workingDays = (DaysOfWeek)calDef.WorkingDays;
+                }
+            }
+
+            if (schedule.ShiftMode.HasValue) {
+                shiftMode = schedule.ShiftMode.Value;
+            }
+
             ScheduleOccurrenceResult result = ScheduleCalculator.CalculateOccurrences(
-                schedule, endOfWindow, cached.Dates, cached.Mode );
+                schedule, endOfWindow, holidayDates, cached.Mode, shiftMode, workingDays );
 
             // Enqueue audit log for suppressed occurrences (fire-and-forget)
             if (result.Suppressed.Count > 0) {
@@ -711,6 +772,70 @@ public sealed partial class ScheduleEvaluatorService(
         IReadOnlyList<DateTime> occurrences = ScheduleCalculator.CalculateOccurrences( schedule, endOfWindow );
         return occurrences.FirstOrDefault( o => o > now ) is var n && n != default ? n : null;
     }
+
+    /// <summary>
+    /// Merges materialized holiday dates with client-computed dates for years
+    /// not covered by the server's materialized cache.
+    /// </summary>
+    private IReadOnlyList<HolidayDate> MergeWithComputedDates(
+        Guid scheduleId,
+        IReadOnlyList<HolidayDate> materializedDates,
+        DateTime now,
+        DateTime endOfWindow
+    ) {
+        if (!_calendarRuleCache.TryGetValue( scheduleId, out CalendarDefinition? calDef )
+            || calDef.HolidayRules.Count == 0) {
+            return materializedDates;
+        }
+
+        // Determine which years are already materialized
+        HashSet<int> materializedYears = [.. materializedDates.Select( d => d.Year )];
+
+        int startYear = now.Year;
+        int endYear = endOfWindow.Year;
+
+        List<int> missingYears = [];
+        for (int y = startYear; y <= endYear; y++) {
+            if (!materializedYears.Contains( y )) {
+                missingYears.Add( y );
+            }
+        }
+
+        if (missingYears.Count == 0) {
+            return materializedDates;
+        }
+
+        // Map proto rules to HolidayRule entities for HolidayCalculator
+        List<HolidayRule> rules = [.. calDef.HolidayRules.Select( MapProtoToHolidayRule )];
+        HolidayCalendar calendar = new( ) {
+            Id = Guid.TryParse( calDef.CalendarId, out Guid cid ) ? cid : Guid.Empty,
+            Name = calDef.Name,
+            Rules = rules,
+        };
+
+        List<HolidayDate> merged = [.. materializedDates];
+        foreach (int year in missingYears) {
+            merged.AddRange( HolidayCalculator.ComputeAllDatesForYear( calendar, year ) );
+        }
+
+        return merged;
+    }
+
+    /// <summary>Maps a proto <see cref="HolidayRuleDefinition"/> to a <see cref="HolidayRule"/> entity.</summary>
+    private static HolidayRule MapProtoToHolidayRule( HolidayRuleDefinition proto ) => new( ) {
+        Name = proto.Name,
+        RuleType = (HolidayRuleType)proto.RuleType,
+        Month = proto.Month > 0 ? proto.Month : null,
+        Day = proto.Day > 0 ? proto.Day : null,
+        DayOfWeek = proto.DayOfWeek is >= 0 and <= 6 ? (DayOfWeek)proto.DayOfWeek : null,
+        WeekNumber = proto.WeekNumber > 0 ? proto.WeekNumber : null,
+        ObservanceRule = (ObservanceRule)proto.ObservanceRule,
+        YearStart = proto.YearStart > 0 ? proto.YearStart : null,
+        YearEnd = proto.YearEnd > 0 ? proto.YearEnd : null,
+        WindowStart = !string.IsNullOrEmpty( proto.WindowStart ) ? TimeOnly.Parse( proto.WindowStart ) : null,
+        WindowEnd = !string.IsNullOrEmpty( proto.WindowEnd ) ? TimeOnly.Parse( proto.WindowEnd ) : null,
+        WindowTimeZoneId = !string.IsNullOrEmpty( proto.WindowTimeZoneId ) ? proto.WindowTimeZoneId : null,
+    };
 
     /// <summary>
     /// Submits suppressed occurrence audit log entries to the server.
@@ -733,6 +858,8 @@ public sealed partial class ScheduleEvaluatorService(
                     OccurrenceUtc = s.UtcTime.ToString( "O" ),
                     HolidayName = s.HolidayName,
                     Reason = s.Reason,
+                    Action = s.Action,
+                    ShiftedToUtc = s.ShiftedTo?.ToString( "O" ) ?? string.Empty,
                 } );
             }
 
@@ -774,6 +901,12 @@ public sealed partial class ScheduleEvaluatorService(
 
             if (taskDef.TimeoutMinutes > 0) {
                 timeoutCts.CancelAfter( TimeSpan.FromMinutes( taskDef.TimeoutMinutes ) );
+            }
+
+            // Set resolved credentials from server dispatch (AsyncLocal context)
+            if (taskDef.ResolvedCredentials.Count > 0) {
+                Werkr.Core.Credentials.ResolvedCredentialContext.Current =
+                    new Dictionary<string, string>( taskDef.ResolvedCredentials );
             }
 
             OperatorExecution execution = RunOperator( taskDef, actionType, timeoutCts.Token );
@@ -1077,7 +1210,7 @@ public sealed partial class ScheduleEvaluatorService(
     /// </summary>
     internal static Schedule MapProtoToSchedule( ScheduleDefinition def ) {
         TimeZoneInfo startTz = !string.IsNullOrWhiteSpace( def.TimeZoneId )
-            ? TimeZoneInfo.FindSystemTimeZoneById( def.TimeZoneId )
+            ? TimeZoneResolver.FindOrCreate( def.TimeZoneId )
             : TimeZoneInfo.Utc;
 
         DateTime startLocal = ParseDateAndTime( def.StartDate, def.StartTime );
@@ -1086,6 +1219,7 @@ public sealed partial class ScheduleEvaluatorService(
             Date = DateOnly.FromDateTime( startLocal ),
             Time = TimeOnly.FromDateTime( startLocal ),
             TimeZone = startTz,
+            IsFixedOffset = def.IsFixedOffset,
         };
 
         // Parse schedule ID
@@ -1096,13 +1230,14 @@ public sealed partial class ScheduleEvaluatorService(
         ExpirationDateTimeInfo? expiration = null;
         if (!string.IsNullOrWhiteSpace( def.ExpirationDate )) {
             TimeZoneInfo expTz = !string.IsNullOrWhiteSpace( def.ExpirationTimeZoneId )
-                ? TimeZoneInfo.FindSystemTimeZoneById( def.ExpirationTimeZoneId )
+                ? TimeZoneResolver.FindOrCreate( def.ExpirationTimeZoneId )
                 : startTz;
             DateTime expLocal = ParseDateAndTime( def.ExpirationDate, def.ExpirationTime );
             expiration = new( ) {
                 Date = DateOnly.FromDateTime( expLocal ),
                 Time = TimeOnly.FromDateTime( expLocal ),
                 TimeZone = expTz,
+                IsFixedOffset = def.ExpirationIsFixedOffset,
             };
             if (Guid.TryParse( def.ScheduleId, out Guid expSchId )) {
                 expiration.ScheduleId = expSchId;
@@ -1144,6 +1279,8 @@ public sealed partial class ScheduleEvaluatorService(
                 Id = Guid.TryParse( def.ScheduleId, out Guid sid ) ? sid : Guid.Empty,
                 StopTaskAfterMinutes = def.StopTaskAfterMinutes,
                 CatchUpEnabled = def.CatchUpEnabled,
+                ShiftMode = Enum.IsDefined( typeof( ShiftMode ), def.ShiftMode )
+                    ? (ShiftMode) def.ShiftMode : ShiftMode.None,
             },
             StartDateTime = startDt,
             Expiration = expiration,
@@ -1159,6 +1296,11 @@ public sealed partial class ScheduleEvaluatorService(
             if (Enum.TryParse( def.HolidayCalendarMode, out HolidayCalendarMode parsedMode )) {
                 schedule.HolidayCalendarMode = parsedMode;
             }
+        }
+
+        // ShiftMode from proto
+        if (def.ShiftMode > 0 && Enum.IsDefined( typeof( ShiftMode ), def.ShiftMode )) {
+            schedule.ShiftMode = (ShiftMode)def.ShiftMode;
         }
 
         return schedule;

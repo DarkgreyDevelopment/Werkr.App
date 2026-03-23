@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Werkr.Common.Auth;
+using Werkr.Common.Configuration;
 using Werkr.Data;
 using Werkr.Data.Identity;
 using Werkr.Data.Identity.Entities;
@@ -55,6 +56,8 @@ public class PermissionServiceTests {
         _ = services.AddSingleton<IConfiguration>(
             new ConfigurationBuilder( ).AddInMemoryCollection( ).Build( )
         );
+        _ = services.Configure<PasswordHistoryOptions>( _ => { } );
+        _ = services.AddScoped<PasswordHistoryService>( );
         _ = services.AddSingleton<ServerConfigCache>( );
         _ = services.AddScoped<IPermissionService, PermissionService>( );
         _provider = services.BuildServiceProvider( );

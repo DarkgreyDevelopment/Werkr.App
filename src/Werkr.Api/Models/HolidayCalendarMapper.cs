@@ -65,17 +65,6 @@ internal static class HolidayCalendarMapper {
             IsManual: date.IsManual,
             GeneratedByRuleId: date.HolidayRuleId );
 
-    /// <summary>Converts a <see cref="ScheduleAuditLog"/> to a DTO.</summary>
-    public static ScheduleAuditLogDto ToDto( ScheduleAuditLog log ) =>
-        new(
-            Id: log.Id,
-            ScheduleId: log.ScheduleId,
-            OccurrenceUtcTime: log.OccurrenceUtcTime,
-            CalendarName: log.CalendarName,
-            HolidayName: log.HolidayName,
-            Mode: log.Mode.ToString( ),
-            CreatedUtc: log.CreatedUtc );
-
     // ── DTO → Entity ───────────────────────────────────────────────────────────
 
     /// <summary>Creates a <see cref="HolidayCalendar"/> from a create request.</summary>
@@ -153,18 +142,4 @@ internal static class HolidayCalendarMapper {
             WindowTimeZoneId = request.WindowTimeZoneId,
         };
 
-    /// <summary>Creates a <see cref="ScheduleAuditLog"/> from a create request.</summary>
-    public static ScheduleAuditLog ToAuditLog(
-        ScheduleAuditLogCreateRequest request,
-        Guid scheduleId,
-        string calendarName,
-        HolidayCalendarMode mode ) =>
-        new( ) {
-            ScheduleId = scheduleId,
-            OccurrenceUtcTime = request.OccurrenceUtcTime,
-            CalendarName = calendarName,
-            HolidayName = request.HolidayName,
-            Mode = mode,
-            CreatedUtc = DateTime.UtcNow,
-        };
 }

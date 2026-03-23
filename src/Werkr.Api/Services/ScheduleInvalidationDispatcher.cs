@@ -1,8 +1,5 @@
-using Grpc.Core;
-using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
 using Werkr.Common.Models;
-using Werkr.Common.Protos;
 using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
@@ -12,16 +9,16 @@ using Werkr.Data.Entities.Workflows;
 namespace Werkr.Api.Services;
 
 /// <summary>
-/// Server-side service that pushes schedule invalidation notifications to affected agents.
+/// Server-side service that enqueues schedule invalidation notifications for affected agents.
 /// When a schedule is updated or deleted, this service identifies all agents whose tags
-/// match the tasks using that schedule and sends them an <see cref="InvalidateScheduleRequest"/>
-/// so they re-sync immediately.
+/// match the tasks using that schedule and enqueues a <c>schedule_invalidation</c> notification
+/// so they re-sync on their next heartbeat.
 /// </summary>
-/// <param name="connectionManager">Manages gRPC channels to agents.</param>
+/// <param name="notificationService">Notification outbox service.</param>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve <see cref="WerkrDbContext"/>.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class ScheduleInvalidationDispatcher(
-    AgentConnectionManager connectionManager,
+    AgentNotificationService notificationService,
     IServiceScopeFactory scopeFactory,
     ILogger<ScheduleInvalidationDispatcher> logger
 ) {
@@ -30,7 +27,7 @@ public sealed partial class ScheduleInvalidationDispatcher(
     /// Notifies all affected agents that a schedule has been modified or deleted.
     /// <para>
     /// Finds tasks referencing the schedule, identifies agents whose tags overlap,
-    /// and sends <c>InvalidateSchedule</c> to each. Failures are logged but do not throw.
+    /// and enqueues <c>schedule_invalidation</c> notifications for each. Failures are logged but do not throw.
     /// </para>
     /// </summary>
     /// <param name="scheduleId">The schedule ID that was changed.</param>
@@ -112,44 +109,16 @@ public sealed partial class ScheduleInvalidationDispatcher(
 
         if (logger.IsEnabled( LogLevel.Information )) {
             logger.LogInformation(
-                "Sending schedule invalidation for {ScheduleId} to {AgentCount} agents.",
+                "Enqueuing schedule invalidation for {ScheduleId} to {AgentCount} agents.",
                 scheduleId, affectedAgents.Count );
         }
 
-        // Send invalidation to each affected agent (fire-and-forget, log failures)
-        InvalidateScheduleRequest innerRequest = new( ) {
-            ScheduleId = scheduleId.ToString( ),
-        };
+        // Enqueue notification for each affected agent
+        foreach (RegisteredConnection agent in affectedAgents) {
+            await notificationService.EnqueueAsync(
+                db, agent.Id, "schedule_invalidation", scheduleId.ToString( ), ct: ct );
+        }
 
-        await Parallel.ForEachAsync( affectedAgents, ct, async ( agent, innerCt ) => {
-            try {
-                (GrpcChannel channel, RegisteredConnection connection) =
-                    await connectionManager.GetChannelAsync( agent.Id, innerCt );
-                CallOptions callOptions = AgentConnectionManager.CreateCallOptions(
-                    connection,
-                    timeout: TimeSpan.FromSeconds( 15 ),
-                    cancellationToken: innerCt );
-
-                string keyId = connection.ActiveKeyId ?? connection.Id.ToString( );
-                EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
-                    innerRequest, connection.SharedKey, keyId );
-
-                ScheduleInvalidation.ScheduleInvalidationClient client = new( channel );
-                EncryptedEnvelope responseEnvelope = await client.InvalidateScheduleAsync( envelope, callOptions );
-
-                InvalidateScheduleResponse response = PayloadEncryptor.DecryptFromEnvelope<InvalidateScheduleResponse>(
-                    responseEnvelope, connection.SharedKey );
-
-                if (logger.IsEnabled( LogLevel.Debug )) {
-                    logger.LogDebug(
-                        "Schedule invalidation sent to agent {AgentId}: acknowledged={Ack}.",
-                        agent.Id, response.Acknowledged );
-                }
-            } catch (Exception ex) {
-                logger.LogWarning( ex,
-                    "Failed to send schedule invalidation to agent {AgentId} for schedule {ScheduleId}.",
-                    agent.Id, scheduleId );
-            }
-        } );
+        _ = await db.SaveChangesAsync( ct );
     }
 }

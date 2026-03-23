@@ -16,5 +16,7 @@ public sealed record TaskDto(
     string EffectiveSuccessCriteria,
     long? WorkflowId,
     string? ActionSubType = null,
-    string? ActionParameters = null
+    string? ActionParameters = null,
+    long? CurrentVersionId = null,
+    int? CurrentVersionNumber = null
 );

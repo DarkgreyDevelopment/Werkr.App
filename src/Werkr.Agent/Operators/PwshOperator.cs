@@ -143,6 +143,19 @@ public partial class PwshOperator(
                 }
             }
 
+            // Information stream — capture records not already emitted by the host UI.
+            // Records tagged "PSHOST" originate from Write-Host and are already captured
+            // by the Write(ConsoleColor, ConsoleColor, string) override on the host UI.
+            HashSet<int> emitted = host.WerkrUI.EmittedInformationRecordHashes;
+            foreach (InformationRecord info in pwsh.Streams.Information) {
+                if (info.Tags.Contains( "PSHOST" ) || emitted.Contains( info.GetHashCode( ) )) {
+                    continue;
+                }
+                await writer.WriteAsync(
+                    OperatorOutput.Create( "Information", info.ToString( ) ),
+                    cancellationToken );
+            }
+
             // Extract $LASTEXITCODE if available
             int? lastExitCode = ExtractLastExitCode( pwsh );
 
@@ -221,6 +234,19 @@ public partial class PwshOperator(
                         OperatorOutput.Create( "Error", FormatErrorRecord( error ) ),
                         cancellationToken );
                 }
+            }
+
+            // Information stream — capture records not already emitted by the host UI.
+            // Records tagged "PSHOST" originate from Write-Host and are already captured
+            // by the Write(ConsoleColor, ConsoleColor, string) override on the host UI.
+            HashSet<int> emitted = host.WerkrUI.EmittedInformationRecordHashes;
+            foreach (InformationRecord info in pwsh.Streams.Information) {
+                if (info.Tags.Contains( "PSHOST" ) || emitted.Contains( info.GetHashCode( ) )) {
+                    continue;
+                }
+                await writer.WriteAsync(
+                    OperatorOutput.Create( "Information", info.ToString( ) ),
+                    cancellationToken );
             }
 
             int? lastExitCode = ExtractLastExitCode( pwsh );

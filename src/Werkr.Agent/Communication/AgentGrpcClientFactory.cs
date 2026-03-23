@@ -1,8 +1,12 @@
+using System.Threading.Channels;
+using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
+using Werkr.Common.Communication;
 using Werkr.Common.Models;
 using Werkr.Common.Protos;
+using Werkr.Core.Communication;
 using Werkr.Data;
 using Werkr.Data.Entities.Registration;
 
@@ -17,10 +21,12 @@ namespace Werkr.Agent.Communication;
 /// </summary>
 /// <param name="scopeFactory">Factory for creating DI scopes to resolve <see cref="WerkrDbContext"/>.</param>
 /// <param name="configuration">Application configuration for optional URL overrides.</param>
+/// <param name="urgencyChannel">Bounded channel signaling the heartbeat service to send an immediate heartbeat.</param>
 /// <param name="logger">Logger instance.</param>
 public sealed partial class AgentGrpcClientFactory(
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
+    Channel<bool> urgencyChannel,
     ILogger<AgentGrpcClientFactory> logger
 ) : IDisposable {
     /// <summary>
@@ -88,6 +94,68 @@ public sealed partial class AgentGrpcClientFactory(
     public async Task<VariableService.VariableServiceClient> CreateVariableServiceClientAsync( CancellationToken ct = default ) {
         await EnsureInitializedAsync( ct );
         return new VariableService.VariableServiceClient( _channel );
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TriggerEventService.TriggerEventServiceClient"/> for
+    /// reporting file monitor events to the Server.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A configured gRPC client.</returns>
+    public async Task<TriggerEventService.TriggerEventServiceClient> CreateTriggerEventServiceClientAsync( CancellationToken ct = default ) {
+        await EnsureInitializedAsync( ct );
+        return new TriggerEventService.TriggerEventServiceClient( _channel );
+    }
+
+    /// <summary>
+    /// Creates a <see cref="ConfigurationSync.ConfigurationSyncClient"/> for
+    /// pulling configuration entries from the Server.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A configured gRPC client.</returns>
+    public async Task<ConfigurationSync.ConfigurationSyncClient> CreateConfigurationSyncClientAsync( CancellationToken ct = default ) {
+        await EnsureInitializedAsync( ct );
+        return new ConfigurationSync.ConfigurationSyncClient( _channel );
+    }
+
+    /// <summary>
+    /// Creates an <see cref="AgentHeartbeat.AgentHeartbeatClient"/> for sending heartbeats to the API.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A configured gRPC client.</returns>
+    public async Task<AgentHeartbeat.AgentHeartbeatClient> CreateAgentHeartbeatClientAsync( CancellationToken ct = default ) {
+        await EnsureInitializedAsync( ct );
+        return new AgentHeartbeat.AgentHeartbeatClient( _channel );
+    }
+
+    /// <summary>
+    /// Creates a <see cref="KeyExchange.KeyExchangeClient"/> for agent-initiated key rotation.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A configured gRPC client.</returns>
+    public async Task<KeyExchange.KeyExchangeClient> CreateKeyExchangeClientAsync( CancellationToken ct = default ) {
+        await EnsureInitializedAsync( ct );
+        return new KeyExchange.KeyExchangeClient( _channel );
+    }
+
+    /// <summary>
+    /// Decrypts an API response and checks ResponseMetadata for pending notifications.
+    /// If urgent, signals the heartbeat service to send an immediate heartbeat.
+    /// </summary>
+    /// <typeparam name="T">The protobuf response message type.</typeparam>
+    /// <param name="envelope">The encrypted response envelope.</param>
+    /// <returns>The decrypted response message.</returns>
+    public T DecryptAndCheckUrgency<T>(
+        EncryptedEnvelope envelope )
+        where T : IMessage<T>, IHasResponseMetadata, new() {
+
+        T response = PayloadEncryptor.DecryptFromEnvelope<T>( envelope, GetSharedKey( ) );
+
+        if (response.Metadata?.UrgentCommandsPending == true) {
+            _ = urgencyChannel.Writer.TryWrite( true );
+        }
+
+        return response;
     }
 
     /// <summary>

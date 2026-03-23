@@ -2,13 +2,16 @@ syntax = "proto3";
 option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
+import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
+
 // Bidirectional stream between agent and server for real-time output delivery.
-// Encryption is handled at the gRPC interceptor layer, not at proto level.
-// Agent pushes output lines as tasks execute; server sends subscription requests.
+// Agent opens this stream on startup with bearer token authentication.
+// Each message in both directions is an EncryptedEnvelope.
+// Agent sends EncryptedEnvelope containing OutputMessage;
+// server sends EncryptedEnvelope containing OutputSubscription.
 service OutputStreamingService {
-  // Agent opens this stream on startup. Server sends subscription requests;
-  // agent sends output lines for subscribed tasks.
-  rpc StreamOutput (stream OutputMessage) returns (stream OutputSubscription);
+  rpc StreamOutput (stream EncryptedEnvelope) returns (stream EncryptedEnvelope);
 }
 
 message OutputMessage {
@@ -40,4 +43,6 @@ message OutputSubscription {
   int64 task_id = 1;
   string schedule_id = 2;
   bool subscribe = 3;
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }

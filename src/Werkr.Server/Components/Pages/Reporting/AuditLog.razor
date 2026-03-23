@@ -1,0 +1,407 @@
+@page "/reporting/audit-log"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
+@using Werkr.Common.Models
+@using Werkr.Common.Models.Audit
+@attribute [Authorize( Roles = "Admin" )]
+@inject Werkr.Server.Services.ApiServiceAccessor Api
+@inject IJSRuntime JS
+
+<PageTitle>Werkr - Audit Log</PageTitle>
+
+<div class="container-fluid mt-4">
+    <h1>Audit Log</h1>
+
+    @if (!string.IsNullOrWhiteSpace( _errorMessage )) {
+        <div class="alert alert-warning alert-dismissible fade show">
+            @_errorMessage
+            <button type="button" class="btn-close" @onclick="() => _errorMessage = null"></button>
+        </div>
+    }
+
+    @* ── Filter Panel ── *@
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Category</label>
+                    <select class="form-select form-select-sm" @bind="_filterCategory">
+                        <option value="">All</option>
+                        @foreach (string cat in _categories) {
+                            <option value="@cat">@cat</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Module</label>
+                    <select class="form-select form-select-sm" @bind="_filterModule">
+                        <option value="">All</option>
+                        @foreach (string mod in _modules) {
+                            <option value="@mod">@mod</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Event Type</label>
+                    <select class="form-select form-select-sm" @bind="_filterEventType">
+                        <option value="">All</option>
+                        @foreach (AuditEventTypeDto et in _eventTypes) {
+                            <option value="@et.EventTypeId">@et.DisplayName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Actor Type</label>
+                    <select class="form-select form-select-sm" @bind="_filterActorType">
+                        <option value="">All</option>
+                        <option value="User">User</option>
+                        <option value="System">System</option>
+                        <option value="ApiKey">ApiKey</option>
+                        <option value="Agent">Agent</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Actor ID</label>
+                    <input class="form-control form-control-sm" @bind="_filterActorId" placeholder="User or agent ID" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Entity Type</label>
+                    <input class="form-control form-control-sm" @bind="_filterEntityType" placeholder="e.g. User" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Entity ID</label>
+                    <input class="form-control form-control-sm" @bind="_filterEntityId" placeholder="Entity identifier" />
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">From (UTC)</label>
+                    <input type="datetime-local" class="form-control form-control-sm" @bind="_filterFrom" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">To (UTC)</label>
+                    <input type="datetime-local" class="form-control form-control-sm" @bind="_filterTo" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Correlation ID</label>
+                    <input class="form-control form-control-sm" @bind="_filterCorrelationId" placeholder="Correlation ID" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button class="btn btn-primary btn-sm" @onclick="SearchAsync" disabled="@_isLoading">
+                        @if (_isLoading) {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Search
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">Clear</button>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportJsonAsync" disabled="@_isExporting">Export JSON</button>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportCsvAsync" disabled="@_isExporting">Export CSV</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Results Table ── *@
+    @if (_result is null && !_isLoading) {
+        <div class="text-muted">Use the filters above and click Search to query audit events.</div>
+    } else if (_result is not null) {
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="text-muted">@_result.TotalCount total results</span>
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0 me-1">Rows:</label>
+                <select class="form-select form-select-sm" style="width:auto;" @bind="_pageSize" @bind:after="SearchAsync">
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Actor</th>
+                        <th>Event Type</th>
+                        <th>Entity</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (AuditEventDto evt in _result.Items) {
+                        <tr>
+                            <td title="@evt.TimestampUtc.ToString( "O" )">
+                                @evt.TimestampUtc.ToLocalTime( ).ToString( "yyyy-MM-dd HH:mm:ss" )
+                            </td>
+                            <td>
+                                @if (evt.ActorId is not null) {
+                                    <span>@evt.ActorId</span>
+                                }
+                                <span class="badge bg-secondary ms-1">@evt.ActorType</span>
+                            </td>
+                            <td title="@evt.EventTypeId">@(_eventTypeDisplayNames.TryGetValue( evt.EventTypeId, out string? displayName ) ? displayName : evt.EventTypeId)</td>
+                            <td>
+                                @if (GetEntityLink( evt.EntityType, evt.EntityId ) is { } entityLink) {
+                                    <a href="@entityLink">@evt.EntityType/@evt.EntityId</a>
+                                } else if (evt.EntityType is not null) {
+                                    <span>@evt.EntityType</span>
+                                    @if (evt.EntityId is not null) {
+                                        <span class="text-muted">/@evt.EntityId</span>
+                                    }
+                                }
+                            </td>
+                            <td>@evt.ActionPerformed</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty( evt.Details )) {
+                                    <button class="btn btn-link btn-sm p-0"
+                                            @onclick="() => ToggleDetails( evt.Id )">
+                                        @(_expandedIds.Contains( evt.Id ) ? "Hide" : "Show")
+                                    </button>
+                                    @if (_expandedIds.Contains( evt.Id )) {
+                                        <pre class="mt-1 mb-0 p-2 bg-light border rounded" style="max-width: 600px; overflow-x: auto; font-size: 0.8rem;">@FormatJson( evt.Details )</pre>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* ── Pagination ── *@
+        <div class="d-flex justify-content-between align-items-center">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="PreviousPage"
+                    disabled="@(_currentOffset == 0)">
+                Previous
+            </button>
+            <span class="text-muted">
+                @(_currentOffset + 1)–@Math.Min( _currentOffset + _pageSize, _result.TotalCount )
+                of @_result.TotalCount
+            </span>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="NextPage"
+                    disabled="@(_currentOffset + _pageSize >= _result.TotalCount)">
+                Next
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private PagedResult<AuditEventDto>? _result;
+    private List<string> _categories = [];
+    private List<string> _modules = [];
+    private List<AuditEventTypeDto> _eventTypes = [];
+    private Dictionary<string, string> _eventTypeDisplayNames = [];
+    private readonly HashSet<long> _expandedIds = [];
+
+    private string? _errorMessage;
+    private bool _isLoading;
+    private bool _isExporting;
+
+    // Filter state
+    private string _filterEventType = string.Empty;
+    private string _filterCategory = string.Empty;
+    private string _filterModule = string.Empty;
+    private string _filterActorType = string.Empty;
+    private string _filterActorId = string.Empty;
+    private string _filterEntityType = string.Empty;
+    private string _filterEntityId = string.Empty;
+    private string _filterCorrelationId = string.Empty;
+    private DateTime? _filterFrom;
+    private DateTime? _filterTo;
+
+    // Pagination
+    private int _pageSize = 50;
+    private int _currentOffset;
+
+    protected override async Task OnInitializedAsync( ) {
+        await LoadFilterOptionsAsync( );
+        await SearchAsync( );
+    }
+
+    private async Task LoadFilterOptionsAsync( ) {
+        try {
+            List<string>? categories = await Api.GetAsync<List<string>>( "/api/v1/audit/categories" );
+            _categories = categories ?? [];
+
+            List<string>? modules = await Api.GetAsync<List<string>>( "/api/v1/audit/modules" );
+            _modules = modules ?? [];
+
+            Dictionary<string, List<AuditEventTypeDto>>? grouped =
+                await Api.GetAsync<Dictionary<string, List<AuditEventTypeDto>>>( "/api/v1/audit/event-types" );
+            _eventTypes = grouped is not null
+                ? [.. grouped.Values.SelectMany( v => v ).OrderBy( t => t.DisplayName )]
+                : [];
+            _eventTypeDisplayNames = _eventTypes.ToDictionary( t => t.EventTypeId, t => t.DisplayName );
+        } catch (Exception ex) {
+            _errorMessage = $"Failed to load filter options: {ex.Message}";
+        }
+    }
+
+    private async Task SearchAsync( ) {
+        _isLoading = true;
+        _errorMessage = null;
+        _expandedIds.Clear( );
+
+        try {
+            string url = BuildQueryUrl( _pageSize, _currentOffset );
+            PagedResult<AuditEventDto>? result = await Api.GetAsync<PagedResult<AuditEventDto>>( url );
+            _result = result;
+        } catch (Exception ex) {
+            _errorMessage = $"Failed to load audit events: {ex.Message}";
+        } finally {
+            _isLoading = false;
+        }
+    }
+
+    private Task ExportJsonAsync( ) => ExportAsync( ExportFormat.Json );
+    private Task ExportCsvAsync( ) => ExportAsync( ExportFormat.Csv );
+
+    private async Task ExportAsync( ExportFormat format ) {
+        _isExporting = true;
+        _errorMessage = null;
+
+        try {
+            AuditExportRequest request = new(
+                BuildQueryRequest( 0, 0 ),
+                format
+            );
+
+            HttpResponseMessage response = await Api.PostAsJsonAsync( "/api/v1/audit/export", request );
+            if (!response.IsSuccessStatusCode) {
+                _errorMessage = $"Export failed: {response.StatusCode}";
+                return;
+            }
+
+            string ext = format == ExportFormat.Csv ? "csv" : "json";
+            string contentType = format == ExportFormat.Csv ? "text/csv" : "application/json";
+            string fileName = $"audit-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.{ext}";
+
+            byte[] bytes = await response.Content.ReadAsByteArrayAsync( );
+            string base64 = Convert.ToBase64String( bytes );
+            await JS.InvokeVoidAsync( "werkrDownloadFile", fileName, contentType, base64 );
+        } catch (Exception ex) {
+            _errorMessage = $"Export failed: {ex.Message}";
+        } finally {
+            _isExporting = false;
+        }
+    }
+
+    private void ClearFilters( ) {
+        _filterEventType = string.Empty;
+        _filterCategory = string.Empty;
+        _filterModule = string.Empty;
+        _filterActorType = string.Empty;
+        _filterActorId = string.Empty;
+        _filterEntityType = string.Empty;
+        _filterEntityId = string.Empty;
+        _filterCorrelationId = string.Empty;
+        _filterFrom = null;
+        _filterTo = null;
+        _currentOffset = 0;
+    }
+
+    private async Task PreviousPage( ) {
+        _currentOffset = Math.Max( 0, _currentOffset - _pageSize );
+        await SearchAsync( );
+    }
+
+    private async Task NextPage( ) {
+        _currentOffset += _pageSize;
+        await SearchAsync( );
+    }
+
+    private void ToggleDetails( long id ) {
+        if (!_expandedIds.Remove( id )) {
+            _ = _expandedIds.Add( id );
+        }
+    }
+
+    private static string FormatJson( string? json ) {
+        if (string.IsNullOrWhiteSpace( json )) {
+            return string.Empty;
+        }
+        try {
+            using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse( json );
+            return System.Text.Json.JsonSerializer.Serialize( doc, new System.Text.Json.JsonSerializerOptions { WriteIndented = true } );
+        } catch {
+            return json;
+        }
+    }
+
+    private string BuildQueryUrl( int limit, int offset ) {
+        List<string> parts = [$"/api/v1/audit?limit={limit}&offset={offset}"];
+
+        if (!string.IsNullOrWhiteSpace( _filterEventType )) {
+            parts.Add( $"eventTypeId={Uri.EscapeDataString( _filterEventType )}" );
+        }
+        if (!string.IsNullOrWhiteSpace( _filterCategory )) {
+            parts.Add( $"eventCategory={Uri.EscapeDataString( _filterCategory )}" );
+        }
+        if (!string.IsNullOrWhiteSpace( _filterModule )) {
+            parts.Add( $"sourceModule={Uri.EscapeDataString( _filterModule )}" );
+        }
+        if (!string.IsNullOrWhiteSpace( _filterActorType )) {
+            parts.Add( $"actorType={Uri.EscapeDataString( _filterActorType )}" );
+        }
+        if (!string.IsNullOrWhiteSpace( _filterActorId )) {
+            parts.Add( $"actorId={Uri.EscapeDataString( _filterActorId )}" );
+        }
+        if (!string.IsNullOrWhiteSpace( _filterEntityType )) {
+            parts.Add( $"entityType={Uri.EscapeDataString( _filterEntityType )}" );
+        }
+        if (!string.IsNullOrWhiteSpace( _filterEntityId )) {
+            parts.Add( $"entityId={Uri.EscapeDataString( _filterEntityId )}" );
+        }
+        if (!string.IsNullOrWhiteSpace( _filterCorrelationId )) {
+            parts.Add( $"correlationId={Uri.EscapeDataString( _filterCorrelationId )}" );
+        }
+        if (_filterFrom.HasValue) {
+            parts.Add( $"fromUtc={DateTime.SpecifyKind( _filterFrom.Value, DateTimeKind.Utc ):O}" );
+        }
+        if (_filterTo.HasValue) {
+            parts.Add( $"toUtc={DateTime.SpecifyKind( _filterTo.Value, DateTimeKind.Utc ):O}" );
+        }
+
+        return string.Join( "&", parts );
+    }
+
+    private AuditQuery BuildQueryRequest( int limit, int offset ) => new( ) {
+        EventTypeId = NullIfEmpty( _filterEventType ),
+        EventCategory = NullIfEmpty( _filterCategory ),
+        SourceModule = NullIfEmpty( _filterModule ),
+        ActorType = NullIfEmpty( _filterActorType ),
+        ActorId = NullIfEmpty( _filterActorId ),
+        EntityType = NullIfEmpty( _filterEntityType ),
+        EntityId = NullIfEmpty( _filterEntityId ),
+        CorrelationId = NullIfEmpty( _filterCorrelationId ),
+        FromUtc = _filterFrom.HasValue ? DateTime.SpecifyKind( _filterFrom.Value, DateTimeKind.Utc ) : null,
+        ToUtc = _filterTo.HasValue ? DateTime.SpecifyKind( _filterTo.Value, DateTimeKind.Utc ) : null,
+        Limit = limit,
+        Offset = offset
+    };
+
+    private static string? NullIfEmpty( string? value ) =>
+        string.IsNullOrWhiteSpace( value ) ? null : value;
+
+    private static string? GetEntityLink( string? entityType, string? entityId ) {
+        if (string.IsNullOrWhiteSpace( entityType ) || string.IsNullOrWhiteSpace( entityId )) {
+            return null;
+        }
+
+        return entityType switch {
+            "User" => $"/admin/users/{entityId}",
+            "Agent" => "/admin/agents",
+            "Schedule" => $"/schedules/{entityId}",
+            "Workflow" => $"/workflows/{entityId}",
+            "ApiKey" => "/api-keys",
+            _ => null
+        };
+    }
+}

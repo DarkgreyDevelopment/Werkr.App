@@ -21,7 +21,7 @@ public class NullEncryptionTests {
     /// </summary>
     [TestMethod]
     public void EncryptToEnvelope_NullKey_ThrowsArgumentNullException( ) {
-        HeartbeatRequest message = new( ) { StatusMessage = "test" };
+        AgentHeartbeatRequest message = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "test" };
 
         _ = Assert.ThrowsExactly<ArgumentNullException>( ( ) => PayloadEncryptor.EncryptToEnvelope(
             message,
@@ -37,14 +37,14 @@ public class NullEncryptionTests {
     [TestMethod]
     public void DecryptFromEnvelope_NullKey_ThrowsArgumentNullException( ) {
         byte[] validKey = EncryptionProvider.GenerateRandomBytes( 32 );
-        HeartbeatRequest message = new( ) { StatusMessage = "test" };
+        AgentHeartbeatRequest message = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "test" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             message,
             validKey,
             "key-1"
         );
 
-        _ = Assert.ThrowsExactly<ArgumentNullException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        _ = Assert.ThrowsExactly<ArgumentNullException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             null!
         ) );
@@ -57,14 +57,14 @@ public class NullEncryptionTests {
     [TestMethod]
     public void DecryptFromEnvelope_KeyRotation_NullCurrentKey_ThrowsArgumentNullException( ) {
         byte[] validKey = EncryptionProvider.GenerateRandomBytes( 32 );
-        HeartbeatRequest message = new( ) { StatusMessage = "test" };
+        AgentHeartbeatRequest message = new( ) { ConnectionId = "test", AgentVersion = "1.0", StatusMessage = "test" };
         EncryptedEnvelope envelope = PayloadEncryptor.EncryptToEnvelope(
             message,
             validKey,
             "key-1"
         );
 
-        _ = Assert.ThrowsExactly<ArgumentNullException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<HeartbeatRequest>(
+        _ = Assert.ThrowsExactly<ArgumentNullException>( ( ) => PayloadEncryptor.DecryptFromEnvelope<AgentHeartbeatRequest>(
             envelope,
             null!,
             "key-2",

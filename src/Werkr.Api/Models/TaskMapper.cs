@@ -90,7 +90,20 @@ internal static class TaskMapper {
                 task.ActionType, task.SuccessCriteria ),
             WorkflowId: task.WorkflowId,
             ActionSubType: task.ActionSubType,
-            ActionParameters: task.ActionParameters );
+            ActionParameters: task.ActionParameters,
+            CurrentVersionId: task.CurrentVersionId,
+            CurrentVersionNumber: task.CurrentVersion?.VersionNumber );
+
+    /// <summary>Maps a <see cref="TaskVersion"/> entity to a <see cref="TaskVersionDto"/>.</summary>
+    public static TaskVersionDto ToVersionDto( TaskVersion version ) =>
+        new(
+            Id: version.Id,
+            TaskId: version.TaskId,
+            VersionNumber: version.VersionNumber,
+            Definition: version.Definition,
+            CreatedUtc: version.Created,
+            CreatedByUserId: version.CreatedByUserId,
+            ChangeDescription: version.ChangeDescription );
 
     /// <summary>Maps a <see cref="WerkrJob"/> entity to a <see cref="JobDto"/>.</summary>
     public static JobDto ToJobDto( WerkrJob job ) =>

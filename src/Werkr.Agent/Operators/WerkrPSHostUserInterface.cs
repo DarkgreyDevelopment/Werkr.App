@@ -71,6 +71,24 @@ public sealed class WerkrPSHostUserInterface( ChannelWriter<OperatorOutput> writ
     public override void WriteErrorLine( string message )
         => _writer.TryWrite( OperatorOutput.Create( "Error", message ) );
 
+    /// <summary>
+    /// Captures the PowerShell Information stream (Write-Information).
+    /// </summary>
+    public override void WriteInformation( InformationRecord record ) {
+        _ = EmittedInformationRecordHashes.Add( record.GetHashCode( ) );
+        // PSHOST-tagged records originate from Write-Host and are already captured
+        // by the Write(ConsoleColor, ConsoleColor, string) override — skip to avoid duplicates.
+        if (!record.Tags.Contains( "PSHOST" )) {
+            _ = _writer.TryWrite( OperatorOutput.Create( "Information", record.ToString( ) ) );
+        }
+    }
+
+    /// <summary>
+    /// Hash codes of <see cref="InformationRecord"/> instances already emitted via
+    /// <see cref="WriteInformation"/> to avoid duplicates during post-invocation stream capture.
+    /// </summary>
+    internal HashSet<int> EmittedInformationRecordHashes { get; } = [];
+
     /// <inheritdoc/>
     public override void WriteProgress( long sourceId, ProgressRecord record )
         => _writer.TryWrite( OperatorOutput.Create( "Progress",

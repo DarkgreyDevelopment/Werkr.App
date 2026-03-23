@@ -16,7 +16,7 @@ internal static class JobEndpoints {
     /// <summary>Maps job history, list, detail, and output endpoints.</summary>
     public static WebApplication MapJobEndpoints( this WebApplication app ) {
         _ = app.MapGet(
-            "/api/tasks/{taskId}/jobs",
+            "/api/v1/tasks/{taskId}/jobs",
             async (
                 long taskId,
                 int? limit,
@@ -32,7 +32,7 @@ internal static class JobEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapGet(
-            "/api/jobs",
+            "/api/v1/jobs",
             async (
                 bool? success,
                 DateTime? since,
@@ -50,7 +50,7 @@ internal static class JobEndpoints {
         .WithName( "GetJobs" )
         .RequireAuthorization( Policies.CanRead );
 
-        _ = app.MapGet( "/api/jobs/{id}", async (
+        _ = app.MapGet( "/api/v1/jobs/{id}", async (
             Guid id,
             JobExecutionService jobExecutionService,
             CancellationToken ct
@@ -62,7 +62,7 @@ internal static class JobEndpoints {
         .RequireAuthorization( Policies.CanRead );
 
         _ = app.MapGet(
-            "/api/jobs/{id}/output",
+            "/api/v1/jobs/{id}/output",
             async (
                 Guid id,
                 JobExecutionService jobExecutionService,

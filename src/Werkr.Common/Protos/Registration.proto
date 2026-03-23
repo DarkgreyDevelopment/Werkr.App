@@ -2,10 +2,16 @@ syntax = "proto3";
 option csharp_namespace = "Werkr.Common.Protos";
 package werkr.common.protos;
 
+import "EncryptedEnvelope.proto";
+import "ResponseMetadata.proto";
+
 // The Server (Werkr.Api) hosts this service.
 // The Agent calls RegisterAgent after decrypting the admin-carried bundle.
+// Request envelope contains RegisterAgentRequest; response contains RegisterAgentResponse.
+// Encrypted using a password-derived AES-256 key from the registration bundle.
+// Agent sends x-werkr-bundle-id header for bundle lookup.
 service AgentRegistration {
-  rpc RegisterAgent (RegisterAgentRequest) returns (RegisterAgentResponse);
+  rpc RegisterAgent (EncryptedEnvelope) returns (EncryptedEnvelope);
 }
 
 message RegisterAgentRequest {
@@ -22,6 +28,9 @@ message RegisterAgentRequest {
 
   // Human-readable Agent name
   string agent_name = 4;
+
+  // Agent's assembly version string
+  string agent_version = 5;
 }
 
 message RegisterAgentResponse {
@@ -35,4 +44,7 @@ message RegisterAgentResponse {
 
   // Human-readable status message (success confirmation or error description)
   string message = 3;
+
+  // Cross-cutting response metadata.
+  ResponseMetadata metadata = 15;
 }

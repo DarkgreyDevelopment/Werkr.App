@@ -47,4 +47,24 @@ public sealed record HttpRequestParameters {
     /// Default: <see langword="false"/> (prevents auth-token forwarding to redirect targets).
     /// </summary>
     public bool FollowRedirects { get; init; }
+
+    /// <summary>
+    /// Authentication type: "basic", "bearer", "apikey", or null (no auth).
+    /// </summary>
+    public string? AuthType { get; init; }
+
+    /// <summary>
+    /// Authentication credential: password (Basic), token (Bearer), or key value (API Key).
+    /// </summary>
+    public string? AuthCredential { get; init; }
+
+    /// <summary>
+    /// Username for Basic authentication only.
+    /// </summary>
+    public string? AuthUsername { get; init; }
+
+    /// <summary>
+    /// Header name for API Key authentication. Defaults to "X-Api-Key".
+    /// </summary>
+    public string? AuthHeaderName { get; init; }
 }

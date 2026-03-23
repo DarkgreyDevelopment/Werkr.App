@@ -8,7 +8,7 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 @implements IAsyncDisposable
-@inject IHttpClientFactory HttpClientFactory
+@inject Werkr.Server.Services.ApiServiceAccessor Api
 @inject AuthenticationStateProvider AuthState
 @inject IConfiguration Configuration
 @inject ServerConfigCache ConfigCache
@@ -221,7 +221,7 @@
                                     <td><a href="/jobs/@job.Id">@job.Id.ToString( )[..8]…</a></td>
                                     <td><a href="/tasks/@job.TaskId">Task #@job.TaskId</a></td>
                                     <td>
-                                        <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( job.Success ? "Completed" : "Failed" )">
+                                        <span class="badge @StatusDisplayHelper.GetStatusBadgeClass( job.Success ? "Succeeded" : "Failed" )">
                                             @( job.Success ? "Success" : "Failed" )
                                         </span>
                                         @if ( !job.Success && !string.IsNullOrWhiteSpace( job.ErrorCategory ) ) {
@@ -383,16 +383,14 @@
         _errorMessage = null;
 
         try {
-            HttpClient client = HttpClientFactory.CreateClient( "ApiService" );
-
-            Task<List<AgentListDto>?> agentsTask = client.GetFromJsonAsync<List<AgentListDto>>( "/api/agents" );
-            Task<List<AgentHealthDto>?> healthTask = client.GetFromJsonAsync<List<AgentHealthDto>>( "/api/agents/health" );
-            Task<List<AgentActivityDto>?> activityTask = client.GetFromJsonAsync<List<AgentActivityDto>>( "/api/agents/activity?count=10" );
-            Task<List<DatabaseHealthDto>?> databaseTask = client.GetFromJsonAsync<List<DatabaseHealthDto>>( "/api/diagnostics/health" );
-            Task<List<ScheduleDto>?> schedulesTask = client.GetFromJsonAsync<List<ScheduleDto>>( "/api/schedules" );
-            Task<List<TaskDto>?> tasksTask = client.GetFromJsonAsync<List<TaskDto>>( "/api/tasks" );
-            Task<List<WorkflowDto>?> workflowsTask = client.GetFromJsonAsync<List<WorkflowDto>>( "/api/workflows" );
-            Task<List<JobListDto>?> recentJobsTask = client.GetFromJsonAsync<List<JobListDto>>( "/api/jobs?limit=10" );
+            Task<List<AgentListDto>?> agentsTask = Api.GetAsync<List<AgentListDto>>( "/api/v1/agents" );
+            Task<List<AgentHealthDto>?> healthTask = Api.GetAsync<List<AgentHealthDto>>( "/api/v1/agents/health" );
+            Task<List<AgentActivityDto>?> activityTask = Api.GetAsync<List<AgentActivityDto>>( "/api/v1/agents/activity?count=10" );
+            Task<List<DatabaseHealthDto>?> databaseTask = Api.GetAsync<List<DatabaseHealthDto>>( "/api/v1/diagnostics/health" );
+            Task<List<ScheduleDto>?> schedulesTask = Api.GetAsync<List<ScheduleDto>>( "/api/v1/schedules" );
+            Task<List<TaskDto>?> tasksTask = Api.GetAsync<List<TaskDto>>( "/api/v1/tasks" );
+            Task<List<WorkflowDto>?> workflowsTask = Api.GetAsync<List<WorkflowDto>>( "/api/v1/workflows" );
+            Task<List<JobListDto>?> recentJobsTask = Api.GetAsync<List<JobListDto>>( "/api/v1/jobs?limit=10" );
             Task<AuthenticationState> authTask = AuthState.GetAuthenticationStateAsync( );
 
             await Task.WhenAll( agentsTask, healthTask, activityTask, databaseTask, schedulesTask, tasksTask, workflowsTask, recentJobsTask, authTask );
@@ -413,7 +411,7 @@
             List<WorkflowRunDto> allRuns = [];
             if ( workflows is { Count: > 0 } ) {
                 IEnumerable<Task<List<WorkflowRunDto>?>> runTasks = workflows.Take( 20 ).Select( w =>
-                    client.GetFromJsonAsync<List<WorkflowRunDto>>( $"/api/workflows/{w.Id}/runs" ) );
+                    Api.GetAsync<List<WorkflowRunDto>>( $"/api/v1/workflows/{w.Id}/runs" ) );
                 List<WorkflowRunDto>?[] results = await Task.WhenAll( runTasks );
                 foreach ( List<WorkflowRunDto>? runs in results ) {
                     if ( runs is not null ) allRuns.AddRange( runs );

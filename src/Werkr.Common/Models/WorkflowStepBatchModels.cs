@@ -20,11 +20,16 @@ public sealed record WorkflowStepBatchRequest(
 /// <param name="ControlStatement">Control flow type: "Default", "If", "ElseIf", "Else", "While", "Do".</param>
 /// <param name="ConditionExpression">Condition for If/ElseIf/While/Do steps.</param>
 /// <param name="MaxIterations">Loop guard for While/Do steps.</param>
-/// <param name="DependencyMode">"All" or "Any".</param>
+/// <param name="DependencyMode">"AllSuccess" or "AnySuccess".</param>
 /// <param name="AgentConnectionIdOverride">Optional pin to specific agent.</param>
 /// <param name="InputVariableName">Variable name to read from predecessor output.</param>
 /// <param name="OutputVariableName">Variable name to write step output into.</param>
 /// <param name="DependencyChanges">Optional per-step dependency mutations.</param>
+/// <param name="IsComposite">True if this step is a composite node (ForEach, While, etc.).</param>
+/// <param name="CompositeType">Composite type: "None", "ForEach", "While", "Do", "Switch".</param>
+/// <param name="ChildWorkflowId">FK to child workflow for composite nodes.</param>
+/// <param name="IterationVariableName">Loop variable name for ForEach composite nodes.</param>
+/// <param name="CollectionVariableName">Collection variable name for ForEach composite nodes.</param>
 public sealed record StepBatchOperation(
     string OperationType,
     long StepId,
@@ -33,11 +38,16 @@ public sealed record StepBatchOperation(
     string ControlStatement = "Default",
     string? ConditionExpression = null,
     int MaxIterations = 100,
-    string DependencyMode = "All",
+    string DependencyMode = "AllSuccess",
     Guid? AgentConnectionIdOverride = null,
     string? InputVariableName = null,
     string? OutputVariableName = null,
-    IReadOnlyList<DependencyBatchItem>? DependencyChanges = null
+    IReadOnlyList<DependencyBatchItem>? DependencyChanges = null,
+    bool IsComposite = false,
+    string CompositeType = "None",
+    long? ChildWorkflowId = null,
+    string? IterationVariableName = null,
+    string? CollectionVariableName = null
 );
 
 /// <summary>

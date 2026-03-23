@@ -4,5 +4,8 @@ namespace Werkr.Common.Models;
 public sealed record UpdateVariableRequest(
     string? Name = null,
     string? Description = null,
-    string? DefaultValue = null
+    string? DefaultValue = null,
+    string? DataType = null,
+    bool? IsRequired = null,
+    bool? LogRedaction = null
 );

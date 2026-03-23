@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Werkr.Common;
+using Werkr.Data.Encryption;
 
 namespace Werkr.Data;
 
@@ -25,7 +26,11 @@ public static class WerkrDbContextExtensions {
                             npgsql.MigrationsHistoryTable( "__EFMigrationsHistory", "werkr" ) )
                         .UseSnakeCaseNamingConvention( );
                 } );
-                _ = services.AddScoped<WerkrDbContext>( sp => sp.GetRequiredService<PostgresWerkrDbContext>( ) );
+                _ = services.AddScoped<WerkrDbContext>( sp => {
+                    PostgresWerkrDbContext ctx = sp.GetRequiredService<PostgresWerkrDbContext>( );
+                    ctx.FieldEncryption = sp.GetService<FieldEncryptionProvider>( );
+                    return ctx;
+                } );
                 break;
 
             case DatabaseProvider.SQLite:
@@ -33,7 +38,11 @@ public static class WerkrDbContextExtensions {
                     _ = options.UseSqlite( connectionString )
                         .UseSnakeCaseNamingConvention( );
                 } );
-                _ = services.AddScoped<WerkrDbContext>( sp => sp.GetRequiredService<SqliteWerkrDbContext>( ) );
+                _ = services.AddScoped<WerkrDbContext>( sp => {
+                    SqliteWerkrDbContext ctx = sp.GetRequiredService<SqliteWerkrDbContext>( );
+                    ctx.FieldEncryption = sp.GetService<FieldEncryptionProvider>( );
+                    return ctx;
+                } );
                 break;
 
             default:

@@ -58,17 +58,20 @@ public sealed partial class RunNowService(
     /// </summary>
     /// <param name="workflowId">The ID of the workflow to run.</param>
     /// <param name="triggerVariables">Optional per-execution variable overrides from manual trigger.</param>
+    /// <param name="variableSource">The source of the trigger variables. Defaults to <see cref="VariableSource.ManualInput"/>.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A tuple of the schedule ID and the workflow run ID.</returns>
     /// <exception cref="KeyNotFoundException">Thrown when the workflow does not exist.</exception>
     public async Task<(Guid ScheduleId, Guid WorkflowRunId)> CreateWorkflowRunNowAsync(
         long workflowId,
         Dictionary<string, string>? triggerVariables = null,
+        VariableSource variableSource = VariableSource.ManualInput,
         CancellationToken ct = default
     ) {
         Workflow workflow = await dbContext.Set<Workflow>( )
-            .Include(w => w.Variables)
-            .Include(w => w.Steps)
+            .Include( w => w.CurrentVersion )
+            .Include( w => w.Variables )
+            .Include( w => w.Steps )
             .FirstOrDefaultAsync( w => w.Id == workflowId, ct )
             ?? throw new KeyNotFoundException( $"Workflow {workflowId} not found." );
 
@@ -80,6 +83,9 @@ public sealed partial class RunNowService(
             WorkflowId = workflowId,
             StartTime = DateTime.UtcNow,
             Status = WorkflowRunStatus.Running,
+            WorkflowVersionId = workflow.CurrentVersionId,
+            WorkflowNameSnapshot = workflow.Name,
+            WorkflowVersionSnapshot = workflow.CurrentVersion?.VersionNumber,
         };
         _ = dbContext.Set<WorkflowRun>( ).Add( run );
 
@@ -113,7 +119,7 @@ public sealed partial class RunNowService(
                     VariableName = kvp.Key,
                     Value = kvp.Value,
                     Version = hasDefault ? 2 : 1,
-                    Source = VariableSource.ManualInput,
+                    Source = variableSource,
                     Created = DateTime.UtcNow,
                 };
                 _ = dbContext.Set<WorkflowRunVariable>( ).Add( triggerEntry );
