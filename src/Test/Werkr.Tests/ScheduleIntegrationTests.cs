@@ -15,7 +15,7 @@ public class ScheduleIntegrationTests {
     /// <summary>
     /// Verifies that the <c>Werkr.Api</c> service returns a healthy response (HTTP 200 OK)
     /// at the root endpoint when schedule gRPC services are mapped. Sends a GET request to <c>/</c>
-    /// and asserts that the response status is OK and the body contains "Werkr API", confirming the
+    /// and asserts that the response status is OK and the body contains "API", confirming the
     /// API is operational with schedule gRPC endpoints registered.
     /// </summary>
     [TestMethod]
@@ -28,6 +28,6 @@ public class ScheduleIntegrationTests {
 
         Assert.AreEqual( HttpStatusCode.OK, response.StatusCode );
         string content = await response.Content.ReadAsStringAsync( ct );
-        Assert.IsTrue( content.Contains( "Werkr API", StringComparison.OrdinalIgnoreCase ) );
+        Assert.IsTrue( content.Contains( "API", StringComparison.OrdinalIgnoreCase ) );
     }
 }

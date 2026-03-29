@@ -982,7 +982,7 @@ public sealed partial class ScheduleEvaluatorService(
 
         // Persist job locally in the agent's SQLite database
         await PersistJobLocallyAsync( jobId, taskDef.TaskId, taskDef.Content, startTime, endTime,
-            success, exitCode, errorCategory, tailPreview, null, scheduleId, ct );
+            success, exitCode, errorCategory, tailPreview, scheduleId, ct );
 
         // Report result to server (includes agent-assigned job ID and schedule ID for upsert)
         await ReportJobResultAsync( jobId, taskDef, startTime, endTime, success, exitCode, errorCategory, null, tailPreview, scheduleId, ct );
@@ -1161,7 +1161,6 @@ public sealed partial class ScheduleEvaluatorService(
         int exitCode,
         ErrorCategory errorCategory,
         string? outputPreview,
-        string? workflowRunId,
         Guid? scheduleId,
         CancellationToken ct
     ) {
@@ -1187,9 +1186,10 @@ public sealed partial class ScheduleEvaluatorService(
                 ScheduleId = scheduleId,
             };
 
-            if (!string.IsNullOrWhiteSpace( workflowRunId ) && Guid.TryParse( workflowRunId, out Guid wfRunId )) {
-                job.WorkflowRunId = wfRunId;
-            }
+            // The Agent's local SQLite DB has no WorkflowRun table, so the FK
+            // would violate a constraint. Leave WorkflowRunId null for local
+            // save; the original workflowRunId string is passed separately to
+            // the API via ReportJobResultAsync.
 
             _ = dbContext.Jobs.Add( job );
             _ = await dbContext.SaveChangesAsync( ct );

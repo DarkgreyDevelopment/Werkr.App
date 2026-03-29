@@ -22,4 +22,9 @@ public interface IAuditService {
     /// Exports audit events as a stream (JSON or CSV). Optionally limited to <paramref name="maxRows"/> rows.
     /// </summary>
     Task ExportAsync( AuditQuery query, ExportFormat format, Stream outputStream, CancellationToken ct = default, int? maxRows = null );
+
+    /// <summary>
+    /// Returns the distinct entity types that appear in the audit log, sorted alphabetically.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetEntityTypesAsync( CancellationToken ct = default );
 }

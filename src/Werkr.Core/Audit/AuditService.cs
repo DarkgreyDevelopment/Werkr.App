@@ -98,6 +98,16 @@ public sealed partial class AuditService(
         }
     }
 
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<string>> GetEntityTypesAsync( CancellationToken ct = default ) {
+        return await dbContext.AuditEvents
+            .Where( e => e.EntityType != null )
+            .Select( e => e.EntityType! )
+            .Distinct( )
+            .OrderBy( t => t )
+            .ToListAsync( ct );
+    }
+
     private IQueryable<AuditEvent> BuildQuery( AuditQuery query ) {
         IQueryable<AuditEvent> q = dbContext.AuditEvents;
 

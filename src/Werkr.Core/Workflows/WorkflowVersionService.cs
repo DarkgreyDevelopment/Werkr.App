@@ -38,10 +38,10 @@ public sealed partial class WorkflowVersionService(
     ) {
         WorkflowDefinitionSnapshot snapshot = WorkflowDefinitionSnapshot.FromWorkflow( workflow );
 
-        const int maxRetries = 3;
+        const int MaxRetries = 3;
         WorkflowVersion? version = null;
 
-        for (int attempt = 0; attempt < maxRetries; attempt++) {
+        for (int attempt = 0; attempt < MaxRetries; attempt++) {
             int maxVersion = await dbContext.Set<WorkflowVersion>( )
                 .Where( v => v.WorkflowId == workflow.Id )
                 .MaxAsync( v => (int?)v.VersionNumber, ct ) ?? 0;
@@ -58,7 +58,7 @@ public sealed partial class WorkflowVersionService(
             try {
                 _ = await dbContext.SaveChangesAsync( ct );
                 break;
-            } catch (DbUpdateException ex) when (attempt < maxRetries - 1 && DbExceptionHelper.IsUniqueConstraintViolation( ex )) {
+            } catch (DbUpdateException ex) when (attempt < MaxRetries - 1 && DbExceptionHelper.IsUniqueConstraintViolation( ex )) {
                 dbContext.ChangeTracker.Entries<WorkflowVersion>( )
                     .Where( e => e.Entity == version )
                     .ToList( )
@@ -69,7 +69,7 @@ public sealed partial class WorkflowVersionService(
         }
 
         if (version is null) {
-            throw new InvalidOperationException( $"Failed to create version for workflow {workflow.Id} after {maxRetries} retries." );
+            throw new InvalidOperationException( $"Failed to create version for workflow {workflow.Id} after {MaxRetries} retries." );
         }
 
         workflow.CurrentVersionId = version.Id;

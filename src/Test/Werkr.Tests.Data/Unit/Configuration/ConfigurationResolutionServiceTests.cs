@@ -233,5 +233,6 @@ public class ConfigurationResolutionServiceTests {
             Task.FromResult( new PagedResult<AuditEventDto>( [], 0, 25, 0 ) );
         public Task ExportAsync( AuditQuery query, ExportFormat format, Stream outputStream, CancellationToken ct = default, int? maxRows = null ) =>
             Task.CompletedTask;
+        public Task<IReadOnlyList<string>> GetEntityTypesAsync( CancellationToken ct = default ) => throw new NotImplementedException( );
     }
 }

@@ -13,9 +13,9 @@ public class CredentialResolverTests {
     /// <summary>Finds a credential referenced via the CredentialName property.</summary>
     [TestMethod]
     public void FindCredentialReferences_FindsCredentialName( ) {
-        const string json = """{"ActionType":"SendEmail","CredentialName":"smtp-cred","SmtpHost":"mail.local"}""";
+        const string Json = """{"ActionType":"SendEmail","CredentialName":"smtp-cred","SmtpHost":"mail.local"}""";
 
-        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( json );
+        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( Json );
 
         Assert.HasCount( 1, refs );
         Assert.AreEqual( "smtp-cred", refs[0] );
@@ -24,9 +24,9 @@ public class CredentialResolverTests {
     /// <summary>Finds a credential referenced via the AuthCredential property.</summary>
     [TestMethod]
     public void FindCredentialReferences_FindsAuthCredential( ) {
-        const string json = """{"ActionType":"HttpRequest","AuthCredential":"api-key-1","Url":"https://example.com"}""";
+        const string Json = """{"ActionType":"HttpRequest","AuthCredential":"api-key-1","Url":"https://example.com"}""";
 
-        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( json );
+        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( Json );
 
         Assert.HasCount( 1, refs );
         Assert.AreEqual( "api-key-1", refs[0] );
@@ -35,9 +35,9 @@ public class CredentialResolverTests {
     /// <summary>Finds credentials in nested JSON structures.</summary>
     [TestMethod]
     public void FindCredentialReferences_FindsNestedReferences( ) {
-        const string json = """{"Outer":{"CredentialName":"cred-a","Inner":{"AuthCredential":"cred-b"}}}""";
+        const string Json = """{"Outer":{"CredentialName":"cred-a","Inner":{"AuthCredential":"cred-b"}}}""";
 
-        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( json );
+        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( Json );
 
         Assert.HasCount( 2, refs );
         CollectionAssert.Contains( refs.ToList( ), "cred-a" );
@@ -47,9 +47,9 @@ public class CredentialResolverTests {
     /// <summary>Returns empty when no credential properties are present.</summary>
     [TestMethod]
     public void FindCredentialReferences_ReturnsEmptyForNoReferences( ) {
-        const string json = """{"ActionType":"ShellCommand","Content":"echo hello"}""";
+        const string Json = """{"ActionType":"ShellCommand","Content":"echo hello"}""";
 
-        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( json );
+        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( Json );
 
         Assert.HasCount( 0, refs );
     }
@@ -73,9 +73,9 @@ public class CredentialResolverTests {
     /// <summary>De-duplicates identical credential names.</summary>
     [TestMethod]
     public void FindCredentialReferences_DeduplicatesNames( ) {
-        const string json = """{"CredentialName":"shared","Inner":{"AuthCredential":"shared"}}""";
+        const string Json = """{"CredentialName":"shared","Inner":{"AuthCredential":"shared"}}""";
 
-        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( json );
+        IReadOnlyList<string> refs = CredentialResolver.FindCredentialReferences( Json );
 
         Assert.HasCount( 1, refs );
     }
@@ -85,9 +85,9 @@ public class CredentialResolverTests {
     /// <summary>Replaces a CredentialName property value when it matches.</summary>
     [TestMethod]
     public void ReplaceCredentialName_ReplacesMatchingProperties( ) {
-        const string json = """{"ActionType":"SendEmail","CredentialName":"old-cred","SmtpHost":"mail.local"}""";
+        const string Json = """{"ActionType":"SendEmail","CredentialName":"old-cred","SmtpHost":"mail.local"}""";
 
-        string? result = CredentialResolver.ReplaceCredentialName( json, "old-cred", "new-cred" );
+        string? result = CredentialResolver.ReplaceCredentialName( Json, "old-cred", "new-cred" );
 
         Assert.IsNotNull( result );
         Assert.Contains( "new-cred", result );
@@ -97,9 +97,9 @@ public class CredentialResolverTests {
     /// <summary>Preserves non-credential properties unchanged.</summary>
     [TestMethod]
     public void ReplaceCredentialName_PreservesOtherProperties( ) {
-        const string json = """{"ActionType":"SendEmail","CredentialName":"old-cred","SmtpHost":"mail.local"}""";
+        const string Json = """{"ActionType":"SendEmail","CredentialName":"old-cred","SmtpHost":"mail.local"}""";
 
-        string? result = CredentialResolver.ReplaceCredentialName( json, "old-cred", "new-cred" );
+        string? result = CredentialResolver.ReplaceCredentialName( Json, "old-cred", "new-cred" );
 
         Assert.IsNotNull( result );
         Assert.Contains( "SendEmail", result );
@@ -109,9 +109,9 @@ public class CredentialResolverTests {
     /// <summary>Returns null when no credential property matches the old name.</summary>
     [TestMethod]
     public void ReplaceCredentialName_ReturnsNullWhenNoMatch( ) {
-        const string json = """{"ActionType":"ShellCommand","Content":"echo hello"}""";
+        const string Json = """{"ActionType":"ShellCommand","Content":"echo hello"}""";
 
-        string? result = CredentialResolver.ReplaceCredentialName( json, "old-cred", "new-cred" );
+        string? result = CredentialResolver.ReplaceCredentialName( Json, "old-cred", "new-cred" );
 
         Assert.IsNull( result );
     }

@@ -735,7 +735,7 @@
 
 @code {
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
+        new( "Administration", "/overview" ),
         new( "Settings" )
     ];
 
@@ -1217,11 +1217,8 @@
     private async Task LoadDiagnosticsAsync( ) {
         _isLoading = true;
         try {
-            Task<List<DatabaseHealthDto>?> databaseTask = Api.GetAsync<List<DatabaseHealthDto>>( "/api/v1/diagnostics/health" );
-            Task<List<AgentHealthDto>?> healthTask = Api.GetAsync<List<AgentHealthDto>>( "/api/v1/agents/health" );
-            await Task.WhenAll( databaseTask, healthTask );
-            _databaseHealth = await databaseTask ?? [];
-            _agentHealth = await healthTask ?? [];
+            _databaseHealth = await Api.GetAsync<List<DatabaseHealthDto>>( "/api/v1/diagnostics/health" ) ?? [];
+            _agentHealth = await Api.GetAsync<List<AgentHealthDto>>( "/api/v1/agents/health" ) ?? [];
         } catch ( Exception ex ) {
             _errorMessage = $"Failed to load diagnostics: {ex.Message}";
         } finally {

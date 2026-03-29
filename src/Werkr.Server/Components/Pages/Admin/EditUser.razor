@@ -85,7 +85,7 @@
     private string? _errorMessage;
     private string? _statusMessage;
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
+        new( "Administration", "/overview" ),
         new( "Users", "/admin/users" ),
         new( "Edit" )
     ];
@@ -116,7 +116,7 @@
         };
 
         _breadcrumbs = [
-            new( "Task List", "/" ),
+            new( "Administration", "/overview" ),
             new( "Users", "/admin/users" ),
             new( _user.Name )
         ];

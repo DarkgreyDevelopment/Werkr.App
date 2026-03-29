@@ -12,7 +12,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Postgres
 {
     [DbContext(typeof(PostgresWerkrDbContext))]
-    [Migration("20260323003632_Initial")]
+    [Migration("20260329063424_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -2868,6 +2868,7 @@ namespace Werkr.Data.Migrations.Postgres
                     b.HasOne("Werkr.Data.Entities.Workflows.WorkflowRun", "WorkflowRun")
                         .WithMany("Jobs")
                         .HasForeignKey("WorkflowRunId")
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_jobs_workflow_runs_workflow_run_id");
 
                     b.Navigation("AgentConnection");

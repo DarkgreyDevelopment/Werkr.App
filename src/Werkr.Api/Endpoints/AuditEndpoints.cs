@@ -124,6 +124,16 @@ internal static class AuditEndpoints {
         .WithName( "GetAuditModules" )
         .RequireAuthorization( Policies.IsAdmin );
 
+        // GET /api/v1/audit/entity-types — list distinct entity types from audit data
+        _ = app.MapGet(
+            "/api/v1/audit/entity-types",
+            async (
+                IAuditService auditService,
+                CancellationToken ct
+            ) => Results.Ok( await auditService.GetEntityTypesAsync( ct ) ) )
+        .WithName( "GetAuditEntityTypes" )
+        .RequireAuthorization( Policies.IsAdmin );
+
         // POST /api/v1/audit/export — streaming file download (JSON or CSV)
         _ = app.MapPost(
             "/api/v1/audit/export",

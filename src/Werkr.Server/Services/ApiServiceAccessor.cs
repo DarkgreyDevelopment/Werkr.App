@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Werkr.Server.Identity;
 
 namespace Werkr.Server.Services;
@@ -16,7 +17,26 @@ public sealed class ApiServiceAccessor(
     private static readonly JsonSerializerOptions s_jsonOptions = new( ) {
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new UtcDateTimeJsonConverter() },
     };
+
+    /// <summary>
+    /// Ensures deserialized <see cref="DateTime"/> values always have <see cref="DateTimeKind.Utc"/>.
+    /// </summary>
+    private sealed class UtcDateTimeJsonConverter : JsonConverter<DateTime> {
+        /// <inheritdoc/>
+        public override DateTime Read( ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options ) {
+            DateTime value = reader.GetDateTime();
+            return value.Kind == DateTimeKind.Utc
+                ? value
+                : DateTime.SpecifyKind( value, DateTimeKind.Utc );
+        }
+
+        /// <inheritdoc/>
+        public override void Write( Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options ) {
+            writer.WriteStringValue( value.ToUniversalTime( ).ToString( "o" ) );
+        }
+    }
 
     /// <summary>Sends a GET request and deserializes the JSON response.</summary>
     public async Task<T?> GetAsync<T>( string requestUri, CancellationToken ct = default ) {

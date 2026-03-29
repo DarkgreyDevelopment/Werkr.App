@@ -1,9 +1,13 @@
 using System.Reflection;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Settings.Configuration;
+using Serilog.Sinks.OpenTelemetry;
 using Werkr.Api.Authorization;
 using Werkr.Api.Endpoints;
 using Werkr.Api.Interceptors;
@@ -19,11 +23,15 @@ using Werkr.Core.Credentials;
 using Werkr.Core.Cryptography;
 using Werkr.Core.Health;
 using Werkr.Core.Notifications;
+using Werkr.Core.Notifications.Channels;
 using Werkr.Core.Registration;
 using Werkr.Core.Retention;
+using Werkr.Core.Retention.Providers;
 using Werkr.Core.Scheduling;
 using Werkr.Core.Security;
 using Werkr.Core.Tasks;
+using Werkr.Core.Triggers;
+using Werkr.Core.Workflows;
 using Werkr.Data;
 using Werkr.Data.Encryption;
 using Werkr.Data.Seeding;
@@ -59,9 +67,9 @@ public class Program {
 
             // Serilog (ConfigurationReaderOptions required for single-file publish)
             ConfigurationReaderOptions readerOptions = new(
-                typeof( Serilog.ConsoleLoggerConfigurationExtensions ).Assembly,
-                typeof( Serilog.FileLoggerConfigurationExtensions ).Assembly,
-                typeof( Serilog.Sinks.OpenTelemetry.OtlpProtocol ).Assembly );
+                typeof(ConsoleLoggerConfigurationExtensions).Assembly,
+                typeof(FileLoggerConfigurationExtensions).Assembly,
+                typeof(OtlpProtocol).Assembly);
             _ = builder.Host.UseSerilog( ( ctx, lc ) => lc
                 .ReadFrom.Configuration( ctx.Configuration, readerOptions ) );
 
@@ -86,15 +94,20 @@ public class Program {
             // environment variables. Outside containers, the dev cert handles TLS.
             _ = builder.WebHost.ConfigureKestrel( options => {
                 options.ConfigureEndpointDefaults( listenOptions => {
-                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
                 } );
             } );
 
             // Database — provider is configurable via Database:Provider (default: Postgres)
             string connectionString = builder.Configuration.GetConnectionString( "werkrdb" ) ?? string.Empty;
             DatabaseProvider dbProvider = Enum.TryParse<DatabaseProvider>(
-                builder.Configuration["Database:Provider"], ignoreCase: true, out DatabaseProvider parsed )
-                ? parsed : DatabaseProvider.Postgres;
+                builder.Configuration["Database:Provider"],
+                ignoreCase: true,
+                out DatabaseProvider parsed
+            )
+                ? parsed
+                : DatabaseProvider.Postgres;
+
             _ = builder.Services.AddWerkrDbContext( dbProvider, connectionString );
 
             // Field-level encryption — transparently encrypts sensitive DB columns
@@ -116,20 +129,29 @@ public class Program {
             builder.Configuration.GetSection( WerkrConfiguration.SectionName ).Bind( werkrConfig );
 
             // JWT Bearer Authentication (validation only — Server issues tokens)
+            // Agent gRPC calls authenticate via AgentBearerTokenInterceptor (API-key hash),
+            // not JWT. Skip JWT validation for agent requests to avoid SecurityTokenMalformedException noise.
             _ = builder.Services.AddAuthentication( options => {
-                options.DefaultAuthenticateScheme =
-                    Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme =
-                    Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             } )
                 .AddJwtBearer( options => {
                     options.TokenValidationParameters =
                         JwtValidationConfigurator.GetParameters( builder.Configuration );
+                    options.Events = new JwtBearerEvents {
+                        OnMessageReceived = context => {
+                            // Agent gRPC requests include x-werkr-connection-id; skip JWT parsing for those.
+                            if (context.Request.Headers.ContainsKey( "x-werkr-connection-id" )) {
+                                context.NoResult( );
+                            }
+                            return Task.CompletedTask;
+                        },
+                    };
                 } );
 
             // Permission-based authorization (claims-based handler — no identity DB queries)
             _ = builder.Services.AddAuthorization( options => options.AddWerkrPermissionPolicies( ) );
-            _ = builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+            _ = builder.Services.AddSingleton<IAuthorizationHandler,
                 ClaimsPermissionAuthorizationHandler>( );
 
             // Named HttpClient for proxying token requests to the Server
@@ -205,13 +227,13 @@ public class Program {
             _ = builder.Services.AddScoped<JobExecutionService>( );
 
             // Workflow services (Scoped — one per request)
-            _ = builder.Services.AddScoped<Werkr.Core.Workflows.ConditionEvaluator>( );
-            _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowVersionService>( );
-            _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowVersionDiffService>( );
-            _ = builder.Services.AddScoped<Werkr.Core.Workflows.WorkflowService>( );
+            _ = builder.Services.AddScoped<ConditionEvaluator>( );
+            _ = builder.Services.AddScoped<WorkflowVersionService>( );
+            _ = builder.Services.AddScoped<WorkflowVersionDiffService>( );
+            _ = builder.Services.AddScoped<WorkflowService>( );
 
             // Trigger versioning service (Scoped)
-            _ = builder.Services.AddScoped<Werkr.Core.Triggers.TriggerVersionService>( );
+            _ = builder.Services.AddScoped<TriggerVersionService>( );
 
             // Agent notification outbox (Scoped — participates in caller's transaction)
             _ = builder.Services.AddScoped<AgentNotificationService>( );
@@ -248,15 +270,15 @@ public class Program {
             _ = builder.Services.AddSingleton<INotificationEventCategoryRegistry>( notificationEventRegistry );
 
             // Notification channel implementations (multi-registration for channel resolver)
-            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.EmailNotificationChannel>( );
-            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.WebhookNotificationChannel>( sp => {
+            _ = builder.Services.AddScoped<INotificationChannel, EmailNotificationChannel>( );
+            _ = builder.Services.AddScoped<INotificationChannel, WebhookNotificationChannel>( sp => {
                 WerkrDbContext db = sp.GetRequiredService<WerkrDbContext>( );
-                ILogger<Werkr.Core.Notifications.Channels.WebhookNotificationChannel> log = sp.GetRequiredService<ILogger<Werkr.Core.Notifications.Channels.WebhookNotificationChannel>>( );
+                ILogger<WebhookNotificationChannel> log = sp.GetRequiredService<ILogger<WebhookNotificationChannel>>();
                 IHttpClientFactory httpFactory = sp.GetRequiredService<IHttpClientFactory>( );
                 HttpClient httpClient = httpFactory.CreateClient( "WerkrNotifications" );
-                return new Werkr.Core.Notifications.Channels.WebhookNotificationChannel( httpClient, db, log );
+                return new WebhookNotificationChannel( httpClient, db, log );
             } );
-            _ = builder.Services.AddScoped<INotificationChannel, Werkr.Core.Notifications.Channels.InAppNotificationChannel>( );
+            _ = builder.Services.AddScoped<INotificationChannel, InAppNotificationChannel>( );
             _ = builder.Services.AddSingleton<INotificationHubService, NullNotificationHubService>( );
 
             // Notification delivery pipeline
@@ -264,22 +286,22 @@ public class Program {
             _ = builder.Services.AddScoped<INotificationDeliveryService, NotificationDeliveryService>( );
 
             // Notification retry background service
-            _ = builder.Services.AddSingleton<Werkr.Api.Services.NotificationRetryService>( sp => {
+            _ = builder.Services.AddSingleton<NotificationRetryService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
-                ILogger<Werkr.Api.Services.NotificationRetryService> retryLogger = sp.GetRequiredService<ILogger<Werkr.Api.Services.NotificationRetryService>>( );
-                return new Werkr.Api.Services.NotificationRetryService( scopeFactory, retryLogger );
+                ILogger<NotificationRetryService> retryLogger = sp.GetRequiredService<ILogger<NotificationRetryService>>();
+                return new NotificationRetryService( scopeFactory, retryLogger );
             } );
-            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<Werkr.Api.Services.NotificationRetryService>( ) );
+            _ = builder.Services.AddHostedService( sp => sp.GetRequiredService<NotificationRetryService>( ) );
 
             // Retention framework — policy-driven data lifecycle management
             RetentionPolicyRegistry retentionRegistry = new( );
             _ = builder.Services.AddSingleton( retentionRegistry );
-            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.WorkflowRunRetentionProvider>( );
-            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.AuditLogRetentionProvider>( );
-            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.JobOutputRetentionProvider>( );
-            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.WorkflowRunVariableRetentionProvider>( );
-            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.NotificationDeliveryRetentionProvider>( );
-            _ = builder.Services.AddScoped<IRetentionPolicyProvider, Werkr.Core.Retention.Providers.UserNotificationRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, WorkflowRunRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, AuditLogRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, JobOutputRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, WorkflowRunVariableRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, NotificationDeliveryRetentionProvider>( );
+            _ = builder.Services.AddScoped<IRetentionPolicyProvider, UserNotificationRetentionProvider>( );
             _ = builder.Services.AddSingleton<RetentionService>( sp => {
                 IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>( );
                 ILogger<RetentionService> retentionLogger = sp.GetRequiredService<ILogger<RetentionService>>( );
@@ -325,22 +347,22 @@ public class Program {
             await TaskVersionSeeder.SeedAsync( app.Services );
 
             // Seed workflow versions for pre-versioning workflows
-            await Werkr.Data.Seeding.WorkflowVersionSeeder.SeedAsync( app.Services );
+            await WorkflowVersionSeeder.SeedAsync( app.Services );
 
             // Seed trigger versions for pre-versioning triggers
-            await Werkr.Data.Seeding.TriggerVersionSeeder.SeedAsync( app.Services );
+            await TriggerVersionSeeder.SeedAsync( app.Services );
 
             // Seed configuration entries (migrates legacy ConfigurationSettings)
-            await Werkr.Data.Seeding.ConfigurationSeeder.SeedAsync( app.Services );
+            await ConfigurationSeeder.SeedAsync( app.Services );
 
             // Seed retention policies
-            await Werkr.Data.Seeding.RetentionPolicySeeder.SeedAsync( app.Services );
+            await RetentionPolicySeeder.SeedAsync( app.Services );
 
             // Seed notification templates
-            await Werkr.Data.Seeding.NotificationTemplateSeeder.SeedAsync( app.Services );
+            await NotificationTemplateSeeder.SeedAsync( app.Services );
 
             // Migrate per-agent path allowlists to ConfigurationEntry
-            await Werkr.Data.Seeding.PathAllowlistMigrationSeeder.SeedAsync( app.Services );
+            await PathAllowlistMigrationSeeder.SeedAsync( app.Services );
 
             // Configure the HTTP request pipeline.
             _ = app.UseExceptionHandler( );

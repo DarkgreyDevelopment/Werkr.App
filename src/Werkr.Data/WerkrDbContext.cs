@@ -562,7 +562,7 @@ public class WerkrDbContext : DbContext {
                 .OnDelete( DeleteBehavior.SetNull );
         } );
 
-        // WerkrJob — StepId FK and index
+        // WerkrJob — FKs and index
         _ = modelBuilder.Entity<WerkrJob>( entity => {
             _ = entity.HasIndex( e => new { e.WorkflowRunId, e.StepId } )
                 .HasDatabaseName( "IX_jobs_WorkflowRunId_StepId" );
@@ -570,6 +570,11 @@ public class WerkrDbContext : DbContext {
             _ = entity.HasOne( e => e.Step )
                 .WithMany( )
                 .HasForeignKey( e => e.StepId )
+                .OnDelete( DeleteBehavior.SetNull );
+
+            _ = entity.HasOne( e => e.WorkflowRun )
+                .WithMany( r => r.Jobs )
+                .HasForeignKey( e => e.WorkflowRunId )
                 .OnDelete( DeleteBehavior.SetNull );
         } );
 
@@ -818,13 +823,15 @@ public class WerkrDbContext : DbContext {
         _ = configurationBuilder.Properties<TimeZoneInfo>( )
             .HaveConversion<TimeZoneInfoStringConverter>( );
 
-        // DateTime: EF Core + Npgsql maps to `timestamp with time zone` natively.
-        // SQLite continues using TEXT (its only type affinity) with proper EF Core metadata.
-        // No global converter needed.
+        // DateTime ↔ UTC-normalized (ensures DateTimeKind.Utc on read for both Npgsql and SQLite)
+        _ = configurationBuilder.Properties<DateTime>( )
+            .HaveConversion<DateTimeUtcConverter, DateTimeUtcComparer>( );
+        _ = configurationBuilder.Properties<DateTime?>( )
+            .HaveConversion<NullableDateTimeUtcConverter, NullableDateTimeUtcComparer>( );
 
         // RSAParameters ↔ string (JSON)
         _ = configurationBuilder.Properties<RSAParameters>( )
-            .HaveConversion<RSAParametersStringConverter>( );
+            .HaveConversion<RSAParametersStringConverter, RSAParametersComparer>( );
 
         // RegistrationStatus ↔ string
         _ = configurationBuilder.Properties<RegistrationStatus>( )
@@ -934,7 +941,31 @@ public class WerkrDbContext : DbContext {
         }
     }
 
-    // -- Value Converters --
+    // -- Value Converters & Comparers --
+
+    private sealed class DateTimeUtcConverter( )
+        : ValueConverter<DateTime, DateTime>(
+            v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime( ),
+            v => DateTime.SpecifyKind( v, DateTimeKind.Utc ) );
+
+    private sealed class DateTimeUtcComparer( )
+        : ValueComparer<DateTime>(
+            ( a, b ) => a.Ticks == b.Ticks,
+            v => v.GetHashCode( ),
+            v => v );
+
+    private sealed class NullableDateTimeUtcConverter( )
+        : ValueConverter<DateTime?, DateTime?>(
+            v => v.HasValue
+                ? (v.Value.Kind == DateTimeKind.Utc ? v.Value : v.Value.ToUniversalTime( ))
+                : null,
+            v => v.HasValue ? DateTime.SpecifyKind( v.Value, DateTimeKind.Utc ) : null );
+
+    private sealed class NullableDateTimeUtcComparer( )
+        : ValueComparer<DateTime?>(
+            ( a, b ) => a == null ? b == null : b != null && a.Value.Ticks == b.Value.Ticks,
+            v => v.HasValue ? v.Value.GetHashCode( ) : 0,
+            v => v );
 
     private sealed class TimeZoneInfoStringConverter( )
         : ValueConverter<TimeZoneInfo, string>(
@@ -948,6 +979,12 @@ public class WerkrDbContext : DbContext {
         : ValueConverter<RSAParameters, string>(
             rsa => JsonSerializer.Serialize( rsa, s_rsaJsonOptions ),
             json => JsonSerializer.Deserialize<RSAParameters>( json, s_rsaJsonOptions ) );
+
+    private sealed class RSAParametersComparer( )
+        : ValueComparer<RSAParameters>(
+            ( a, b ) => JsonSerializer.Serialize( a, s_rsaJsonOptions ) == JsonSerializer.Serialize( b, s_rsaJsonOptions ),
+            v => JsonSerializer.Serialize( v, s_rsaJsonOptions ).GetHashCode( ),
+            v => JsonSerializer.Deserialize<RSAParameters>( JsonSerializer.Serialize( v, s_rsaJsonOptions ), s_rsaJsonOptions ) );
 
     private sealed class RegistrationStatusStringConverter( )
         : ValueConverter<RegistrationStatus, string>(

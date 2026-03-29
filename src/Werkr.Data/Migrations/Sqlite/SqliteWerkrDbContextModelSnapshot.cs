@@ -2807,6 +2807,7 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.HasOne("Werkr.Data.Entities.Workflows.WorkflowRun", "WorkflowRun")
                         .WithMany("Jobs")
                         .HasForeignKey("WorkflowRunId")
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_jobs_workflow_runs_workflow_run_id");
 
                     b.Navigation("AgentConnection");

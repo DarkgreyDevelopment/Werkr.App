@@ -1,10 +1,10 @@
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Werkr.Data.Identity.Migrations.Postgres;
-
+namespace Werkr.Data.Identity.Migrations.Postgres; 
 /// <inheritdoc />
 public partial class Initial : Migration {
     /// <inheritdoc />

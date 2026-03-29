@@ -54,62 +54,62 @@ public static class ConfigurationSeeder {
     private static ConfigurationEntry[] BuildDefaults( ConfigurationSettings? legacy ) {
 #pragma warning restore CS0618
         DateTime now = DateTime.UtcNow;
-        const string system = "system";
+        const string System = "system";
 
         return [
             // ── Server ──
             Entry( "server.name", legacy?.ServerName ?? "Werkr Server", "string", "server",
-                "Display name shown in the Blazor UI header.", null, now, system ),
+                "Display name shown in the Blazor UI header.", null, now, System ),
             Entry( "server.allowRegistration", legacy?.AllowRegistration.ToString( ).ToLowerInvariant( ) ?? "true",
-                "boolean", "server", "Whether new agent registrations are accepted.", null, now, system ),
+                "boolean", "server", "Whether new agent registrations are accepted.", null, now, System ),
 
             // ── Agent ──
             Entry( "agent.heartbeat.intervalSeconds", "30", "number", "agent",
-                "Seconds between agent heartbeat probes.", """{"min":5}""", now, system ),
+                "Seconds between agent heartbeat probes.", """{"min":5}""", now, System ),
             Entry( "agent.heartbeat.missedThreshold", "3", "number", "agent",
-                "Number of missed heartbeats before an agent is marked offline.", """{"min":1}""", now, system ),
+                "Number of missed heartbeats before an agent is marked offline.", """{"min":1}""", now, System ),
             Entry( "agent.concurrency.maxTasks", "5", "number", "agent",
-                "Maximum concurrent tasks an agent can execute.", """{"min":1}""", now, system ),
+                "Maximum concurrent tasks an agent can execute.", """{"min":1}""", now, System ),
             Entry( "agent.output.maxSizeBytes", "10485760", "number", "agent",
-                "Maximum size in bytes for agent output capture.", """{"min":0}""", now, system ),
+                "Maximum size in bytes for agent output capture.", """{"min":0}""", now, System ),
 
             // ── Security ──
             Entry( "security.defaultKeySize", legacy?.DefaultKeySize.ToString( ) ?? "4096", "number", "security",
-                "Default RSA key size in bits.", """{"min":2048,"max":8192}""", now, system ),
+                "Default RSA key size in bits.", """{"min":2048,"max":8192}""", now, System ),
             Entry( "security.keyRotation.intervalHours", "168", "number", "security",
-                "Hours between automatic key rotations.", null, now, system ),
+                "Hours between automatic key rotations.", null, now, System ),
             Entry( "security.keyRotation.gracePeriodMinutes", "5", "number", "security",
-                "Minutes both old and new keys are valid during rotation.", null, now, system ),
+                "Minutes both old and new keys are valid during rotation.", null, now, System ),
 
             // ── Network ──
             Entry( "network.allowPrivateNetworks", "false", "boolean", "network",
-                "Whether agents on private networks can register.", null, now, system ),
+                "Whether agents on private networks can register.", null, now, System ),
 
             // ── Workflow ──
             Entry( "workflow.timeout.defaultMinutes", "60", "number", "workflow",
-                "Default workflow timeout in minutes.", """{"min":1}""", now, system ),
+                "Default workflow timeout in minutes.", """{"min":1}""", now, System ),
 
             // ── UI (server polling) ──
             Entry( "server.polling.intervalSeconds",
                 legacy?.PollingIntervalSeconds.ToString( ) ?? "30", "number", "server",
                 "Seconds between dashboard auto-refresh polls.",
-                """{"min":5,"max":300}""", now, system ),
+                """{"min":5,"max":300}""", now, System ),
             Entry( "server.polling.runDetailIntervalSeconds",
                 legacy?.RunDetailPollingIntervalSeconds.ToString( ) ?? "15", "number", "server",
                 "Seconds between run-detail auto-refresh polls.",
-                """{"min":5}""", now, system ),
+                """{"min":5}""", now, System ),
 
             // ── Retention ──
             Entry( "retention.sweepIntervalMinutes", "1440", "number", "server",
-                "Minutes between automatic retention sweep cycles.", """{"min":15}""", now, system ),
+                "Minutes between automatic retention sweep cycles.", """{"min":15}""", now, System ),
 
             // ── Modules (prep for 2.3) ──
             Entry( "modules.DefaultActions.enabled", "true", "boolean", "security",
-                "Whether the built-in default action handlers are enabled.", null, now, system ),
+                "Whether the built-in default action handlers are enabled.", null, now, System ),
             Entry( "modules.security.trustedPublisherKeys", "[]", "json", "security",
-                "Trusted module publisher public keys (JSON array).", null, now, system ),
+                "Trusted module publisher public keys (JSON array).", null, now, System ),
             Entry( "modules.security.allowUnsigned", "false", "boolean", "security",
-                "Whether unsigned modules are allowed.", null, now, system ),
+                "Whether unsigned modules are allowed.", null, now, System ),
         ];
     }
 

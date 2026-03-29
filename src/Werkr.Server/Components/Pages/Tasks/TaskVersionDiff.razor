@@ -115,7 +115,6 @@
     private int _currentChangeIndex;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
         new( "Tasks", "/tasks" ),
         new( "Diff" )
     ];
@@ -137,7 +136,6 @@
             }
 
             _breadcrumbs = [
-                new( "Task List", "/" ),
                 new( "Tasks", "/tasks" ),
                 new( "Task", $"/tasks/{TaskId}" ),
                 new( $"Diff v{_diff.FromVersionNumber} → v{_diff.ToVersionNumber}" )
