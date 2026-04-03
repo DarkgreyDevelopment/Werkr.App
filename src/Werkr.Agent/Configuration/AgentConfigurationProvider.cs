@@ -106,7 +106,8 @@ public sealed partial class AgentConfigurationProvider(
     ) {
         _credentialMetadata.Clear( );
         foreach ((string name, string type, bool isScopedToThisAgent) in credentials) {
-            _credentialMetadata[name] = (type, isScopedToThisAgent);
+            if (!ct.IsCancellationRequested)
+                _credentialMetadata[name] = (type, isScopedToThisAgent);
         }
 
         LogCredentialMetadataUpdated( logger, credentials.Count );

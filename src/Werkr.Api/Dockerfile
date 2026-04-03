@@ -33,8 +33,7 @@ COPY src/Werkr.Data.Identity/Werkr.Data.Identity.csproj           src/Werkr.Data
 COPY src/Werkr.Api/Werkr.Api.csproj                               src/Werkr.Api/
 
 # Proto files needed during restore/build for gRPC codegen
-COPY src/Werkr.Api/Protos/        src/Werkr.Api/Protos/
-COPY src/Werkr.Agent/Protos/      src/Werkr.Agent/Protos/
+COPY src/Werkr.Common/Protos/     src/Werkr.Common/Protos/
 
 RUN dotnet restore src/Werkr.Api/Werkr.Api.csproj \
       -r linux-${TARGETARCH}
@@ -52,7 +51,9 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble AS source
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system werkr \
-    && useradd --system --no-create-home -g werkr werkr
+    && useradd --system --no-create-home -g werkr werkr \
+    && mkdir -p /home/werkr/.config/werkr/secrets \
+    && chown -R werkr:werkr /home/werkr
 
 WORKDIR /app
 
@@ -83,7 +84,9 @@ COPY Publish/Werkr.ServerBundle.*.deb /tmp/
 RUN dpkg -x /tmp/*.deb / && rm /tmp/*.deb
 
 RUN groupadd --system werkr \
-    && useradd --system --no-create-home -g werkr werkr
+    && useradd --system --no-create-home -g werkr werkr \
+    && mkdir -p /home/werkr/.config/werkr/secrets \
+    && chown -R werkr:werkr /home/werkr
 
 WORKDIR /opt/werkr/serverbundle
 
@@ -96,7 +99,8 @@ EXPOSE 8443
 
 ENV ASPNETCORE_URLS=https://+:8443 \
     ASPNETCORE_ENVIRONMENT=Production \
-    DOTNET_ENVIRONMENT=Production
+    DOTNET_ENVIRONMENT=Production \
+    HOME=/home/werkr
 
 ENTRYPOINT ["./Werkr.Api"]
 

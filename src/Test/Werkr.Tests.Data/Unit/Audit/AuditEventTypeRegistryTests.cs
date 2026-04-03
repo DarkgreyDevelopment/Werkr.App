@@ -78,7 +78,7 @@ public class AuditEventTypeRegistryTests {
         _ = registry.RegisterCoreAuditEvents( );
 
         IReadOnlyList<AuditEventTypeDto> all = registry.GetAll( );
-        Assert.HasCount( 45, all );
+        Assert.HasCount( 56, all );
     }
 
     [TestMethod]
@@ -127,6 +127,17 @@ public class AuditEventTypeRegistryTests {
     [DataRow( CredentialScopeUpdated )]
     [DataRow( CredentialAccessed )]
     [DataRow( RetentionSweepCompleted )]
+    [DataRow( NotificationChannelCreated )]
+    [DataRow( NotificationChannelUpdated )]
+    [DataRow( NotificationChannelDeleted )]
+    [DataRow( NotificationChannelTested )]
+    [DataRow( NotificationSubscriptionCreated )]
+    [DataRow( NotificationSubscriptionUpdated )]
+    [DataRow( NotificationSubscriptionDeleted )]
+    [DataRow( NotificationPreferenceUpdated )]
+    [DataRow( NotificationDeliverySent )]
+    [DataRow( NotificationDeliveryFailed )]
+    [DataRow( NotificationDeliveryDeadLettered )]
     public void RegisterCoreAuditEvents_ContainsEventType( AuditEventType eventType ) {
         AuditEventTypeRegistry registry = new( );
         _ = registry.RegisterCoreAuditEvents( );

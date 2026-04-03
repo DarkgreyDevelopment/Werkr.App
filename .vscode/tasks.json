@@ -4,13 +4,14 @@
 		{
 			"id": "migrationName",
 			"type": "promptString",
-			"description": "Name for the EF Core migration",
+			"description": "Name for the EF Core migration (PascalCase, e.g. AddWorkflowTable)",
 			"default": "migration"
 		}
 	],
 	"tasks": [
 		{
 			"label": "verify:restore",
+			"detail": "Restore all NuGet packages for the solution. Run after pulling changes or editing .csproj/.props files. No external dependencies.",
 			"type": "process",
 			"command": "pwsh",
 			"args": [
@@ -30,6 +31,7 @@
 		},
 		{
 			"label": "verify:build",
+			"detail": "Build the entire solution (all projects). Runs an implicit restore. Use to validate that all code compiles cleanly. Output is suppressed unless errors occur.",
 			"type": "process",
 			"command": "pwsh",
 			"args": [
@@ -39,7 +41,10 @@
 				"build",
 				"Werkr.slnx"
 			],
-			"group": "build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
 			"problemMatcher": "$msCompile",
 			"presentation": {
 				"reveal": "silent",
@@ -48,7 +53,31 @@
 			}
 		},
 		{
+			"label": "verify:build-server",
+			"detail": "Build only the Werkr.Server (Blazor UI) project and its dependencies. Useful when iterating on UI changes without rebuilding the entire solution.",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"build",
+				"src/Werkr.Server/Werkr.Server.csproj"
+			],
+			"group": "build",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "silent",
+				"revealProblems": "onProblem",
+				"showReuseMessage": false
+			}
+		},
+		{
 			"label": "verify:format",
+			"detail": "Auto-format all C# code in the solution using dotnet format (.editorconfig rules). Run before committing. No external dependencies.",
 			"type": "process",
 			"command": "pwsh",
 			"args": [
@@ -66,73 +95,8 @@
 			}
 		},
 		{
-			"label": "verify:test-unit",
-			"type": "process",
-			"command": "pwsh",
-			"args": [
-				"--noprofile",
-				"-c",
-				"dotnet",
-				"test",
-				"--project",
-				"src/Test/Werkr.Tests.Data/Werkr.Tests.Data.csproj"
-			],
-			"group": "test",
-			"problemMatcher": "$msCompile",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"presentation": {
-				"reveal": "always",
-				"showReuseMessage": false
-			}
-		},
-		{
-			"label": "verify:test-integration",
-			"type": "process",
-			"command": "pwsh",
-			"args": [
-				"--noprofile",
-				"-c",
-				"dotnet",
-				"test",
-				"--project",
-				"src/Test/Werkr.Tests.Server/Werkr.Tests.Server.csproj"
-			],
-			"group": "test",
-			"problemMatcher": "$msCompile",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"presentation": {
-				"reveal": "always",
-				"showReuseMessage": false
-			}
-		},
-		{
-			"label": "verify:test-e2e",
-			"type": "process",
-			"command": "pwsh",
-			"args": [
-				"--noprofile",
-				"-c",
-				"dotnet",
-				"test",
-				"--project",
-				"src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj"
-			],
-			"group": "test",
-			"problemMatcher": "$msCompile",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"presentation": {
-				"reveal": "always",
-				"showReuseMessage": false
-			}
-		},
-		{
 			"label": "verify:start-apphost",
+			"detail": "Launch all Werkr components locally via .NET Aspire (Server, API, Agent). Opens the Aspire dashboard. Use for manual integration testing. Stop with Ctrl+C.",
 			"type": "process",
 			"command": "pwsh",
 			"args": [
@@ -143,7 +107,6 @@
 				"--project",
 				"src/Werkr.AppHost/Werkr.AppHost.csproj"
 			],
-			"group": "test",
 			"problemMatcher": "$msCompile",
 			"options": {
 				"cwd": "${workspaceFolder}"
@@ -155,6 +118,7 @@
 		},
 		{
 			"label": "verify:docker-check",
+			"detail": "Validate docker-compose.yml syntax without starting containers. Requires Docker to be running.",
 			"type": "process",
 			"command": "pwsh",
 			"args": [
@@ -175,6 +139,7 @@
 		},
 		{
 			"label": "verify:docker-build",
+			"detail": "Generate TLS certs and build all Docker images (Server, API, Agent). Requires Docker. Run before docker:start if images are stale.",
 			"type": "process",
 			"command": "pwsh",
 			"args": [
@@ -191,6 +156,7 @@
 		},
 		{
 			"label": "docker:start",
+			"detail": "Start all Werkr containers in detached mode (Server :5050, API :5001, Agent :5100). Requires Docker and pre-built images (run verify:docker-build first).",
 			"type": "process",
 			"command": "pwsh",
 			"args": [
@@ -212,6 +178,7 @@
 		},
 		{
 			"label": "docker:stop",
+			"detail": "Stop and remove all Werkr containers. Does not remove volumes or images.",
 			"type": "process",
 			"command": "pwsh",
 			"args": [
@@ -232,6 +199,7 @@
 		},
 		{
 			"label": "docker:restart",
+			"detail": "Stop then start all Werkr containers (sequential: docker:stop → docker:start).",
 			"dependsOn": [
 				"docker:stop",
 				"docker:start"
@@ -244,7 +212,171 @@
 			}
 		},
 		{
-			"label": "ef:app:postgres",
+			"label": "test:dotnet",
+			"detail": "Run all .NET tests at the solution level (single build, all 4 test projects together). Default verbosity: normal. Change --verbosity to 'quiet' for counts only or 'detailed' for full diagnostics. Requires Docker for Testcontainers (test:api tests).",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--solution",
+				"Werkr.slnx",
+				"--verbosity",
+				"normal"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "test:graphui",
+			"detail": "Run graph-ui TypeScript tests via Vitest. Requires Node 22+. Install deps first: npm install --prefix src/Werkr.Server/graph-ui",
+			"type": "process",
+			"command": "npm",
+			"args": [
+				"test",
+				"--prefix",
+				"src/Werkr.Server/graph-ui"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "test:all",
+			"detail": "Run ALL tests: .NET (solution-level) then JS/TS (Vitest). This is the default test task. Chains test:dotnet → test:graphui sequentially. Requires Docker (for Testcontainers) and Node 22+ (for Vitest).",
+			"dependsOn": [
+				"test:dotnet",
+				"test:graphui"
+			],
+			"dependsOrder": "sequence",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "test:unit",
+			"detail": "Run data layer unit tests only (Werkr.Tests.Data). Fast, in-memory EF Core — no Docker needed. Change --verbosity to 'quiet' for counts only or 'detailed' for full diagnostics.",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--project",
+				"src/Test/Werkr.Tests.Data/Werkr.Tests.Data.csproj",
+				"--verbosity",
+				"normal"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "test:api",
+			"detail": "Run API integration tests only (Werkr.Tests). Uses Testcontainers (PostgreSQL 17) + WebApplicationFactory. Requires Docker. Change --verbosity to 'quiet' for counts only or 'detailed' for full diagnostics.",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--project",
+				"src/Test/Werkr.Tests/Werkr.Tests.csproj",
+				"--verbosity",
+				"normal"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "test:server",
+			"detail": "Run Blazor component tests only (Werkr.Tests.Server). Uses bunit + in-memory EF Core — no Docker needed. Change --verbosity to 'quiet' for counts only or 'detailed' for full diagnostics.",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--project",
+				"src/Test/Werkr.Tests.Server/Werkr.Tests.Server.csproj",
+				"--verbosity",
+				"normal"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "test:e2e",
+			"detail": "Run Agent end-to-end tests only (Werkr.Tests.Agent). Tests embedded PowerShell execution, scheduling, and triggers. No Docker needed. Change --verbosity to 'quiet' for counts only or 'detailed' for full diagnostics.",
+			"type": "process",
+			"command": "pwsh",
+			"args": [
+				"--noprofile",
+				"-c",
+				"dotnet",
+				"test",
+				"--project",
+				"src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj",
+				"--verbosity",
+				"normal"
+			],
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "migrate:app:postgres",
+			"detail": "Add a PostgreSQL migration for the app data context (PostgresWerkrDbContext). Prompts for migration name. Output: src/Werkr.Data/Migrations/Postgres/",
 			"type": "shell",
 			"command": "pwsh",
 			"args": [
@@ -276,7 +408,8 @@
 			}
 		},
 		{
-			"label": "ef:app:sqlite",
+			"label": "migrate:app:sqlite",
+			"detail": "Add a SQLite migration for the app data context (SqliteWerkrDbContext). Prompts for migration name. Output: src/Werkr.Data/Migrations/Sqlite/",
 			"type": "shell",
 			"command": "pwsh",
 			"args": [
@@ -308,10 +441,11 @@
 			}
 		},
 		{
-			"label": "ef:app:both",
+			"label": "migrate:app",
+			"detail": "Add migrations for the app data context on BOTH providers (PostgreSQL + SQLite). Prompts for migration name once, applies to both. Runs migrate:app:postgres → migrate:app:sqlite.",
 			"dependsOn": [
-				"ef:app:postgres",
-				"ef:app:sqlite"
+				"migrate:app:postgres",
+				"migrate:app:sqlite"
 			],
 			"dependsOrder": "sequence",
 			"problemMatcher": [],
@@ -322,7 +456,8 @@
 			}
 		},
 		{
-			"label": "ef:identity:postgres",
+			"label": "migrate:identity:postgres",
+			"detail": "Add a PostgreSQL migration for the Identity context (PostgresWerkrIdentityDbContext). Prompts for migration name. Output: src/Werkr.Data.Identity/Migrations/Postgres/",
 			"type": "shell",
 			"command": "pwsh",
 			"args": [
@@ -354,7 +489,8 @@
 			}
 		},
 		{
-			"label": "ef:identity:sqlite",
+			"label": "migrate:identity:sqlite",
+			"detail": "Add a SQLite migration for the Identity context (SqliteWerkrIdentityDbContext). Prompts for migration name. Output: src/Werkr.Data.Identity/Migrations/Sqlite/",
 			"type": "shell",
 			"command": "pwsh",
 			"args": [
@@ -386,10 +522,11 @@
 			}
 		},
 		{
-			"label": "ef:identity:both",
+			"label": "migrate:identity",
+			"detail": "Add migrations for the Identity context on BOTH providers (PostgreSQL + SQLite). Prompts for migration name once. Runs migrate:identity:postgres → migrate:identity:sqlite.",
 			"dependsOn": [
-				"ef:identity:postgres",
-				"ef:identity:sqlite"
+				"migrate:identity:postgres",
+				"migrate:identity:sqlite"
 			],
 			"dependsOrder": "sequence",
 			"problemMatcher": [],
@@ -400,85 +537,15 @@
 			}
 		},
 		{
-			"label": "ef:all",
+			"label": "migrate:all",
+			"detail": "Add migrations for ALL contexts and ALL providers (app + identity × postgres + sqlite). Prompts for migration name once. Runs migrate:app → migrate:identity.",
 			"dependsOn": [
-				"ef:app:both",
-				"ef:identity:both"
+				"migrate:app",
+				"migrate:identity"
 			],
 			"dependsOrder": "sequence",
 			"problemMatcher": [],
 			"group": "build",
-			"presentation": {
-				"reveal": "always",
-				"showReuseMessage": false
-			}
-		},
-		{
-			"label": "verify:build-server",
-			"type": "shell",
-			"command": "pwsh --noprofile -c 'dotnet build src/Werkr.Server/Werkr.Server.csproj'"
-		},
-		{
-			"label": "verify:test-e2e-verbose",
-			"type": "shell",
-			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj --verbosity normal 2>&1 | tail -50'"
-		},
-		{
-			"label": "verify:test-e2e-failures",
-			"type": "shell",
-			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj -- --report-trx 2>&1 | grep -i -E \"failed|error|FAIL\" | head -20'"
-		},
-		{
-			"label": "verify:e2e-fail-detail",
-			"type": "shell",
-			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj --no-build 2>&1 | grep -i -E \"failed|FAIL\" | head -20'"
-		},
-		{
-			"label": "verify:e2e-tail",
-			"type": "shell",
-			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Agent/Werkr.Tests.Agent.csproj'"
-		},
-		{
-			"label": "verify:test-server",
-			"type": "shell",
-			"command": "pwsh --noprofile -c 'dotnet test --project src/Test/Werkr.Tests.Server/Werkr.Tests.Server.csproj'"
-		},
-		{
-			"label": "verify:test-api",
-			"type": "process",
-			"command": "pwsh",
-			"args": [
-				"--noprofile",
-				"-c",
-				"dotnet",
-				"test",
-				"--project",
-				"src/Test/Werkr.Tests/Werkr.Tests.csproj"
-			],
-			"group": "test",
-			"problemMatcher": "$msCompile",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"presentation": {
-				"reveal": "always",
-				"showReuseMessage": false
-			}
-		},
-		{
-			"label": "verify:test-graphui",
-			"type": "process",
-			"command": "npm",
-			"args": [
-				"test",
-				"--prefix",
-				"src/Werkr.Server/graph-ui"
-			],
-			"group": "test",
-			"problemMatcher": [],
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
 			"presentation": {
 				"reveal": "always",
 				"showReuseMessage": false

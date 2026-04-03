@@ -11,7 +11,7 @@ using Werkr.Data;
 namespace Werkr.Data.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteWerkrDbContext))]
-    [Migration("20260323003652_Initial")]
+    [Migration("20260329063451_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -2810,6 +2810,7 @@ namespace Werkr.Data.Migrations.Sqlite
                     b.HasOne("Werkr.Data.Entities.Workflows.WorkflowRun", "WorkflowRun")
                         .WithMany("Jobs")
                         .HasForeignKey("WorkflowRunId")
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_jobs_workflow_runs_workflow_run_id");
 
                     b.Navigation("AgentConnection");

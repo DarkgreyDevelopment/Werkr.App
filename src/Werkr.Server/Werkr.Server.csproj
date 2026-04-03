@@ -11,7 +11,8 @@
     <GraphUiNodeEnv Condition="'$(Configuration)' != 'Release'">development</GraphUiNodeEnv>
   </PropertyGroup>
 
-  <Target Name="EnsureNode" BeforeTargets="NpmInstall">
+  <Target Name="EnsureNode" BeforeTargets="NpmInstall"
+          Condition="'$(SkipGraphUiBuild)' != 'true'">
     <Exec Command="node --version"
           IgnoreExitCode="true"
           ConsoleToMsBuild="true"
@@ -24,6 +25,7 @@
 
   <Target Name="NpmInstall"
           BeforeTargets="BuildGraphUi"
+          Condition="'$(SkipGraphUiBuild)' != 'true'"
           Inputs="$(MSBuildProjectDirectory)/graph-ui/package.json"
           Outputs="$(BaseIntermediateOutputPath)graph-ui-npm.stamp">
     <RemoveDir Directories="$(MSBuildProjectDirectory)/graph-ui/node_modules" />
@@ -34,7 +36,8 @@
            AlwaysCreate="true" />
   </Target>
 
-  <Target Name="BuildGraphUi" BeforeTargets="BeforeBuild">
+  <Target Name="BuildGraphUi" BeforeTargets="BeforeBuild"
+          Condition="'$(SkipGraphUiBuild)' != 'true'">
     <Exec Command="node esbuild.config.mjs"
           WorkingDirectory="$(MSBuildProjectDirectory)/graph-ui"
           EnvironmentVariables="NODE_ENV=$(GraphUiNodeEnv)"

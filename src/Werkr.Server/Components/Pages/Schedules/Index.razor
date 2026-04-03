@@ -106,7 +106,7 @@
         .ToList( );
 
     private readonly List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
+        new( "Tasks", "/tasks" ),
         new( "Schedules" )
     ];
 
@@ -197,7 +197,7 @@
     private static string GetStatus( ScheduleDto s ) {
         if ( s.Expiration is not null ) {
             DateTime expDt = s.Expiration.Date.ToDateTime( s.Expiration.Time );
-            if ( expDt < DateTime.Now ) return "Expired";
+            if ( expDt < DateTime.UtcNow ) return "Expired";
         }
         return "Active";
     }

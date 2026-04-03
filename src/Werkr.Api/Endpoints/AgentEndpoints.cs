@@ -240,7 +240,7 @@ internal static class AgentEndpoints {
     /// Registers the aggregate agent health endpoint backed by stored LastSeen/Status data.
     /// </summary>
     private static void MapAgentHealth( WebApplication app ) {
-        const int offlineThresholdSeconds = 180;
+        const int OfflineThresholdSeconds = 180;
 
         _ = app.MapGet(
             "/api/v1/agents/health",
@@ -255,7 +255,7 @@ internal static class AgentEndpoints {
                     .ToListAsync( ct );
 
                 DateTime now = DateTime.UtcNow;
-                DateTime cutoff = now.AddSeconds( -offlineThresholdSeconds );
+                DateTime cutoff = now.AddSeconds( -OfflineThresholdSeconds );
 
                 List<AgentHealthDto> results = [.. connections.Select( c => {
                     // Revoked agents always show as Revoked

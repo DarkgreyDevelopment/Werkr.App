@@ -16,6 +16,16 @@
 ARG BUILD_MODE=source
 
 # ==========================
+#  graph-ui TypeScript build (Node.js)
+# ==========================
+FROM node:22-slim AS graph-ui-build
+WORKDIR /build/graph-ui
+COPY src/Werkr.Server/graph-ui/package.json src/Werkr.Server/graph-ui/package-lock.json ./
+RUN npm ci
+COPY src/Werkr.Server/graph-ui/ .
+RUN NODE_ENV=production node esbuild.config.mjs
+
+# ==========================
 #  Source build stage
 # ==========================
 FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS source-build
@@ -33,15 +43,19 @@ COPY src/Werkr.Data.Identity/Werkr.Data.Identity.csproj               src/Werkr.
 COPY src/Werkr.Server/Werkr.Server.csproj                             src/Werkr.Server/
 
 # Proto files needed during restore/build for gRPC codegen
-COPY src/Werkr.Agent/Protos/      src/Werkr.Agent/Protos/
+COPY src/Werkr.Common/Protos/     src/Werkr.Common/Protos/
 
 RUN dotnet restore src/Werkr.Server/Werkr.Server.csproj \
       -r linux-${TARGETARCH}
 
 COPY src/ src/
+
+# Inject pre-built graph-ui JS bundles (built in the node stage above)
+COPY --from=graph-ui-build /build/wwwroot/js/dist/ src/Werkr.Server/wwwroot/js/dist/
+
 RUN dotnet publish src/Werkr.Server/Werkr.Server.csproj \
       -c Release -r linux-${TARGETARCH} -o /app/publish \
-      --sc true
+      -p:SkipGraphUiBuild=true --sc true
 
 # ==========================
 #  Source runtime
@@ -51,7 +65,9 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble AS source
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system werkr \
-    && useradd --system --no-create-home -g werkr werkr
+    && useradd --system --no-create-home -g werkr werkr \
+    && mkdir -p /home/werkr/.config/werkr/secrets \
+    && chown -R werkr:werkr /home/werkr
 
 WORKDIR /app
 
@@ -67,7 +83,8 @@ EXPOSE 8443
 
 ENV ASPNETCORE_URLS=https://+:8443 \
     ASPNETCORE_ENVIRONMENT=Production \
-    DOTNET_ENVIRONMENT=Production
+    DOTNET_ENVIRONMENT=Production \
+    HOME=/home/werkr
 
 USER werkr
 ENTRYPOINT ["./Werkr.Server"]
@@ -87,7 +104,9 @@ RUN dpkg -x /tmp/*.deb / && rm /tmp/*.deb
 RUN groupadd --system werkr \
     && useradd --system --no-create-home -g werkr werkr \
     && mkdir -p /opt/werkr/serverbundle/keys /opt/werkr/serverbundle/config /opt/werkr/serverbundle/certs \
-    && chown -R werkr:werkr /opt/werkr/serverbundle/keys /opt/werkr/serverbundle/config /opt/werkr/serverbundle/certs
+       /home/werkr/.config/werkr/secrets \
+    && chown -R werkr:werkr /opt/werkr/serverbundle/keys /opt/werkr/serverbundle/config /opt/werkr/serverbundle/certs \
+       /home/werkr
 
 USER werkr
 WORKDIR /opt/werkr/serverbundle
@@ -96,7 +115,8 @@ EXPOSE 8443
 
 ENV ASPNETCORE_URLS=https://+:8443 \
     ASPNETCORE_ENVIRONMENT=Production \
-    DOTNET_ENVIRONMENT=Production
+    DOTNET_ENVIRONMENT=Production \
+    HOME=/home/werkr
 
 ENTRYPOINT ["./Werkr.Server"]
 

@@ -1,9 +1,9 @@
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Werkr.Data.Identity.Migrations.Sqlite;
-
+namespace Werkr.Data.Identity.Migrations.Sqlite; 
 /// <inheritdoc />
 public partial class Initial : Migration {
     /// <inheritdoc />

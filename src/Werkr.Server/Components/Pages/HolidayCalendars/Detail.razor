@@ -137,7 +137,6 @@
     private List<HolidayDateDto>? _previewDates;
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
         new( "Holiday Calendars", "/holiday-calendars" ),
         new( "Detail" )
     ];
@@ -150,7 +149,6 @@
 
             if ( _calendar is not null ) {
                 _breadcrumbs = [
-                    new( "Task List", "/" ),
                     new( "Holiday Calendars", "/holiday-calendars" ),
                     new( _calendar.Name )
                 ];

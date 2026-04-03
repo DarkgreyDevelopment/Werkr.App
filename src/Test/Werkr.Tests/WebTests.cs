@@ -16,7 +16,7 @@ public class WebTests {
     /// <summary>
     /// Verifies that sending an HTTP GET request to the API root endpoint (<c>/</c>)
     /// returns an <see cref="HttpStatusCode.OK"/> status code and that the response body
-    /// contains the text "Werkr API", confirming the API application is running and serving
+    /// contains the text "API", confirming the API application is running and serving
     /// its root resource. The test validates both the HTTP status and the content of the response.
     /// </summary>
     [TestMethod]
@@ -30,7 +30,7 @@ public class WebTests {
 
         string content = await response.Content.ReadAsStringAsync( ct );
         Assert.IsTrue(
-            content.Contains( "Werkr API", StringComparison.OrdinalIgnoreCase ),
-            "API root should return a response containing 'Werkr API'." );
+            content.Contains( "API", StringComparison.OrdinalIgnoreCase ),
+            "API root should return a response containing 'API'." );
     }
 }

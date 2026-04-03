@@ -823,24 +823,13 @@ internal static partial class WorkflowEndpoints {
             List<long> workflowIds = [.. summaries.Select( w => w.Id )];
 
             // Query 2 — Sparkline data (recent runs for the page of workflow IDs)
-            List<WorkflowRun> recentRuns;
-            try {
-                recentRuns = await dbContext.WorkflowRuns.AsNoTracking( )
-                    .Where( r => workflowIds.Contains( r.WorkflowId ) )
-                    .GroupBy( r => r.WorkflowId )
-                    .SelectMany( g => g.OrderByDescending( r => r.StartTime ).Take( sparklineCount ) )
-                    .ToListAsync( ct );
-            } catch (Exception ex) {
-                // Fallback: EF provider may not support GroupBy+SelectMany+Take
-                logger.LogWarning( ex, "Sparkline GroupBy query failed; falling back to in-memory grouping" );
-                recentRuns = await dbContext.WorkflowRuns.AsNoTracking( )
-                    .Where( r => workflowIds.Contains( r.WorkflowId ) )
-                    .OrderByDescending( r => r.StartTime )
-                    .ToListAsync( ct );
-                recentRuns = [.. recentRuns
-                    .GroupBy( r => r.WorkflowId )
-                    .SelectMany( g => g.Take( sparklineCount ) )];
-            }
+            List<WorkflowRun> recentRuns = await dbContext.WorkflowRuns.AsNoTracking()
+                .Where(r => workflowIds.Contains(r.WorkflowId))
+                .OrderByDescending(r => r.StartTime)
+                .ToListAsync(ct);
+            recentRuns = [.. recentRuns
+                .GroupBy( r => r.WorkflowId )
+                .SelectMany( g => g.Take( sparklineCount ) )];
 
             ILookup<long, RunSparklineDto> sparklineByWorkflow = recentRuns
                 .OrderBy( r => r.StartTime )
@@ -942,37 +931,21 @@ internal static partial class WorkflowEndpoints {
             }
 
             List<StepStatusSummaryDto> steps;
-            try {
-                steps = await dbContext.WorkflowStepExecutions.AsNoTracking( )
-                    .Where( e => e.WorkflowRunId == latestRun.Id )
-                    .GroupBy( e => e.StepId )
-                    .Select( g => g.OrderByDescending( e => e.Attempt ).First( ) )
-                    .Select( e => new StepStatusSummaryDto(
-                        StepId: e.StepId,
-                        Status: e.Status.ToString( ),
-                        StartTime: e.StartTime,
-                        EndTime: e.EndTime,
-                        ExitCode: e.Job != null ? e.Job.ExitCode : null ) )
-                    .ToListAsync( ct );
-            } catch (Exception ex) {
-                // Fallback: EF provider (e.g. SQLite) may not support GroupBy+First
-                logger.LogWarning( ex, "Latest-run-status GroupBy query failed; falling back to in-memory grouping" );
-                List<WorkflowStepExecution> allExecs = await dbContext.WorkflowStepExecutions
-                    .AsNoTracking( )
-                    .Include( e => e.Job )
-                    .Where( e => e.WorkflowRunId == latestRun.Id )
-                    .OrderByDescending( e => e.Attempt )
-                    .ToListAsync( ct );
-                steps = [.. allExecs
-                    .GroupBy( e => e.StepId )
-                    .Select( g => g.First( ) )
-                    .Select( e => new StepStatusSummaryDto(
-                        StepId: e.StepId,
-                        Status: e.Status.ToString( ),
-                        StartTime: e.StartTime,
-                        EndTime: e.EndTime,
-                        ExitCode: e.Job?.ExitCode ) )];
-            }
+            List<WorkflowStepExecution> allExecs = await dbContext.WorkflowStepExecutions
+                .AsNoTracking()
+                .Include(e => e.Job)
+                .Where(e => e.WorkflowRunId == latestRun.Id)
+                .OrderByDescending(e => e.Attempt)
+                .ToListAsync(ct);
+            steps = [.. allExecs
+                .GroupBy( e => e.StepId )
+                .Select( g => g.First( ) )
+                .Select( e => new StepStatusSummaryDto(
+                    StepId: e.StepId,
+                    Status: e.Status.ToString( ),
+                    StartTime: e.StartTime,
+                    EndTime: e.EndTime,
+                    ExitCode: e.Job?.ExitCode ) )];
 
             return Results.Ok( new WorkflowLatestRunStatusDto(
                 RunId: latestRun.Id,

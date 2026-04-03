@@ -67,7 +67,12 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-bold">Entity Type</label>
-                    <input class="form-control form-control-sm" @bind="_filterEntityType" placeholder="e.g. User" />
+                    <select class="form-select form-select-sm" @bind="_filterEntityType">
+                        <option value="">All</option>
+                        @foreach (string et in _entityTypes) {
+                            <option value="@et">@et</option>
+                        }
+                    </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-bold">Entity ID</label>
@@ -158,7 +163,7 @@
                             </td>
                             <td>@evt.ActionPerformed</td>
                             <td>
-                                @if (!string.IsNullOrEmpty( evt.Details )) {
+                                @if (!string.IsNullOrEmpty( evt.Details ) && evt.Details != "{}") {
                                     <button class="btn btn-link btn-sm p-0"
                                             @onclick="() => ToggleDetails( evt.Id )">
                                         @(_expandedIds.Contains( evt.Id ) ? "Hide" : "Show")
@@ -196,6 +201,7 @@
     private PagedResult<AuditEventDto>? _result;
     private List<string> _categories = [];
     private List<string> _modules = [];
+    private List<string> _entityTypes = [];
     private List<AuditEventTypeDto> _eventTypes = [];
     private Dictionary<string, string> _eventTypeDisplayNames = [];
     private readonly HashSet<long> _expandedIds = [];
@@ -232,6 +238,9 @@
 
             List<string>? modules = await Api.GetAsync<List<string>>( "/api/v1/audit/modules" );
             _modules = modules ?? [];
+
+            List<string>? entityTypes = await Api.GetAsync<List<string>>( "/api/v1/audit/entity-types" );
+            _entityTypes = entityTypes ?? [];
 
             Dictionary<string, List<AuditEventTypeDto>>? grouped =
                 await Api.GetAsync<Dictionary<string, List<AuditEventTypeDto>>>( "/api/v1/audit/event-types" );

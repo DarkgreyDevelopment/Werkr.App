@@ -84,7 +84,7 @@ public sealed partial class ActionOperator : IActionOperator {
     ) {
         _options = options;
         _logger = logger;
-        _handlers = new Dictionary<string, IActionHandler>( StringComparer.OrdinalIgnoreCase );
+        _handlers = new( StringComparer.OrdinalIgnoreCase );
 
         foreach (IActionHandler handler in handlers) {
             if (!_handlers.TryAdd( handler.Action, handler )) {

@@ -38,10 +38,10 @@ public sealed partial class TaskVersionService(
     ) {
         TaskDefinitionSnapshot snapshot = TaskDefinitionSnapshot.FromTask( task );
 
-        const int maxRetries = 3;
+        const int MaxRetries = 3;
         TaskVersion? version = null;
 
-        for (int attempt = 0; attempt < maxRetries; attempt++) {
+        for (int attempt = 0; attempt < MaxRetries; attempt++) {
             int maxVersion = await dbContext.TaskVersions
                 .Where( v => v.TaskId == task.Id )
                 .MaxAsync( v => (int?)v.VersionNumber, ct ) ?? 0;
@@ -58,7 +58,7 @@ public sealed partial class TaskVersionService(
             try {
                 _ = await dbContext.SaveChangesAsync( ct );
                 break;
-            } catch (DbUpdateException ex) when (attempt < maxRetries - 1 && DbExceptionHelper.IsUniqueConstraintViolation( ex )) {
+            } catch (DbUpdateException ex) when (attempt < MaxRetries - 1 && DbExceptionHelper.IsUniqueConstraintViolation( ex )) {
                 // Unique constraint violation — retry with fresh version number
                 dbContext.ChangeTracker.Entries<TaskVersion>( )
                     .Where( e => e.Entity == version )
@@ -70,7 +70,7 @@ public sealed partial class TaskVersionService(
         }
 
         if (version is null) {
-            throw new InvalidOperationException( $"Failed to create version for task {task.Id} after {maxRetries} retries." );
+            throw new InvalidOperationException( $"Failed to create version for task {task.Id} after {MaxRetries} retries." );
         }
 
         task.CurrentVersionId = version.Id;

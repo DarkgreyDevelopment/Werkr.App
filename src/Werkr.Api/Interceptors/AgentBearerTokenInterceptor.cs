@@ -131,7 +131,15 @@ public partial class AgentBearerTokenInterceptor(
         // Debounced LastSeen update (only write if null or older than 60 seconds)
         if (connection.LastSeen is null || connection.LastSeen < DateTime.UtcNow.AddSeconds( -60 )) {
             connection.LastSeen = DateTime.UtcNow;
-            _ = await dbContext.SaveChangesAsync( );
+            try {
+                _ = await dbContext.SaveChangesAsync( );
+            } catch (DbUpdateConcurrencyException) {
+                // Best-effort write — another request already updated LastSeen.
+                if (logger.IsEnabled( LogLevel.Debug )) {
+                    logger.LogDebug( "Swallowed DbUpdateConcurrencyException on LastSeen update for connection {ConnectionId}.",
+                        connectionId );
+                }
+            }
         }
 
         // Store resolved connection and optional call ID in UserState for downstream services

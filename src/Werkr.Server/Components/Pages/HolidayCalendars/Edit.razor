@@ -308,7 +308,6 @@
     private string _deleteMessage = "";
 
     private List<Breadcrumb.BreadcrumbItem> _breadcrumbs = [
-        new( "Task List", "/" ),
         new( "Holiday Calendars", "/holiday-calendars" ),
         new( "Edit" )
     ];
@@ -331,7 +330,6 @@
                 }
                 _infoModel = new InfoModel { Name = _calendar.Name, Description = _calendar.Description };
                 _breadcrumbs = [
-                    new( "Task List", "/" ),
                     new( "Holiday Calendars", "/holiday-calendars" ),
                     new( _calendar.Name )
                 ];

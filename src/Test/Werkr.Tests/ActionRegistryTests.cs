@@ -17,7 +17,7 @@ public class ActionRegistryTests {
     /// </summary>
     [TestMethod]
     public void All_Contains_Thirty_Actions( ) {
-        Assert.HasCount( 31, ActionRegistry.All );
+        Assert.HasCount( 30, ActionRegistry.All );
     }
 
     /// <summary>
@@ -56,7 +56,6 @@ public class ActionRegistryTests {
     [DataRow( "CompressArchive" )]
     [DataRow( "ExpandArchive" )]
     [DataRow( "WatchFile" )]
-    [DataRow( "ForEach" )]
     [DataRow( "HttpRequest" )]
     [DataRow( "DownloadFile" )]
     [DataRow( "TestConnection" )]
@@ -323,7 +322,6 @@ public class ActionRegistryTests {
     [DataRow( "Process" )]
     [DataRow( "ControlFlow" )]
     [DataRow( "File monitoring" )]
-    [DataRow( "Iteration" )]
     [DataRow( "Network" )]
     [DataRow( "Data" )]
     [DataRow( "Shell" )]
@@ -452,7 +450,6 @@ public class ActionRegistryTests {
     [TestMethod]
     [DataRow( "ControlFlow", "Delay" )]
     [DataRow( "File monitoring", "WatchFile" )]
-    [DataRow( "Iteration", "ForEach" )]
     [DataRow( "Data", "TransformJson" )]
     public void SingleEntry_Categories_Have_One_Action( string category, string expectedKey ) {
         IReadOnlyList<ActionFormDescriptor> actions = GetCategoryActions( category );
@@ -671,7 +668,6 @@ public class ActionRegistryTests {
     [DataRow( "StopProcess", 3 )]
     [DataRow( "Delay", 2 )]
     [DataRow( "WatchFile", 7 )]
-    [DataRow( "ForEach", 1 )]
     [DataRow( "HttpRequest", 13 )]
     [DataRow( "DownloadFile", 5 )]
     [DataRow( "TestConnection", 5 )]
