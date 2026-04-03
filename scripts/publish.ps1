@@ -1,4 +1,4 @@
-#Requires -Version 7.2
+#Requires -Version 7.6
 using namespace System.IO
 <#
     .SYNOPSIS
@@ -262,10 +262,10 @@ function New-Executable {
         "-p:FileVersion=$($VersionInfo.Major).$($VersionInfo.Minor).$($VersionInfo.Patch).0"
         "-p:InformationalVersion=$($VersionInfo.InformationalVersion)"
     )
-    & dotnet @PublishArgs
+    & dotnet @PublishArgs | Write-Host
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $RuntimeIdentifier (exit $LASTEXITCODE)" }
 
-    return $Counter + 1
+    return ($Counter + 1)
 }
 
 function Build-Installer {
@@ -483,13 +483,16 @@ function New-DebPackage {
         throw "build-deb.ps1 not found at $BuildScript. Ensure src/Installer/Deb/ is intact."
     }
 
-    & $BuildScript `
-        -ProductType $ProductType `
-        -BinaryPath $OutputPath `
-        -Version $VersionInfo.MajorMinorPatch `
-        -Architecture $DebArch `
-        -OutputPath $PublishPath `
-        -EditionName $EditionName
+    [hashtable]$BuildParams = @{
+        ProductType  = $ProductType
+        BinaryPath   = $OutputPath
+        Version      = $VersionInfo.MajorMinorPatch
+        Architecture = $DebArch
+        OutputPath   = $PublishPath
+        EditionName  = $EditionName
+    }
+
+    & $BuildScript @BuildParams
 
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
         throw "build-deb.ps1 failed for $EditionName (exit $LASTEXITCODE)"
@@ -540,13 +543,16 @@ function New-PkgInstaller {
         throw "build-pkg.ps1 not found at $BuildScript. Ensure src/Installer/Pkg/ is intact."
     }
 
-    & $BuildScript `
-        -ProductType $ProductType `
-        -BinaryPath $OutputPath `
-        -Version $VersionInfo.MajorMinorPatch `
-        -Architecture $Arch `
-        -OutputPath $PublishPath `
-        -EditionName $EditionName
+   [hashtable]$BuildParams = @{
+        ProductType = $ProductType
+        BinaryPath  = $OutputPath
+        Version     = $VersionInfo.MajorMinorPatch
+        Architecture= $Arch
+        OutputPath  = $PublishPath
+        EditionName = $EditionName
+    }
+
+    & $BuildScript @BuildParams
 
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
         throw "build-pkg.ps1 failed for $EditionName (exit $LASTEXITCODE)"

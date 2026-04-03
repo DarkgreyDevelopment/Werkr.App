@@ -144,7 +144,7 @@ services:
       ASPNETCORE_Kestrel__Certificates__Default__Path: /app/certs/werkr-server.pfx
       ASPNETCORE_Kestrel__Certificates__Default__Password: werkr-dev
       SSL_CERT_FILE: /app/certs/werkr-ca.pem
-      ConnectionStrings__werkrdb: "Host=postgres;Port=5432;Database=werkrdb;Username=werkr;Password=werkr_dev_password"
+      ConnectionStrings__werkridentitydb: "Host=postgres;Port=5432;Database=werkrdb;Username=werkr;Password=werkr_dev_password"
       services__api__https__0: "https://werkr-api:8443"
       services__agent__https__0: "https://werkr-agent:8443"
       WERKR_CONFIG_PATH: /app/config

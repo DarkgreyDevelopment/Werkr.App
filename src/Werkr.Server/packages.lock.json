@@ -60,6 +60,12 @@
           "Microsoft.IdentityModel.Tokens": "8.17.0"
         }
       },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.5, )",
+        "resolved": "10.0.5",
+        "contentHash": "rCJ2ZNQxqNTEVoZ4REd2NEr8GR9dp2vE1wH6VZ9gIKYzQ0em/Ka+4AitXx7CXs3mdaTxUycoIiVRjQBsm8wV2w=="
+      },
       "QRCoder": {
         "type": "Direct",
         "requested": "[1.7.0, )",
@@ -748,6 +754,26 @@
         "contentHash": "zc1sIJZMDH7pPO1Gqte9yjMEFSILShTRNuxVxnNdiZP4NGGSi3ZGe2OSrW2phjzM/QKe3pKOwUXfQmJMjDBOKQ==",
         "dependencies": {
           "TimeZoneConverter": "7.0.0"
+        }
+      }
+    },
+    "net10.0/osx-x64": {
+      "Microsoft.Win32.SystemEvents": {
+        "type": "Transitive",
+        "resolved": "6.0.0",
+        "contentHash": "hqTM5628jSsQiv+HGpiq3WKBl2c8v1KZfby2J6Pr7pEPlK9waPdgEO6b8A/+/xn/yZ9ulv8HuqK71ONy2tg67A=="
+      },
+      "SQLitePCLRaw.lib.e_sqlite3": {
+        "type": "Transitive",
+        "resolved": "2.1.11",
+        "contentHash": "Ev2ytaXiOlWZ4b3R67GZBsemTINslLD1DCJr2xiacpn4tbapu0Q4dHEzSvZSMnVWeE5nlObU3VZN2p81q3XOYQ=="
+      },
+      "System.Drawing.Common": {
+        "type": "Transitive",
+        "resolved": "6.0.0",
+        "contentHash": "NfuoKUiP2nUWwKZN6twGqXioIe1zVD0RIj2t976A+czLHr2nY454RwwXs6JU9Htc6mwqL6Dn/nEL3dpVf2jOhg==",
+        "dependencies": {
+          "Microsoft.Win32.SystemEvents": "6.0.0"
         }
       }
     }

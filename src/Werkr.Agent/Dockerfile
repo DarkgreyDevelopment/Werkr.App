@@ -10,9 +10,6 @@
 #    pwsh scripts/publish.ps1 -Application Agent -Platform linux -Architecture x64 -BuildDebInstallers
 #    docker compose build --build-arg BUILD_MODE=deb
 #
-#  Or use the wrapper script:
-#    ./scripts/docker-build.sh --deb
-#
 #  Build context: repository root (Werkr_Final/)
 # -------------------------------------------------------------------
 
@@ -35,8 +32,7 @@ COPY src/Werkr.Data/Werkr.Data.csproj                             src/Werkr.Data
 COPY src/Werkr.Agent/Werkr.Agent.csproj                           src/Werkr.Agent/
 
 # Proto files needed during restore/build for gRPC codegen
-COPY src/Werkr.Api/Protos/        src/Werkr.Api/Protos/
-COPY src/Werkr.Agent/Protos/      src/Werkr.Agent/Protos/
+COPY src/Werkr.Common/Protos/     src/Werkr.Common/Protos/
 
 RUN dotnet restore src/Werkr.Agent/Werkr.Agent.csproj \
       -r linux-${TARGETARCH}

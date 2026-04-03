@@ -1,4 +1,4 @@
-#Requires -Version 7.2
+#Requires -Version 7.6
 <#
     .SYNOPSIS
         Build Werkr Docker images.

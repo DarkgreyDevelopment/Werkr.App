@@ -60,6 +60,12 @@
           "SQLitePCLRaw.core": "2.1.11"
         }
       },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.5, )",
+        "resolved": "10.0.5",
+        "contentHash": "rCJ2ZNQxqNTEVoZ4REd2NEr8GR9dp2vE1wH6VZ9gIKYzQ0em/Ka+4AitXx7CXs3mdaTxUycoIiVRjQBsm8wV2w=="
+      },
       "Npgsql.EntityFrameworkCore.PostgreSQL": {
         "type": "Direct",
         "requested": "[10.0.1, )",
@@ -545,6 +551,13 @@
         "dependencies": {
           "TimeZoneConverter": "7.0.0"
         }
+      }
+    },
+    "net10.0/osx-x64": {
+      "SQLitePCLRaw.lib.e_sqlite3": {
+        "type": "Transitive",
+        "resolved": "2.1.11",
+        "contentHash": "Ev2ytaXiOlWZ4b3R67GZBsemTINslLD1DCJr2xiacpn4tbapu0Q4dHEzSvZSMnVWeE5nlObU3VZN2p81q3XOYQ=="
       }
     }
   }

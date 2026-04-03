@@ -48,6 +48,12 @@
           "Microsoft.IdentityModel.Logging": "8.17.0"
         }
       },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.5, )",
+        "resolved": "10.0.5",
+        "contentHash": "rCJ2ZNQxqNTEVoZ4REd2NEr8GR9dp2vE1wH6VZ9gIKYzQ0em/Ka+4AitXx7CXs3mdaTxUycoIiVRjQBsm8wV2w=="
+      },
       "TimeZoneNames": {
         "type": "Direct",
         "requested": "[7.0.0, )",
@@ -204,6 +210,7 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.5"
         }
       }
-    }
+    },
+    "net10.0/osx-x64": {}
   }
 }

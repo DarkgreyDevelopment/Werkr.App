@@ -29,7 +29,6 @@
   </Folder>
   <Folder Name="/scripts/">
     <File Path="scripts/publish.ps1" />
-    <File Path="scripts/docker-build.sh" />
     <File Path="scripts/docker-build.ps1" />
   </Folder>
   <Folder Name="/src/">

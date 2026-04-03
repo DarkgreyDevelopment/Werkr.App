@@ -21,6 +21,12 @@
           "Microsoft.Extensions.ServiceDiscovery.Abstractions": "10.4.0"
         }
       },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.5, )",
+        "resolved": "10.0.5",
+        "contentHash": "rCJ2ZNQxqNTEVoZ4REd2NEr8GR9dp2vE1wH6VZ9gIKYzQ0em/Ka+4AitXx7CXs3mdaTxUycoIiVRjQBsm8wV2w=="
+      },
       "OpenTelemetry.Exporter.OpenTelemetryProtocol": {
         "type": "Direct",
         "requested": "[1.15.1, )",
@@ -188,6 +194,7 @@
           "Polly.Core": "8.4.2"
         }
       }
-    }
+    },
+    "net10.0/osx-x64": {}
   }
 }
